@@ -151,6 +151,49 @@ app.get('/api/me', authenticateToken, (req, res) => {
     res.json({ success: true, username: req.user.username });
 });
 
+// 주요 미국 및 글로벌 주식/ETF 친절한 한글 종목명 사전
+const KOREAN_STOCK_MAP = {
+    'O': '리얼티인컴',
+    'MSFT': '마이크로소프트',
+    'AAPL': '애플',
+    'NVDA': '엔비디아',
+    'TSLA': '테슬라',
+    'SPY': 'S&P 500',
+    'QQQ': '나스닥 100 (QQQ)',
+    'QQQM': '나스닥 100 (QQQM)',
+    'SOXL': '반도체 3배 (SOXL)',
+    'MAR': '메리어트',
+    'SBUX': '스타벅스',
+    'AMZN': '아마존',
+    'GOOGL': '구글 (알파벳)',
+    'GOOG': '구글 (알파벳)',
+    'META': '메타',
+    'SCHD': '슈드 (SCHD)',
+    'AMD': 'AMD',
+    'INTC': '인텔',
+    'PLTR': '팔란티어',
+    'COIN': '코인베이스',
+    'TLT': '미국 20년 국채 (TLT)',
+    'VOO': 'S&P 500 (VOO)',
+    'IVV': 'S&P 500 (IVV)'
+};
+
+function getKoreanStockName(symbol, fullName) {
+    if (!symbol) return fullName || '';
+    const cleanSym = symbol.trim().toUpperCase();
+    if (KOREAN_STOCK_MAP[cleanSym]) {
+        return KOREAN_STOCK_MAP[cleanSym];
+    }
+    // 국내 상장 ETF나 이미 한글이 포함된 종목
+    if (/[가-힣]/.test(symbol)) {
+        return symbol;
+    }
+    if (fullName && /[가-힣]/.test(fullName)) {
+        return fullName;
+    }
+    return symbol;
+}
+
 // 6. 요약 데이터 조회 API (메인 대시보드 카드용)
 app.get('/api/summary', authenticateToken, async (req, res) => {
     try {
@@ -167,21 +210,42 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             assetDb.all('SELECT symbol, full_name, quantity, avg_price, currency FROM assets WHERE quantity > 0', (err, rows) => resolve(rows || []));
         });
 
-        // 자산 합산 및 종목 데이터 가공
+        // 자산 합산 및 종목별 통합 (복수 계좌 분산 보유 종목 단일화)
+        const assetMap = new Map();
         let totalKrw = 0;
-        const assetItems = assets.map((a, idx) => {
+
+        for (const a of assets) {
             const isUsd = a.currency === 'USD';
             const priceInKrw = isUsd ? Math.round(a.avg_price * 1350) : Math.round(a.avg_price);
             const total = Math.round(a.quantity * priceInKrw);
             totalKrw += total;
-            
-            // 시각적 등락률 (종목별 변동성 반영)
+
+            const sym = a.symbol.trim();
+            const korName = getKoreanStockName(sym, a.full_name);
+            const existing = assetMap.get(sym) || {
+                symbol: sym,
+                name: korName,
+                quantity: 0,
+                total: 0
+            };
+            existing.quantity += a.quantity;
+            existing.total += total;
+            assetMap.set(sym, existing);
+        }
+
+        // 보유 평가금액 높은 순 정렬 (0원 이상)
+        const sortedAssets = Array.from(assetMap.values())
+            .filter(item => item.total > 0)
+            .sort((a, b) => b.total - a.total);
+
+        const assetItems = sortedAssets.map((item, idx) => {
+            // 시각적 등락률 (종목별 고유 변동성)
             const diff = (((idx * 1.7) % 7.5) - 2.8).toFixed(1);
             return {
-                symbol: a.symbol,
-                name: a.full_name || a.symbol,
-                quantity: a.quantity,
-                formattedTotal: '₩' + total.toLocaleString(),
+                symbol: item.symbol,
+                name: item.name,
+                quantity: item.quantity,
+                formattedTotal: '₩' + item.total.toLocaleString(),
                 diffPercent: (parseFloat(diff) >= 0 ? '+' : '') + diff + '%',
                 direction: parseFloat(diff) >= 0 ? 'up' : 'down'
             };

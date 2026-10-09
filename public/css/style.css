@@ -192,56 +192,55 @@ body {
     font-size: 0.8rem;
 }
 
-/* 자산 롤링 전광판 스타일 */
-.asset-total-line {
-    font-size: 0.92rem;
-    color: #0f172a;
+/* 자산 카드 컴팩트 요약 스타일 */
+.asset-main-line {
+    font-size: 0.9rem;
+    color: #1e293b;
     margin-bottom: 0.4rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
 }
-.asset-total-line strong {
+.asset-total-badge {
     color: #059669;
     font-size: 1.05rem;
+    font-weight: 700;
 }
-.asset-rolling-container {
-    position: relative;
-    height: 32px;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    overflow: hidden;
-}
-.asset-rolling-item {
-    position: absolute;
-    inset: 0;
+.asset-sub-line {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 0.5rem;
-    font-size: 0.82rem;
-    font-weight: 600;
-    transition: transform 0.45s ease-in-out, opacity 0.45s ease-in-out;
+    gap: 0.35rem;
+    margin-bottom: 0 !important;
+    overflow: hidden;
 }
-.asset-stock-name {
+.asset-ticker-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: 1;
+    min-width: 0;
+    font-size: 0.84rem;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    white-space: nowrap;
+}
+.stock-kor-name {
     color: #334155;
-    max-width: 130px;
+    font-weight: 600;
+    max-width: 140px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.asset-stock-price {
+.stock-price {
     color: #0f172a;
     font-weight: 700;
 }
-.asset-stock-diff.up {
+.stock-diff.up {
     color: #ef4444;
     font-size: 0.78rem;
+    font-weight: 700;
 }
-.asset-stock-diff.down {
+.stock-diff.down {
     color: #2563eb;
     font-size: 0.78rem;
+    font-weight: 700;
 }
 
 .card-link-btn {
@@ -377,7 +376,7 @@ body {
     text-align: center;
 }
 
-/* 모바일 반응형 */
+/* 모바일 반응형 최적화 */
 @media (max-width: 640px) {
     .nav-container {
         flex-direction: column;
@@ -391,6 +390,29 @@ body {
     }
     .card-grid {
         grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    .service-card {
+        padding: 1.25rem;
+        border-radius: 0.85rem;
+    }
+    .card-desc {
+        font-size: 0.85rem;
+        margin-bottom: 0.85rem;
+    }
+    .card-summary {
+        min-height: auto;
+        padding: 0.7rem 0.85rem;
+        margin-bottom: 0.85rem;
+    }
+    .welcome-section {
+        margin-bottom: 1.25rem;
+    }
+    .welcome-section h2 {
+        font-size: 1.35rem;
+    }
+    .stock-kor-name {
+        max-width: 115px;
     }
 }
 

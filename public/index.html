@@ -102,70 +102,61 @@
                     bloodEl.innerHTML = html;
                 }
 
-                // 2-2. 자산 현황판 (총 자산 + 종목별 3.5초 수직 롤링 전광판)
+                // 2-2. 자산 현황판 (총 자산 + 친절한 한글 종목명 컴팩트 페이드 전환)
                 const assetEl = document.getElementById('assetSummary');
                 if (assetEl && data.asset) {
                     const ast = data.asset;
                     let html = `
-                        <div class="asset-total-line">
-                            <span>총 자산 현황</span>
-                            <strong>${ast.totalKrw}</strong>
+                        <div class="summary-line asset-main-line">
+                            <strong>총 자산:</strong>
+                            <span class="asset-total-badge">${ast.totalKrw}</span>
                         </div>
                     `;
 
                     if (ast.items && ast.items.length > 0) {
-                        html += `<div class="asset-rolling-container" id="assetRollBox">`;
-                        ast.items.forEach((item, idx) => {
-                            html += `
-                                <div class="asset-rolling-item" style="transform: translateY(${idx === 0 ? '0%' : '100%'}); opacity: ${idx === 0 ? '1' : '0'};">
-                                    <span class="asset-stock-name" title="${item.name}">${item.symbol}</span>
-                                    <span class="asset-stock-price">${item.formattedTotal}</span>
-                                    <span class="asset-stock-diff ${item.direction}">${item.direction === 'up' ? '▲' : '▼'} ${item.diffPercent}</span>
+                        const first = ast.items[0];
+                        const dirSymbol = first.direction === 'up' ? '▲' : '▼';
+                        html += `
+                            <div class="summary-line asset-sub-line">
+                                <strong>📊 종목:</strong>
+                                <div class="asset-ticker-inline" id="assetTickerBox">
+                                    <span class="stock-kor-name" title="${first.name}">${first.name}</span>
+                                    <span class="stock-price">${first.formattedTotal}</span>
+                                    <span class="stock-diff ${first.direction}">${dirSymbol} ${first.diffPercent}</span>
                                 </div>
-                            `;
-                        });
-                        html += `</div>`;
+                            </div>
+                        `;
                         assetEl.innerHTML = html;
 
-                        // 3.5초 간격으로 한 종목씩 위로 슬라이드 롤링
-                        startAssetRolling(document.getElementById('assetRollBox'));
+                        // 3.5초 간격으로 밀림 없이 제자리에서 부드럽게 페이드 전환
+                        startAssetFading(document.getElementById('assetTickerBox'), ast.items);
                     } else {
-                        html += `<div style="font-size:0.85rem; color:#64748b;">등록된 자산 종목이 없습니다.</div>`;
+                        html += `<div class="summary-line"><span style="color:#94a3b8; font-size:0.8rem;">등록된 자산 종목 없음</span></div>`;
                         assetEl.innerHTML = html;
                     }
                 }
             })
             .catch(() => {});
 
-        // 자산 종목별 수직 롤링 함수
-        function startAssetRolling(container) {
-            if (!container) return;
-            const items = container.querySelectorAll('.asset-rolling-item');
-            if (items.length <= 1) return;
-
+        // 자산 종목별 부드러운 인라인 페이드 전환 함수 (밀림/레이아웃 흔들림 완전 방지)
+        function startAssetFading(box, items) {
+            if (!box || items.length <= 1) return;
             let cur = 0;
             setInterval(() => {
-                const prev = items[cur];
-                cur = (cur + 1) % items.length;
-                const next = items[cur];
-
-                prev.style.transition = 'transform 0.45s ease-in-out, opacity 0.45s ease-in-out';
-                prev.style.transform = 'translateY(-100%)';
-                prev.style.opacity = '0';
-
-                next.style.transition = 'none';
-                next.style.transform = 'translateY(100%)';
-                next.style.opacity = '0';
-                void next.offsetHeight;
-
-                next.style.transition = 'transform 0.45s ease-in-out, opacity 0.45s ease-in-out';
-                next.style.transform = 'translateY(0%)';
-                next.style.opacity = '1';
-
+                box.style.opacity = '0';
+                box.style.transform = 'translateY(-2px)';
                 setTimeout(() => {
-                    prev.style.transition = 'none';
-                    prev.style.transform = 'translateY(100%)';
-                }, 460);
+                    cur = (cur + 1) % items.length;
+                    const item = items[cur];
+                    const dirSymbol = item.direction === 'up' ? '▲' : '▼';
+                    box.innerHTML = `
+                        <span class="stock-kor-name" title="${item.name}">${item.name}</span>
+                        <span class="stock-price">${item.formattedTotal}</span>
+                        <span class="stock-diff ${item.direction}">${dirSymbol} ${item.diffPercent}</span>
+                    `;
+                    box.style.opacity = '1';
+                    box.style.transform = 'translateY(0)';
+                }, 250);
             }, 3500);
         }
     </script>
