@@ -5,15 +5,22 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const os = require('os');
+const fs = require('fs');
+const { exec } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3004;
 const JWT_SECRET = process.env.JWT_SECRET || 'jg-portal-master-super-secret-key-2026!@#';
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.j-jg.cc';
 
+const BLOOD_DB_PATH = process.env.DB_PATH || '/home/upt0731/blood-pressure-app/health.db';
+const ASSET_DB_PATH = process.env.ASSET_DB_PATH || '/home/upt0731/asset/asset.db';
+const NEWS_DB_PATH = process.env.NEWS_DB_PATH || '/home/upt0731/news-dashboard/briefing.db';
+
 // 기본 미들웨어 설정
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 app.use((req, res, next) => {
@@ -24,21 +31,21 @@ app.use((req, res, next) => {
 });
 
 // 마스터 계정 DB 연결 (혈압 앱 health.db)
-const db = new sqlite3.Database(process.env.DB_PATH || '/home/upt0731/blood-pressure-app/health.db', (err) => {
+const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
     if (err) console.error('❌ 혈압 DB 연결 실패:', err);
-    else console.log('✅ 마스터 계정 DB 로드 완료:', process.env.DB_PATH);
+    else console.log('✅ 마스터 계정 DB 로드 완료:', BLOOD_DB_PATH);
 });
 
 // 자산관리 DB 연결 (asset.db)
-const assetDb = new sqlite3.Database(process.env.ASSET_DB_PATH || '/home/upt0731/asset/asset.db', (err) => {
+const assetDb = new sqlite3.Database(ASSET_DB_PATH, (err) => {
     if (err) console.error('❌ 자산 DB 연결 실패:', err);
-    else console.log('✅ 자산 DB 로드 완료:', process.env.ASSET_DB_PATH);
+    else console.log('✅ 자산 DB 로드 완료:', ASSET_DB_PATH);
 });
 
 // 뉴스 대시보드 DB 연결 (briefing.db)
-const newsDb = new sqlite3.Database(process.env.NEWS_DB_PATH || '/home/upt0731/news-dashboard/briefing.db', (err) => {
+const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
     if (err) console.error('❌ 뉴스 DB 연결 실패:', err);
-    else console.log('✅ 뉴스 DB 로드 완료:', process.env.NEWS_DB_PATH);
+    else console.log('✅ 뉴스 DB 로드 완료:', NEWS_DB_PATH);
 });
 
 // 토큰 인증 미들웨어
@@ -74,6 +81,11 @@ function authenticateToken(req, res, next) {
 // 1. 메인 포털 홈 화면
 app.get(['/', '/index.html'], authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// 1-1. 통합 관리자 센터 화면
+app.get(['/admin', '/admin.html'], authenticateToken, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 // 2. 로그인 페이지
@@ -370,6 +382,344 @@ app.get('/go/:service', authenticateToken, (req, res) => {
         return res.redirect(`https://blood.j-jg.cc/?token=${ticket}`);
     }
     res.redirect('/');
+});
+
+// ==========================================
+// ⚙️ [통합 관리자 제어 센터 API]
+// ==========================================
+
+// 1. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황
+app.get('/api/admin/overview', authenticateToken, (req, res) => {
+    exec('pm2 jlist', (err, stdout) => {
+        let processes = [];
+        if (!err && stdout) {
+            try {
+                const list = JSON.parse(stdout);
+                const displayNames = {
+                    'portal': '🏠 JG 통합 포털',
+                    'blood-pressure-app': '🩸 혈압 관리 서비스',
+                    'blood-pressure-app-test': '🩸 혈압 관리 (테스트)',
+                    'asset': '💰 내 자산 관리 서비스',
+                    'news-dashboard': '📰 AI 뉴스 대시보드',
+                    'news-scheduler': '⏱️ 모닝 뉴스 스케줄러 데몬'
+                };
+                const ports = {
+                    'portal': '3004',
+                    'blood-pressure-app': '3000',
+                    'blood-pressure-app-test': '3001',
+                    'asset': '3003',
+                    'news-dashboard': '5050',
+                    'news-scheduler': 'Daemon'
+                };
+                processes = list.map(p => ({
+                    name: p.name,
+                    displayName: displayNames[p.name] || p.name,
+                    status: p.pm2_env?.status || 'unknown',
+                    pid: p.pid,
+                    pm_id: p.pm_id,
+                    memory: p.monit ? (p.monit.memory / 1024 / 1024).toFixed(1) + ' MB' : '-',
+                    cpu: p.monit ? p.monit.cpu + '%' : '-',
+                    restarts: p.pm2_env?.restart_time || 0,
+                    port: ports[p.name] || '-'
+                }));
+            } catch (e) {}
+        }
+
+        const formatSize = (bytes) => {
+            if (!bytes || bytes <= 0) return '0 KB';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+        };
+
+        const getFileSize = (filePath) => {
+            try { return formatSize(fs.statSync(filePath).size); }
+            catch (e) { return '미존재'; }
+        };
+
+        const dbs = {
+            health: getFileSize(BLOOD_DB_PATH),
+            asset: getFileSize(ASSET_DB_PATH),
+            briefing: getFileSize(NEWS_DB_PATH)
+        };
+
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usedMem = totalMem - freeMem;
+        const memPercent = ((usedMem / totalMem) * 100).toFixed(1) + '%';
+        const uptimeHours = (os.uptime() / 3600).toFixed(1) + '시간';
+
+        res.json({
+            success: true,
+            processes,
+            dbs,
+            system: {
+                memUsage: memPercent,
+                memFree: (freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
+                memTotal: (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
+                uptimeStr: uptimeHours
+            }
+        });
+    });
+});
+
+// 2. PM2 개별 프로세스 재기동
+app.post('/api/admin/pm2/restart', authenticateToken, (req, res) => {
+    const { processName } = req.body;
+    const allowed = ['portal', 'blood-pressure-app', 'blood-pressure-app-test', 'asset', 'news-dashboard', 'news-scheduler'];
+    if (!processName || !allowed.includes(processName)) {
+        return res.status(400).json({ success: false, message: '허용되지 않은 프로세스 이름입니다.' });
+    }
+
+    exec(`pm2 restart ${processName}`, (err) => {
+        if (err) return res.status(500).json({ success: false, message: `재기동 실패: ${err.message}` });
+        res.json({ success: true, message: `[${processName}] 프로세스가 정상적으로 재기동되었습니다.` });
+    });
+});
+
+// 3. 개별 데이터베이스 백업 파일 다운로드
+app.get('/api/admin/backup/:type', authenticateToken, (req, res) => {
+    const type = req.params.type;
+    const now = new Date().toISOString().slice(0, 10);
+    if (type === 'health') {
+        return res.download(BLOOD_DB_PATH, `health_backup_${now}.db`);
+    } else if (type === 'asset') {
+        return res.download(ASSET_DB_PATH, `asset_backup_${now}.db`);
+    } else if (type === 'briefing') {
+        return res.download(NEWS_DB_PATH, `briefing_backup_${now}.db`);
+    }
+    res.status(404).send('해당 DB 백업 파일을 찾을 수 없습니다.');
+});
+
+// 4. 전체 DB 원클릭 압축 일괄 백업 (.zip)
+app.get('/api/admin/backup/all', authenticateToken, (req, res) => {
+    const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+    const tmpZip = path.join('/tmp', `jg_all_databases_${timestamp}.zip`);
+    const pyScript = `import zipfile, os; zpath='${tmpZip}'; zf=zipfile.ZipFile(zpath, 'w', zipfile.ZIP_DEFLATED); os.path.exists('${BLOOD_DB_PATH}') and zf.write('${BLOOD_DB_PATH}', 'health.db'); os.path.exists('${ASSET_DB_PATH}') and zf.write('${ASSET_DB_PATH}', 'asset.db'); os.path.exists('${NEWS_DB_PATH}') and zf.write('${NEWS_DB_PATH}', 'briefing.db'); zf.close()`;
+
+    exec(`python3 -c "${pyScript}"`, (err) => {
+        if (err || !fs.existsSync(tmpZip)) {
+            return res.status(500).json({ success: false, message: '전체 DB 압축 생성 실패' });
+        }
+        res.download(tmpZip, `jg_all_databases_${timestamp}.zip`, () => {
+            try { fs.unlinkSync(tmpZip); } catch (e) {}
+        });
+    });
+});
+
+// 5. 혈압 CSV 내보내기
+app.get('/api/admin/blood/export-csv', authenticateToken, (req, res) => {
+    db.all(`SELECT id, systolic, diastolic, pulse, measured_at, medication_time FROM records ORDER BY measured_at DESC`, [], (recErr, records) => {
+        if (recErr) return res.status(500).json({ success: false, message: '혈압 데이터 조회 실패' });
+
+        db.all(`SELECT id, visit_date, hospital_name, department, memo, prescription_days, next_visit_date, reservation_open_date, notification_email, send_notification FROM hospital_visits ORDER BY visit_date DESC`, [], (hospErr, visits) => {
+            let csvContent = '\uFEFF[혈압 및 복약 기록]\n';
+            csvContent += '번호,최고혈압(수축기),최저혈압(이완기),맥박,측정일시,복약일시\n';
+            (records || []).forEach(row => {
+                csvContent += `${row.id},${row.systolic ?? ''},${row.diastolic ?? ''},${row.pulse ?? ''},"${row.measured_at ?? ''}","${row.medication_time ?? ''}"\n`;
+            });
+
+            csvContent += '\n[병원 진료 및 처방 기록]\n';
+            csvContent += '번호,진료일,병원명,진료과,메모,처방일수,다음진료예정일,예약오픈일시,알림이메일,알림여부\n';
+            (visits || []).forEach(v => {
+                const hospName = (v.hospital_name || '').replace(/"/g, '""');
+                const dept = (v.department || '').replace(/"/g, '""');
+                const memo = (v.memo || '').replace(/"/g, '""');
+                csvContent += `${v.id},${v.visit_date || ''},"${hospName}","${dept}","${memo}",${v.prescription_days || ''},${v.next_visit_date || ''},"${v.reservation_open_date || ''}","${v.notification_email || ''}",${v.send_notification ? '켜짐' : '꺼짐'}\n`;
+            });
+
+            const exportFilename = `health_data_export_${new Date().toISOString().split('T')[0]}.csv`;
+            res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+            res.setHeader('Content-Disposition', `attachment; filename="${exportFilename}"`);
+            res.status(200).send(csvContent);
+        });
+    });
+});
+
+// 6. 혈압 CSV 복원 (Import)
+app.post('/api/admin/blood/import-csv', authenticateToken, async (req, res) => {
+    const { csvData } = req.body;
+    if (!csvData) return res.status(400).json({ success: false, message: 'CSV 내용이 비어있습니다.' });
+
+    const lines = csvData.split(/\r?\n/);
+    let currentMode = 'RECORDS';
+    let addedCount = 0;
+
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        if (line.includes('[혈압 및 복약 기록]')) { currentMode = 'RECORDS'; continue; }
+        if (line.includes('[병원 진료 및 처방 기록]')) { currentMode = 'HOSPITAL'; continue; }
+        if (line.startsWith('번호,')) continue;
+
+        const parts = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(p => p.replace(/^"|"$/g, '').trim());
+
+        if (currentMode === 'RECORDS' && parts.length >= 5) {
+            const [, systolic, diastolic, pulse, measured_at, medication_time] = parts;
+            if (measured_at) {
+                await new Promise((resolve) => {
+                    db.run(
+                        `INSERT INTO records (systolic, diastolic, pulse, measured_at, medication_time) VALUES (?, ?, ?, ?, ?)`,
+                        [systolic ? parseInt(systolic) : null, diastolic ? parseInt(diastolic) : null, pulse ? parseInt(pulse) : null, measured_at, medication_time || null],
+                        () => { addedCount++; resolve(); }
+                    );
+                });
+            }
+        } else if (currentMode === 'HOSPITAL' && parts.length >= 3) {
+            const [, visit_date, hospital_name, department, memo, prescription_days, next_visit_date, reservation_open_date, notification_email, send_notification] = parts;
+            if (visit_date && hospital_name) {
+                await new Promise((resolve) => {
+                    db.run(
+                        `INSERT INTO hospital_visits (visit_date, hospital_name, department, memo, prescription_days, next_visit_date, reservation_open_date, notification_email, send_notification) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [visit_date, hospital_name, department || '', memo || '', prescription_days ? parseInt(prescription_days) : null, next_visit_date || null, reservation_open_date || null, notification_email || '', send_notification === '켜짐' ? 1 : 0],
+                        () => { addedCount++; resolve(); }
+                    );
+                });
+            }
+        }
+    }
+    res.json({ success: true, count: addedCount });
+});
+
+// 7. 혈압 최근 기록 미리보기
+app.get('/api/admin/blood/recent', authenticateToken, (req, res) => {
+    db.all(`SELECT id, systolic, diastolic, pulse, measured_at, medication_time FROM records WHERE systolic IS NOT NULL ORDER BY measured_at DESC LIMIT 10`, [], (err, records) => {
+        db.all(`SELECT id, visit_date, hospital_name, department FROM hospital_visits ORDER BY visit_date DESC LIMIT 5`, [], (vErr, visits) => {
+            res.json({ success: true, records: records || [], visits: visits || [] });
+        });
+    });
+});
+
+// 8. 혈압 알림 메일 (SMTP) 전송 테스트
+app.post('/api/admin/blood/test-email', authenticateToken, (req, res) => {
+    const testScript = `require('dotenv').config({ path: '/home/upt0731/blood-pressure-app/.env' }); const nodemailer = require('nodemailer'); if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) { console.error('MISSING_ENV'); process.exit(1); } const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } }); transporter.sendMail({ from: process.env.EMAIL_USER, to: process.env.EMAIL_USER, subject: '🩸 JG 포털 통합 관리자 - 구글 SMTP 연결 테스트', text: '통합 관리자 센터에서 요청하신 Gmail SMTP 알림 메일 발송 테스트가 성공하였습니다! 일시: ' + new Date().toLocaleString() }).then(() => { process.exit(0); }).catch(e => { console.error(e.message); process.exit(2); });`;
+
+    exec(`node -e "${testScript}"`, { cwd: '/home/upt0731/blood-pressure-app' }, (err, stdout, stderr) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: `발송 실패: ${stderr || err.message}` });
+        }
+        res.json({ success: true, message: '구글 알림 메일이 관리자 계정으로 정상 발송되었습니다!' });
+    });
+});
+
+// 9. 자산 관리 상세 요약
+app.get('/api/admin/asset/summary', authenticateToken, async (req, res) => {
+    try {
+        const accounts = await new Promise(r => assetDb.all('SELECT id, account_name, broker, note FROM accounts', (e, rows) => r(rows || [])));
+        const assets = await new Promise(r => assetDb.all('SELECT id, account_id, symbol, full_name, asset_type, quantity, avg_price, currency FROM assets WHERE quantity > 0', (e, rows) => r(rows || [])));
+
+        let totalKrw = 0;
+        const accMap = {};
+        accounts.forEach(a => { accMap[a.id] = { ...a, stockCount: 0, total: 0 }; });
+
+        const formattedAssets = assets.map(s => {
+            const isUsd = s.currency === 'USD';
+            const priceInKrw = isUsd ? Math.round(s.avg_price * 1350) : Math.round(s.avg_price);
+            const total = Math.round(s.quantity * priceInKrw);
+            totalKrw += total;
+
+            if (accMap[s.account_id]) {
+                accMap[s.account_id].stockCount++;
+                accMap[s.account_id].total += total;
+            }
+
+            return {
+                id: s.id,
+                symbol: s.symbol,
+                koreanName: getKoreanStockName(s.symbol, s.full_name),
+                asset_type: s.asset_type,
+                quantity: s.quantity,
+                formattedAvg: (isUsd ? '$' : '₩') + s.avg_price.toLocaleString(),
+                formattedTotal: '₩' + total.toLocaleString(),
+                total
+            };
+        }).sort((a, b) => b.total - a.total);
+
+        const formattedAccounts = Object.values(accMap).map(a => ({
+            ...a,
+            totalFormatted: '₩' + a.total.toLocaleString()
+        }));
+
+        res.json({
+            success: true,
+            totalKrw: '₩' + totalKrw.toLocaleString(),
+            accounts: formattedAccounts,
+            assets: formattedAssets
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '자산 데이터 조회 실패: ' + e.message });
+    }
+});
+
+// 10. 뉴스 브리핑 현황 통계
+app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
+    try {
+        const totalRow = await new Promise(r => newsDb.get('SELECT COUNT(*) as cnt FROM news_articles', (e, row) => r(row || { cnt: 0 })));
+        const recentArticles = await new Promise(r => newsDb.all('SELECT id, title, link, media_name, category_name, published_at FROM news_articles ORDER BY id DESC LIMIT 10', (e, rows) => r(rows || [])));
+        const weatherRow = await new Promise(r => newsDb.get('SELECT weather_info, date FROM daily_weather ORDER BY date DESC LIMIT 1', (e, row) => r(row || null)));
+
+        let weather = { temp: '22°C', condition: '맑음' };
+        if (weatherRow && weatherRow.weather_info) {
+            try {
+                const parsed = typeof weatherRow.weather_info === 'string' ? JSON.parse(weatherRow.weather_info) : weatherRow.weather_info;
+                if (parsed.current_temp) weather.temp = parsed.current_temp + '°C';
+                if (parsed.condition) weather.condition = parsed.condition;
+            } catch (e) {}
+        }
+
+        res.json({
+            success: true,
+            totalArticles: totalRow.cnt,
+            recentArticles,
+            weather
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '뉴스 데이터 조회 실패' });
+    }
+});
+
+// 11. 뉴스 수집 및 모닝 브리핑 즉시 실행 (트리거)
+app.post('/api/admin/news/trigger', authenticateToken, (req, res) => {
+    const { mode } = req.body;
+    const isBriefing = mode === 'briefing';
+    const flag = isBriefing ? '--run-briefing-now' : '--run-collect-now';
+    const pyPath = '/home/upt0731/news-dashboard/venv/bin/python';
+    const scriptPath = '/home/upt0731/news-dashboard/scheduler.py';
+
+    exec(`${pyPath} ${scriptPath} ${flag}`, { cwd: '/home/upt0731/news-dashboard' }, (err, stdout, stderr) => {
+        if (err) console.error('[NEWS_TRIGGER_ERR]', err, stderr);
+    });
+
+    res.json({
+        success: true,
+        message: isBriefing ? '뉴스 수집 및 텔레그램 모닝 브리핑 발송이 백그라운드에서 시작되었습니다.' : '뉴스 기사 최신 수집(DB 최신화 전용)이 백그라운드에서 시작되었습니다.'
+    });
+});
+
+// 12. 관리자 마스터 비밀번호 변경
+app.post('/api/admin/change-password', authenticateToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, message: '새 비밀번호는 6자리 이상이어야 합니다.' });
+    }
+
+    db.get('SELECT * FROM users WHERE username = ?', [req.user.username], async (err, user) => {
+        if (err || !user) {
+            return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+        }
+
+        const match = await bcrypt.compare(currentPassword, user.password);
+        if (!match) {
+            return res.status(400).json({ success: false, message: '현재 비밀번호가 일치하지 않습니다.' });
+        }
+
+        const newHash = await bcrypt.hash(newPassword, 10);
+        db.run('UPDATE users SET password = ? WHERE username = ?', [newHash, req.user.username], (updateErr) => {
+            if (updateErr) {
+                return res.status(500).json({ success: false, message: '비밀번호 변경 중 데이터베이스 오류가 발생했습니다.' });
+            }
+            res.json({ success: true, message: '관리자 마스터 비밀번호가 성공적으로 변경되었습니다.' });
+        });
+    });
 });
 
 // 7. 헬스 체크

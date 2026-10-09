@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JG 통합 관리자 센터</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <!-- 상단 공통 내비게이션 바 -->
+    <header class="top-nav">
+        <div class="nav-container">
+            <a href="/" class="brand">🏠 JG 포털</a>
+            <nav class="nav-menu">
+                <a href="/">홈</a>
+                <a href="/go/blood">혈압 관리</a>
+                <a href="/go/asset">자산 관리</a>
+                <a href="/go/news">뉴스 브리핑</a>
+                <a href="/admin" class="active">⚙️ 통합 관리자</a>
+                <a href="/logout" class="btn-logout">로그아웃</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- 관리자 헤더 배너 -->
+        <section class="admin-header">
+            <div class="admin-header-title">
+                <h2>⚙️ 통합 관리자 제어 센터</h2>
+                <p>포털 및 모든 서브 서비스(혈압, 자산, 뉴스)의 상태를 한곳에서 모니터링하고 제어합니다.</p>
+            </div>
+            <div class="admin-header-actions">
+                <button class="btn-admin btn-admin-success" onclick="downloadAllDatabases()">
+                    ⚡ 전체 DB 일괄 백업 (.zip)
+                </button>
+                <button class="btn-admin btn-admin-outline" onclick="loadOverviewData()">
+                    🔄 상태 새로고침
+                </button>
+            </div>
+        </section>
+
+        <!-- 탭 내비게이션 -->
+        <nav class="admin-tabs-nav">
+            <button class="admin-tab-btn active" onclick="switchAdminTab('tab-overview', this)">
+                🖥️ 전체 모니터링
+            </button>
+            <button class="admin-tab-btn" onclick="switchAdminTab('tab-blood', this)">
+                🩸 혈압 관리
+            </button>
+            <button class="admin-tab-btn" onclick="switchAdminTab('tab-asset', this)">
+                💰 자산 관리
+            </button>
+            <button class="admin-tab-btn" onclick="switchAdminTab('tab-news', this)">
+                📰 뉴스 브리핑
+            </button>
+            <button class="admin-tab-btn" onclick="switchAdminTab('tab-security', this)">
+                👤 보안 및 계정
+            </button>
+        </nav>
+
+        <!-- ==========================================
+             탭 1: 전체 모니터링 & PM2 프로세스
+             ========================================== -->
+        <div id="tab-overview" class="admin-tab-pane active">
+            <!-- 시스템 리소스 개요 카드 -->
+            <div class="admin-grid-3" id="systemStatsGrid">
+                <div class="admin-card" style="margin-bottom:0;">
+                    <div style="color:#64748b; font-size:0.85rem; font-weight:600;">실행 중인 서비스</div>
+                    <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="activeProcessCount">-</div>
+                    <div style="font-size:0.8rem; color:#10b981; font-weight:600;">모든 핵심 데몬 정상 가동</div>
+                </div>
+                <div class="admin-card" style="margin-bottom:0;">
+                    <div style="color:#64748b; font-size:0.85rem; font-weight:600;">서버 메모리 사용량</div>
+                    <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="systemMemUsage">-</div>
+                    <div style="font-size:0.8rem; color:#64748b;" id="systemMemDetails">확인 중...</div>
+                </div>
+                <div class="admin-card" style="margin-bottom:0;">
+                    <div style="color:#64748b; font-size:0.85rem; font-weight:600;">서버 가동 시간 (Uptime)</div>
+                    <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="systemUptime">-</div>
+                    <div style="font-size:0.8rem; color:#64748b;">안정적인 서비스 지속 운영 중</div>
+                </div>
+            </div>
+
+            <!-- 5대 서비스 PM2 프로세스 목록 -->
+            <div class="admin-card" style="margin-top:1.5rem;">
+                <div class="admin-card-header">
+                    <h3>🚀 5대 서비스 프로세스 상태 (PM2)</h3>
+                    <span style="font-size:0.85rem; color:#64748b;">단일 클릭으로 즉시 무중단 재기동 가능</span>
+                </div>
+                <div id="processListContainer" style="display:flex; flex-direction:column; gap:0.75rem;">
+                    <div style="text-align:center; padding:2rem; color:#64748b;">프로세스 상태 조회 중...</div>
+                </div>
+            </div>
+
+            <!-- 데이터베이스 파일 및 개별 백업 카드 -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>🗄️ 서비스 데이터베이스 (SQLite) 현황</h3>
+                    <button class="btn-admin btn-admin-success btn-admin-sm" onclick="downloadAllDatabases()">
+                        ⚡ 전체 압축 다운로드 (.zip)
+                    </button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>서비스명</th>
+                                <th>DB 파일명</th>
+                                <th>파일 크기</th>
+                                <th>상태</th>
+                                <th>다운로드</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dbStatusTableBody">
+                            <tr>
+                                <td><strong>혈압 관리</strong></td>
+                                <td>health.db</td>
+                                <td id="dbSizeHealth">-</td>
+                                <td><span class="badge-online">정상</span></td>
+                                <td><a href="/api/admin/backup/health" class="btn-admin btn-admin-outline btn-admin-sm">📥 다운로드</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>자산 관리</strong></td>
+                                <td>asset.db</td>
+                                <td id="dbSizeAsset">-</td>
+                                <td><span class="badge-online">정상</span></td>
+                                <td><a href="/api/admin/backup/asset" class="btn-admin btn-admin-outline btn-admin-sm">📥 다운로드</a></td>
+                            </tr>
+                            <tr>
+                                <td><strong>뉴스 브리핑</strong></td>
+                                <td>briefing.db</td>
+                                <td id="dbSizeNews">-</td>
+                                <td><span class="badge-online">정상</span></td>
+                                <td><a href="/api/admin/backup/briefing" class="btn-admin btn-admin-outline btn-admin-sm">📥 다운로드</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             탭 2: 혈압 관리 제어
+             ========================================== -->
+        <div id="tab-blood" class="admin-tab-pane">
+            <div class="admin-grid-2">
+                <!-- 1. 데이터 백업 & CSV 내보내기 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📥 데이터 백업 & CSV 내보내기</h3>
+                    </div>
+                    <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                        혈압 및 병원 예약 원본 데이터베이스와 엑셀 호환 CSV 파일을 다운로드합니다.
+                    </p>
+                    <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                        <a href="/api/admin/backup/health" class="btn-admin btn-admin-primary">
+                            💾 SQLite DB 백업
+                        </a>
+                        <a href="/api/admin/blood/export-csv" class="btn-admin btn-admin-success">
+                            📊 CSV 내보내기 (엑셀용)
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 2. 알림 메일 (SMTP) 테스트 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📧 구글 SMTP 알림 메일 테스트</h3>
+                    </div>
+                    <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                        병원 예약 및 시스템 알림용 Gmail SMTP 발송 연동 상태를 즉시 테스트합니다.
+                    </p>
+                    <button class="btn-admin btn-admin-outline" id="btnTestEmail" onclick="testBloodSmtpEmail()">
+                        📨 메일 전송 테스트 실행
+                    </button>
+                    <div id="emailTestResult" style="margin-top:0.75rem; font-size:0.85rem;"></div>
+                </div>
+            </div>
+
+            <!-- 3. CSV 데이터 복원 -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>📤 CSV 데이터 복구 (Import)</h3>
+                </div>
+                <p style="font-size:0.9rem; color:#475569; margin-bottom:1rem;">
+                    내보낸 CSV 파일의 내용을 붙여넣어 혈압 기록 및 병원 방문 기록을 데이터베이스에 복구합니다.
+                </p>
+                <textarea id="importCsvText" rows="4" placeholder="CSV 파일 내용(헤더 포함)을 여기에 붙여넣으세요..." style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-family:monospace; font-size:0.85rem; margin-bottom:0.75rem;"></textarea>
+                <button class="btn-admin btn-admin-danger" onclick="importBloodCsv()">
+                    📥 CSV 데이터 복구 실행
+                </button>
+            </div>
+
+            <!-- 4. 최근 측정 기록 미리보기 -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>🩸 최근 혈압 측정 기록 (최근 10건)</h3>
+                    <a href="/go/blood" class="btn-admin btn-admin-outline btn-admin-sm">혈압 앱 열기 →</a>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>측정일시</th>
+                                <th>수축기 (mmHg)</th>
+                                <th>이완기 (mmHg)</th>
+                                <th>맥박 (회)</th>
+                                <th>최근 복약시각</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bloodRecentTableBody">
+                            <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">데이터 불러오는 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             탭 3: 자산 관리 제어
+             ========================================== -->
+        <div id="tab-asset" class="admin-tab-pane">
+            <div class="admin-grid-2">
+                <!-- 1. 자산 데이터 백업 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📥 자산 DB 백업</h3>
+                    </div>
+                    <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                        보유 종목, 증권 계좌, 매수 기록이 포함된 asset.db 원본 파일을 백업합니다.
+                    </p>
+                    <a href="/api/admin/backup/asset" class="btn-admin btn-admin-primary">
+                        💾 asset.db 파일 다운로드
+                    </a>
+                </div>
+
+                <!-- 2. 자산 요약 요약 카드 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📊 포트폴리오 요약</h3>
+                        <a href="/go/asset" class="btn-admin btn-admin-outline btn-admin-sm">자산 앱 열기 →</a>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <span style="color:#64748b;">원화 환산 총 자산</span>
+                        <strong style="color:#059669; font-size:1.25rem;" id="assetAdminTotalKrw">-</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+                        <span style="color:#64748b;">등록된 증권 계좌</span>
+                        <strong id="assetAdminAccountCount">-</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 등록 계좌 현황 -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>📂 증권 계좌별 현황</h3>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>계좌명</th>
+                                <th>증권사</th>
+                                <th>보유 종목 수</th>
+                                <th>합산 평가액</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assetAccountsTableBody">
+                            <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">계좌 정보 로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 4. 전체 보유 종목 상세 (한글 종목명) -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>💼 전체 보유 종목 상세 (한글명 매핑)</h3>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>종목명 (한글)</th>
+                                <th>티커</th>
+                                <th>분류</th>
+                                <th>보유 수량</th>
+                                <th>평균 단가</th>
+                                <th>평가 금액</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assetStocksTableBody">
+                            <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">종목 정보 로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             탭 4: 뉴스 브리핑 제어
+             ========================================== -->
+        <div id="tab-news" class="admin-tab-pane">
+            <div class="admin-grid-2">
+                <!-- 1. 뉴스 수집 마스터 제어 바 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>🚀 즉시 뉴스 수집 마스터 제어</h3>
+                    </div>
+                    <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                        정기 스케줄과 별개로 관리자가 직접 즉시 뉴스 크롤링 및 AI 요약을 실행합니다.
+                    </p>
+                    <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        <button class="btn-admin btn-admin-primary" onclick="triggerNewsCollection('briefing')">
+                            📢 뉴스 수집 + 텔레그램 브리핑 즉시 발송
+                        </button>
+                        <button class="btn-admin btn-admin-outline" onclick="triggerNewsCollection('collect')">
+                            📥 최신 기사만 즉시 수집 (DB 최신화 전용)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. 뉴스 DB 백업 및 통계 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📰 뉴스 데이터 현황</h3>
+                        <a href="/go/news" class="btn-admin btn-admin-outline btn-admin-sm">뉴스 앱 열기 →</a>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.75rem;">
+                        <span style="color:#64748b;">총 수집 기사 수</span>
+                        <strong style="color:#2563eb; font-size:1.2rem;" id="newsTotalCount">-</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
+                        <span style="color:#64748b;">오늘의 날씨 (계룡)</span>
+                        <strong id="newsTodayWeather">-</strong>
+                    </div>
+                    <a href="/api/admin/backup/briefing" class="btn-admin btn-admin-success btn-admin-sm">
+                        💾 briefing.db 다운로드
+                    </a>
+                </div>
+            </div>
+
+            <!-- 3. 최근 수집된 헤드라인 10선 -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>📑 최근 수집 뉴스 기사 (최신 10선)</h3>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>분야</th>
+                                <th>언론사</th>
+                                <th>기사 제목</th>
+                                <th>수집/발행 일시</th>
+                                <th>원문</th>
+                            </tr>
+                        </thead>
+                        <tbody id="newsArticlesTableBody">
+                            <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">기사 목록 로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==========================================
+             탭 5: 보안 및 마스터 계정
+             ========================================== -->
+        <div id="tab-security" class="admin-tab-pane">
+            <div class="admin-grid-2">
+                <!-- 1. 비밀번호 변경 카드 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>🔑 관리자 마스터 비밀번호 변경</h3>
+                    </div>
+                    <p style="font-size:0.875rem; color:#64748b; margin-bottom:1.25rem;">
+                        변경 즉시 모든 서브 서비스(혈압, 자산, 뉴스)의 로그인 비밀번호가 동기화됩니다.
+                    </p>
+                    <form onsubmit="changeAdminPassword(event)">
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">현재 비밀번호</label>
+                            <input type="password" id="currentPassInput" required style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        </div>
+                        <div style="margin-bottom:1rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">새 비밀번호</label>
+                            <input type="password" id="newPassInput" required style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        </div>
+                        <div style="margin-bottom:1.25rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">새 비밀번호 확인</label>
+                            <input type="password" id="confirmPassInput" required style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem;">
+                        </div>
+                        <button type="submit" class="btn-admin btn-admin-primary" style="width:100%;">
+                            🔐 비밀번호 안전하게 변경
+                        </button>
+                    </form>
+                </div>
+
+                <!-- 2. 포털 SSO 보안 정책 정보 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>🛡️ SSO 세션 및 쿠키 보안 체계</h3>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.85rem; font-size:0.9rem;">
+                        <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="color:#64748b;">공유 쿠키 도메인</span>
+                            <strong>.j-jg.cc (전체 서브도메인)</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="color:#64748b;">쿠키 보안 플래그</span>
+                            <strong style="color:#059669;">Secure, HttpOnly, Lax</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="color:#64748b;">단기 SSO 서명 티켓</span>
+                            <strong>JWT 5분 유효 (OAuth 게이트웨이)</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:#64748b;">로그아웃 처리 방식</span>
+                            <strong>3중 프론트채널 쿠키 일괄 파기</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 플로팅 토스트 알림창 -->
+    <div id="adminToast">알림 메시지</div>
+
+    <!-- 프론트엔드 비즈니스 로직 스크립트 -->
+    <script>
+        // 토스트 알림 표시
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('adminToast');
+            toast.textContent = msg;
+            toast.style.background = isError ? '#dc2626' : '#0f172a';
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        // 탭 전환 핸들러
+        function switchAdminTab(tabId, btn) {
+            document.querySelectorAll('.admin-tab-pane').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.admin-tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+
+            if (tabId === 'tab-blood') loadBloodData();
+            else if (tabId === 'tab-asset') loadAssetData();
+            else if (tabId === 'tab-news') loadNewsData();
+        }
+
+        // 1. 전체 개요 및 PM2 프로세스 로드
+        async function loadOverviewData() {
+            try {
+                const res = await fetch('/api/admin/overview');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+
+                // 상단 통계
+                document.getElementById('activeProcessCount').textContent = `${data.processes.filter(p => p.status === 'online').length} / ${data.processes.length}`;
+                document.getElementById('systemMemUsage').textContent = data.system.memUsage;
+                document.getElementById('systemMemDetails').textContent = `${data.system.memFree} 여유 (총 ${data.system.memTotal})`;
+                document.getElementById('systemUptime').textContent = data.system.uptimeStr;
+
+                // DB 크기
+                document.getElementById('dbSizeHealth').textContent = data.dbs.health;
+                document.getElementById('dbSizeAsset').textContent = data.dbs.asset;
+                document.getElementById('dbSizeNews').textContent = data.dbs.briefing;
+
+                // 프로세스 카드 목록 렌더링
+                const container = document.getElementById('processListContainer');
+                container.innerHTML = data.processes.map(p => {
+                    const isOnline = p.status === 'online';
+                    const badge = isOnline 
+                        ? `<span class="badge-online">온라인</span>` 
+                        : `<span class="badge-stopped">${p.status}</span>`;
+
+                    return `
+                        <div class="process-item-card">
+                            <div class="process-info">
+                                <h4>
+                                    ${p.displayName || p.name}
+                                    ${badge}
+                                </h4>
+                                <div class="process-meta">
+                                    <span>PID: ${p.pid || '-'}</span>
+                                    <span>메모리: <strong>${p.memory}</strong></span>
+                                    <span>CPU: <strong>${p.cpu}</strong></span>
+                                    <span>재기동: ${p.restarts}회</span>
+                                    <span>포트: ${p.port || '-'}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="restartPm2Process('${p.name}')">
+                                    🔄 재기동
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                showToast('상태 정보를 불러오지 못했습니다: ' + err.message, true);
+            }
+        }
+
+        // PM2 프로세스 개별 재기동
+        async function restartPm2Process(procName) {
+            if (!confirm(`[${procName}] 프로세스를 재기동하시겠습니까?`)) return;
+            try {
+                const res = await fetch('/api/admin/pm2/restart', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ processName: procName })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`[${procName}] 재기동 요청이 완료되었습니다.`);
+                    setTimeout(loadOverviewData, 1500);
+                } else {
+                    showToast(data.message, true);
+                }
+            } catch (err) {
+                showToast('재기동 실패: ' + err.message, true);
+            }
+        }
+
+        // 전체 DB 일괄 ZIP 다운로드
+        function downloadAllDatabases() {
+            showToast('전체 DB 백업 파일을 압축 생성하여 다운로드합니다...');
+            window.location.href = '/api/admin/backup/all';
+        }
+
+        // 2. 혈압 관리 데이터 로드
+        async function loadBloodData() {
+            try {
+                const res = await fetch('/api/admin/blood/recent');
+                const data = await res.json();
+                if (!data.success) return;
+
+                const tbody = document.getElementById('bloodRecentTableBody');
+                if (!data.records || data.records.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">측정 기록이 없습니다.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.records.map(r => `
+                    <tr>
+                        <td><strong>${(r.measured_at || '').replace('T', ' ')}</strong></td>
+                        <td style="color:${r.systolic >= 135 ? '#ef4444' : '#1e293b'}; font-weight:700;">${r.systolic}</td>
+                        <td style="color:${r.diastolic >= 85 ? '#ef4444' : '#1e293b'}; font-weight:700;">${r.diastolic}</td>
+                        <td>${r.pulse}</td>
+                        <td>${r.medication_time ? `<span style="background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:0.8rem;">${r.medication_time.replace('T', ' ')}</span>` : '<span style="color:#94a3b8;">-</span>'}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {}
+        }
+
+        // 혈압 SMTP 메일 테스트
+        async function testBloodSmtpEmail() {
+            const btn = document.getElementById('btnTestEmail');
+            const resultDiv = document.getElementById('emailTestResult');
+            btn.disabled = true;
+            btn.textContent = '메일 발송 중...';
+            resultDiv.innerHTML = '<span style="color:#64748b;">구글 SMTP 서버로 테스트 발송 중...</span>';
+
+            try {
+                const res = await fetch('/api/admin/blood/test-email', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    resultDiv.innerHTML = `<span style="color:#059669; font-weight:600;">✅ ${data.message}</span>`;
+                    showToast('테스트 메일이 성공적으로 전송되었습니다!');
+                } else {
+                    resultDiv.innerHTML = `<span style="color:#dc2626; font-weight:600;">❌ ${data.message}</span>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<span style="color:#dc2626;">❌ 요청 오류: ${err.message}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '📨 메일 전송 테스트 실행';
+            }
+        }
+
+        // 혈압 CSV 데이터 복구
+        async function importBloodCsv() {
+            const csvData = document.getElementById('importCsvText').value.trim();
+            if (!csvData) return alert('붙여넣을 CSV 데이터를 입력해주세요.');
+            if (!confirm('기존 데이터와 대조하여 복구를 진행하시겠습니까?')) return;
+
+            try {
+                const res = await fetch('/api/admin/blood/import-csv', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ csvData })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`성공적으로 복구되었습니다! (추가된 건수: ${data.count}건)`);
+                    document.getElementById('importCsvText').value = '';
+                    loadBloodData();
+                } else {
+                    showToast(data.message, true);
+                }
+            } catch (err) {
+                showToast('복구 오류: ' + err.message, true);
+            }
+        }
+
+        // 3. 자산 관리 데이터 로드
+        async function loadAssetData() {
+            try {
+                const res = await fetch('/api/admin/asset/summary');
+                const data = await res.json();
+                if (!data.success) return;
+
+                document.getElementById('assetAdminTotalKrw').textContent = data.totalKrw;
+                document.getElementById('assetAdminAccountCount').textContent = `${data.accounts.length}개`;
+
+                // 계좌 목록
+                const accTbody = document.getElementById('assetAccountsTableBody');
+                accTbody.innerHTML = data.accounts.map(a => `
+                    <tr>
+                        <td><strong>${a.account_name}</strong></td>
+                        <td>${a.broker || '-'}</td>
+                        <td>${a.stockCount}개</td>
+                        <td style="font-weight:700; color:#0f172a;">${a.totalFormatted}</td>
+                    </tr>
+                `).join('');
+
+                // 종목 목록
+                const stockTbody = document.getElementById('assetStocksTableBody');
+                stockTbody.innerHTML = data.assets.map(s => `
+                    <tr>
+                        <td><strong style="color:#1e293b;">${s.koreanName}</strong></td>
+                        <td><span style="font-size:0.8rem; background:#f1f5f9; padding:2px 6px; border-radius:4px;">${s.symbol}</span></td>
+                        <td>${s.asset_type || 'Stock'}</td>
+                        <td>${s.quantity}</td>
+                        <td>${s.formattedAvg}</td>
+                        <td style="font-weight:700; color:#059669;">${s.formattedTotal}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {}
+        }
+
+        // 4. 뉴스 브리핑 데이터 로드
+        async function loadNewsData() {
+            try {
+                const res = await fetch('/api/admin/news/stats');
+                const data = await res.json();
+                if (!data.success) return;
+
+                document.getElementById('newsTotalCount').textContent = `${data.totalArticles.toLocaleString()}건`;
+                document.getElementById('newsTodayWeather').textContent = data.weather ? `${data.weather.temp} (${data.weather.condition})` : '조회 중';
+
+                const tbody = document.getElementById('newsArticlesTableBody');
+                tbody.innerHTML = data.recentArticles.map(a => `
+                    <tr>
+                        <td><span style="background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:700;">${a.category_name}</span></td>
+                        <td style="font-weight:600; color:#475569;">${a.media_name}</td>
+                        <td style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${a.title}">
+                            ${a.title}
+                        </td>
+                        <td style="font-size:0.8rem; color:#64748b;">${(a.published_at || '').substring(0, 16)}</td>
+                        <td><a href="${a.link}" target="_blank" class="btn-admin btn-admin-outline btn-admin-sm">원문 ↗</a></td>
+                    </tr>
+                `).join('');
+            } catch (err) {}
+        }
+
+        // 뉴스 즉시 수집 트리거
+        async function triggerNewsCollection(mode) {
+            const promptMsg = mode === 'briefing'
+                ? '뉴스 기사 수집 및 AI 요약 텔레그램 모닝 브리핑 발송을 즉시 실행하시겠습니까?'
+                : '텔레그램 발송 없이 최신 뉴스 기사만 DB로 수집하시겠습니까?';
+            if (!confirm(promptMsg)) return;
+
+            try {
+                const res = await fetch('/api/admin/news/trigger', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    setTimeout(loadNewsData, 4000);
+                } else {
+                    showToast(data.message, true);
+                }
+            } catch (err) {
+                showToast('트리거 요청 실패: ' + err.message, true);
+            }
+        }
+
+        // 5. 관리자 비밀번호 변경
+        async function changeAdminPassword(e) {
+            e.preventDefault();
+            const currentPassword = document.getElementById('currentPassInput').value;
+            const newPassword = document.getElementById('newPassInput').value;
+            const confirmPassword = document.getElementById('confirmPassInput').value;
+
+            if (newPassword !== confirmPassword) {
+                return alert('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
+            }
+            if (newPassword.length < 6) {
+                return alert('비밀번호는 최소 6자 이상으로 설정해주세요.');
+            }
+
+            try {
+                const res = await fetch('/api/admin/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message);
+                    document.getElementById('currentPassInput').value = '';
+                    document.getElementById('newPassInput').value = '';
+                    document.getElementById('confirmPassInput').value = '';
+                } else {
+                    showToast(data.message, true);
+                }
+            } catch (err) {
+                showToast('비밀번호 변경 실패: ' + err.message, true);
+            }
+        }
+
+        // 초기 로드
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOverviewData();
+        });
+    </script>
+</body>
+</html>
