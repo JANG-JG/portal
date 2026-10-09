@@ -6,20 +6,305 @@
     <title>JG 통합 관리자 센터</title>
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/admin.css">
+    <link rel="stylesheet" href="/css/unified-nav.css">
 </head>
 <body>
-    <!-- 상단 공통 내비게이션 바 -->
-    <header class="top-nav">
-        <div class="nav-container">
-            <a href="/" class="brand">🏠 JG 포털</a>
-            <nav class="nav-menu">
-                <a href="/">홈</a>
-                <a href="/go/blood">혈압 관리</a>
-                <a href="/go/asset">자산 관리</a>
-                <a href="/go/news">뉴스 브리핑</a>
-                <a href="/admin" class="active">⚙️ 통합 관리자</a>
-                <a href="/logout" class="btn-logout">로그아웃</a>
+    <!-- 🌐 JG 통합 상단 내비게이션 바 -->
+    <header class="unav-header">
+        <div class="unav-container">
+            <a href="https://j-jg.cc/" class="unav-brand">
+                <span class="unav-brand-icon">🏠</span>
+                <span class="unav-brand-text">JG 포털</span>
+            </a>
+
+            <!-- 데스크톱 내비게이션 메뉴 -->
+            <nav class="unav-menu" aria-label="메인 내비게이션">
+                <!-- 1. 홈 -->
+                <div class="unav-item">
+                    <a href="https://j-jg.cc/" class="unav-link">
+                        <span class="unav-item-icon">🏠</span>
+                        <span>홈</span>
+                        <span class="unav-arrow">▾</span>
+                    </a>
+                    <div class="unav-dropdown">
+                        <a href="https://j-jg.cc/" class="unav-sublink">
+                            <span class="unav-sub-icon">🏠</span>
+                            <div class="unav-sub-text">
+                                <strong>메인 대시보드</strong>
+                                <small>통합 서비스 바로가기 및 위젯</small>
+                            </div>
+                        </a>
+                        <a href="https://j-jg.cc/#services-grid" class="unav-sublink">
+                            <span class="unav-sub-icon">📊</span>
+                            <div class="unav-sub-text">
+                                <strong>서비스 전체 요약</strong>
+                                <small>혈압·자산·뉴스 핵심 지표 현황</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 2. 혈압 관리 -->
+                <div class="unav-item">
+                    <a href="https://blood.j-jg.cc/dashboard.html" class="unav-link">
+                        <span class="unav-item-icon">🩸</span>
+                        <span>혈압 관리</span>
+                        <span class="unav-arrow">▾</span>
+                    </a>
+                    <div class="unav-dropdown">
+                        <a href="https://blood.j-jg.cc/dashboard.html" class="unav-sublink">
+                            <span class="unav-sub-icon">📋</span>
+                            <div class="unav-sub-text">
+                                <strong>대시보드 & 측정 기록</strong>
+                                <small>혈압/맥박 수치 기록 및 통계</small>
+                            </div>
+                        </a>
+                        <a href="https://blood.j-jg.cc/dashboard.html#calendarTab" class="unav-sublink">
+                            <span class="unav-sub-icon">📅</span>
+                            <div class="unav-sub-text">
+                                <strong>달력 현황</strong>
+                                <small>월별 혈압 측정 캘린더</small>
+                            </div>
+                        </a>
+                        <a href="https://blood.j-jg.cc/dashboard.html#hospitalWidget" class="unav-sublink">
+                            <span class="unav-sub-icon">🏥</span>
+                            <div class="unav-sub-text">
+                                <strong>병원 진료 & 복용 예측</strong>
+                                <small>진료 일정 및 남은 약 잔여일</small>
+                            </div>
+                        </a>
+                        <a href="https://blood.j-jg.cc/dashboard.html#notifModal" class="unav-sublink">
+                            <span class="unav-sub-icon">🔔</span>
+                            <div class="unav-sub-text">
+                                <strong>알림 설정</strong>
+                                <small>복약 및 측정 리마인더 설정</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 3. 자산 관리 -->
+                <div class="unav-item">
+                    <a href="https://asset.j-jg.cc/" class="unav-link">
+                        <span class="unav-item-icon">💰</span>
+                        <span>자산 관리</span>
+                        <span class="unav-arrow">▾</span>
+                    </a>
+                    <div class="unav-dropdown">
+                        <a href="https://asset.j-jg.cc/" class="unav-sublink">
+                            <span class="unav-sub-icon">💼</span>
+                            <div class="unav-sub-text">
+                                <strong>총 자산 현황</strong>
+                                <small>포트폴리오 및 계좌별 요약</small>
+                            </div>
+                        </a>
+                        <a href="https://asset.j-jg.cc/#goal" class="unav-sublink">
+                            <span class="unav-sub-icon">🎯</span>
+                            <div class="unav-sub-text">
+                                <strong>목표 자산 달성률</strong>
+                                <small>10년 목표치 및 달성 그래프</small>
+                            </div>
+                        </a>
+                        <a href="https://asset.j-jg.cc/#tx-section" class="unav-sublink">
+                            <span class="unav-sub-icon">💵</span>
+                            <div class="unav-sub-text">
+                                <strong>적립 매수 기록</strong>
+                                <small>매수 내역 및 거래 일지</small>
+                            </div>
+                        </a>
+                        <a href="https://asset.j-jg.cc/#tab-analytics" class="unav-sublink">
+                            <span class="unav-sub-icon">🧮</span>
+                            <div class="unav-sub-text">
+                                <strong>물타기/성장 시뮬레이터</strong>
+                                <small>추가 매수 평단가 & 10년 복리</small>
+                            </div>
+                        </a>
+                        <a href="https://asset.j-jg.cc/#tab-settings" class="unav-sublink">
+                            <span class="unav-sub-icon">⚙️</span>
+                            <div class="unav-sub-text">
+                                <strong>계좌/종목 설정</strong>
+                                <small>증권 계좌 등록 및 보유 종목 관리</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 4. 뉴스 브리핑 -->
+                <div class="unav-item">
+                    <a href="https://news.j-jg.cc/" class="unav-link">
+                        <span class="unav-item-icon">📰</span>
+                        <span>뉴스 브리핑</span>
+                        <span class="unav-arrow">▾</span>
+                    </a>
+                    <div class="unav-dropdown">
+                        <a href="https://news.j-jg.cc/" class="unav-sublink">
+                            <span class="unav-sub-icon">📰</span>
+                            <div class="unav-sub-text">
+                                <strong>실시간 뉴스 대시보드</strong>
+                                <small>AI 요약 및 헤드라인 브리핑</small>
+                            </div>
+                        </a>
+                        <a href="https://news.j-jg.cc/weather" class="unav-sublink">
+                            <span class="unav-sub-icon">🌤️</span>
+                            <div class="unav-sub-text">
+                                <strong>날씨 브리핑</strong>
+                                <small>전국 주요 도시 실시간 기상 현황</small>
+                            </div>
+                        </a>
+                        <a href="https://news.j-jg.cc/categories" class="unav-sublink">
+                            <span class="unav-sub-icon">🏷️</span>
+                            <div class="unav-sub-text">
+                                <strong>관심 분야 관리</strong>
+                                <small>경제, 사회, 국방 등 카테고리 설정</small>
+                            </div>
+                        </a>
+                        <a href="https://news.j-jg.cc/admin" class="unav-sublink">
+                            <span class="unav-sub-icon">⚙️</span>
+                            <div class="unav-sub-text">
+                                <strong>뉴스 수집 관리</strong>
+                                <small>RSS 피드 수집 및 텔레그램 발송</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 5. 관리자 센터 -->
+                <div class="unav-item">
+                    <a href="https://j-jg.cc/admin" class="unav-link active">
+                        <span class="unav-item-icon">⚙️</span>
+                        <span>통합 관리자</span>
+                        <span class="unav-arrow">▾</span>
+                    </a>
+                    <div class="unav-dropdown">
+                        <a href="https://j-jg.cc/admin#tab-overview" class="unav-sublink" onclick="switchAdminTab('tab-overview')">
+                            <span class="unav-sub-icon">📊</span>
+                            <div class="unav-sub-text">
+                                <strong>대시보드 종합</strong>
+                                <small>전체 서버 서비스 현황 요약</small>
+                            </div>
+                        </a>
+                        <a href="https://j-jg.cc/admin#tab-processes" class="unav-sublink" onclick="switchAdminTab('tab-processes')">
+                            <span class="unav-sub-icon">💻</span>
+                            <div class="unav-sub-text">
+                                <strong>실시간 리소스 & 제어</strong>
+                                <small>CPU/메모리/온도 게이지 및 PM2</small>
+                            </div>
+                        </a>
+                        <a href="https://j-jg.cc/admin#tab-logs" class="unav-sublink" onclick="switchAdminTab('tab-logs')">
+                            <span class="unav-sub-icon">📝</span>
+                            <div class="unav-sub-text">
+                                <strong>통합 시스템 로그</strong>
+                                <small>로그인 시도 및 서비스 로그</small>
+                            </div>
+                        </a>
+                        <a href="https://j-jg.cc/admin#tab-db" class="unav-sublink" onclick="switchAdminTab('tab-db')">
+                            <span class="unav-sub-icon">⚡</span>
+                            <div class="unav-sub-text">
+                                <strong>DB 일괄 백업</strong>
+                                <small>전체 서비스 데이터베이스 백업</small>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 6. 로그아웃 -->
+                <div class="unav-item">
+                    <a href="https://j-jg.cc/logout" class="unav-link unav-logout-btn">
+                        <span>🚪</span>
+                        <span>로그아웃</span>
+                    </a>
+                </div>
             </nav>
+
+            <!-- 모바일 햄버거 버튼 (삼선 ☰) -->
+            <button type="button" class="unav-hamburger" id="unavHamburgerBtn" aria-label="메뉴 열기/닫기" aria-expanded="false">
+                <span class="unav-bar"></span>
+                <span class="unav-bar"></span>
+                <span class="unav-bar"></span>
+            </button>
+        </div>
+
+        <!-- 모바일 드로어 메뉴 -->
+        <div class="unav-drawer" id="unavDrawer">
+            <div class="unav-drawer-content">
+                <div class="unav-m-list">
+                    <!-- 1. 홈 -->
+                    <div class="unav-m-group">
+                        <button type="button" class="unav-m-title" onclick="toggleUnavAccordion(this)">
+                            <span>🏠 홈</span>
+                            <span class="unav-m-chevron">▾</span>
+                        </button>
+                        <div class="unav-m-submenu">
+                            <a href="https://j-jg.cc/">🏠 메인 대시보드</a>
+                            <a href="https://j-jg.cc/#services-grid">📊 서비스 전체 요약</a>
+                        </div>
+                    </div>
+
+                    <!-- 2. 혈압 관리 -->
+                    <div class="unav-m-group">
+                        <button type="button" class="unav-m-title" onclick="toggleUnavAccordion(this)">
+                            <span>🩸 혈압 관리</span>
+                            <span class="unav-m-chevron">▾</span>
+                        </button>
+                        <div class="unav-m-submenu">
+                            <a href="https://blood.j-jg.cc/dashboard.html">📋 대시보드 & 측정 기록</a>
+                            <a href="https://blood.j-jg.cc/dashboard.html#calendarTab">📅 달력 현황</a>
+                            <a href="https://blood.j-jg.cc/dashboard.html#hospitalWidget">🏥 병원 진료 & 복용 예측</a>
+                            <a href="https://blood.j-jg.cc/dashboard.html#notifModal">🔔 알림 설정</a>
+                        </div>
+                    </div>
+
+                    <!-- 3. 자산 관리 -->
+                    <div class="unav-m-group">
+                        <button type="button" class="unav-m-title" onclick="toggleUnavAccordion(this)">
+                            <span>💰 자산 관리</span>
+                            <span class="unav-m-chevron">▾</span>
+                        </button>
+                        <div class="unav-m-submenu">
+                            <a href="https://asset.j-jg.cc/">💼 총 자산 현황</a>
+                            <a href="https://asset.j-jg.cc/#goal">🎯 목표 자산 달성률</a>
+                            <a href="https://asset.j-jg.cc/#tx-section">💵 적립 매수 기록</a>
+                            <a href="https://asset.j-jg.cc/#tab-analytics">🧮 물타기/성장 시뮬레이터</a>
+                            <a href="https://asset.j-jg.cc/#tab-settings">⚙️ 계좌/종목 설정</a>
+                        </div>
+                    </div>
+
+                    <!-- 4. 뉴스 브리핑 -->
+                    <div class="unav-m-group">
+                        <button type="button" class="unav-m-title" onclick="toggleUnavAccordion(this)">
+                            <span>📰 뉴스 브리핑</span>
+                            <span class="unav-m-chevron">▾</span>
+                        </button>
+                        <div class="unav-m-submenu">
+                            <a href="https://news.j-jg.cc/">📰 실시간 뉴스 대시보드</a>
+                            <a href="https://news.j-jg.cc/weather">🌤️ 날씨 브리핑</a>
+                            <a href="https://news.j-jg.cc/categories">🏷️ 관심 분야 관리</a>
+                            <a href="https://news.j-jg.cc/admin">⚙️ 뉴스 수집 관리</a>
+                        </div>
+                    </div>
+
+                    <!-- 5. 관리자 센터 -->
+                    <div class="unav-m-group expanded">
+                        <button type="button" class="unav-m-title active" onclick="toggleUnavAccordion(this)">
+                            <span>⚙️ 통합 관리자</span>
+                            <span class="unav-m-chevron">▾</span>
+                        </button>
+                        <div class="unav-m-submenu">
+                            <a href="https://j-jg.cc/admin#tab-overview" onclick="switchAdminTab('tab-overview')">📊 대시보드 종합</a>
+                            <a href="https://j-jg.cc/admin#tab-processes" onclick="switchAdminTab('tab-processes')">💻 실시간 리소스 & 제어</a>
+                            <a href="https://j-jg.cc/admin#tab-logs" onclick="switchAdminTab('tab-logs')">📝 통합 시스템 로그</a>
+                            <a href="https://j-jg.cc/admin#tab-db" onclick="switchAdminTab('tab-db')">⚡ DB 일괄 백업</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="unav-m-footer">
+                    <a href="https://j-jg.cc/logout" class="unav-m-logout-btn">
+                        <span>🚪</span>
+                        <span>안전하게 로그아웃</span>
+                    </a>
+                </div>
+            </div>
         </div>
     </header>
 
@@ -1069,6 +1354,8 @@
             startOverviewPolling();
         });
     </script>
+    <!-- 🌐 공통 상단 내비게이션 바 스크립트 -->
+    <script src="/js/unified-nav.js"></script>
 </body>
 </html>
 
