@@ -593,10 +593,11 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
         // 5) 실시간 날씨 정보 조회 (인사말 옆 뱃지용)
         const weather = await getLiveWeatherData();
 
-        // 6) 뉴스 관심 분야별 추천 기사 조회 (활성 관심분야 최대 5개까지 동적 반영)
+        // 6) 뉴스 관심 분야별 추천 기사 조회 (활성화된 관심 분야 전체를 리밋 없이 1:1 반영)
         const newsRecommendation = await new Promise((resolve) => {
-            newsDb.all('SELECT id, name FROM categories WHERE is_active = 1 ORDER BY id ASC LIMIT 5', [], async (cErr, categories) => {
+            newsDb.all('SELECT id, name FROM categories WHERE is_active = 1 ORDER BY id ASC', [], async (cErr, categories) => {
                 if (cErr || !categories || categories.length === 0) {
+                    // 관심 분야가 없을 때만 최신 기사 5건 fallback
                     newsDb.all('SELECT id, title, link, media_name, category_name, published_at FROM news_articles ORDER BY id DESC LIMIT 5', [], (aErr, fallbackRows) => {
                         resolve(fallbackRows || []);
                     });
@@ -615,22 +616,7 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
                     });
 
                     const results = (await Promise.all(articlePromises)).filter(Boolean);
-                    const targetLimit = Math.max(categories.length, 5);
-                    if (results.length < targetLimit) {
-                        const existingIds = results.map(r => r.id);
-                        const placeholders = existingIds.length > 0 ? existingIds.map(() => '?').join(',') : '0';
-                        const needCount = targetLimit - results.length;
-                        newsDb.all(
-                            `SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE id NOT IN (${placeholders}) ORDER BY id DESC LIMIT ?`,
-                            [...existingIds, needCount],
-                            (fbErr, extraRows) => {
-                                if (extraRows && Array.isArray(extraRows)) results.push(...extraRows);
-                                resolve(results);
-                            }
-                        );
-                    } else {
-                        resolve(results);
-                    }
+                    resolve(results);
                 } catch (e) {
                     resolve([]);
                 }
