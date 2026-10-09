@@ -15,7 +15,7 @@ const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.j-jg.cc';
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 app.use((req, res, next) => {
     if (!req.url.startsWith('/css') && !req.url.startsWith('/favicon')) {
         console.log(`[PORTAL] ${req.method} ${req.url}`);
@@ -63,12 +63,12 @@ function authenticateToken(req, res, next) {
 }
 
 // 1. 메인 포털 홈 화면
-app.get('/', authenticateToken, (req, res) => {
+app.get(['/', '/index.html'], authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // 2. 로그인 페이지
-app.get('/login', (req, res) => {
+app.get(['/login', '/login.html'], (req, res) => {
     const token = req.cookies.portal_token;
     if (token) {
         return jwt.verify(token, JWT_SECRET, (err) => {
