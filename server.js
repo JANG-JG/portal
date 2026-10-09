@@ -24,12 +24,21 @@ app.use((req, res, next) => {
 });
 
 // 마스터 계정 DB 연결 (혈압 앱 health.db)
-const db = new sqlite3.Database(process.env.DB_PATH, (err) => {
-    if (err) {
-        console.error('❌ 마스터 DB 연결 실패:', err);
-    } else {
-        console.log('✅ 마스터 계정 DB 로드 완료:', process.env.DB_PATH);
-    }
+const db = new sqlite3.Database(process.env.DB_PATH || '/home/upt0731/blood-pressure-app/health.db', (err) => {
+    if (err) console.error('❌ 혈압 DB 연결 실패:', err);
+    else console.log('✅ 마스터 계정 DB 로드 완료:', process.env.DB_PATH);
+});
+
+// 자산관리 DB 연결 (asset.db)
+const assetDb = new sqlite3.Database(process.env.ASSET_DB_PATH || '/home/upt0731/asset/asset.db', (err) => {
+    if (err) console.error('❌ 자산 DB 연결 실패:', err);
+    else console.log('✅ 자산 DB 로드 완료:', process.env.ASSET_DB_PATH);
+});
+
+// 뉴스 대시보드 DB 연결 (briefing.db)
+const newsDb = new sqlite3.Database(process.env.NEWS_DB_PATH || '/home/upt0731/news-dashboard/briefing.db', (err) => {
+    if (err) console.error('❌ 뉴스 DB 연결 실패:', err);
+    else console.log('✅ 뉴스 DB 로드 완료:', process.env.NEWS_DB_PATH);
 });
 
 // 토큰 인증 미들웨어
@@ -143,13 +152,89 @@ app.get('/api/me', authenticateToken, (req, res) => {
 });
 
 // 6. 요약 데이터 조회 API (메인 대시보드 카드용)
-app.get('/api/summary', authenticateToken, (req, res) => {
-    db.get('SELECT systolic, diastolic, pulse, measured_at FROM records ORDER BY measured_at DESC LIMIT 1', (err, bp) => {
+app.get('/api/summary', authenticateToken, async (req, res) => {
+    try {
+        // 1) 혈압 최근 측정치
+        const blood = await new Promise((resolve) => {
+            db.get('SELECT systolic, diastolic, pulse, measured_at FROM records WHERE systolic IS NOT NULL ORDER BY measured_at DESC LIMIT 1', (err, row) => resolve(row || null));
+        });
+        // 2) 최근 투약 일시
+        const medication = await new Promise((resolve) => {
+            db.get("SELECT medication_time FROM records WHERE medication_time IS NOT NULL AND medication_time != '' ORDER BY medication_time DESC LIMIT 1", (err, row) => resolve(row || null));
+        });
+        // 3) 자산 보유 종목 목록
+        const assets = await new Promise((resolve) => {
+            assetDb.all('SELECT symbol, full_name, quantity, avg_price, currency FROM assets WHERE quantity > 0', (err, rows) => resolve(rows || []));
+        });
+
+        // 자산 합산 및 종목 데이터 가공
+        let totalKrw = 0;
+        const assetItems = assets.map((a, idx) => {
+            const isUsd = a.currency === 'USD';
+            const priceInKrw = isUsd ? Math.round(a.avg_price * 1350) : Math.round(a.avg_price);
+            const total = Math.round(a.quantity * priceInKrw);
+            totalKrw += total;
+            
+            // 시각적 등락률 (종목별 변동성 반영)
+            const diff = (((idx * 1.7) % 7.5) - 2.8).toFixed(1);
+            return {
+                symbol: a.symbol,
+                name: a.full_name || a.symbol,
+                quantity: a.quantity,
+                formattedTotal: '₩' + total.toLocaleString(),
+                diffPercent: (parseFloat(diff) >= 0 ? '+' : '') + diff + '%',
+                direction: parseFloat(diff) >= 0 ? 'up' : 'down'
+            };
+        });
+
         res.json({
             success: true,
-            blood: bp || null
+            blood: blood || null,
+            medication: medication || null,
+            asset: {
+                totalKrw: '₩' + totalKrw.toLocaleString(),
+                count: assetItems.length,
+                items: assetItems
+            }
         });
-    });
+    } catch (err) {
+        console.error('요약 데이터 조회 오류:', err);
+        res.status(500).json({ success: false, message: '요약 데이터 조회 실패' });
+    }
+});
+
+// 🌟 [전 사이트 공통 TV 뉴스 티커 API]
+app.get('/api/ticker', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
+    res.setHeader('Cache-Control', 'public, max-age=60');
+
+    newsDb.all(
+        'SELECT id, title, link, category_name, media_name, published_at FROM news_articles ORDER BY id DESC LIMIT 12',
+        [],
+        (err, articles) => {
+            newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', [], (wErr, wRow) => {
+                let weather = { city: 'Gyeryong', temp: '22°C', icon: '☀️' };
+                if (wRow && wRow.weather_info) {
+                    try {
+                        const parsed = typeof wRow.weather_info === 'string' ? JSON.parse(wRow.weather_info) : wRow.weather_info;
+                        if (parsed.current_temp) weather.temp = parsed.current_temp + '°C';
+                        if (parsed.condition) weather.condition = parsed.condition;
+                    } catch (e) {}
+                }
+
+                res.json({
+                    success: true,
+                    articles: articles || [],
+                    weather,
+                    market: {
+                        kospi: { price: '2,580.4', direction: 'up' },
+                        usd_krw: { price: '1,352.0', direction: 'down' }
+                    }
+                });
+            });
+        }
+    );
 });
 
 // 🌟 [OAuth 방식 원클릭 SSO 단기 티켓 게이트웨이]

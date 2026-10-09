@@ -163,6 +163,85 @@ body {
     color: #334155;
     margin-top: auto;
     margin-bottom: 1.25rem;
+    min-height: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* 혈압 & 투약 현황 라인 */
+.summary-line {
+    margin-bottom: 0.35rem;
+    font-size: 0.88rem;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.summary-line.med-line {
+    margin-bottom: 0;
+    color: #475569;
+    font-size: 0.84rem;
+}
+.badge-med {
+    background: #e0e7ff;
+    color: #3730a3;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+/* 자산 롤링 전광판 스타일 */
+.asset-total-line {
+    font-size: 0.92rem;
+    color: #0f172a;
+    margin-bottom: 0.4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.asset-total-line strong {
+    color: #059669;
+    font-size: 1.05rem;
+}
+.asset-rolling-container {
+    position: relative;
+    height: 32px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.asset-rolling-item {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.5rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: transform 0.45s ease-in-out, opacity 0.45s ease-in-out;
+}
+.asset-stock-name {
+    color: #334155;
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.asset-stock-price {
+    color: #0f172a;
+    font-weight: 700;
+}
+.asset-stock-diff.up {
+    color: #ef4444;
+    font-size: 0.78rem;
+}
+.asset-stock-diff.down {
+    color: #2563eb;
+    font-size: 0.78rem;
 }
 
 .card-link-btn {
