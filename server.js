@@ -41,6 +41,8 @@ function authenticateToken(req, res, next) {
 
     const candidateSecrets = [
         JWT_SECRET,
+        'jg-portal-master-super-secret-key-2026-upt0731',
+        'jg-portal-master-super-secret-key-2026!@',
         'jg-portal-master-super-secret-key-2026!@#',
         'portal-master-secret-key-2026-upt0731!@#'
     ];
