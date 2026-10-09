@@ -16,6 +16,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use((req, res, next) => {
+    if (!req.url.startsWith('/css') && !req.url.startsWith('/favicon')) {
+        console.log(`[PORTAL] ${req.method} ${req.url}`);
+    }
+    next();
+});
 
 // 마스터 계정 DB 연결 (혈압 앱 health.db)
 const db = new sqlite3.Database(process.env.DB_PATH, (err) => {
