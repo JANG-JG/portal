@@ -73,6 +73,21 @@
                 btnSubmit.textContent = '로그인';
             }
         });
+
+        // 🌟 [SSO 단일 로그아웃 동기화] 포털에서 로그아웃 시 3개 서브 서비스 세션도 완벽 파기
+        (function syncSingleSignOut() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('logout') === 'success') {
+                const subServices = [
+                    'https://blood.j-jg.cc/logout?local=1',
+                    'https://asset.j-jg.cc/logout?local=1',
+                    'https://news.j-jg.cc/logout?local=1'
+                ];
+                subServices.forEach(url => {
+                    fetch(url, { credentials: 'include', mode: 'no-cors' }).catch(() => {});
+                });
+            }
+        })();
     </script>
 </body>
 </html>

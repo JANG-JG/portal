@@ -126,7 +126,7 @@ app.get('/logout', (req, res) => {
         'portal_token=; Path=/; Domain=j-jg.cc; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax'
     ]);
 
-    res.redirect('/login');
+    res.redirect('/login?logout=success');
 });
 
 // 5. 내 정보 조회 API
