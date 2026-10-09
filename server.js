@@ -144,6 +144,22 @@ app.get('/api/summary', authenticateToken, (req, res) => {
     });
 });
 
+// 🌟 [OAuth 방식 원클릭 SSO 단기 티켓 게이트웨이]
+app.get('/go/:service', authenticateToken, (req, res) => {
+    const service = req.params.service;
+    // 보안을 위해 5분만 유효한 일회성 단기 서명 티켓 발급
+    const ticket = jwt.sign({ username: req.user.username }, JWT_SECRET, { expiresIn: '5m' });
+
+    if (service === 'news') {
+        return res.redirect(`https://news.j-jg.cc/?token=${ticket}`);
+    } else if (service === 'asset') {
+        return res.redirect(`https://asset.j-jg.cc/?token=${ticket}`);
+    } else if (service === 'blood') {
+        return res.redirect(`https://blood.j-jg.cc/?token=${ticket}`);
+    }
+    res.redirect('/');
+});
+
 // 7. 헬스 체크
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'JG Portal' });
