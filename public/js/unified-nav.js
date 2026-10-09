@@ -40,7 +40,25 @@
                 btn.setAttribute('aria-expanded', 'false');
             }
         });
+
+        // 모바일 드로어 내부 링크 클릭 시 드로어 자동 닫힘
+        drawer.querySelectorAll('a').forEach(function(a) {
+            a.addEventListener('click', function() {
+                window.closeUnavDrawer();
+            });
+        });
     }
+
+    // 전역 모바일 드로어 닫기 함수
+    window.closeUnavDrawer = function() {
+        const drawer = document.getElementById('unavDrawer');
+        const btn = document.getElementById('unavHamburgerBtn');
+        if (drawer) drawer.classList.remove('open');
+        if (btn) {
+            btn.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+    };
 
     // 모바일 아코디언 서브메뉴 토글 함수 (전역 노출)
     window.toggleUnavAccordion = function(button) {
