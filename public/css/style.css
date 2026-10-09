@@ -496,8 +496,13 @@ body {
         gap: 0.4rem;
     }
     .news-market-chip {
-        padding: 0.35rem 0.5rem;
-        font-size: 0.78rem;
+        padding: 0.4rem 0.55rem;
+    }
+    .news-market-chip .market-price {
+        font-size: 0.88rem;
+    }
+    .news-market-chip .market-diff {
+        font-size: 0.72rem;
     }
 }
 
@@ -620,38 +625,59 @@ body {
     border-color: #94a3b8;
 }
 
-/* 시장 지표 미니 칩 바 */
+/* 시장 지표 미니 칩 바 (상하 2줄 반응형 레이아웃) */
 .news-market-bar {
     display: flex;
-    gap: 0.6rem;
-    margin-bottom: 0.75rem;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
 }
 .news-market-chip {
     flex: 1;
+    min-width: 0; /* flex 자식 넘침 원천 방지 */
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 0.5rem;
-    padding: 0.4rem 0.65rem;
+    border-radius: 0.65rem;
+    padding: 0.5rem 0.75rem;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.82rem;
-    gap: 0.35rem;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.25rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    transition: all 0.2s ease;
+}
+.news-market-chip:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
 }
 .news-market-chip .market-name {
     color: #64748b;
-    font-weight: 600;
-    font-size: 0.78rem;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+}
+.news-market-chip .market-val-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    min-width: 0;
 }
 .news-market-chip .market-price {
-    font-weight: 700;
+    font-weight: 800;
+    font-size: 0.98rem;
     color: #0f172a;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
 }
 .news-market-chip .market-diff {
     font-weight: 700;
-    font-size: 0.76rem;
+    font-size: 0.75rem;
     padding: 0.1rem 0.35rem;
     border-radius: 0.25rem;
+    white-space: nowrap;
 }
 .news-market-chip .market-diff.up {
     color: #ef4444;

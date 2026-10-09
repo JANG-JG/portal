@@ -275,6 +275,136 @@ function calculateReservationOpenDate(nextVisitDateStr) {
     }
 }
 
+// 도시 한글명 맵
+const CITY_KO_MAP = {
+    'Seoul': '서울',
+    'Gyeryong': '계룡',
+    'Daejeon': '대전',
+    'Busan': '부산',
+    'Incheon': '인천',
+    'Daegu': '대구',
+    'Gwangju': '광주',
+    'Ulsan': '울산',
+    'Sejong': '세종',
+    'Suwon': '수원',
+    'Jeju': '제주',
+    'Chuncheon': '춘천',
+    'Gangneung': '강릉',
+    'Cheongju': '청주',
+    'Jeonju': '전주',
+    'Changwon': '창원',
+    'Pohang': '포항'
+};
+
+const WEATHER_ICON_MAP = {
+    'sunny': '☀️',
+    'clear': '☀️',
+    'partly cloudy': '🌤️',
+    'cloudy': '☁️',
+    'overcast': '☁️',
+    'mist': '🌫️',
+    'fog': '🌫️',
+    'haze': '🌫️',
+    'smoky': '🌫️',
+    'rain': '🌧️',
+    'patchy rain': '🌦️',
+    'thundery': '⛈️',
+    'snow': '❄️'
+};
+
+function getWeatherIcon(desc) {
+    if (!desc) return '🌤️';
+    const lower = desc.toLowerCase();
+    for (const [k, v] of Object.entries(WEATHER_ICON_MAP)) {
+        if (lower.includes(k)) return v;
+    }
+    return '🌤️';
+}
+
+// 실시간 날씨 캐시 (10분 유효)
+let weatherCache = {
+    timestamp: 0,
+    data: null
+};
+
+async function getLiveWeatherData() {
+    const now = Date.now();
+    if (weatherCache.data && (now - weatherCache.timestamp < 10 * 60 * 1000)) {
+        return weatherCache.data;
+    }
+
+    // 1) DB에서 설정된 도시 조회
+    let rawCity = 'Gyeryong';
+    try {
+        const row = await new Promise((res) => {
+            newsDb.get("SELECT value FROM system_settings WHERE key = 'weather_city'", (err, r) => res(r || null));
+        });
+        if (row && row.value && row.value.trim()) {
+            rawCity = row.value.trim();
+        }
+    } catch (e) {}
+
+    const korCityName = CITY_KO_MAP[rawCity] || rawCity;
+
+    let weatherObj = {
+        city: korCityName,
+        temp: '13°C',
+        condition: '맑음',
+        icon: '🌤️'
+    };
+
+    // 2) wttr.in 실시간 API 호출
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const resp = await fetch(`https://wttr.in/${encodeURIComponent(rawCity)}?format=j1`, {
+            headers: { 'User-Agent': 'curl/7.68.0' },
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data && data.current_condition && data.current_condition[0]) {
+                const cur = data.current_condition[0];
+                const tempC = cur.temp_C ? `${cur.temp_C}°C` : '-';
+                const desc = cur.weatherDesc && cur.weatherDesc[0] ? cur.weatherDesc[0].value : '';
+                const icon = getWeatherIcon(desc);
+                weatherObj = {
+                    city: korCityName,
+                    temp: tempC,
+                    condition: desc || '맑음',
+                    icon: icon
+                };
+                weatherCache = { timestamp: now, data: weatherObj };
+                return weatherObj;
+            }
+        }
+    } catch (apiErr) {}
+
+    // 3) 실패 시 daily_weather 테이블에서 fallback 파싱
+    try {
+        const dwRow = await new Promise((res) => {
+            newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', (err, r) => res(r || null));
+        });
+        if (dwRow && dwRow.weather_info) {
+            const info = dwRow.weather_info;
+            const tempMatch = info.match(/(\d+)°C/);
+            if (tempMatch) {
+                weatherObj.temp = `${tempMatch[1]}°C`;
+            }
+            if (info.includes('안개')) weatherObj.icon = '🌫️';
+            else if (info.includes('비')) weatherObj.icon = '🌧️';
+            else if (info.includes('눈')) weatherObj.icon = '❄️';
+            else if (info.includes('맑')) weatherObj.icon = '☀️';
+            else if (info.includes('구름')) weatherObj.icon = '☁️';
+        }
+    } catch (e) {}
+
+    weatherCache = { timestamp: now, data: weatherObj };
+    return weatherObj;
+}
+
 // 실시간 증시 및 환율 캐시 (5분 유효)
 let marketCache = {
     timestamp: 0,
@@ -461,20 +591,7 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
         });
 
         // 5) 실시간 날씨 정보 조회 (인사말 옆 뱃지용)
-        const weather = await new Promise((resolve) => {
-            newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', [], (wErr, wRow) => {
-                let w = { city: '계룡', temp: '22°C', icon: '☀️' };
-                if (wRow && wRow.weather_info) {
-                    try {
-                        const parsed = typeof wRow.weather_info === 'string' ? JSON.parse(wRow.weather_info) : wRow.weather_info;
-                        if (parsed.current_temp) w.temp = parsed.current_temp + '°C';
-                        if (parsed.condition) w.condition = parsed.condition;
-                        if (parsed.city && parsed.city !== 'Gyeryong') w.city = parsed.city;
-                    } catch (e) {}
-                }
-                resolve(w);
-            });
-        });
+        const weather = await getLiveWeatherData();
 
         // 6) 뉴스 관심 분야별 추천 기사 조회
         const newsRecommendation = await new Promise((resolve) => {
@@ -582,25 +699,17 @@ app.get('/api/ticker', (req, res) => {
     newsDb.all(
         'SELECT id, title, link, category_name, media_name, published_at FROM news_articles ORDER BY id DESC LIMIT 12',
         [],
-        (err, articles) => {
-            newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', [], async (wErr, wRow) => {
-                let weather = { city: '계룡', temp: '22°C', icon: '☀️' };
-                if (wRow && wRow.weather_info) {
-                    try {
-                        const parsed = typeof wRow.weather_info === 'string' ? JSON.parse(wRow.weather_info) : wRow.weather_info;
-                        if (parsed.current_temp) weather.temp = parsed.current_temp + '°C';
-                        if (parsed.condition) weather.condition = parsed.condition;
-                    } catch (e) {}
-                }
+        async (err, articles) => {
+            const [weather, market] = await Promise.all([
+                getLiveWeatherData(),
+                getLiveMarketData()
+            ]);
 
-                const market = await getLiveMarketData();
-
-                res.json({
-                    success: true,
-                    articles: articles || [],
-                    weather,
-                    market
-                });
+            res.json({
+                success: true,
+                articles: articles || [],
+                weather,
+                market
             });
         }
     );

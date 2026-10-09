@@ -341,17 +341,21 @@
                 <h3>뉴스 브리핑</h3>
                 <p class="card-desc">실시간 AI 뉴스 수집 및 모닝 텔레그램 브리핑</p>
                 
-                <!-- 상단 실시간 시장 지표 미니 칩 바 -->
+                <!-- 상단 실시간 시장 지표 미니 칩 바 (상하 2줄 반응형) -->
                 <div class="news-market-bar" id="newsMarketBar">
                     <div class="news-market-chip">
-                        <span class="market-name">코스피</span>
-                        <span class="market-price" id="kospiPrice">-</span>
-                        <span class="market-diff" id="kospiDiff">-</span>
+                        <div class="market-name">코스피</div>
+                        <div class="market-val-row">
+                            <span class="market-price" id="kospiPrice">-</span>
+                            <span class="market-diff" id="kospiDiff">-</span>
+                        </div>
                     </div>
                     <div class="news-market-chip">
-                        <span class="market-name">USD/KRW</span>
-                        <span class="market-price" id="fxPrice">-</span>
-                        <span class="market-diff" id="fxDiff">-</span>
+                        <div class="market-name">USD/KRW</div>
+                        <div class="market-val-row">
+                            <span class="market-price" id="fxPrice">-</span>
+                            <span class="market-diff" id="fxDiff">-</span>
+                        </div>
                     </div>
                 </div>
 

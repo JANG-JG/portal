@@ -245,11 +245,12 @@
                 const usd = market.usd_krw || { price: '1,342.7', direction: 'up' };
 
                 const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
+                const usdPriceText = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
 
                 const slides = [
                     `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="실시간 날씨 브리핑 바로가기">
                         <span>${weather.icon || '☀️'} ${cityName}</span>
-                        <span style="color:#38bdf8; font-weight:700;">${weather.temp || '22°C'}</span>
+                        <span style="color:#38bdf8; font-weight:700;">${weather.temp || '-'}</span>
                     </a>`,
                     `<div class="jg-v-item">
                         <span style="color:#94a3b8; font-size:10px;">코스피</span>
@@ -263,7 +264,7 @@
                     </div>`,
                     `<div class="jg-v-item">
                         <span style="color:#94a3b8; font-size:10px;">달러</span>
-                        <span style="color:#ffffff;">${usd.price}원</span>
+                        <span style="color:#ffffff;">${usdPriceText}</span>
                         <span style="color:${usd.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10px;">${usd.direction === 'up' ? '▲' : '▼'}</span>
                     </div>`
                 ];
