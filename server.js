@@ -275,6 +275,80 @@ function calculateReservationOpenDate(nextVisitDateStr) {
     }
 }
 
+// 실시간 증시 및 환율 캐시 (5분 유효)
+let marketCache = {
+    timestamp: 0,
+    data: {
+        kospi: { name: '코스피', price: '-', ratio: '-', direction: 'up' },
+        kosdaq: { name: '코스닥', price: '-', ratio: '-', direction: 'up' },
+        usd_krw: { name: 'USD/KRW', price: '-', ratio: '-', direction: 'up' }
+    }
+};
+
+async function getLiveMarketData() {
+    const now = Date.now();
+    if (marketCache.data && (now - marketCache.timestamp < 300000)) {
+        return marketCache.data;
+    }
+
+    try {
+        const [kRes, qRes, uRes] = await Promise.allSettled([
+            fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI', { 
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                signal: AbortSignal.timeout(3000) 
+            }).then(r => r.json()),
+            fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSDAQ', { 
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                signal: AbortSignal.timeout(3000) 
+            }).then(r => r.json()),
+            fetch('https://m.stock.naver.com/front-api/marketIndex/prices?category=exchange&reutersCode=FX_USDKRW', { 
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                signal: AbortSignal.timeout(3000) 
+            }).then(r => r.json())
+        ]);
+
+        const nextData = { ...marketCache.data };
+
+        if (kRes.status === 'fulfilled' && kRes.value?.datas?.[0]) {
+            const d = kRes.value.datas[0];
+            const p = d.closePrice || '-';
+            const fName = d.compareToPreviousPrice?.name || '';
+            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
+            const sign = dir === 'up' ? '+' : (dir === 'down' ? '-' : '');
+            const ratioVal = parseFloat(d.fluctuationsRatio || 0);
+            const ratio = d.fluctuationsRatio ? `${sign}${Math.abs(ratioVal).toFixed(2)}%` : '-';
+            nextData.kospi = { name: '코스피', price: p, ratio, direction: dir };
+        }
+
+        if (qRes.status === 'fulfilled' && qRes.value?.datas?.[0]) {
+            const d = qRes.value.datas[0];
+            const p = d.closePrice || '-';
+            const fName = d.compareToPreviousPrice?.name || '';
+            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
+            const sign = dir === 'up' ? '+' : (dir === 'down' ? '-' : '');
+            const ratioVal = parseFloat(d.fluctuationsRatio || 0);
+            const ratio = d.fluctuationsRatio ? `${sign}${Math.abs(ratioVal).toFixed(2)}%` : '-';
+            nextData.kosdaq = { name: '코스닥', price: p, ratio, direction: dir };
+        }
+
+        if (uRes.status === 'fulfilled' && uRes.value?.result?.[0]) {
+            const d = uRes.value.result[0];
+            const p = d.closePrice ? (d.closePrice.includes('원') ? d.closePrice : d.closePrice + '원') : '-';
+            const fName = d.fluctuationsType?.name || '';
+            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
+            const sign = dir === 'up' ? '+' : (dir === 'down' ? '-' : '');
+            const ratioVal = parseFloat(d.fluctuationsRatio || 0);
+            const ratio = d.fluctuationsRatio ? `${sign}${Math.abs(ratioVal).toFixed(2)}%` : '-';
+            nextData.usd_krw = { name: 'USD/KRW', price: p, ratio, direction: dir };
+        }
+
+        marketCache = { timestamp: now, data: nextData };
+        return nextData;
+    } catch (e) {
+        return marketCache.data;
+    }
+}
+
 // 6. 요약 데이터 조회 API (메인 대시보드 카드용)
 app.get('/api/summary', authenticateToken, async (req, res) => {
     try {
@@ -402,6 +476,52 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             });
         });
 
+        // 6) 뉴스 관심 분야별 추천 기사 조회
+        const newsRecommendation = await new Promise((resolve) => {
+            newsDb.all('SELECT id, name FROM categories WHERE is_active = 1 ORDER BY id ASC LIMIT 3', [], async (cErr, categories) => {
+                if (cErr || !categories || categories.length === 0) {
+                    newsDb.all('SELECT id, title, link, media_name, category_name, published_at FROM news_articles ORDER BY id DESC LIMIT 3', [], (aErr, fallbackRows) => {
+                        resolve(fallbackRows || []);
+                    });
+                    return;
+                }
+
+                try {
+                    const articlePromises = categories.map(cat => {
+                        return new Promise(innerResolve => {
+                            newsDb.get(
+                                'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? ORDER BY id DESC LIMIT 1',
+                                [cat.name],
+                                (err, row) => innerResolve(row || null)
+                            );
+                        });
+                    });
+
+                    const results = (await Promise.all(articlePromises)).filter(Boolean);
+                    if (results.length < 3) {
+                        const existingIds = results.map(r => r.id);
+                        const placeholders = existingIds.length > 0 ? existingIds.map(() => '?').join(',') : '0';
+                        const needCount = 3 - results.length;
+                        newsDb.all(
+                            `SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE id NOT IN (${placeholders}) ORDER BY id DESC LIMIT ?`,
+                            [...existingIds, needCount],
+                            (fbErr, extraRows) => {
+                                if (extraRows && Array.isArray(extraRows)) results.push(...extraRows);
+                                resolve(results);
+                            }
+                        );
+                    } else {
+                        resolve(results);
+                    }
+                } catch (e) {
+                    resolve([]);
+                }
+            });
+        });
+
+        // 7) 실시간 시장 지표
+        const marketData = await getLiveMarketData();
+
         res.json({
             success: true,
             blood: blood || null,
@@ -412,6 +532,10 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
                 totalKrw: '₩' + totalKrw.toLocaleString(),
                 count: assetItems.length,
                 items: assetItems
+            },
+            news: {
+                market: marketData,
+                recommendedArticles: newsRecommendation
             }
         });
     } catch (err) {
@@ -448,62 +572,6 @@ app.post('/api/blood/quick-med', authenticateToken, (req, res) => {
         res.status(500).json({ success: false, message: '서버 내부 오류' });
     }
 });
-
-// 실시간 증시 및 환율 캐시 (5분 유효)
-let marketCache = {
-    timestamp: 0,
-    data: {
-        kospi: { price: '6,625.9', direction: 'down' },
-        kosdaq: { price: '892.3', direction: 'down' },
-        usd_krw: { price: '1,342.7', direction: 'up' }
-    }
-};
-
-async function getLiveMarketData() {
-    const now = Date.now();
-    if (marketCache.data && (now - marketCache.timestamp < 300000)) {
-        return marketCache.data;
-    }
-
-    try {
-        const [kRes, qRes, uRes] = await Promise.allSettled([
-            fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI', { signal: AbortSignal.timeout(2500) }).then(r => r.json()),
-            fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSDAQ', { signal: AbortSignal.timeout(2500) }).then(r => r.json()),
-            fetch('https://m.stock.naver.com/front-api/marketIndex/prices?category=exchange&reutersCode=FX_USDKRW', { signal: AbortSignal.timeout(2500) }).then(r => r.json())
-        ]);
-
-        const nextData = { ...marketCache.data };
-
-        if (kRes.status === 'fulfilled' && kRes.value?.datas?.[0]) {
-            const d = kRes.value.datas[0];
-            const p = d.closePrice || '6,625.9';
-            const fName = d.compareToPreviousPrice?.name || '';
-            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
-            nextData.kospi = { price: p, direction: dir };
-        }
-
-        if (qRes.status === 'fulfilled' && qRes.value?.datas?.[0]) {
-            const d = qRes.value.datas[0];
-            const p = d.closePrice || '892.3';
-            const fName = d.compareToPreviousPrice?.name || '';
-            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
-            nextData.kosdaq = { price: p, direction: dir };
-        }
-
-        if (uRes.status === 'fulfilled' && uRes.value?.result?.[0]) {
-            const d = uRes.value.result[0];
-            const p = d.closePrice || '1,342.7';
-            const fName = d.fluctuationsType?.name || '';
-            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
-            nextData.usd_krw = { price: p, direction: dir };
-        }
-
-        marketCache = { timestamp: now, data: nextData };
-        return nextData;
-    } catch (e) {
-        return marketCache.data;
-    }
-}
 
 // 🌟 [전 사이트 공통 TV 뉴스 티커 API]
 app.get('/api/ticker', (req, res) => {

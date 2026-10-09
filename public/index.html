@@ -328,9 +328,52 @@
             <p>오늘의 통합 서비스 현황을 한눈에 확인하고 바로 이동하세요.</p>
         </section>
 
-        <!-- 서비스 바로가기 카드 그리드 -->
+        <!-- 서비스 바로가기 카드 그리드 (뉴스 브리핑 -> 혈압 관리 -> 자산 관리) -->
         <div class="card-grid">
-            <!-- 1. 혈압 관리 카드 -->
+            <!-- 1. 뉴스 브리핑 카드 -->
+            <div class="service-card card-news">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+                    <div class="card-icon" style="margin-bottom:0;">📰</div>
+                    <a href="https://news.j-jg.cc/categories" class="btn-news-sub" title="관심 뉴스 분야 관리">
+                        🏷️ 관심 분야
+                    </a>
+                </div>
+                <h3>뉴스 브리핑</h3>
+                <p class="card-desc">실시간 AI 뉴스 수집 및 모닝 텔레그램 브리핑</p>
+                
+                <!-- 상단 실시간 시장 지표 미니 칩 바 -->
+                <div class="news-market-bar" id="newsMarketBar">
+                    <div class="news-market-chip">
+                        <span class="market-name">코스피</span>
+                        <span class="market-price" id="kospiPrice">-</span>
+                        <span class="market-diff" id="kospiDiff">-</span>
+                    </div>
+                    <div class="news-market-chip">
+                        <span class="market-name">USD/KRW</span>
+                        <span class="market-price" id="fxPrice">-</span>
+                        <span class="market-diff" id="fxDiff">-</span>
+                    </div>
+                </div>
+
+                <!-- 관심 분야별 자동 추천 기사 목록 -->
+                <div class="card-summary news-summary-box" id="newsSummary">
+                    <div class="news-rec-header">
+                        <span class="news-rec-title">🎯 관심 분야 실시간 주요 기사</span>
+                        <a href="https://news.j-jg.cc/" style="font-size:0.75rem; color:#2563eb; text-decoration:none;">전체보기</a>
+                    </div>
+                    <div class="news-rec-list" id="newsRecommendedList">
+                        <div class="news-rec-loading">주요 기사 불러오는 중...</div>
+                    </div>
+                </div>
+
+                <div class="card-actions">
+                    <a href="/go/news" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
+                        뉴스 브리핑 열기 →
+                    </a>
+                </div>
+            </div>
+
+            <!-- 2. 혈압 관리 카드 -->
             <div class="service-card card-blood">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
                     <div class="card-icon" style="margin-bottom:0;">💖</div>
@@ -354,28 +397,20 @@
                 </div>
             </div>
 
-            <!-- 2. 자산 관리 카드 -->
-            <a href="/go/asset" class="service-card card-asset">
+            <!-- 3. 자산 관리 카드 -->
+            <div class="service-card card-asset">
                 <div class="card-icon">💰</div>
                 <h3>자산 관리</h3>
                 <p class="card-desc">월별 자산 추이 및 금융 포트폴리오 분석</p>
                 <div class="card-summary" id="assetSummary">
                     <span>보유 자산 현황 조회 중...</span>
                 </div>
-                <span class="card-link-btn">자산 관리 열기 →</span>
-            </a>
-
-            <!-- 3. 뉴스 브리핑 카드 -->
-            <a href="/go/news" class="service-card card-news">
-                <div class="card-icon">📰</div>
-                <h3>뉴스 브리핑</h3>
-                <p class="card-desc">실시간 AI 뉴스 수집 및 모닝 텔레그램 브리핑</p>
-                <div class="card-summary" id="newsSummary">
-                    <div style="font-size:0.9rem; color:#1e293b; font-weight:600;">실시간 모닝 브리핑 & 이슈 분석</div>
-                    <div style="font-size:0.8rem; color:#64748b; margin-top:0.25rem;">하단 고정 바에서 주요 헤드라인 실시간 확인</div>
+                <div class="card-actions">
+                    <a href="/go/asset" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
+                        자산 관리 열기 →
+                    </a>
                 </div>
-                <span class="card-link-btn">뉴스 브리핑 열기 →</span>
-            </a>
+            </div>
         </div>
     </main>
 
@@ -504,6 +539,53 @@
                     } else {
                         html += `<div class="summary-line"><span style="color:#94a3b8; font-size:0.8rem;">등록된 자산 종목 없음</span></div>`;
                         assetEl.innerHTML = html;
+                    }
+                }
+
+                // 2-3. 뉴스 브리핑 현황판 (시장 지표 미니 칩 + 관심분야 자동 추천 기사)
+                if (data.news) {
+                    const n = data.news;
+                    // 1) 시장 지표 바인딩
+                    if (n.market) {
+                        const k = n.market.kospi;
+                        const f = n.market.usd_krw || n.market.fx;
+                        const kospiPriceEl = document.getElementById('kospiPrice');
+                        const kospiDiffEl = document.getElementById('kospiDiff');
+                        const fxPriceEl = document.getElementById('fxPrice');
+                        const fxDiffEl = document.getElementById('fxDiff');
+
+                        if (k && kospiPriceEl && kospiDiffEl) {
+                            kospiPriceEl.textContent = k.price || '-';
+                            const kArrow = k.direction === 'up' ? '▲ ' : (k.direction === 'down' ? '▼ ' : '');
+                            kospiDiffEl.textContent = kArrow + (k.ratio || '-');
+                            kospiDiffEl.className = 'market-diff ' + (k.direction || 'up');
+                        }
+                        if (f && fxPriceEl && fxDiffEl) {
+                            fxPriceEl.textContent = f.price || '-';
+                            const fArrow = f.direction === 'up' ? '▲ ' : (f.direction === 'down' ? '▼ ' : '');
+                            fxDiffEl.textContent = fArrow + (f.ratio || '-');
+                            fxDiffEl.className = 'market-diff ' + (f.direction || 'up');
+                        }
+                    }
+
+                    // 2) 관심분야 추천 기사 바인딩
+                    const recListEl = document.getElementById('newsRecommendedList');
+                    if (recListEl) {
+                        if (n.recommendedArticles && n.recommendedArticles.length > 0) {
+                            recListEl.innerHTML = n.recommendedArticles.map(a => {
+                                const cat = a.category_name || '주요';
+                                const media = a.media_name ? `<span class="news-rec-media">${a.media_name}</span>` : '';
+                                return `
+                                    <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="news-rec-item" title="${a.title}">
+                                        <span class="news-cat-badge">${cat}</span>
+                                        <span class="news-rec-text">${a.title}</span>
+                                        ${media}
+                                    </a>
+                                `;
+                            }).join('');
+                        } else {
+                            recListEl.innerHTML = '<div style="color:#94a3b8; font-size:0.8rem; padding:0.4rem 0;">수집된 추천 뉴스가 없습니다.</div>';
+                        }
                     }
                 }
             })
