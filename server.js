@@ -1099,8 +1099,17 @@ app.get('/api/admin/asset/summary', authenticateToken, async (req, res) => {
 app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
     try {
         const totalRow = await new Promise(r => newsDb.get('SELECT COUNT(*) as cnt FROM news_articles', (e, row) => r(row || { cnt: 0 })));
+        const logsCountRow = await new Promise(r => newsDb.get('SELECT COUNT(*) as cnt FROM collection_logs', (e, row) => r(row || { cnt: 0 })));
         const recentArticles = await new Promise(r => newsDb.all('SELECT id, title, link, media_name, category_name, published_at FROM news_articles ORDER BY id DESC LIMIT 10', (e, rows) => r(rows || [])));
         const weatherRow = await new Promise(r => newsDb.get('SELECT weather_info, date FROM daily_weather ORDER BY date DESC LIMIT 1', (e, row) => r(row || null)));
+        const settingRow = await new Promise(r => newsDb.get("SELECT value FROM system_settings WHERE key = 'collection_enabled'", (e, row) => r(row || null)));
+
+        let dbSizeKb = 0;
+        try {
+            if (fs.existsSync(NEWS_DB_PATH)) {
+                dbSizeKb = Math.round(fs.statSync(NEWS_DB_PATH).size / 1024);
+            }
+        } catch (e) {}
 
         let weather = { temp: '22°C', condition: '맑음' };
         if (weatherRow && weatherRow.weather_info) {
@@ -1114,12 +1123,39 @@ app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
         res.json({
             success: true,
             totalArticles: totalRow.cnt,
+            totalLogs: logsCountRow.cnt,
+            dbSizeKb,
+            collectionEnabled: !settingRow || settingRow.value !== '0',
             recentArticles,
             weather
         });
     } catch (e) {
-        res.status(500).json({ success: false, message: '뉴스 데이터 조회 실패' });
+        res.status(500).json({ success: false, message: '뉴스 데이터 조회 실패: ' + e.message });
     }
+});
+
+// 10-1. [신규] 뉴스 수집기 및 스케줄러 로그 파일 실시간 조회 API
+app.get('/api/admin/news/file-logs', authenticateToken, (req, res) => {
+    const logType = req.query.type || 'collector';
+    const allowed = ['collector', 'scheduler'];
+    if (!allowed.includes(logType)) {
+        return res.status(400).json({ success: false, message: '허용되지 않은 로그 타입입니다.' });
+    }
+
+    const logFile = logType === 'scheduler' ? 'scheduler.log' : 'collector.log';
+    const filePath = path.join('/home/upt0731/news-dashboard/logs', logFile);
+    const linesCount = Math.min(Math.max(parseInt(req.query.lines, 10) || 120, 10), 300);
+
+    if (!fs.existsSync(filePath)) {
+        return res.json({ success: true, logs: `[알림] ${logFile} 파일이 아직 생성되지 않았거나 비어 있습니다.` });
+    }
+
+    exec(`tail -n ${linesCount} "${filePath}"`, (err, stdout, stderr) => {
+        if (err) {
+            return res.json({ success: true, logs: `로그 파일 읽기 오류: ${err.message}` });
+        }
+        res.json({ success: true, logs: stdout || '(기록된 로그 내용이 없습니다.)' });
+    });
 });
 
 // 11. 뉴스 수집 및 모닝 브리핑 즉시 실행 (트리거)

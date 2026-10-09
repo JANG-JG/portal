@@ -76,7 +76,7 @@
                                 <small>진료 방문 내역 및 복용 기반 일정 예측</small>
                             </div>
                         </a>
-                        <a href="https://blood.j-jg.cc/admin" class="unav-sublink">
+                        <a href="https://j-jg.cc/admin#tab-blood" class="unav-sublink" onclick="switchAdminTab('tab-blood')">
                             <span class="unav-sub-icon">⚙️</span>
                             <div class="unav-sub-text">
                                 <strong>관리자 제어 센터</strong>
@@ -147,7 +147,7 @@
                                 <small>경제, 사회, 국방 등 카테고리 설정</small>
                             </div>
                         </a>
-                        <a href="https://news.j-jg.cc/admin" class="unav-sublink">
+                        <a href="https://j-jg.cc/admin#tab-news" class="unav-sublink" onclick="switchAdminTab('tab-news')">
                             <span class="unav-sub-icon">⚙️</span>
                             <div class="unav-sub-text">
                                 <strong>뉴스 수집 관리</strong>
@@ -246,7 +246,7 @@
                             <a href="https://blood.j-jg.cc/dashboard.html">📋 혈압 관리 메인 페이지</a>
                             <a href="https://blood.j-jg.cc/report.html">📊 진료 리포트 보기</a>
                             <a href="https://blood.j-jg.cc/hospital.html">🏥 병원 일정 상세 관리</a>
-                            <a href="https://blood.j-jg.cc/admin">⚙️ 관리자 제어 센터</a>
+                            <a href="https://j-jg.cc/admin#tab-blood" onclick="switchAdminTab('tab-blood'); closeUnavMobileMenu();">⚙️ 관리자 제어 센터</a>
                         </div>
                     </div>
 
@@ -273,7 +273,7 @@
                             <a href="https://news.j-jg.cc/">📰 실시간 뉴스 대시보드</a>
                             <a href="https://news.j-jg.cc/weather">🌤️ 날씨 브리핑</a>
                             <a href="https://news.j-jg.cc/categories">🏷️ 관심 분야 관리</a>
-                            <a href="https://news.j-jg.cc/admin">⚙️ 뉴스 수집 관리</a>
+                            <a href="https://j-jg.cc/admin#tab-news" onclick="switchAdminTab('tab-news'); closeUnavMobileMenu();">⚙️ 뉴스 수집 관리</a>
                         </div>
                     </div>
 
@@ -729,17 +729,30 @@
                         <h3>📰 뉴스 데이터 현황</h3>
                         <a href="/go/news" class="btn-admin btn-admin-outline btn-admin-sm">뉴스 앱 열기 →</a>
                     </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:0.75rem;">
-                        <span style="color:#64748b;">총 수집 기사 수</span>
-                        <strong style="color:#2563eb; font-size:1.2rem;" id="newsTotalCount">-</strong>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.6rem; margin-bottom: 0.85rem;">
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.6rem 0.5rem; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:600;">총 저장 기사</div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#2563eb; margin-top:0.2rem;" id="newsTotalCount">-</div>
+                        </div>
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.6rem 0.5rem; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:600;">총 수집 이력</div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#0f172a; margin-top:0.2rem;" id="newsLogsTotalCount">-</div>
+                        </div>
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.6rem 0.5rem; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:600;">DB 파일 용량</div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#059669; margin-top:0.2rem;" id="newsDbSize">-</div>
+                        </div>
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.6rem 0.5rem; text-align:center;">
+                            <div style="font-size:0.72rem; color:#64748b; font-weight:600;">자동 수집 상태</div>
+                            <div style="font-size:0.85rem; font-weight:700; margin-top:0.3rem;" id="newsStatusBadge"><span class="badge badge-success">조회 중</span></div>
+                        </div>
                     </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:1rem;">
-                        <span style="color:#64748b;">오늘의 날씨 (계룡)</span>
-                        <strong id="newsTodayWeather">-</strong>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.75rem; background:#f1f5f9; border-radius:0.5rem;">
+                        <span style="color:#64748b; font-size:0.82rem;">🌤️ 계룡 날씨: <strong id="newsTodayWeather" style="color:#1e293b;">-</strong></span>
+                        <a href="/api/admin/backup/briefing" class="btn-admin btn-admin-success btn-admin-sm">
+                            💾 briefing.db 다운로드
+                        </a>
                     </div>
-                    <a href="/api/admin/backup/briefing" class="btn-admin btn-admin-success btn-admin-sm">
-                        💾 briefing.db 다운로드
-                    </a>
                 </div>
             </div>
 
@@ -788,6 +801,37 @@
                             <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">로그 로딩 중...</td></tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- 5. 뉴스 수집기 및 스케줄러 실시간 파일 로그 콘솔 -->
+            <div class="admin-card" style="padding: 1.25rem;">
+                <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                    <h3>📜 뉴스 수집기 및 스케줄러 상세 파일 로그 (최근 120줄)</h3>
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <select id="newsLogTypeSelect" onchange="fetchNewsFileLogs()" style="padding:0.35rem 0.65rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600; color:#334155; cursor:pointer;">
+                            <option value="collector">🤖 수집기 로그 (collector.log)</option>
+                            <option value="scheduler">⏱️ 스케줄러 로그 (scheduler.log)</option>
+                        </select>
+                        <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="fetchNewsFileLogs()">
+                            🔄 로그 새로고침
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="terminal-title-bar">
+                            <div class="terminal-dots">
+                                <span class="terminal-dot dot-red"></span>
+                                <span class="terminal-dot dot-yellow"></span>
+                                <span class="terminal-dot dot-green"></span>
+                            </div>
+                            <span class="terminal-title" id="newsTerminalTitle">tail -n 120 /home/upt0731/news-dashboard/logs/collector.log</span>
+                        </div>
+                        <span style="font-size:0.7rem; color:#64748b; font-family:monospace;">tail -n 120 (live)</span>
+                    </div>
+                    <pre id="newsLogConsole" class="pm2-console">뉴스 로그 로딩 중...</pre>
                 </div>
             </div>
         </div>
@@ -999,6 +1043,7 @@
             } else if (tabId === 'tab-news') {
                 loadNewsData();
                 loadNewsLogs();
+                fetchNewsFileLogs();
             } else if (tabId === 'tab-security') {
                 loadSecurityLogs();
             }
@@ -1455,11 +1500,22 @@
                 const data = await res.json();
                 if (!data.success) return;
 
-                document.getElementById('newsTotalCount').textContent = `${data.totalArticles.toLocaleString()}건`;
+                document.getElementById('newsTotalCount').textContent = `${(data.totalArticles || 0).toLocaleString()}건`;
+                if (document.getElementById('newsLogsTotalCount')) {
+                    document.getElementById('newsLogsTotalCount').textContent = `${(data.totalLogs || 0).toLocaleString()}회`;
+                }
+                if (document.getElementById('newsDbSize')) {
+                    document.getElementById('newsDbSize').textContent = `${(data.dbSizeKb || 0).toLocaleString()} KB`;
+                }
+                if (document.getElementById('newsStatusBadge')) {
+                    document.getElementById('newsStatusBadge').innerHTML = data.collectionEnabled
+                        ? '<span class="badge badge-success">정상 가동</span>'
+                        : '<span class="badge badge-warning" style="background:#fef3c7; color:#92400e;">일시 정지</span>';
+                }
                 document.getElementById('newsTodayWeather').textContent = data.weather ? `${data.weather.temp} (${data.weather.condition})` : '조회 중';
 
                 const tbody = document.getElementById('newsArticlesTableBody');
-                tbody.innerHTML = data.recentArticles.map(a => `
+                tbody.innerHTML = (data.recentArticles || []).map(a => `
                     <tr>
                         <td><span style="background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:700;">${a.category_name}</span></td>
                         <td style="font-weight:600; color:#475569;">${a.media_name}</td>
@@ -1471,6 +1527,35 @@
                     </tr>
                 `).join('');
             } catch (err) {}
+        }
+
+        // 뉴스 수집기 및 스케줄러 실시간 파일 로그 조회
+        async function fetchNewsFileLogs() {
+            const consoleEl = document.getElementById('newsLogConsole');
+            const selectEl = document.getElementById('newsLogTypeSelect');
+            const titleEl = document.getElementById('newsTerminalTitle');
+            if (!consoleEl || !selectEl) return;
+
+            const logType = selectEl.value || 'collector';
+            const logFileName = logType === 'scheduler' ? 'scheduler.log' : 'collector.log';
+            if (titleEl) {
+                titleEl.textContent = `tail -n 120 /home/upt0731/news-dashboard/logs/${logFileName}`;
+            }
+
+            consoleEl.textContent = `[${new Date().toLocaleTimeString()}] ${logFileName} 최신 로그를 불러오는 중입니다...`;
+
+            try {
+                const res = await fetch(`/api/admin/news/file-logs?type=${logType}&lines=120`);
+                const data = await res.json();
+                if (data.success) {
+                    consoleEl.textContent = data.logs || '(로그 파일이 비어 있습니다.)';
+                    consoleEl.scrollTop = consoleEl.scrollHeight;
+                } else {
+                    consoleEl.textContent = '로그 로딩 실패: ' + (data.message || '오류 발생');
+                }
+            } catch (err) {
+                consoleEl.textContent = '로그 통신 오류: ' + err.message;
+            }
         }
 
         // 뉴스 즉시 수집 트리거
@@ -1489,7 +1574,11 @@
                 const data = await res.json();
                 if (data.success) {
                     showToast(data.message);
-                    setTimeout(loadNewsData, 4000);
+                    setTimeout(() => {
+                        loadNewsData();
+                        loadNewsLogs();
+                        fetchNewsFileLogs();
+                    }, 4000);
                 } else {
                     showToast(data.message, true);
                 }
