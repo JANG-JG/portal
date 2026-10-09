@@ -416,3 +416,100 @@ body {
     }
 }
 
+/* 🩸 혈압 카드 확장 위젯 스타일 */
+.bp-stat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    width: 100%;
+}
+.bp-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.86rem;
+    color: #334155;
+    padding: 0.2rem 0;
+    border-bottom: 1px dashed #e2e8f0;
+}
+.bp-stat-row:last-child {
+    border-bottom: none;
+}
+.bp-stat-label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #64748b;
+    font-weight: 500;
+}
+.bp-stat-val {
+    font-weight: 700;
+    color: #0f172a;
+}
+.badge-pill {
+    background: #fef2f2;
+    color: #e11d48;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.badge-pill.safe {
+    background: #ecfdf5;
+    color: #059669;
+}
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+.btn-quick-med {
+    flex: 1;
+    min-width: 160px;
+    background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+    color: #ffffff;
+    border: none;
+    padding: 0.55rem 0.85rem;
+    border-radius: 0.5rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    box-shadow: 0 2px 4px rgba(225, 29, 72, 0.2);
+}
+.btn-quick-med:hover {
+    background: linear-gradient(135deg, #be123c 0%, #9f1239 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(225, 29, 72, 0.3);
+}
+.btn-quick-med:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+.btn-hospital-sub {
+    background: #f8fafc;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.45rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: all 0.2s;
+}
+.btn-hospital-sub:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+

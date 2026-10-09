@@ -42,6 +42,10 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             status TEXT,
             attempted_at DATETIME DEFAULT (datetime('now', 'localtime'))
         )`);
+        db.run(`CREATE TABLE IF NOT EXISTS system_configs (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )`);
     }
 });
 
@@ -248,6 +252,29 @@ function getKoreanStockName(symbol, fullName) {
     return symbol;
 }
 
+// 병원 진료 예약 오픈일 계산 헬퍼 함수
+function calculateReservationOpenDate(nextVisitDateStr) {
+    if (!nextVisitDateStr) return '-';
+    try {
+        const nextVisit = new Date(nextVisitDateStr);
+        if (isNaN(nextVisit.getTime())) return '-';
+        const dayOfWeek = nextVisit.getDay();
+        const sunday = new Date(nextVisit);
+        sunday.setDate(nextVisit.getDate() - dayOfWeek);
+
+        const openFriday = new Date(sunday);
+        openFriday.setDate(sunday.getDate() - 2);
+        
+        const year = openFriday.getFullYear();
+        const month = String(openFriday.getMonth() + 1).padStart(2, '0');
+        const day = String(openFriday.getDate()).padStart(2, '0');
+        
+        return `${year}-${month}-${day} 11:00`;
+    } catch (e) {
+        return '-';
+    }
+}
+
 // 6. 요약 데이터 조회 API (메인 대시보드 카드용)
 app.get('/api/summary', authenticateToken, async (req, res) => {
     try {
@@ -255,11 +282,65 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
         const blood = await new Promise((resolve) => {
             db.get('SELECT systolic, diastolic, pulse, measured_at FROM records WHERE systolic IS NOT NULL ORDER BY measured_at DESC LIMIT 1', (err, row) => resolve(row || null));
         });
+
         // 2) 최근 투약 일시
         const medication = await new Promise((resolve) => {
             db.get("SELECT medication_time FROM records WHERE medication_time IS NOT NULL AND medication_time != '' ORDER BY medication_time DESC LIMIT 1", (err, row) => resolve(row || null));
         });
-        // 3) 자산 보유 종목 목록
+
+        // 3) 병원 진료 및 남은 약 수량 계산
+        const hospital = await new Promise((resolve) => {
+            const hospitalQuery = `
+                SELECT 
+                    MIN(visit_date) as first_visit,
+                    MAX(visit_date) as last_visit,
+                    SUM(prescription_days) as total_prescribed
+                FROM hospital_visits
+            `;
+            db.get(hospitalQuery, [], (hErr, visitSummary) => {
+                if (hErr || !visitSummary || !visitSummary.first_visit) {
+                    return resolve(null);
+                }
+
+                db.get('SELECT * FROM hospital_visits ORDER BY visit_date DESC LIMIT 1', [], (lvErr, lastVisit) => {
+                    if (lvErr || !lastVisit) return resolve(null);
+
+                    const medQuery = `
+                        SELECT COUNT(DISTINCT substr(measured_at, 1, 10)) as total_taken 
+                        FROM records 
+                        WHERE substr(measured_at, 1, 10) >= ? 
+                          AND medication_time IS NOT NULL 
+                          AND length(medication_time) > 5
+                    `;
+                    db.get(medQuery, [visitSummary.first_visit], (mErr, medResult) => {
+                        const totalTaken = medResult ? medResult.total_taken : 0;
+                        const totalPrescribed = visitSummary.total_prescribed || 0;
+                        const remainingPills = Math.max(0, totalPrescribed - totalTaken);
+
+                        const today = new Date();
+                        const predictedVisit = new Date(today);
+                        predictedVisit.setDate(today.getDate() + remainingPills - 3);
+
+                        const predictedVisitStr = predictedVisit.toISOString().split('T')[0];
+                        const nextVisitDate = lastVisit.next_visit_date || predictedVisitStr;
+                        const reservationOpenDate = calculateReservationOpenDate(nextVisitDate);
+
+                        resolve({
+                            hospitalName: lastVisit.hospital_name || '',
+                            lastVisitDate: lastVisit.visit_date,
+                            nextVisitDate: lastVisit.next_visit_date || null,
+                            predictedVisitDate: predictedVisitStr,
+                            displayNextVisit: lastVisit.next_visit_date ? lastVisit.next_visit_date : `${predictedVisitStr} (예상)`,
+                            remainingPills: remainingPills,
+                            reservationOpenDate: reservationOpenDate,
+                            prescriptionDays: lastVisit.prescription_days || 0
+                        });
+                    });
+                });
+            });
+        });
+
+        // 4) 자산 보유 종목 목록
         const assets = await new Promise((resolve) => {
             assetDb.all('SELECT symbol, full_name, quantity, avg_price, currency FROM assets WHERE quantity > 0', (err, rows) => resolve(rows || []));
         });
@@ -309,6 +390,7 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             success: true,
             blood: blood || null,
             medication: medication || null,
+            hospital: hospital || null,
             asset: {
                 totalKrw: '₩' + totalKrw.toLocaleString(),
                 count: assetItems.length,
@@ -318,6 +400,35 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error('요약 데이터 조회 오류:', err);
         res.status(500).json({ success: false, message: '요약 데이터 조회 실패' });
+    }
+});
+
+// 6-1. [신규] 지금 혈압약 복용 (원터치 등록) API
+app.post('/api/blood/quick-med', authenticateToken, (req, res) => {
+    try {
+        const now = new Date();
+        const tzOffset = now.getTimezoneOffset() * 60000;
+        const nowStr = (new Date(now.getTime() - tzOffset)).toISOString().slice(0, 16);
+
+        db.run(
+            `INSERT INTO records (systolic, diastolic, pulse, measured_at, medication_time) VALUES (NULL, NULL, NULL, ?, ?)`,
+            [nowStr, nowStr],
+            function(err) {
+                if (err) {
+                    console.error('원터치 복약 등록 실패:', err);
+                    return res.status(500).json({ success: false, message: '복약 기록 저장 실패' });
+                }
+                res.json({
+                    success: true,
+                    message: '💊 오늘 혈압약 복용 기록이 성공적으로 등록되었습니다!',
+                    id: this.lastID,
+                    medication_time: nowStr
+                });
+            }
+        );
+    } catch (err) {
+        console.error('원터치 복약 처리 오류:', err);
+        res.status(500).json({ success: false, message: '서버 내부 오류' });
     }
 });
 
@@ -868,6 +979,51 @@ app.post('/api/admin/blood/test-email', authenticateToken, (req, res) => {
             return res.status(500).json({ success: false, message: `발송 실패: ${stderr || err.message}` });
         }
         res.json({ success: true, message: '구글 알림 메일이 관리자 계정으로 정상 발송되었습니다!' });
+    });
+});
+
+// 8-1. [신규] 혈압 대시보드 환경설정 조회 API
+app.get('/api/admin/blood/configs', authenticateToken, (req, res) => {
+    db.all(`SELECT key, value FROM system_configs`, [], (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: '설정 조회 실패' });
+        
+        const configs = {};
+        (rows || []).forEach(row => { configs[row.key] = row.value; });
+        
+        if (!configs.session_timeout) configs.session_timeout = '30';
+        if (!configs.high_systolic) configs.high_systolic = '135';
+        if (!configs.high_diastolic) configs.high_diastolic = '85';
+        if (!configs.low_systolic) configs.low_systolic = '90';
+        if (!configs.low_diastolic) configs.low_diastolic = '60';
+
+        res.json({ success: true, configs });
+    });
+});
+
+// 8-2. [신규] 혈압 대시보드 환경설정 저장 API
+app.post('/api/admin/blood/configs', authenticateToken, (req, res) => {
+    const { high_systolic, high_diastolic, low_systolic, low_diastolic, session_timeout } = req.body;
+
+    if (!high_systolic || !high_diastolic || !low_systolic || !low_diastolic || !session_timeout) {
+        return res.status(400).json({ success: false, message: '모든 기준치를 올바르게 입력해주세요.' });
+    }
+
+    db.serialize(() => {
+        db.run("BEGIN TRANSACTION");
+        const stmt = db.prepare(`INSERT OR REPLACE INTO system_configs (key, value) VALUES (?, ?)`);
+        stmt.run('high_systolic', high_systolic.toString());
+        stmt.run('high_diastolic', high_diastolic.toString());
+        stmt.run('low_systolic', low_systolic.toString());
+        stmt.run('low_diastolic', low_diastolic.toString());
+        stmt.run('session_timeout', session_timeout.toString());
+        stmt.finalize();
+        db.run("COMMIT", (err) => {
+            if (err) {
+                console.error('혈압 환경설정 저장 실패:', err);
+                return res.status(500).json({ success: false, message: '설정 저장 중 오류가 발생했습니다.' });
+            }
+            res.json({ success: true, message: '대시보드 환경설정이 성공적으로 저장되었습니다.' });
+        });
     });
 });
 

@@ -534,6 +534,54 @@
                 </div>
             </div>
 
+            <!-- 2-1. 혈압 대시보드 환경설정 -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>⚙️ 혈압 대시보드 환경설정</h3>
+                    <span style="font-size:0.85rem; color:#64748b;">위험 경고 기준치 및 세션 설정</span>
+                </div>
+                <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                    대시보드에서 고혈압 및 저혈압 경고 배지를 띄울 기준 수치와 비활성 시 자동 로그아웃 시간을 변경합니다.
+                </p>
+                <form id="bloodConfigForm" onsubmit="saveBloodConfigs(event)">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                        <div>
+                            <label for="cfgHighSys" style="display:block; font-size:0.85rem; font-weight:600; color:#dc2626; margin-bottom:0.35rem;">
+                                🚨 고혈압 수축기 (최고)
+                            </label>
+                            <input type="number" id="cfgHighSys" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                        </div>
+                        <div>
+                            <label for="cfgHighDia" style="display:block; font-size:0.85rem; font-weight:600; color:#dc2626; margin-bottom:0.35rem;">
+                                🚨 고혈압 이완기 (최저)
+                            </label>
+                            <input type="number" id="cfgHighDia" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                        </div>
+                        <div>
+                            <label for="cfgLowSys" style="display:block; font-size:0.85rem; font-weight:600; color:#2563eb; margin-bottom:0.35rem;">
+                                ❄️ 저혈압 수축기 (최고)
+                            </label>
+                            <input type="number" id="cfgLowSys" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                        </div>
+                        <div>
+                            <label for="cfgLowDia" style="display:block; font-size:0.85rem; font-weight:600; color:#2563eb; margin-bottom:0.35rem;">
+                                ❄️ 저혈압 이완기 (최저)
+                            </label>
+                            <input type="number" id="cfgLowDia" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                        </div>
+                        <div>
+                            <label for="cfgSessionTimeout" style="display:block; font-size:0.85rem; font-weight:600; color:#475569; margin-bottom:0.35rem;">
+                                ⏳ 자동 로그아웃 (분)
+                            </label>
+                            <input type="number" id="cfgSessionTimeout" min="1" max="1440" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                        </div>
+                    </div>
+                    <button type="submit" id="btnSaveBloodConfig" class="btn-admin btn-admin-primary">
+                        ⚙️ 설정 저장하기
+                    </button>
+                </form>
+            </div>
+
             <!-- 3. CSV 데이터 복원 -->
             <div class="admin-card">
                 <div class="admin-card-header">
@@ -868,6 +916,7 @@
                 fetchPm2Logs();
             } else if (tabId === 'tab-blood') {
                 loadBloodData();
+                fetchBloodConfigs();
             } else if (tabId === 'tab-asset') {
                 loadAssetData();
             } else if (tabId === 'tab-news') {
@@ -1226,6 +1275,66 @@
                 }
             } catch (err) {
                 showToast('복구 오류: ' + err.message, true);
+            }
+        }
+
+        // 혈압 대시보드 환경설정 로드
+        async function fetchBloodConfigs() {
+            try {
+                const res = await fetch('/api/admin/blood/configs');
+                const data = await res.json();
+                if (data.success && data.configs) {
+                    const c = data.configs;
+                    const highSys = document.getElementById('cfgHighSys');
+                    const highDia = document.getElementById('cfgHighDia');
+                    const lowSys = document.getElementById('cfgLowSys');
+                    const lowDia = document.getElementById('cfgLowDia');
+                    const timeout = document.getElementById('cfgSessionTimeout');
+
+                    if (highSys) highSys.value = c.high_systolic || '135';
+                    if (highDia) highDia.value = c.high_diastolic || '85';
+                    if (lowSys) lowSys.value = c.low_systolic || '90';
+                    if (lowDia) lowDia.value = c.low_diastolic || '60';
+                    if (timeout) timeout.value = c.session_timeout || '30';
+                }
+            } catch (err) {
+                console.error('혈압 환경설정 로드 오류:', err);
+            }
+        }
+
+        // 혈압 대시보드 환경설정 저장
+        async function saveBloodConfigs(e) {
+            if (e) e.preventDefault();
+            const btn = document.getElementById('btnSaveBloodConfig');
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = '⏳ 저장 중...';
+
+            const payload = {
+                high_systolic: document.getElementById('cfgHighSys').value,
+                high_diastolic: document.getElementById('cfgHighDia').value,
+                low_systolic: document.getElementById('cfgLowSys').value,
+                low_diastolic: document.getElementById('cfgLowDia').value,
+                session_timeout: document.getElementById('cfgSessionTimeout').value
+            };
+
+            try {
+                const res = await fetch('/api/admin/blood/configs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message || '대시보드 환경설정이 성공적으로 저장되었습니다!');
+                } else {
+                    showToast(data.message || '저장 실패', true);
+                }
+            } catch (err) {
+                showToast('설정 저장 오류: ' + err.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
             }
         }
 
