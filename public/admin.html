@@ -748,7 +748,7 @@
                         </div>
                     </div>
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.75rem; background:#f1f5f9; border-radius:0.5rem;">
-                        <span style="color:#64748b; font-size:0.82rem;">🌤️ 계룡 날씨: <strong id="newsTodayWeather" style="color:#1e293b;">-</strong></span>
+                        <span style="color:#64748b; font-size:0.82rem;"><span id="newsWeatherIcon">🌤️</span> <span id="newsWeatherCity">계룡</span> 날씨: <strong id="newsTodayWeather" style="color:#1e293b;">-</strong></span>
                         <a href="/api/admin/backup/briefing" class="btn-admin btn-admin-success btn-admin-sm">
                             💾 briefing.db 다운로드
                         </a>
@@ -1512,7 +1512,17 @@
                         ? '<span class="badge badge-success">정상 가동</span>'
                         : '<span class="badge badge-warning" style="background:#fef3c7; color:#92400e;">일시 정지</span>';
                 }
-                document.getElementById('newsTodayWeather').textContent = data.weather ? `${data.weather.temp} (${data.weather.condition})` : '조회 중';
+                if (data.weather) {
+                    if (document.getElementById('newsWeatherIcon') && data.weather.icon) {
+                        document.getElementById('newsWeatherIcon').textContent = data.weather.icon;
+                    }
+                    if (document.getElementById('newsWeatherCity') && data.weather.city) {
+                        document.getElementById('newsWeatherCity').textContent = data.weather.city;
+                    }
+                    document.getElementById('newsTodayWeather').textContent = `${data.weather.temp} (${data.weather.condition})`;
+                } else {
+                    document.getElementById('newsTodayWeather').textContent = '조회 중';
+                }
 
                 const tbody = document.getElementById('newsArticlesTableBody');
                 tbody.innerHTML = (data.recentArticles || []).map(a => `

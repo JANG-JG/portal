@@ -1278,7 +1278,6 @@ app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
         const totalRow = await new Promise(r => newsDb.get('SELECT COUNT(*) as cnt FROM news_articles', (e, row) => r(row || { cnt: 0 })));
         const logsCountRow = await new Promise(r => newsDb.get('SELECT COUNT(*) as cnt FROM collection_logs', (e, row) => r(row || { cnt: 0 })));
         const recentArticles = await new Promise(r => newsDb.all('SELECT id, title, link, media_name, category_name, published_at FROM news_articles ORDER BY id DESC LIMIT 10', (e, rows) => r(rows || [])));
-        const weatherRow = await new Promise(r => newsDb.get('SELECT weather_info, date FROM daily_weather ORDER BY date DESC LIMIT 1', (e, row) => r(row || null)));
         const settingRow = await new Promise(r => newsDb.get("SELECT value FROM system_settings WHERE key = 'collection_enabled'", (e, row) => r(row || null)));
 
         let dbSizeKb = 0;
@@ -1288,14 +1287,7 @@ app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
             }
         } catch (e) {}
 
-        let weather = { temp: '22°C', condition: '맑음' };
-        if (weatherRow && weatherRow.weather_info) {
-            try {
-                const parsed = typeof weatherRow.weather_info === 'string' ? JSON.parse(weatherRow.weather_info) : weatherRow.weather_info;
-                if (parsed.current_temp) weather.temp = parsed.current_temp + '°C';
-                if (parsed.condition) weather.condition = parsed.condition;
-            } catch (e) {}
-        }
+        const weather = await getLiveWeatherData();
 
         res.json({
             success: true,
