@@ -299,6 +299,35 @@
     background: #f8fafc;
 }
 
+/* 테이블 스크롤 컨테이너 (고정 헤더 & 최대 높이 제한) */
+.admin-table-container.admin-table-scroll {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.admin-table-container.admin-table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.admin-table-container.admin-table-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.admin-table-container.admin-table-scroll::-webkit-scrollbar-track {
+    background: #f8fafc;
+}
+.admin-table-container.admin-table-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+.admin-table-container.admin-table-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
 /* 알림 토스트 */
 #adminToast {
     position: fixed;
@@ -514,21 +543,69 @@
     filter: grayscale(1);
 }
 
-/* PM2 실시간 다크 콘솔 터미널 */
+/* 실제 터미널 윈도우 스타일 및 높이 축소 */
+.terminal-window {
+    background: #090d16;
+    border: 1px solid #1e293b;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.terminal-header {
+    background: #131b2e;
+    border-bottom: 1px solid #1e293b;
+    padding: 0.45rem 0.85rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.terminal-title-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.terminal-dots {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+}
+
+.terminal-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.terminal-dot.dot-red { background: #ef4444; }
+.terminal-dot.dot-yellow { background: #f59e0b; }
+.terminal-dot.dot-green { background: #10b981; }
+
+.terminal-title {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 0.76rem;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
 .pm2-console {
     background: #090d16;
     color: #4ade80;
     font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Courier New', monospace;
-    font-size: 0.8rem;
-    line-height: 1.5;
-    padding: 1rem 1.25rem;
-    border-radius: 0.5rem;
-    height: 340px;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    padding: 0.75rem 1rem;
+    height: 200px;
+    max-height: 200px;
     overflow-y: auto;
     white-space: pre-wrap;
     word-break: break-all;
-    border: 1px solid #1e293b;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
+    border: none;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
     margin: 0;
 }
 
@@ -537,11 +614,14 @@
     height: 6px;
 }
 .pm2-console::-webkit-scrollbar-track {
-    background: #0f172a;
+    background: #090d16;
 }
 .pm2-console::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #1e293b;
     border-radius: 3px;
+}
+.pm2-console::-webkit-scrollbar-thumb:hover {
+    background: #334155;
 }
 
 /* 로그 테이블 뱃지 */

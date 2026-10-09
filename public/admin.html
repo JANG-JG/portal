@@ -136,11 +136,11 @@
             </div>
 
             <!-- 실시간 서버 콘솔 로그 (최근 50줄) -->
-            <div class="admin-card">
-                <div class="admin-card-header" style="flex-wrap:wrap; gap:0.75rem;">
-                    <h3>📋 실시간 서버 시스템 및 에러 로그 (최근 50줄)</h3>
+            <div class="admin-card" style="padding: 1.25rem;">
+                <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                    <h3>💻 실시간 서버 시스템 및 에러 로그 (최근 50줄)</h3>
                     <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                        <select id="pm2LogProcessSelect" onchange="fetchPm2Logs()" style="padding:0.4rem 0.75rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600; color:#334155; cursor:pointer;">
+                        <select id="pm2LogProcessSelect" onchange="fetchPm2Logs()" style="padding:0.35rem 0.65rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600; color:#334155; cursor:pointer;">
                             <option value="all">전체 통합 로그</option>
                             <option value="portal">🏠 portal</option>
                             <option value="blood-pressure-app">🩸 blood-pressure-app</option>
@@ -154,7 +154,22 @@
                         </button>
                     </div>
                 </div>
-                <pre id="pm2LogConsole" class="pm2-console">로그를 불러오는 중입니다...</pre>
+                
+                <!-- 실제 터미널 윈도우 스타일 프레임 -->
+                <div class="terminal-window">
+                    <div class="terminal-header">
+                        <div class="terminal-title-bar">
+                            <div class="terminal-dots">
+                                <span class="terminal-dot dot-red"></span>
+                                <span class="terminal-dot dot-yellow"></span>
+                                <span class="terminal-dot dot-green"></span>
+                            </div>
+                            <span class="terminal-title">bash - pm2 logs --lines 50</span>
+                        </div>
+                        <span style="font-size:0.7rem; color:#64748b; font-family:monospace;">tail -n 50 (live)</span>
+                    </div>
+                    <pre id="pm2LogConsole" class="pm2-console">로그를 불러오는 중입니다...</pre>
+                </div>
             </div>
 
             <!-- 데이터베이스 파일 및 개별 백업 카드 -->
@@ -262,7 +277,7 @@
                     <h3>🩸 최근 혈압 측정 기록 (최근 10건)</h3>
                     <a href="/go/blood" class="btn-admin btn-admin-outline btn-admin-sm">혈압 앱 열기 →</a>
                 </div>
-                <div class="admin-table-container">
+                <div class="admin-table-container admin-table-scroll">
                     <table class="admin-table">
                         <thead>
                             <tr>
@@ -321,7 +336,7 @@
                 <div class="admin-card-header">
                     <h3>📂 증권 계좌별 현황</h3>
                 </div>
-                <div class="admin-table-container">
+                <div class="admin-table-container admin-table-scroll">
                     <table class="admin-table">
                         <thead>
                             <tr>
@@ -343,7 +358,7 @@
                 <div class="admin-card-header">
                     <h3>💼 전체 보유 종목 상세 (한글명 매핑)</h3>
                 </div>
-                <div class="admin-table-container">
+                <div class="admin-table-container admin-table-scroll">
                     <table class="admin-table">
                         <thead>
                             <tr>
@@ -411,7 +426,7 @@
                 <div class="admin-card-header">
                     <h3>📑 최근 수집 뉴스 기사 (최신 10선)</h3>
                 </div>
-                <div class="admin-table-container">
+                <div class="admin-table-container admin-table-scroll">
                     <table class="admin-table">
                         <thead>
                             <tr>
@@ -435,7 +450,7 @@
                     <h3>📋 뉴스 수집 및 텔레그램 발송 이력 (최근 50회)</h3>
                     <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadNewsLogs()">🔄 새로고침</button>
                 </div>
-                <div class="admin-table-container">
+                <div class="admin-table-container admin-table-scroll">
                     <table class="admin-table">
                         <thead>
                             <tr>
@@ -519,7 +534,7 @@
                     <h3>🔒 최근 로그인 시도 이력 (최근 50건)</h3>
                     <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadSecurityLogs()">🔄 새로고침</button>
                 </div>
-                <div class="admin-table-container">
+                <div class="admin-table-container admin-table-scroll">
                     <table class="admin-table">
                         <thead>
                             <tr>
