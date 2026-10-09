@@ -659,9 +659,28 @@
         // ---------------------------------------------------------------------
         let deferredInstallPrompt = null;
 
+        function checkPwaInstalled() {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            const isInstalledStorage = localStorage.getItem('pwa_installed') === 'true';
+
+            const btn = document.getElementById('btnPwaInstall');
+            const mBtn = document.getElementById('btnPwaInstallMobile');
+
+            if (isStandalone || isInstalledStorage) {
+                if (btn) btn.style.display = 'none';
+                if (mBtn) mBtn.style.display = 'none';
+                return true;
+            }
+            return false;
+        }
+
+        // 페이지 진입 즉시 설치 여부 검사
+        checkPwaInstalled();
+
         // 1. 서비스 워커 등록
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
+                checkPwaInstalled();
                 navigator.serviceWorker.register('/sw.js?v=2')
                     .then(reg => {
                         console.log('[PWA] Service Worker registered with scope:', reg.scope);
@@ -678,6 +697,9 @@
             deferredInstallPrompt = e;
             console.log('[PWA] beforeinstallprompt captured');
 
+            // 이미 설치된 환경이면 버튼을 노출하지 않음
+            if (checkPwaInstalled()) return;
+
             const btn = document.getElementById('btnPwaInstall');
             const mBtn = document.getElementById('btnPwaInstallMobile');
             if (btn) btn.style.display = 'inline-flex';
@@ -692,6 +714,8 @@
                 console.log('[PWA] User choice:', outcome);
                 if (outcome === 'accepted') {
                     console.log('[PWA] User accepted the install prompt');
+                    localStorage.setItem('pwa_installed', 'true');
+                    checkPwaInstalled();
                 }
                 deferredInstallPrompt = null;
             } else {
@@ -699,6 +723,8 @@
                 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
                 if (isStandalone) {
+                    localStorage.setItem('pwa_installed', 'true');
+                    checkPwaInstalled();
                     alert('이미 JG 포털 앱이 홈 화면에 설치되어 실행 중입니다. 📱');
                 } else if (isIos) {
                     alert('아이폰/아이패드 Safari 설치 방법:\n하단 공유 버튼(네모+화살표)을 누른 후\n[홈 화면에 추가]를 선택하시면 앱으로 설치됩니다. 📲');
@@ -711,6 +737,8 @@
         // 4. 설치 완료 이벤트
         window.addEventListener('appinstalled', () => {
             console.log('[PWA] App successfully installed');
+            localStorage.setItem('pwa_installed', 'true');
+            checkPwaInstalled();
             deferredInstallPrompt = null;
             alert('🎉 JG 통합 포털 앱이 홈 화면에 성공적으로 설치되었습니다!');
         });
