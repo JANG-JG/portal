@@ -628,7 +628,33 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
     }
 });
 
-// 2. PM2 개별 프로세스 재기동
+// 2. PM2 개별 프로세스 제어 (시작, 중지, 재기동)
+app.post('/api/admin/pm2/action', authenticateToken, (req, res) => {
+    const { action, processName } = req.body;
+    const allowedProcesses = ['portal', 'blood-pressure-app', 'blood-pressure-app-test', 'asset', 'news-dashboard', 'news-scheduler'];
+    const allowedActions = ['start', 'stop', 'restart'];
+
+    if (!processName || !allowedProcesses.includes(processName)) {
+        return res.status(400).json({ success: false, message: '허용되지 않은 프로세스 이름입니다.' });
+    }
+    if (!action || !allowedActions.includes(action)) {
+        return res.status(400).json({ success: false, message: '허용되지 않은 제어 명령입니다 (start, stop, restart만 가능).' });
+    }
+
+    const actionLabels = {
+        'start': '시작',
+        'stop': '중지',
+        'restart': '재기동'
+    };
+    const label = actionLabels[action] || action;
+
+    exec(`pm2 ${action} ${processName}`, (err) => {
+        if (err) return res.status(500).json({ success: false, message: `[${processName}] ${label} 실패: ${err.message}` });
+        res.json({ success: true, message: `[${processName}] 프로세스가 정상적으로 ${label}되었습니다.` });
+    });
+});
+
+// 기존 재기동 호환 API 유지
 app.post('/api/admin/pm2/restart', authenticateToken, (req, res) => {
     const { processName } = req.body;
     const allowed = ['portal', 'blood-pressure-app', 'blood-pressure-app-test', 'asset', 'news-dashboard', 'news-scheduler'];
@@ -639,6 +665,42 @@ app.post('/api/admin/pm2/restart', authenticateToken, (req, res) => {
     exec(`pm2 restart ${processName}`, (err) => {
         if (err) return res.status(500).json({ success: false, message: `재기동 실패: ${err.message}` });
         res.json({ success: true, message: `[${processName}] 프로세스가 정상적으로 재기동되었습니다.` });
+    });
+});
+
+// 2-1. PM2 실시간 서버 콘솔 로그 조회 API (최신 50줄)
+app.get('/api/admin/pm2/logs', authenticateToken, (req, res) => {
+    const allowedProcesses = ['portal', 'blood-pressure-app', 'blood-pressure-app-test', 'asset', 'news-dashboard', 'news-scheduler'];
+    const proc = req.query.process;
+    const lines = Math.min(Math.max(parseInt(req.query.lines, 10) || 50, 10), 200);
+
+    const target = (proc && allowedProcesses.includes(proc)) ? proc : '';
+    const cmd = target ? `pm2 logs ${target} --lines ${lines} --raw --nostream` : `pm2 logs --lines ${lines} --raw --nostream`;
+
+    exec(cmd, { timeout: 6000 }, (err, stdout, stderr) => {
+        if (err && !stdout) {
+            return res.json({ success: false, logs: '로그를 불러오는 중 오류가 발생했거나 PM2가 준비되지 않았습니다.' });
+        }
+        res.json({
+            success: true,
+            logs: stdout || stderr || '현재 기록된 로그가 없습니다.'
+        });
+    });
+});
+
+// 2-2. 보안 로그인 시도 이력 조회 API (최근 50건)
+app.get('/api/admin/logs/login', authenticateToken, (req, res) => {
+    db.all('SELECT id, username, ip, status, attempted_at FROM login_logs ORDER BY attempted_at DESC LIMIT 50', [], (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: '로그인 기록 조회 실패: ' + err.message });
+        res.json({ success: true, logs: rows || [] });
+    });
+});
+
+// 2-3. 뉴스 수집 및 발송 이력 조회 API (최근 50건)
+app.get('/api/admin/logs/news', authenticateToken, (req, res) => {
+    newsDb.all('SELECT id, run_at, status, weather_info, total_collected, saved_count, telegram_sent, details FROM collection_logs ORDER BY id DESC LIMIT 50', [], (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: '뉴스 수집 기록 조회 실패: ' + err.message });
+        res.json({ success: true, logs: rows || [] });
     });
 });
 

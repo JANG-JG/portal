@@ -128,11 +128,33 @@
             <div class="admin-card" style="margin-top:1.5rem;">
                 <div class="admin-card-header">
                     <h3>🚀 5대 서비스 프로세스 상태 (PM2)</h3>
-                    <span style="font-size:0.85rem; color:#64748b;">단일 클릭으로 즉시 무중단 재기동 가능</span>
+                    <span style="font-size:0.85rem; color:#64748b;">시작 / 중지 / 재기동 원클릭 제어</span>
                 </div>
                 <div id="processListContainer" style="display:flex; flex-direction:column; gap:0.75rem;">
                     <div style="text-align:center; padding:2rem; color:#64748b;">프로세스 상태 조회 중...</div>
                 </div>
+            </div>
+
+            <!-- 실시간 서버 콘솔 로그 (최근 50줄) -->
+            <div class="admin-card">
+                <div class="admin-card-header" style="flex-wrap:wrap; gap:0.75rem;">
+                    <h3>📋 실시간 서버 시스템 및 에러 로그 (최근 50줄)</h3>
+                    <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                        <select id="pm2LogProcessSelect" onchange="fetchPm2Logs()" style="padding:0.4rem 0.75rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600; color:#334155; cursor:pointer;">
+                            <option value="all">전체 통합 로그</option>
+                            <option value="portal">🏠 portal</option>
+                            <option value="blood-pressure-app">🩸 blood-pressure-app</option>
+                            <option value="blood-pressure-app-test">🩸 blood-pressure-app-test</option>
+                            <option value="asset">💰 asset</option>
+                            <option value="news-dashboard">📰 news-dashboard</option>
+                            <option value="news-scheduler">⏱️ news-scheduler</option>
+                        </select>
+                        <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="fetchPm2Logs()">
+                            🔄 로그 새로고침
+                        </button>
+                    </div>
+                </div>
+                <pre id="pm2LogConsole" class="pm2-console">로그를 불러오는 중입니다...</pre>
             </div>
 
             <!-- 데이터베이스 파일 및 개별 백업 카드 -->
@@ -406,6 +428,31 @@
                     </table>
                 </div>
             </div>
+
+            <!-- 4. 자동 수집 및 텔레그램 발송 이력 (최근 50회) -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>📋 뉴스 수집 및 텔레그램 발송 이력 (최근 50회)</h3>
+                    <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadNewsLogs()">🔄 새로고침</button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>실행 일시</th>
+                                <th>상태</th>
+                                <th>수집 / 저장</th>
+                                <th>텔레그램</th>
+                                <th>날씨</th>
+                                <th>상세 내용</th>
+                            </tr>
+                        </thead>
+                        <tbody id="newsLogsTableBody">
+                            <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">로그 로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
 
         <!-- ==========================================
@@ -465,6 +512,29 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 3. 최근 로그인 시도 이력 (최근 50건) -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h3>🔒 최근 로그인 시도 이력 (최근 50건)</h3>
+                    <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadSecurityLogs()">🔄 새로고침</button>
+                </div>
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>일시</th>
+                                <th>시도 계정</th>
+                                <th>접속 IP</th>
+                                <th>상태</th>
+                            </tr>
+                        </thead>
+                        <tbody id="securityLogsTableBody">
+                            <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">로그 로딩 중...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -491,9 +561,19 @@
             document.getElementById(tabId).classList.add('active');
             btn.classList.add('active');
 
-            if (tabId === 'tab-blood') loadBloodData();
-            else if (tabId === 'tab-asset') loadAssetData();
-            else if (tabId === 'tab-news') loadNewsData();
+            if (tabId === 'tab-overview') {
+                loadOverviewData();
+                fetchPm2Logs();
+            } else if (tabId === 'tab-blood') {
+                loadBloodData();
+            } else if (tabId === 'tab-asset') {
+                loadAssetData();
+            } else if (tabId === 'tab-news') {
+                loadNewsData();
+                loadNewsLogs();
+            } else if (tabId === 'tab-security') {
+                loadSecurityLogs();
+            }
         }
 
         // 1. 전체 개요 및 PM2 프로세스 로드 (실시간 모니터링)
@@ -557,7 +637,7 @@
                 document.getElementById('dbSizeAsset').textContent = data.dbs.asset;
                 document.getElementById('dbSizeNews').textContent = data.dbs.briefing;
 
-                // 4) 프로세스 카드 목록 렌더링 (실시간 메모리/CPU 제자리 갱신으로 깜빡임 방지)
+                // 4) 프로세스 카드 목록 렌더링 (시작 / 중지 / 재기동 3버튼 제어 및 실시간 상태 동기화)
                 const container = document.getElementById('processListContainer');
                 const existingCards = container.querySelectorAll('.process-item-card');
                 if (existingCards.length === data.processes.length) {
@@ -566,6 +646,10 @@
                         const cpuEl = document.getElementById(`proc-cpu-${p.name}`);
                         const restartsEl = document.getElementById(`proc-restarts-${p.name}`);
                         const badgeEl = document.getElementById(`proc-badge-${p.name}`);
+                        const btnStart = document.getElementById(`btn-start-${p.name}`);
+                        const btnStop = document.getElementById(`btn-stop-${p.name}`);
+                        const btnRestart = document.getElementById(`btn-restart-${p.name}`);
+
                         if (memEl) memEl.textContent = p.memory;
                         if (cpuEl) cpuEl.textContent = p.cpu;
                         if (restartsEl) restartsEl.textContent = `${p.restarts}회`;
@@ -573,6 +657,9 @@
                             const isOnline = p.status === 'online';
                             badgeEl.className = isOnline ? 'badge-online' : 'badge-stopped';
                             badgeEl.textContent = isOnline ? '온라인' : p.status;
+                            if (btnStart) btnStart.disabled = isOnline;
+                            if (btnStop) btnStop.disabled = !isOnline;
+                            if (btnRestart) btnRestart.disabled = !isOnline;
                         }
                     });
                 } else {
@@ -596,8 +683,14 @@
                                         <span>포트: ${p.port || '-'}</span>
                                     </div>
                                 </div>
-                                <div>
-                                    <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="restartPm2Process('${p.name}')">
+                                <div class="process-actions">
+                                    <button class="btn-admin-xs btn-action-start" id="btn-start-${p.name}" ${isOnline ? 'disabled' : ''} onclick="executePm2Action('start', '${p.name}')" title="프로세스 시작">
+                                        ▶️ 시작
+                                    </button>
+                                    <button class="btn-admin-xs btn-action-stop" id="btn-stop-${p.name}" ${!isOnline ? 'disabled' : ''} onclick="executePm2Action('stop', '${p.name}')" title="프로세스 중지">
+                                        ⏹️ 중지
+                                    </button>
+                                    <button class="btn-admin-xs btn-action-restart" id="btn-restart-${p.name}" ${!isOnline ? 'disabled' : ''} onclick="executePm2Action('restart', '${p.name}')" title="프로세스 재기동">
                                         🔄 재기동
                                     </button>
                                 </div>
@@ -622,24 +715,134 @@
             }, 5000);
         }
 
-        // PM2 프로세스 개별 재기동
-        async function restartPm2Process(procName) {
-            if (!confirm(`[${procName}] 프로세스를 재기동하시겠습니까?`)) return;
+        // PM2 프로세스 개별 제어 (시작, 중지, 재기동)
+        async function executePm2Action(action, procName) {
+            const actionLabels = {
+                'start': '시작',
+                'stop': '중지',
+                'restart': '재기동'
+            };
+            const label = actionLabels[action] || action;
+            if (!confirm(`[${procName}] 프로세스를 ${label}하시겠습니까?`)) return;
+
             try {
-                const res = await fetch('/api/admin/pm2/restart', {
+                showToast(`[${procName}] ${label} 요청 중...`);
+                const res = await fetch('/api/admin/pm2/action', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ processName: procName })
+                    body: JSON.stringify({ action, processName: procName })
                 });
                 const data = await res.json();
                 if (data.success) {
-                    showToast(`[${procName}] 재기동 요청이 완료되었습니다.`);
-                    setTimeout(loadOverviewData, 1500);
+                    showToast(data.message);
+                    loadOverviewData();
+                    setTimeout(fetchPm2Logs, 1500);
                 } else {
                     showToast(data.message, true);
                 }
             } catch (err) {
-                showToast('재기동 실패: ' + err.message, true);
+                showToast(`명령 전송 실패: ${err.message}`, true);
+            }
+        }
+
+        // 기존 restartPm2Process 호환 래퍼
+        function restartPm2Process(procName) {
+            executePm2Action('restart', procName);
+        }
+
+        // PM2 실시간 서버 콘솔 로그 조회 (최신 50줄)
+        async function fetchPm2Logs() {
+            const consoleEl = document.getElementById('pm2LogConsole');
+            const selectEl = document.getElementById('pm2LogProcessSelect');
+            const proc = selectEl ? selectEl.value : 'all';
+            if (!consoleEl) return;
+
+            try {
+                const url = proc && proc !== 'all' 
+                    ? `/api/admin/pm2/logs?process=${encodeURIComponent(proc)}&lines=50`
+                    : `/api/admin/pm2/logs?lines=50`;
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.success) {
+                    consoleEl.textContent = data.logs || '현재 기록된 로그가 없습니다.';
+                    consoleEl.scrollTop = consoleEl.scrollHeight;
+                } else {
+                    consoleEl.textContent = '로그 로딩 실패: ' + (data.logs || '오류 발생');
+                }
+            } catch (err) {
+                consoleEl.textContent = '로그 통신 오류: ' + err.message;
+            }
+        }
+
+        // 뉴스 수집 및 발송 이력 로드 (최근 50회)
+        async function loadNewsLogs() {
+            const tbody = document.getElementById('newsLogsTableBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/admin/logs/news');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+
+                if (!data.logs || data.logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">기록된 수집 이력이 없습니다.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.logs.map(log => {
+                    const isSuccess = (log.status || '').includes('SUCCESS');
+                    const badge = isSuccess 
+                        ? `<span class="badge-success">${log.status}</span>` 
+                        : `<span class="badge-failed">${log.status || 'FAILED'}</span>`;
+                    const teleBadge = log.telegram_sent 
+                        ? '<span class="badge-success">발송 완료</span>' 
+                        : '<span class="badge-neutral">미발송</span>';
+
+                    return `
+                        <tr>
+                            <td><small>${log.run_at || '-'}</small></td>
+                            <td>${badge}</td>
+                            <td style="text-align:center;"><strong>${log.total_collected || 0}</strong>건 / <strong>${log.saved_count || 0}</strong>건</td>
+                            <td style="text-align:center;">${teleBadge}</td>
+                            <td><span style="font-size:0.8rem; color:#475569;">${log.weather_info ? log.weather_info.slice(0, 30) + '...' : '-'}</span></td>
+                            <td><span style="font-size:0.8rem; color:#334155;">${log.details || '-'}</span></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#dc2626;">수집 로그 조회 실패: ${err.message}</td></tr>`;
+            }
+        }
+
+        // 최근 로그인 시도 이력 로드 (최근 50건)
+        async function loadSecurityLogs() {
+            const tbody = document.getElementById('securityLogsTableBody');
+            if (!tbody) return;
+            try {
+                const res = await fetch('/api/admin/logs/login');
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+
+                if (!data.logs || data.logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">기록된 로그인 이력이 없습니다.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.logs.map(log => {
+                    const isSuccess = log.status === 'SUCCESS';
+                    const badge = isSuccess 
+                        ? '<span class="badge-success">성공</span>' 
+                        : '<span class="badge-failed">실패</span>';
+                    return `
+                        <tr>
+                            <td><small>${log.attempted_at || '-'}</small></td>
+                            <td><strong>${log.username || '-'}</strong></td>
+                            <td><code>${log.ip || '-'}</code></td>
+                            <td>${badge}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#dc2626;">로그 조회 실패: ${err.message}</td></tr>`;
             }
         }
 
@@ -847,6 +1050,7 @@
         // 초기 로드 및 실시간 폴링 가동
         document.addEventListener('DOMContentLoaded', () => {
             loadOverviewData();
+            fetchPm2Logs();
             startOverviewPolling();
         });
     </script>
