@@ -385,81 +385,247 @@ app.get('/go/:service', authenticateToken, (req, res) => {
 });
 
 // ==========================================
-// ⚙️ [통합 관리자 제어 센터 API]
+// ⚙️ [통합 관리자 제어 센터 API 및 실시간 모니터링]
 // ==========================================
 
-// 1. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황
-app.get('/api/admin/overview', authenticateToken, (req, res) => {
-    exec('pm2 jlist', (err, stdout) => {
-        let processes = [];
-        if (!err && stdout) {
-            try {
-                const list = JSON.parse(stdout);
-                const displayNames = {
-                    'portal': '🏠 JG 통합 포털',
-                    'blood-pressure-app': '🩸 혈압 관리 서비스',
-                    'blood-pressure-app-test': '🩸 혈압 관리 (테스트)',
-                    'asset': '💰 내 자산 관리 서비스',
-                    'news-dashboard': '📰 AI 뉴스 대시보드',
-                    'news-scheduler': '⏱️ 모닝 뉴스 스케줄러 데몬'
-                };
-                const ports = {
-                    'portal': '3004',
-                    'blood-pressure-app': '3000',
-                    'blood-pressure-app-test': '3001',
-                    'asset': '3003',
-                    'news-dashboard': '5050',
-                    'news-scheduler': 'Daemon'
-                };
-                processes = list.map(p => ({
-                    name: p.name,
-                    displayName: displayNames[p.name] || p.name,
-                    status: p.pm2_env?.status || 'unknown',
-                    pid: p.pid,
-                    pm_id: p.pm_id,
-                    memory: p.monit ? (p.monit.memory / 1024 / 1024).toFixed(1) + ' MB' : '-',
-                    cpu: p.monit ? p.monit.cpu + '%' : '-',
-                    restarts: p.pm2_env?.restart_time || 0,
-                    port: ports[p.name] || '-'
-                }));
-            } catch (e) {}
-        }
+// 1) 실시간 호스트 CPU 사용률 백그라운드 계산기 (/proc/stat 기반, 3초 주기)
+let currentCpuPercent = 0;
+let prevCpuStat = null;
 
-        const formatSize = (bytes) => {
-            if (!bytes || bytes <= 0) return '0 KB';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / 1024 / 1024).toFixed(2) + ' MB';
-        };
-
-        const getFileSize = (filePath) => {
-            try { return formatSize(fs.statSync(filePath).size); }
-            catch (e) { return '미존재'; }
-        };
-
-        const dbs = {
-            health: getFileSize(BLOOD_DB_PATH),
-            asset: getFileSize(ASSET_DB_PATH),
-            briefing: getFileSize(NEWS_DB_PATH)
-        };
-
-        const totalMem = os.totalmem();
-        const freeMem = os.freemem();
-        const usedMem = totalMem - freeMem;
-        const memPercent = ((usedMem / totalMem) * 100).toFixed(1) + '%';
-        const uptimeHours = (os.uptime() / 3600).toFixed(1) + '시간';
-
-        res.json({
-            success: true,
-            processes,
-            dbs,
-            system: {
-                memUsage: memPercent,
-                memFree: (freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
-                memTotal: (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
-                uptimeStr: uptimeHours
+function updateCpuUsage() {
+    try {
+        const line = fs.readFileSync('/proc/stat', 'utf8').split('\n')[0];
+        const parts = line.trim().split(/\s+/).slice(1).map(Number);
+        const idle = parts[3] + (parts[4] || 0);
+        const total = parts.reduce((a, b) => a + b, 0);
+        if (prevCpuStat) {
+            const idleDelta = idle - prevCpuStat.idle;
+            const totalDelta = total - prevCpuStat.total;
+            if (totalDelta > 0) {
+                currentCpuPercent = Math.max(0, Math.min(100, Math.round(((totalDelta - idleDelta) / totalDelta) * 100)));
             }
+        }
+        prevCpuStat = { idle, total };
+    } catch (e) {
+        const load = os.loadavg()[0];
+        const cpus = os.cpus().length || 1;
+        currentCpuPercent = Math.min(100, Math.round((load / cpus) * 100));
+    }
+}
+updateCpuUsage();
+setInterval(updateCpuUsage, 3000);
+
+// 2) CPU 하드웨어 온도 측정 (1분 캐시로 센서 부하 방지)
+let cpuTempCache = {
+    timestamp: 0,
+    temp: null,
+    status: 'normal'
+};
+
+async function getCpuTemperature() {
+    const now = Date.now();
+    if (cpuTempCache.temp !== null && (now - cpuTempCache.timestamp < 60000)) {
+        return cpuTempCache;
+    }
+
+    return new Promise((resolve) => {
+        exec('sensors -j', { timeout: 3000 }, (err, stdout) => {
+            if (err || !stdout) return resolve(cpuTempCache);
+            try {
+                const data = JSON.parse(stdout);
+                let tempVal = null;
+
+                // k10temp(AMD) 및 coretemp(인텔) 우선 탐색
+                for (const key of Object.keys(data)) {
+                    if (key.includes('k10temp') || key.includes('coretemp')) {
+                        const chip = data[key];
+                        for (const sensorKey of Object.keys(chip)) {
+                            if (chip[sensorKey]?.temp1_input !== undefined) {
+                                tempVal = chip[sensorKey].temp1_input;
+                                break;
+                            }
+                        }
+                    }
+                    if (tempVal !== null) break;
+                }
+
+                // acpitz 메인보드 센서 대체 탐색
+                if (tempVal === null) {
+                    for (const key of Object.keys(data)) {
+                        if (key.includes('acpitz')) {
+                            const chip = data[key];
+                            for (const sensorKey of Object.keys(chip)) {
+                                if (chip[sensorKey]?.temp1_input !== undefined) {
+                                    tempVal = chip[sensorKey].temp1_input;
+                                    break;
+                                }
+                            }
+                        }
+                        if (tempVal !== null) break;
+                    }
+                }
+
+                if (tempVal !== null) {
+                    const rounded = Math.round(tempVal * 10) / 10;
+                    let status = 'normal';
+                    if (rounded >= 75) status = 'hot';
+                    else if (rounded >= 65) status = 'warn';
+
+                    cpuTempCache = {
+                        timestamp: now,
+                        temp: rounded,
+                        status
+                    };
+                }
+            } catch (e) {}
+            resolve(cpuTempCache);
         });
     });
+}
+
+// 3) 디스크 용량 측정 (1분 캐시)
+let diskCache = {
+    timestamp: 0,
+    used: '0 GB',
+    total: '0 GB',
+    percent: '0%',
+    percentNum: 0
+};
+
+async function getDiskUsage() {
+    const now = Date.now();
+    if (diskCache.percentNum > 0 && (now - diskCache.timestamp < 60000)) {
+        return diskCache;
+    }
+
+    return new Promise((resolve) => {
+        exec(`df -m "${__dirname}"`, { timeout: 3000 }, (err, stdout) => {
+            if (err || !stdout) return resolve(diskCache);
+            try {
+                const lines = stdout.trim().split('\n');
+                if (lines.length >= 2) {
+                    const parts = lines[1].trim().split(/\s+/);
+                    const totalM = parseInt(parts[1], 10);
+                    const usedM = parseInt(parts[2], 10);
+                    const totalG = (totalM / 1024).toFixed(1);
+                    const usedG = (usedM / 1024).toFixed(1);
+                    const pct = Math.round((usedM / totalM) * 100);
+                    diskCache = {
+                        timestamp: now,
+                        used: `${usedG} GB`,
+                        total: `${totalG} GB`,
+                        percent: `${pct}%`,
+                        percentNum: pct
+                    };
+                }
+            } catch (e) {}
+            resolve(diskCache);
+        });
+    });
+}
+
+// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황
+app.get('/api/admin/overview', authenticateToken, async (req, res) => {
+    try {
+        const [tempInfo, diskInfo] = await Promise.all([
+            getCpuTemperature(),
+            getDiskUsage()
+        ]);
+
+        exec('pm2 jlist', (err, stdout) => {
+            let processes = [];
+            if (!err && stdout) {
+                try {
+                    const list = JSON.parse(stdout);
+                    const displayNames = {
+                        'portal': '🏠 JG 통합 포털',
+                        'blood-pressure-app': '🩸 혈압 관리 서비스',
+                        'blood-pressure-app-test': '🩸 혈압 관리 (테스트)',
+                        'asset': '💰 내 자산 관리 서비스',
+                        'news-dashboard': '📰 AI 뉴스 대시보드',
+                        'news-scheduler': '⏱️ 모닝 뉴스 스케줄러 데몬'
+                    };
+                    const ports = {
+                        'portal': '3004',
+                        'blood-pressure-app': '3000',
+                        'blood-pressure-app-test': '3001',
+                        'asset': '3003',
+                        'news-dashboard': '5050',
+                        'news-scheduler': 'Daemon'
+                    };
+                    processes = list.map(p => ({
+                        name: p.name,
+                        displayName: displayNames[p.name] || p.name,
+                        status: p.pm2_env?.status || 'unknown',
+                        pid: p.pid,
+                        pm_id: p.pm_id,
+                        memory: p.monit ? (p.monit.memory / 1024 / 1024).toFixed(1) + ' MB' : '-',
+                        cpu: p.monit ? p.monit.cpu + '%' : '-',
+                        restarts: p.pm2_env?.restart_time || 0,
+                        port: ports[p.name] || '-'
+                    }));
+                } catch (e) {}
+            }
+
+            const formatSize = (bytes) => {
+                if (!bytes || bytes <= 0) return '0 KB';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / 1024 / 1024).toFixed(2) + ' MB';
+            };
+
+            const getFileSize = (filePath) => {
+                try { return formatSize(fs.statSync(filePath).size); }
+                catch (e) { return '미존재'; }
+            };
+
+            const dbs = {
+                health: getFileSize(BLOOD_DB_PATH),
+                asset: getFileSize(ASSET_DB_PATH),
+                briefing: getFileSize(NEWS_DB_PATH)
+            };
+
+            const totalMem = os.totalmem();
+            const freeMem = os.freemem();
+            const usedMem = totalMem - freeMem;
+            const memPercentNum = Math.round((usedMem / totalMem) * 100);
+            const memPercent = `${memPercentNum}%`;
+            const uptimeHours = (os.uptime() / 3600).toFixed(1) + '시간';
+
+            res.json({
+                success: true,
+                processes,
+                dbs,
+                system: {
+                    memUsage: memPercent,
+                    memFree: (freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
+                    memTotal: (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
+                    uptimeStr: uptimeHours,
+                    cpu: {
+                        percent: `${currentCpuPercent}%`,
+                        percentNum: currentCpuPercent,
+                        temp: tempInfo.temp !== null ? `${tempInfo.temp}°C` : '측정 불가',
+                        tempStatus: tempInfo.status
+                    },
+                    memory: {
+                        percent: memPercent,
+                        percentNum: memPercentNum,
+                        used: (usedMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
+                        total: (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
+                        free: (freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB'
+                    },
+                    disk: {
+                        percent: diskInfo.percent,
+                        percentNum: diskInfo.percentNum,
+                        used: diskInfo.used,
+                        total: diskInfo.total
+                    }
+                }
+            });
+        });
+    } catch (err) {
+        console.error('관리자 오버뷰 조회 오류:', err);
+        res.status(500).json({ success: false, message: '서버 상태 조회 실패' });
+    }
 });
 
 // 2. PM2 개별 프로세스 재기동

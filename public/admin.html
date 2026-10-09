@@ -65,19 +65,61 @@
         <div id="tab-overview" class="admin-tab-pane active">
             <!-- 시스템 리소스 개요 카드 -->
             <div class="admin-grid-3" id="systemStatsGrid">
-                <div class="admin-card" style="margin-bottom:0;">
-                    <div style="color:#64748b; font-size:0.85rem; font-weight:600;">실행 중인 서비스</div>
-                    <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="activeProcessCount">-</div>
+                <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <div style="color:#64748b; font-size:0.85rem; font-weight:600;">실행 중인 서비스</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="activeProcessCount">-</div>
+                    </div>
                     <div style="font-size:0.8rem; color:#10b981; font-weight:600;">모든 핵심 데몬 정상 가동</div>
                 </div>
-                <div class="admin-card" style="margin-bottom:0;">
-                    <div style="color:#64748b; font-size:0.85rem; font-weight:600;">서버 메모리 사용량</div>
-                    <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="systemMemUsage">-</div>
-                    <div style="font-size:0.8rem; color:#64748b;" id="systemMemDetails">확인 중...</div>
+                <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:#64748b; font-size:0.85rem; font-weight:700;">서버 핵심 리소스 & 상태</span>
+                        <span class="live-indicator"><span class="live-dot"></span>5초 실시간</span>
+                    </div>
+                    <div class="resource-gauge-container">
+                        <!-- 1. CPU 게이지 & 온도 -->
+                        <div class="resource-gauge-item">
+                            <div class="resource-gauge-header">
+                                <span class="resource-gauge-title">⚡ CPU</span>
+                                <span class="resource-gauge-val">
+                                    <span id="gaugeCpuVal">-%</span>
+                                    <span id="gaugeCpuTemp" class="temp-badge temp-badge-normal">🌡️ --°C</span>
+                                </span>
+                            </div>
+                            <div class="gauge-track">
+                                <div id="gaugeCpuBar" class="gauge-fill gauge-fill-cpu" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- 2. 메모리 게이지 -->
+                        <div class="resource-gauge-item">
+                            <div class="resource-gauge-header">
+                                <span class="resource-gauge-title">💾 RAM</span>
+                                <span class="resource-gauge-val" id="gaugeMemVal">-% (- / -)</span>
+                            </div>
+                            <div class="gauge-track">
+                                <div id="gaugeMemBar" class="gauge-fill gauge-fill-mem" style="width: 0%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- 3. 저장공간 게이지 -->
+                        <div class="resource-gauge-item">
+                            <div class="resource-gauge-header">
+                                <span class="resource-gauge-title">💽 Disk</span>
+                                <span class="resource-gauge-val" id="gaugeDiskVal">-% (- / -)</span>
+                            </div>
+                            <div class="gauge-track">
+                                <div id="gaugeDiskBar" class="gauge-fill gauge-fill-disk" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="admin-card" style="margin-bottom:0;">
-                    <div style="color:#64748b; font-size:0.85rem; font-weight:600;">서버 가동 시간 (Uptime)</div>
-                    <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="systemUptime">-</div>
+                <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <div style="color:#64748b; font-size:0.85rem; font-weight:600;">서버 가동 시간 (Uptime)</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="systemUptime">-</div>
+                    </div>
                     <div style="font-size:0.8rem; color:#64748b;">안정적인 서비스 지속 운영 중</div>
                 </div>
             </div>
@@ -454,58 +496,130 @@
             else if (tabId === 'tab-news') loadNewsData();
         }
 
-        // 1. 전체 개요 및 PM2 프로세스 로드
+        // 1. 전체 개요 및 PM2 프로세스 로드 (실시간 모니터링)
         async function loadOverviewData() {
             try {
                 const res = await fetch('/api/admin/overview');
                 const data = await res.json();
                 if (!data.success) throw new Error(data.message);
 
-                // 상단 통계
-                document.getElementById('activeProcessCount').textContent = `${data.processes.filter(p => p.status === 'online').length} / ${data.processes.length}`;
-                document.getElementById('systemMemUsage').textContent = data.system.memUsage;
-                document.getElementById('systemMemDetails').textContent = `${data.system.memFree} 여유 (총 ${data.system.memTotal})`;
+                // 1) 상단 통계 갱신
+                const onlineCount = data.processes.filter(p => p.status === 'online').length;
+                document.getElementById('activeProcessCount').textContent = `${onlineCount} / ${data.processes.length}`;
                 document.getElementById('systemUptime').textContent = data.system.uptimeStr;
 
-                // DB 크기
+                // 2) 리소스 게이지 바 & CPU 온도 갱신
+                // CPU
+                const cpuVal = data.system.cpu ? data.system.cpu.percent : '0%';
+                const cpuPct = data.system.cpu ? data.system.cpu.percentNum : 0;
+                document.getElementById('gaugeCpuVal').textContent = cpuVal;
+                const cpuBar = document.getElementById('gaugeCpuBar');
+                if (cpuBar) {
+                    cpuBar.style.width = Math.min(100, Math.max(0, cpuPct)) + '%';
+                    cpuBar.classList.toggle('warn', cpuPct >= 80);
+                }
+
+                // CPU 온도
+                const tempEl = document.getElementById('gaugeCpuTemp');
+                if (tempEl && data.system.cpu) {
+                    const tVal = data.system.cpu.temp || '측정 불가';
+                    const tStatus = data.system.cpu.tempStatus || 'normal';
+                    tempEl.textContent = '🌡️ ' + tVal;
+                    tempEl.className = 'temp-badge temp-badge-' + tStatus;
+                }
+
+                // 메모리 (RAM)
+                const memVal = data.system.memory ? data.system.memory.percent : '0%';
+                const memPct = data.system.memory ? data.system.memory.percentNum : 0;
+                const memUsed = data.system.memory ? data.system.memory.used : '-';
+                const memTotal = data.system.memory ? data.system.memory.total : '-';
+                document.getElementById('gaugeMemVal').textContent = `${memVal} (${memUsed} / ${memTotal})`;
+                const memBar = document.getElementById('gaugeMemBar');
+                if (memBar) {
+                    memBar.style.width = Math.min(100, Math.max(0, memPct)) + '%';
+                    memBar.classList.toggle('warn', memPct >= 85);
+                }
+
+                // 저장공간 (Disk)
+                const diskVal = data.system.disk ? data.system.disk.percent : '0%';
+                const diskPct = data.system.disk ? data.system.disk.percentNum : 0;
+                const diskUsed = data.system.disk ? data.system.disk.used : '-';
+                const diskTotal = data.system.disk ? data.system.disk.total : '-';
+                document.getElementById('gaugeDiskVal').textContent = `${diskVal} (${diskUsed} / ${diskTotal})`;
+                const diskBar = document.getElementById('gaugeDiskBar');
+                if (diskBar) {
+                    diskBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
+                    diskBar.classList.toggle('warn', diskPct >= 90);
+                }
+
+                // 3) DB 크기
                 document.getElementById('dbSizeHealth').textContent = data.dbs.health;
                 document.getElementById('dbSizeAsset').textContent = data.dbs.asset;
                 document.getElementById('dbSizeNews').textContent = data.dbs.briefing;
 
-                // 프로세스 카드 목록 렌더링
+                // 4) 프로세스 카드 목록 렌더링 (실시간 메모리/CPU 제자리 갱신으로 깜빡임 방지)
                 const container = document.getElementById('processListContainer');
-                container.innerHTML = data.processes.map(p => {
-                    const isOnline = p.status === 'online';
-                    const badge = isOnline 
-                        ? `<span class="badge-online">온라인</span>` 
-                        : `<span class="badge-stopped">${p.status}</span>`;
+                const existingCards = container.querySelectorAll('.process-item-card');
+                if (existingCards.length === data.processes.length) {
+                    data.processes.forEach(p => {
+                        const memEl = document.getElementById(`proc-mem-${p.name}`);
+                        const cpuEl = document.getElementById(`proc-cpu-${p.name}`);
+                        const restartsEl = document.getElementById(`proc-restarts-${p.name}`);
+                        const badgeEl = document.getElementById(`proc-badge-${p.name}`);
+                        if (memEl) memEl.textContent = p.memory;
+                        if (cpuEl) cpuEl.textContent = p.cpu;
+                        if (restartsEl) restartsEl.textContent = `${p.restarts}회`;
+                        if (badgeEl) {
+                            const isOnline = p.status === 'online';
+                            badgeEl.className = isOnline ? 'badge-online' : 'badge-stopped';
+                            badgeEl.textContent = isOnline ? '온라인' : p.status;
+                        }
+                    });
+                } else {
+                    container.innerHTML = data.processes.map(p => {
+                        const isOnline = p.status === 'online';
+                        const badgeClass = isOnline ? 'badge-online' : 'badge-stopped';
+                        const badgeText = isOnline ? '온라인' : p.status;
 
-                    return `
-                        <div class="process-item-card">
-                            <div class="process-info">
-                                <h4>
-                                    ${p.displayName || p.name}
-                                    ${badge}
-                                </h4>
-                                <div class="process-meta">
-                                    <span>PID: ${p.pid || '-'}</span>
-                                    <span>메모리: <strong>${p.memory}</strong></span>
-                                    <span>CPU: <strong>${p.cpu}</strong></span>
-                                    <span>재기동: ${p.restarts}회</span>
-                                    <span>포트: ${p.port || '-'}</span>
+                        return `
+                            <div class="process-item-card" id="proc-card-${p.name}">
+                                <div class="process-info">
+                                    <h4>
+                                        ${p.displayName || p.name}
+                                        <span id="proc-badge-${p.name}" class="${badgeClass}">${badgeText}</span>
+                                    </h4>
+                                    <div class="process-meta">
+                                        <span>PID: ${p.pid || '-'}</span>
+                                        <span>메모리: <strong id="proc-mem-${p.name}">${p.memory}</strong></span>
+                                        <span>CPU: <strong id="proc-cpu-${p.name}">${p.cpu}</strong></span>
+                                        <span>재기동: <span id="proc-restarts-${p.name}">${p.restarts}회</span></span>
+                                        <span>포트: ${p.port || '-'}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="restartPm2Process('${p.name}')">
+                                        🔄 재기동
+                                    </button>
                                 </div>
                             </div>
-                            <div>
-                                <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="restartPm2Process('${p.name}')">
-                                    🔄 재기동
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
+                        `;
+                    }).join('');
+                }
             } catch (err) {
-                showToast('상태 정보를 불러오지 못했습니다: ' + err.message, true);
+                console.error('관리자 상태 로드 오류:', err);
             }
+        }
+
+        // 5초 주기 실시간 자동 갱신 폴링
+        let overviewPollTimer = null;
+        function startOverviewPolling() {
+            if (overviewPollTimer) clearInterval(overviewPollTimer);
+            overviewPollTimer = setInterval(() => {
+                const overviewPane = document.getElementById('tab-overview');
+                if (overviewPane && overviewPane.classList.contains('active')) {
+                    loadOverviewData();
+                }
+            }, 5000);
         }
 
         // PM2 프로세스 개별 재기동
@@ -730,10 +844,12 @@
             }
         }
 
-        // 초기 로드
+        // 초기 로드 및 실시간 폴링 가동
         document.addEventListener('DOMContentLoaded', () => {
             loadOverviewData();
+            startOverviewPolling();
         });
     </script>
 </body>
 </html>
+
