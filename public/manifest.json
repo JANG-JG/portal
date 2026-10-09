@@ -1,0 +1,21 @@
+{
+  "name": "JG 통합 포털",
+  "short_name": "JG 포털",
+  "description": "혈압 건강, 금융 자산, 실시간 뉴스 통합 관리 포털",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities", "finance", "medical"]
+}

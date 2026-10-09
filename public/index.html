@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JG 통합 포털</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="apple-touch-icon" href="/favicon.svg">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="JG 포털">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/unified-nav.css">
 </head>
@@ -290,6 +297,10 @@
                 </div>
 
                 <div class="unav-m-footer">
+                    <button type="button" class="unav-m-install-btn" id="btnPwaInstallMobile" onclick="triggerPwaInstall()">
+                        <span>📲</span>
+                        <span>홈 화면에 앱으로 설치</span>
+                    </button>
                     <a href="https://j-jg.cc/logout" class="unav-m-logout-btn">
                         <span>🚪</span>
                         <span>안전하게 로그아웃</span>
@@ -308,6 +319,10 @@
                     <span id="welcomeWeatherCity">계룡</span>
                     <span id="welcomeWeatherTemp" class="weather-compact-temp">22°C</span>
                 </a>
+                <button type="button" class="btn-pwa-install" id="btnPwaInstall" onclick="triggerPwaInstall()" title="스마트폰 및 PC 홈 화면에 바로가기 앱으로 설치">
+                    <span>📲</span>
+                    <span>앱 설치</span>
+                </button>
             </div>
             <p>오늘의 통합 서비스 현황을 한눈에 확인하고 바로 이동하세요.</p>
         </section>
@@ -551,6 +566,67 @@
                 }, 250);
             }, 3500);
         }
+
+        // ---------------------------------------------------------------------
+        // 📲 PWA 웹앱 설치 제어 및 서비스 워커 등록
+        // ---------------------------------------------------------------------
+        let deferredInstallPrompt = null;
+
+        // 1. 서비스 워커 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => {
+                        console.log('[PWA] Service Worker registered with scope:', reg.scope);
+                    })
+                    .catch(err => {
+                        console.warn('[PWA] Service Worker registration failed:', err);
+                    });
+            });
+        }
+
+        // 2. 브라우저 설치 가능 이벤트 감지
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            console.log('[PWA] beforeinstallprompt captured');
+
+            const btn = document.getElementById('btnPwaInstall');
+            const mBtn = document.getElementById('btnPwaInstallMobile');
+            if (btn) btn.style.display = 'inline-flex';
+            if (mBtn) mBtn.style.display = 'flex';
+        });
+
+        // 3. 설치 버튼 클릭 시 실행 함수
+        async function triggerPwaInstall() {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                const { outcome } = await deferredInstallPrompt.userChoice;
+                console.log('[PWA] User choice:', outcome);
+                if (outcome === 'accepted') {
+                    console.log('[PWA] User accepted the install prompt');
+                }
+                deferredInstallPrompt = null;
+            } else {
+                const isIos = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+                if (isStandalone) {
+                    alert('이미 JG 포털 앱이 홈 화면에 설치되어 실행 중입니다. 📱');
+                } else if (isIos) {
+                    alert('아이폰/아이패드 Safari 설치 방법:\n하단 공유 버튼(네모+화살표)을 누른 후\n[홈 화면에 추가]를 선택하시면 앱으로 설치됩니다. 📲');
+                } else {
+                    alert('브라우저 우측 상단 메뉴(⋮)에서 [앱 설치] 또는 [홈 화면에 추가]를 눌러 바로 설치하실 수 있습니다. 📲');
+                }
+            }
+        }
+
+        // 4. 설치 완료 이벤트
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] App successfully installed');
+            deferredInstallPrompt = null;
+            alert('🎉 JG 통합 포털 앱이 홈 화면에 성공적으로 설치되었습니다!');
+        });
     </script>
 
     <!-- 🌟 전 사이트 공통 TV 뉴스 티커 하단바 -->
