@@ -850,6 +850,86 @@
                 </div>
             </div>
 
+            <!-- 2-1. 서버 환경 및 보안 기술 스택 (Tech Stack) -->
+            <div class="admin-card" style="margin-bottom:1.5rem;">
+                <div class="admin-card-header">
+                    <h3>💻 서버 환경 및 보안 기술 스택 (System & Architecture)</h3>
+                    <span style="font-size:0.85rem; color:#64748b;">통합 기술 명세</span>
+                </div>
+                <p style="font-size:0.875rem; color:#64748b; margin-bottom:1.25rem;">
+                    JG 통합 포털 서버의 런타임, 프론트엔드/백엔드 프레임워크, 독립 데이터베이스 및 네트워크 보안 환경 명세입니다.
+                </p>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:1rem;">
+                    <!-- 1. 백엔드 & 런타임 -->
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.1rem;">
+                        <div style="font-weight:700; color:#0f172a; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+                            <span>⚙️ 백엔드 & 런타임</span>
+                        </div>
+                        <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
+                            <li><strong>Node.js v20 LTS (Express)</strong>
+                                <div style="font-size:0.78rem; color:#64748b;">포털(:3004), 혈압(:3000), 자산(:3003)</div>
+                            </li>
+                            <li><strong>Python 3.11 (Flask & Gunicorn)</strong>
+                                <div style="font-size:0.78rem; color:#64748b;">실시간 뉴스(:5050) & 스케줄러</div>
+                            </li>
+                            <li><strong>PM2 Production Process Manager</strong>
+                                <div style="font-size:0.78rem; color:#64748b;">4개 핵심 서비스 프로세스 자가 회복/관리</div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- 2. 프론트엔드 & UI -->
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.1rem;">
+                        <div style="font-weight:700; color:#0f172a; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+                            <span>🎨 프론트엔드 & UI 스택</span>
+                        </div>
+                        <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
+                            <li><strong>HTML5 Semantic Markup</strong></li>
+                            <li><strong>Modern CSS3 (Flexbox & CSS Grid)</strong>
+                                <div style="font-size:0.78rem; color:#64748b;">모바일 반응형 & 통합 내비게이션 바</div>
+                            </li>
+                            <li><strong>Pure Vanilla JavaScript (ES6+)</strong>
+                                <div style="font-size:0.78rem; color:#64748b;">무거운 프레임워크 없는 제로 종속성 렌더링</div>
+                            </li>
+                            <li><strong>PWA Web App (Service Worker v2)</strong></li>
+                            <li><strong>Chart.js (반응형 캔버스 시각화)</strong></li>
+                        </ul>
+                    </div>
+
+                    <!-- 3. 데이터베이스 -->
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.1rem;">
+                        <div style="font-weight:700; color:#0f172a; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+                            <span>🗄️ 데이터베이스 스택</span>
+                        </div>
+                        <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
+                            <li><strong>SQLite 3 독립 DB 아키텍처</strong>
+                                <div style="font-size:0.78rem; color:#64748b;">• <code>health.db</code> (혈압·병원·계정)</div>
+                                <div style="font-size:0.78rem; color:#64748b;">• <code>asset.db</code> (자산·거래·환율)</div>
+                                <div style="font-size:0.78rem; color:#64748b;">• <code>briefing.db</code> (뉴스·브리핑 로그)</div>
+                            </li>
+                            <li><strong>실시간 WAL 저널 & 원클릭 백업 지원</strong></li>
+                        </ul>
+                    </div>
+
+                    <!-- 4. 네트워크 & 인프라 보안 -->
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.1rem;">
+                        <div style="font-weight:700; color:#0f172a; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+                            <span>🛡️ 네트워크 & 보안 인프라</span>
+                        </div>
+                        <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
+                            <li><strong>Cloudflare Zero Trust Tunnel</strong>
+                                <div style="font-size:0.78rem; color:#64748b;">외부 직접 포트 노출 차단 암호화 터널링</div>
+                            </li>
+                            <li><strong>Nginx Reverse Proxy & SSL (TLS 1.3)</strong></li>
+                            <li><strong>Cross-Subdomain JWT SSO Session</strong>
+                                <div style="font-size:0.78rem; color:#64748b;">SameSite=Lax, HttpOnly, Secure 쿠키</div>
+                            </li>
+                            <li><strong>Helmet CSP (Content Security Policy)</strong></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <!-- 3. 최근 로그인 시도 이력 (최근 50건) -->
             <div class="admin-card">
                 <div class="admin-card-header">

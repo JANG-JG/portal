@@ -238,12 +238,12 @@ body {
     padding: 0.85rem;
     font-size: 0.9rem;
     color: #334155;
-    margin-top: auto;
+    margin-top: 0;
     margin-bottom: 1.25rem;
     min-height: 80px;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 /* 혈압 & 투약 현황 라인 */
@@ -326,6 +326,7 @@ body {
     color: var(--primary);
     display: flex;
     align-items: center;
+    margin-top: auto;
 }
 
 /* 카드별 강조 컬러 */
@@ -539,7 +540,8 @@ body {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    margin-top: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
     flex-wrap: wrap;
 }
 .btn-quick-med {
