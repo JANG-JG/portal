@@ -301,7 +301,14 @@
 
     <main class="container">
         <section class="welcome-section">
-            <h2>안녕하세요, <span id="usernameDisplay">사용자</span>님 👋</h2>
+            <div class="welcome-header-row">
+                <h2>안녕하세요, <span id="usernameDisplay">사용자</span>님 👋</h2>
+                <a href="https://news.j-jg.cc/weather" class="weather-compact-badge" id="welcomeWeatherBadge" title="실시간 날씨 브리핑 바로가기">
+                    <span id="welcomeWeatherIcon">☀️</span>
+                    <span id="welcomeWeatherCity">계룡</span>
+                    <span id="welcomeWeatherTemp" class="weather-compact-temp">22°C</span>
+                </a>
+            </div>
             <p>오늘의 통합 서비스 현황을 한눈에 확인하고 바로 이동하세요.</p>
         </section>
 
@@ -373,6 +380,17 @@
                 .then(res => res.json())
                 .then(data => {
                     if (!data.success) return;
+
+                    // 2-0. 인사말 옆 날씨 뱃지 바인딩
+                    if (data.weather) {
+                        const w = data.weather;
+                        const iconEl = document.getElementById('welcomeWeatherIcon');
+                        const cityEl = document.getElementById('welcomeWeatherCity');
+                        const tempEl = document.getElementById('welcomeWeatherTemp');
+                        if (iconEl && w.icon) iconEl.textContent = w.icon;
+                        if (cityEl && w.city) cityEl.textContent = (w.city === 'Gyeryong' ? '계룡' : w.city);
+                        if (tempEl && w.temp) tempEl.textContent = w.temp;
+                    }
 
                     // 2-1. 혈압 현황판 (최근 혈압, 투약, 병원 진료일, 남은 약, 예약 오픈일)
                     const bloodEl = document.getElementById('bloodSummary');

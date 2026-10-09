@@ -162,13 +162,14 @@
                 height: 28px !important;
             }
             .jg-v-box {
-                width: 78px !important;
+                width: 105px !important;
                 height: 28px !important;
             }
             .jg-v-item {
-                font-size: 10px !important;
+                font-size: 10.5px !important;
                 gap: 3px !important;
                 padding: 0 4px !important;
+                white-space: nowrap !important;
             }
             .jg-ticker-link {
                 font-size: 11px !important;
@@ -246,7 +247,7 @@
                 const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
 
                 const slides = [
-                    `<a href="https://news.j-jg.cc" class="jg-v-item">
+                    `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="실시간 날씨 브리핑 바로가기">
                         <span>${weather.icon || '☀️'} ${cityName}</span>
                         <span style="color:#38bdf8; font-weight:700;">${weather.temp || '22°C'}</span>
                     </a>`,

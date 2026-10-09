@@ -386,11 +386,28 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             };
         });
 
+        // 5) 실시간 날씨 정보 조회 (인사말 옆 뱃지용)
+        const weather = await new Promise((resolve) => {
+            newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', [], (wErr, wRow) => {
+                let w = { city: '계룡', temp: '22°C', icon: '☀️' };
+                if (wRow && wRow.weather_info) {
+                    try {
+                        const parsed = typeof wRow.weather_info === 'string' ? JSON.parse(wRow.weather_info) : wRow.weather_info;
+                        if (parsed.current_temp) w.temp = parsed.current_temp + '°C';
+                        if (parsed.condition) w.condition = parsed.condition;
+                        if (parsed.city && parsed.city !== 'Gyeryong') w.city = parsed.city;
+                    } catch (e) {}
+                }
+                resolve(w);
+            });
+        });
+
         res.json({
             success: true,
             blood: blood || null,
             medication: medication || null,
             hospital: hospital || null,
+            weather: weather || null,
             asset: {
                 totalKrw: '₩' + totalKrw.toLocaleString(),
                 count: assetItems.length,
@@ -1004,8 +1021,8 @@ app.get('/api/admin/blood/configs', authenticateToken, (req, res) => {
 app.post('/api/admin/blood/configs', authenticateToken, (req, res) => {
     const { high_systolic, high_diastolic, low_systolic, low_diastolic, session_timeout } = req.body;
 
-    if (!high_systolic || !high_diastolic || !low_systolic || !low_diastolic || !session_timeout) {
-        return res.status(400).json({ success: false, message: '모든 기준치를 올바르게 입력해주세요.' });
+    if (!high_systolic || !high_diastolic || !low_systolic || !low_diastolic) {
+        return res.status(400).json({ success: false, message: '모든 혈압 기준치를 올바르게 입력해주세요.' });
     }
 
     db.serialize(() => {
@@ -1015,7 +1032,9 @@ app.post('/api/admin/blood/configs', authenticateToken, (req, res) => {
         stmt.run('high_diastolic', high_diastolic.toString());
         stmt.run('low_systolic', low_systolic.toString());
         stmt.run('low_diastolic', low_diastolic.toString());
-        stmt.run('session_timeout', session_timeout.toString());
+        if (session_timeout) {
+            stmt.run('session_timeout', session_timeout.toString());
+        }
         stmt.finalize();
         db.run("COMMIT", (err) => {
             if (err) {

@@ -99,11 +99,45 @@ body {
     margin-bottom: 2rem;
 }
 
-.welcome-section h2 {
+.welcome-header-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.welcome-header-row h2 {
     font-size: 1.75rem;
     font-weight: 700;
     color: #1e293b;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0;
+}
+
+.weather-compact-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #334155;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+}
+.weather-compact-badge:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.08);
+}
+.weather-compact-temp {
+    color: #0284c7;
+    font-weight: 700;
 }
 
 .welcome-section p {
