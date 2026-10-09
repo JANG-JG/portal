@@ -33,7 +33,16 @@ app.use((req, res, next) => {
 // 마스터 계정 DB 연결 (혈압 앱 health.db)
 const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
     if (err) console.error('❌ 혈압 DB 연결 실패:', err);
-    else console.log('✅ 마스터 계정 DB 로드 완료:', BLOOD_DB_PATH);
+    else {
+        console.log('✅ 마스터 계정 DB 로드 완료:', BLOOD_DB_PATH);
+        db.run(`CREATE TABLE IF NOT EXISTS login_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            ip TEXT,
+            status TEXT,
+            attempted_at DATETIME DEFAULT (datetime('now', 'localtime'))
+        )`);
+    }
 });
 
 // 자산관리 DB 연결 (asset.db)
@@ -100,23 +109,55 @@ app.get(['/login', '/login.html'], (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// 3. 로그인 처리 API
+// 클라이언트 실제 접속 IP 추출 유틸리티 (Nginx 프록시 대응)
+function getClientIp(req) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+        return forwarded.split(',')[0].trim();
+    }
+    return req.ip || req.socket.remoteAddress || '127.0.0.1';
+}
+
+// 보안 로그인 시도 이력 기록 헬퍼
+function recordLoginLog(username, ip, status) {
+    try {
+        db.run(
+            `INSERT INTO login_logs (username, ip, status, attempted_at) VALUES (?, ?, ?, datetime('now', 'localtime'))`,
+            [username || 'unknown', ip || 'unknown', status],
+            (err) => {
+                if (err) console.error('로그인 이력 DB 저장 실패:', err);
+            }
+        );
+    } catch (e) {
+        console.error('로그인 이력 DB 예외:', e);
+    }
+}
+
+// 3. 로그인 처리 API (실시간 로그인 이력 수집 연동)
 app.post('/api/login', (req, res) => {
     const { username, password, rememberMe } = req.body;
+    const clientIp = getClientIp(req);
+
     if (!username || !password) {
+        recordLoginLog(username || '미입력', clientIp, 'FAILED');
         return res.status(400).json({ success: false, message: '아이디와 비밀번호를 입력해주세요.' });
     }
 
     db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
         if (err || !user) {
+            recordLoginLog(username, clientIp, 'FAILED');
             return res.status(401).json({ success: false, message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         }
 
         try {
             const match = await bcrypt.compare(password, user.password);
             if (!match) {
+                recordLoginLog(username, clientIp, 'FAILED');
                 return res.status(401).json({ success: false, message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
             }
+
+            // 로그인 성공 기록
+            recordLoginLog(user.username, clientIp, 'SUCCESS');
 
             // [보안 옵션 A]: 로그인 유지 체크 여부에 따라 쿠키 수명 분기
             const isRemember = rememberMe === true || rememberMe === 'true';
@@ -138,6 +179,7 @@ app.post('/api/login', (req, res) => {
             res.json({ success: true, redirect: '/' });
         } catch (bcryptErr) {
             console.error('비밀번호 검증 오류:', bcryptErr);
+            recordLoginLog(username, clientIp, 'FAILED');
             res.status(500).json({ success: false, message: '로그인 검증 중 오류가 발생했습니다.' });
         }
     });
