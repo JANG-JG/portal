@@ -28,7 +28,7 @@
             background: #020617 !important;
             border-top: 1px solid #1e293b !important;
             color: #f8fafc !important;
-            z-index: 99999 !important;
+            z-index: 999999 !important;
             display: flex !important;
             align-items: center !important;
             padding: 0 14px !important;
@@ -144,8 +144,36 @@
             text-decoration: none !important;
         }
         @media (max-width: 640px) {
-            .jg-v-box { width: 110px !important; }
-            .jg-ticker-link { font-size: 11px !important; }
+            #jg-global-ticker-bar {
+                padding: 0 6px !important;
+                height: 44px !important;
+            }
+            .jg-ticker-badge {
+                padding: 3px 6px !important;
+                margin-right: 6px !important;
+                font-size: 10px !important;
+                gap: 4px !important;
+            }
+            .jg-badge-text-full { display: none !important; }
+            .jg-badge-text-mobile { display: inline !important; }
+            .jg-ticker-right {
+                margin-left: 6px !important;
+                padding-left: 6px !important;
+                height: 28px !important;
+            }
+            .jg-v-box {
+                width: 78px !important;
+                height: 28px !important;
+            }
+            .jg-v-item {
+                font-size: 10px !important;
+                gap: 3px !important;
+                padding: 0 4px !important;
+            }
+            .jg-ticker-link {
+                font-size: 11px !important;
+                margin-right: 16px !important;
+            }
         }
     `;
     document.head.appendChild(style);
@@ -156,7 +184,8 @@
     bar.innerHTML = `
         <div class="jg-ticker-badge">
             <span class="jg-ticker-dot"></span>
-            <span>뉴스 브리핑</span>
+            <span class="jg-badge-text-full">뉴스 브리핑</span>
+            <span class="jg-badge-text-mobile" style="display:none;">브리핑</span>
         </div>
         <div class="jg-ticker-scroll-area">
             <div id="jg-track" class="jg-ticker-track">
@@ -166,7 +195,7 @@
         <div class="jg-ticker-right">
             <div class="jg-v-box" id="jg-v-box">
                 <div class="jg-v-item" style="transform: translateY(0); opacity: 1;">
-                    <span>☀️ Gyeryong</span> <span style="color:#38bdf8;">22°C</span>
+                    <span>☀️ 계룡</span> <span style="color:#38bdf8;">22°C</span>
                 </div>
             </div>
         </div>
@@ -205,23 +234,31 @@
                 track.innerHTML = makeItems() + makeItems();
             }
 
-            // 4-2. 우측 롤링 위젯 구성 (날씨, 코스피, 달러)
+            // 4-2. 우측 롤링 위젯 구성 (날씨, 코스피, 코스닥, 달러)
             const vBox = document.getElementById('jg-v-box');
             if (vBox) {
-                const weather = data.weather || { city: 'Gyeryong', temp: '22°C', icon: '☀️' };
+                const weather = data.weather || { city: '계룡', temp: '22°C', icon: '☀️' };
                 const market = data.market || {};
-                const kospi = market.kospi || { price: '2,580.4', direction: 'up' };
-                const usd = market.usd_krw || { price: '1,352.0', direction: 'down' };
+                const kospi = market.kospi || { price: '6,625.9', direction: 'down' };
+                const kosdaq = market.kosdaq || { price: '892.3', direction: 'down' };
+                const usd = market.usd_krw || { price: '1,342.7', direction: 'up' };
+
+                const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
 
                 const slides = [
                     `<a href="https://news.j-jg.cc" class="jg-v-item">
-                        <span>${weather.icon || '☀️'} ${weather.city || 'Gyeryong'}</span>
+                        <span>${weather.icon || '☀️'} ${cityName}</span>
                         <span style="color:#38bdf8; font-weight:700;">${weather.temp || '22°C'}</span>
                     </a>`,
                     `<div class="jg-v-item">
                         <span style="color:#94a3b8; font-size:10px;">코스피</span>
                         <span style="color:#ffffff;">${kospi.price}</span>
                         <span style="color:${kospi.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10px;">${kospi.direction === 'up' ? '▲' : '▼'}</span>
+                    </div>`,
+                    `<div class="jg-v-item">
+                        <span style="color:#94a3b8; font-size:10px;">코스닥</span>
+                        <span style="color:#ffffff;">${kosdaq.price}</span>
+                        <span style="color:${kosdaq.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10px;">${kosdaq.direction === 'up' ? '▲' : '▼'}</span>
                     </div>`,
                     `<div class="jg-v-item">
                         <span style="color:#94a3b8; font-size:10px;">달러</span>
@@ -292,3 +329,4 @@
             .replace(/"/g, '&quot;');
     }
 })();
+

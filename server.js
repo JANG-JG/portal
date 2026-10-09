@@ -203,6 +203,62 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
     }
 });
 
+// 실시간 증시 및 환율 캐시 (5분 유효)
+let marketCache = {
+    timestamp: 0,
+    data: {
+        kospi: { price: '6,625.9', direction: 'down' },
+        kosdaq: { price: '892.3', direction: 'down' },
+        usd_krw: { price: '1,342.7', direction: 'up' }
+    }
+};
+
+async function getLiveMarketData() {
+    const now = Date.now();
+    if (marketCache.data && (now - marketCache.timestamp < 300000)) {
+        return marketCache.data;
+    }
+
+    try {
+        const [kRes, qRes, uRes] = await Promise.allSettled([
+            fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI', { signal: AbortSignal.timeout(2500) }).then(r => r.json()),
+            fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSDAQ', { signal: AbortSignal.timeout(2500) }).then(r => r.json()),
+            fetch('https://m.stock.naver.com/front-api/marketIndex/prices?category=exchange&reutersCode=FX_USDKRW', { signal: AbortSignal.timeout(2500) }).then(r => r.json())
+        ]);
+
+        const nextData = { ...marketCache.data };
+
+        if (kRes.status === 'fulfilled' && kRes.value?.datas?.[0]) {
+            const d = kRes.value.datas[0];
+            const p = d.closePrice || '6,625.9';
+            const fName = d.compareToPreviousPrice?.name || '';
+            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
+            nextData.kospi = { price: p, direction: dir };
+        }
+
+        if (qRes.status === 'fulfilled' && qRes.value?.datas?.[0]) {
+            const d = qRes.value.datas[0];
+            const p = d.closePrice || '892.3';
+            const fName = d.compareToPreviousPrice?.name || '';
+            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
+            nextData.kosdaq = { price: p, direction: dir };
+        }
+
+        if (uRes.status === 'fulfilled' && uRes.value?.result?.[0]) {
+            const d = uRes.value.result[0];
+            const p = d.closePrice || '1,342.7';
+            const fName = d.fluctuationsType?.name || '';
+            const dir = fName.includes('RISING') ? 'up' : (fName.includes('FALLING') ? 'down' : 'flat');
+            nextData.usd_krw = { price: p, direction: dir };
+        }
+
+        marketCache = { timestamp: now, data: nextData };
+        return nextData;
+    } catch (e) {
+        return marketCache.data;
+    }
+}
+
 // 🌟 [전 사이트 공통 TV 뉴스 티커 API]
 app.get('/api/ticker', (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -213,8 +269,8 @@ app.get('/api/ticker', (req, res) => {
         'SELECT id, title, link, category_name, media_name, published_at FROM news_articles ORDER BY id DESC LIMIT 12',
         [],
         (err, articles) => {
-            newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', [], (wErr, wRow) => {
-                let weather = { city: 'Gyeryong', temp: '22°C', icon: '☀️' };
+            newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', [], async (wErr, wRow) => {
+                let weather = { city: '계룡', temp: '22°C', icon: '☀️' };
                 if (wRow && wRow.weather_info) {
                     try {
                         const parsed = typeof wRow.weather_info === 'string' ? JSON.parse(wRow.weather_info) : wRow.weather_info;
@@ -223,14 +279,13 @@ app.get('/api/ticker', (req, res) => {
                     } catch (e) {}
                 }
 
+                const market = await getLiveMarketData();
+
                 res.json({
                     success: true,
                     articles: articles || [],
                     weather,
-                    market: {
-                        kospi: { price: '2,580.4', direction: 'up' },
-                        usd_krw: { price: '1,352.0', direction: 'down' }
-                    }
+                    market
                 });
             });
         }
