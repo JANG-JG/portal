@@ -95,6 +95,8 @@ self.addEventListener('notificationclick', (event) => {
 
     const openWindowPromise = clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
         const cleanTarget = targetUrl.split('?')[0];
+        
+        // 1순위: 대상 URL과 동일한 창이 이미 열려있는 경우 해당 창 포커스 및 최신화
         for (const client of clientList) {
             if (client.url && client.url.includes(cleanTarget) && 'focus' in client) {
                 if ('navigate' in client) {
@@ -103,6 +105,19 @@ self.addEventListener('notificationclick', (event) => {
                 return client.focus();
             }
         }
+
+        // 2순위: 사용자가 PWA 웹앱 또는 포털 창(j-jg.cc)을 이미 열어둔 경우,
+        // 새 외부 브라우저 창을 띄우지 않고 기존 웹앱 창으로 포커스하여 앱 내에서 바로 페이지 이동
+        for (const client of clientList) {
+            if (client.url && client.url.includes('j-jg.cc') && 'focus' in client) {
+                if ('navigate' in client) {
+                    client.navigate(targetUrl);
+                }
+                return client.focus();
+            }
+        }
+
+        // 3순위: 열려있는 앱/창이 없는 경우에만 새 창/웹앱 창 열기
         if (clients.openWindow) {
             return clients.openWindow(targetUrl);
         }
