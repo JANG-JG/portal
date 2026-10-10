@@ -15,6 +15,9 @@
         // 60초 주기 뱃지 갱신
         setInterval(fetchUnreadNotificationBadge, 60000);
 
+        // 3. URL에 ?notif_id=...가 포함되어 있으면 즉시 읽음 처리 및 쿼리 파라미터 정리
+        handleNotifIdFromUrl();
+
         if (!btn || !drawer) return;
 
         btn.addEventListener('click', function(e) {
@@ -125,6 +128,30 @@
                 }
             })
             .catch(() => {});
+    }
+
+    // URL 쿼리스트링에 notif_id가 있을 경우 즉시 읽음 처리 및 주소창 정리
+    function handleNotifIdFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const notifId = urlParams.get('notif_id');
+        if (notifId) {
+            const isLocal = window.location.hostname === 'localhost';
+            const apiUrl = isLocal 
+                ? `/api/notification/history/${notifId}/read` 
+                : `https://j-jg.cc/api/notification/history/${notifId}/read`;
+
+            fetch(apiUrl, {
+                method: 'POST',
+                credentials: 'include',
+                keepalive: true
+            }).then(() => {
+                urlParams.delete('notif_id');
+                const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+                const newUrl = window.location.pathname + newQuery + window.location.hash;
+                window.history.replaceState({}, document.title, newUrl);
+                fetchUnreadNotificationBadge();
+            }).catch(() => {});
+        }
     }
 
     // 전역 모바일 드로어 닫기 함수

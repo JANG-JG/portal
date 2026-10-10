@@ -80,6 +80,9 @@ const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
 function authenticateToken(req, res, next) {
     const token = req.cookies.portal_token;
     if (!token) {
+        if (req.path && req.path.startsWith('/api/')) {
+            return res.status(401).json({ success: false, message: '인증이 필요합니다.' });
+        }
         return res.redirect('/login');
     }
 
@@ -100,6 +103,9 @@ function authenticateToken(req, res, next) {
 
     if (!user || !user.username) {
         res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
+        if (req.path && req.path.startsWith('/api/')) {
+            return res.status(401).json({ success: false, message: '인증이 만료되었습니다.' });
+        }
         return res.redirect('/login');
     }
     req.user = user;
@@ -1406,8 +1412,8 @@ app.post('/api/notification/subscribe', authenticateToken, (req, res) => {
     const query = `
         INSERT INTO push_subscriptions (user_id, endpoint, keys_p256dh, keys_auth)
         VALUES (?, ?, ?, ?)
-        ON CONFLICT(user_id) DO UPDATE SET
-            endpoint = excluded.endpoint,
+        ON CONFLICT(endpoint) DO UPDATE SET
+            user_id = excluded.user_id,
             keys_p256dh = excluded.keys_p256dh,
             keys_auth = excluded.keys_auth,
             updated_at = CURRENT_TIMESTAMP
@@ -1591,13 +1597,13 @@ app.post('/api/notification/history/read-all', authenticateToken, (req, res) => 
 app.post('/api/notification/history/:id/read', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const id = req.params.id;
-    const query = `UPDATE notification_history SET is_read = 1 WHERE id = ? AND (user_id = ? OR user_id = 'admin')`;
-    db.run(query, [id, userId], function(err) {
+    const query = `UPDATE notification_history SET is_read = 1 WHERE id = ? AND (user_id = ? OR user_id = 'admin' OR ? = 'admin' OR ? = 'upt0731')`;
+    db.run(query, [id, userId, userId, userId], function(err) {
         if (err) {
             console.error('[WebPush] 개별 읽음 처리 오류:', err);
             return res.status(500).json({ success: false, message: '개별 읽음 처리 실패' });
         }
-        res.json({ success: true, message: '알림을 읽음 처리했습니다.' });
+        res.json({ success: true, message: '알림을 읽음 처리했습니다.', changed: this ? this.changes : 0 });
     });
 });
 

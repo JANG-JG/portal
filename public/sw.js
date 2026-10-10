@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v3';
+const CACHE_NAME = 'jg-portal-v4';
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
@@ -78,26 +78,35 @@ self.addEventListener('push', (event) => {
     );
 });
 
-// 🔔 알림 클릭 시 브리핑 사이트의 속보 페이지(또는 전달된 url)로 이동
+// 🔔 알림 클릭 시 읽음 처리 전송 및 해당 페이지로 이동
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
-    const targetUrl = (event.notification.data && event.notification.data.url) 
-        ? event.notification.data.url 
-        : 'https://news.j-jg.cc/breaking';
+    const notifData = (event.notification.data) || {};
+    const targetUrl = notifData.url || 'https://news.j-jg.cc/breaking';
+    const notifId = notifData.notifId;
 
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            for (const client of clientList) {
-                if (client.url.includes(targetUrl) && 'focus' in client) {
-                    return client.focus();
+    // 🌟 알림 클릭 시 백그라운드에서 즉시 읽음 처리 API 호출
+    const markReadPromise = notifId ? fetch(`https://j-jg.cc/api/notification/history/${notifId}/read`, {
+        method: 'POST',
+        credentials: 'include',
+        keepalive: true
+    }).catch(() => {}) : Promise.resolve();
+
+    const openWindowPromise = clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+        const cleanTarget = targetUrl.split('?')[0];
+        for (const client of clientList) {
+            if (client.url && client.url.includes(cleanTarget) && 'focus' in client) {
+                if ('navigate' in client) {
+                    client.navigate(targetUrl);
                 }
+                return client.focus();
             }
-            if (clients.openWindow) {
-                return clients.openWindow(targetUrl);
-            }
-        })
-    );
+        }
+        if (clients.openWindow) {
+            return clients.openWindow(targetUrl);
+        }
+    });
+
+    event.waitUntil(Promise.all([markReadPromise, openWindowPromise]));
 });
-
-

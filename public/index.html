@@ -1915,8 +1915,14 @@
         // 개별 읽음 처리 후 페이지 이동
         async function openAndReadNotification(id, url) {
             try {
-                fetch(`/api/notification/history/${id}/read`, { method: 'POST' }).catch(() => {});
-            } catch (e) {}
+                await fetch(`/api/notification/history/${id}/read`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    keepalive: true
+                });
+            } catch (e) {
+                console.error('Failed to mark read', e);
+            }
 
             if (url && url !== '#') {
                 window.location.href = url;
