@@ -137,6 +137,13 @@
                                 <small>AI 요약 및 헤드라인 브리핑</small>
                             </div>
                         </a>
+                        <a href="https://news.j-jg.cc/breaking" class="unav-sublink">
+                            <span class="unav-sub-icon">🚨</span>
+                            <div class="unav-sub-text">
+                                <strong>실시간 속보 브리핑</strong>
+                                <small>10분 주기 실시간 주요 속보</small>
+                            </div>
+                        </a>
                         <a href="https://news.j-jg.cc/weather" class="unav-sublink">
                             <span class="unav-sub-icon">🌤️</span>
                             <div class="unav-sub-text">
@@ -275,6 +282,7 @@
                         </button>
                         <div class="unav-m-submenu">
                             <a href="https://news.j-jg.cc/">📰 실시간 뉴스 대시보드</a>
+                            <a href="https://news.j-jg.cc/breaking">🚨 실시간 속보 브리핑</a>
                             <a href="https://news.j-jg.cc/weather">🌤️ 날씨 브리핑</a>
                             <a href="https://news.j-jg.cc/categories">🏷️ 관심 분야 관리</a>
                             <a href="https://j-jg.cc/admin#tab-news">⚙️ 뉴스 수집 관리</a>
@@ -681,7 +689,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 checkPwaInstalled();
-                navigator.serviceWorker.register('/sw.js?v=2')
+                navigator.serviceWorker.register('/sw.js?v=3')
                     .then(reg => {
                         console.log('[PWA] Service Worker registered with scope:', reg.scope);
                     })

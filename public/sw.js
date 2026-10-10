@@ -27,3 +27,60 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
+// 🔔 [Web Push] 실시간 속보 및 시스템 알림 수신 처리
+self.addEventListener('push', (event) => {
+    let data = {
+        title: '🚨 JG 통합 포털 알림',
+        body: '새로운 알림이 도착했습니다.',
+        icon: 'https://j-jg.cc/favicon.svg',
+        badge: 'https://j-jg.cc/favicon.svg',
+        data: { url: 'https://news.j-jg.cc/breaking' }
+    };
+
+    if (event.data) {
+        try {
+            data = event.data.json();
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
+    const options = {
+        body: data.body,
+        icon: data.icon || 'https://j-jg.cc/favicon.svg',
+        badge: data.badge || 'https://j-jg.cc/favicon.svg',
+        vibrate: [200, 100, 200],
+        data: data.data || { url: 'https://news.j-jg.cc/breaking' },
+        actions: [
+            { action: 'open', title: '속보 확인하기' }
+        ]
+    };
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, options)
+    );
+});
+
+// 🔔 알림 클릭 시 브리핑 사이트의 속보 페이지(또는 전달된 url)로 이동
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+
+    const targetUrl = (event.notification.data && event.notification.data.url) 
+        ? event.notification.data.url 
+        : 'https://news.j-jg.cc/breaking';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            for (const client of clientList) {
+                if (client.url.includes(targetUrl) && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
+        })
+    );
+});
+
+
