@@ -18,6 +18,21 @@ const BLOOD_DB_PATH = process.env.DB_PATH || '/home/upt0731/blood-pressure-app/h
 const ASSET_DB_PATH = process.env.ASSET_DB_PATH || '/home/upt0731/asset/asset.db';
 const NEWS_DB_PATH = process.env.NEWS_DB_PATH || '/home/upt0731/news-dashboard/briefing.db';
 
+// 🌐 모든 서브도메인 간 알림 API 연동을 위한 CORS 설정 (.j-jg.cc)
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && (origin.endsWith('.j-jg.cc') || origin === 'https://j-jg.cc' || origin === 'http://localhost:3000' || origin === 'http://localhost:3004')) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
+    }
+    next();
+});
+
 // 기본 미들웨어 설정
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -593,12 +608,11 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
         // 5) 실시간 날씨 정보 조회 (인사말 옆 뱃지용)
         const weather = await getLiveWeatherData();
 
-        // 6) 뉴스 관심 분야별 추천 기사 조회 (활성화된 관심 분야 전체를 리밋 없이 1:1 반영)
+        // 6) 뉴스 관심 분야별 추천 기사 조회 (속보는 별도 상단 티커로 분리하므로 일반 카드에서 제외)
         const newsRecommendation = await new Promise((resolve) => {
-            newsDb.all('SELECT id, name FROM categories WHERE is_active = 1 ORDER BY id ASC', [], async (cErr, categories) => {
+            newsDb.all("SELECT id, name FROM categories WHERE is_active = 1 AND name != '속보' ORDER BY id ASC", [], async (cErr, categories) => {
                 if (cErr || !categories || categories.length === 0) {
-                    // 관심 분야가 없을 때만 최신 기사 5건 fallback
-                    newsDb.all('SELECT id, title, link, media_name, category_name, published_at FROM news_articles ORDER BY id DESC LIMIT 5', [], (aErr, fallbackRows) => {
+                    newsDb.all("SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' ORDER BY id DESC LIMIT 5", [], (aErr, fallbackRows) => {
                         resolve(fallbackRows || []);
                     });
                     return;
@@ -607,12 +621,8 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
                 try {
                     const articlePromises = categories.map(cat => {
                         return new Promise(innerResolve => {
-                            const query = cat.name === '속보'
-                                ? 'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? ORDER BY id DESC LIMIT 1'
-                                : 'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? AND title NOT LIKE "%[속보]%" AND title NOT LIKE "%(속보)%" ORDER BY id DESC LIMIT 1';
-
                             newsDb.get(
-                                query,
+                                'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? AND title NOT LIKE "%[속보]%" AND title NOT LIKE "%(속보)%" ORDER BY id DESC LIMIT 1',
                                 [cat.name],
                                 (err, row) => innerResolve(row || null)
                             );
@@ -625,6 +635,15 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
                     resolve([]);
                 }
             });
+        });
+
+        // 6-1) 실시간 속보 기사 목록 (날씨 아래 롤링 티커 및 호버 팝업용 최신 8건)
+        const breakingArticles = await new Promise((resolve) => {
+            newsDb.all(
+                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE category_name = '속보' OR title LIKE '%[속보]%' ORDER BY id DESC LIMIT 8",
+                [],
+                (bErr, rows) => resolve(rows || [])
+            );
         });
 
         // 7) 실시간 시장 지표
@@ -643,7 +662,8 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             },
             news: {
                 market: marketData,
-                recommendedArticles: newsRecommendation
+                recommendedArticles: newsRecommendation,
+                breakingArticles: breakingArticles || []
             }
         });
     } catch (err) {

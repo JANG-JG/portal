@@ -193,6 +193,217 @@ body {
     font-size: 1rem;
 }
 
+/* 🚨 실시간 속보 한줄 롤링 티커 & 호버 전체목록 드롭다운 */
+.breaking-banner-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border: 1px solid #fee2e2;
+    border-left: 4px solid #ef4444;
+    border-radius: 10px;
+    padding: 0.45rem 0.85rem;
+    margin-top: 0.75rem;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.08);
+    transition: all 0.2s ease;
+    z-index: 50;
+}
+.breaking-banner-bar:hover {
+    border-color: #fca5a5;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15);
+}
+.breaking-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: #fef2f2;
+    color: #dc2626;
+    padding: 0.22rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+.breaking-pulse-dot {
+    width: 7px;
+    height: 7px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: breaking-pulse 1.8s infinite;
+}
+@keyframes breaking-pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+.breaking-ticker-viewport {
+    flex: 1;
+    height: 24px;
+    line-height: 24px;
+    overflow: hidden;
+    position: relative;
+    min-width: 0;
+}
+.breaking-ticker-track {
+    position: relative;
+    transition: transform 0.45s cubic-bezier(0.2, 0, 0, 1);
+}
+.breaking-ticker-item {
+    height: 24px;
+    line-height: 24px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-decoration: none;
+    color: #1e293b;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+.breaking-ticker-item:hover {
+    color: #dc2626;
+}
+.breaking-item-media {
+    color: #64748b;
+    font-size: 0.75rem;
+    background: #f1f5f9;
+    padding: 1px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.breaking-item-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.breaking-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #dc2626;
+    background: #fef2f2;
+    padding: 0.22rem 0.6rem;
+    border-radius: 6px;
+    text-decoration: none;
+    margin-left: 0.75rem;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+.breaking-more-btn:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+.breaking-arrow {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+/* 마우스 오버 시 전체 목록 드롭다운 레이어 */
+.breaking-dropdown-panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid #fee2e2;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1000;
+    pointer-events: none;
+    max-height: 380px;
+    display: flex;
+    flex-direction: column;
+}
+.breaking-banner-bar:hover .breaking-dropdown-panel,
+.breaking-dropdown-panel:hover {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.breaking-dropdown-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    background: #fff5f5;
+    border-bottom: 1px solid #fee2e2;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+.breaking-dropdown-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #991b1b;
+}
+.breaking-dropdown-link {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #dc2626;
+    text-decoration: none;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: #ffffff;
+    border: 1px solid #fecaca;
+}
+.breaking-dropdown-link:hover {
+    background: #fee2e2;
+}
+.breaking-dropdown-items {
+    padding: 0.4rem 0.5rem;
+    overflow-y: auto;
+    max-height: 300px;
+}
+.breaking-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.7rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #1e293b;
+    font-size: 0.84rem;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid #f8fafc;
+}
+.breaking-dropdown-item:last-child {
+    border-bottom: none;
+}
+.breaking-dropdown-item:hover {
+    background: #fff5f5;
+    color: #dc2626;
+}
+.breaking-dropdown-item-title {
+    font-weight: 500;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.breaking-dropdown-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    color: #64748b;
+    flex-shrink: 0;
+}
+
 /* 카드 그리드 */
 .card-grid {
     display: grid;
@@ -533,6 +744,26 @@ body {
     }
     .news-market-chip .market-diff {
         font-size: 0.7rem;
+    }
+    .breaking-banner-bar {
+        padding: 0.35rem 0.6rem;
+        margin-top: 0.6rem;
+    }
+    .breaking-badge {
+        padding: 0.15rem 0.45rem;
+        font-size: 0.75rem;
+        margin-right: 0.4rem;
+    }
+    .breaking-ticker-item {
+        font-size: 0.82rem;
+    }
+    .breaking-more-btn {
+        padding: 0.15rem 0.45rem;
+        font-size: 0.75rem;
+        margin-left: 0.4rem;
+    }
+    .breaking-dropdown-panel {
+        max-height: 280px;
     }
 }
 

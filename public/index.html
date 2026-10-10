@@ -351,6 +351,36 @@
                 </button>
             </div>
             <p>오늘의 통합 서비스 현황을 한눈에 확인하고 바로 이동하세요.</p>
+
+            <!-- 🚨 [신규] 실시간 속보 한줄 롤링 티커 & 호버 전체목록 드롭다운 -->
+            <div class="breaking-banner-bar" id="breakingBannerBar">
+                <div class="breaking-badge">
+                    <span class="breaking-pulse-dot"></span>
+                    <span class="breaking-badge-text">🚨 실시간 속보</span>
+                </div>
+                <div class="breaking-ticker-viewport" id="breakingTickerViewport">
+                    <div class="breaking-ticker-track" id="breakingTickerTrack">
+                        <div class="breaking-ticker-item">
+                            <span class="breaking-item-title">실시간 최신 속보를 불러오는 중입니다...</span>
+                        </div>
+                    </div>
+                </div>
+                <a href="https://news.j-jg.cc/breaking" class="breaking-more-btn" title="속보 브리핑 바로가기">
+                    <span>속보 브리핑</span>
+                    <span class="breaking-arrow">›</span>
+                </a>
+
+                <!-- 마우스 오버 시 전체 목록 드롭다운 레이어 -->
+                <div class="breaking-dropdown-panel" id="breakingDropdownPanel">
+                    <div class="breaking-dropdown-top">
+                        <span class="breaking-dropdown-title">🚨 실시간 주요 속보 브리핑</span>
+                        <a href="https://news.j-jg.cc/breaking" class="breaking-dropdown-link">속보 페이지 열기 ↗</a>
+                    </div>
+                    <div class="breaking-dropdown-items" id="breakingDropdownItems">
+                        <div style="color:#94a3b8; font-size:0.82rem; padding:1rem; text-align:center;">속보 기사를 불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- 서비스 바로가기 카드 그리드 (뉴스 브리핑 -> 혈압 관리 -> 자산 관리) -->
@@ -616,9 +646,80 @@
                             recListEl.innerHTML = '<div style="color:#94a3b8; font-size:0.8rem; padding:0.4rem 0;">수집된 추천 뉴스가 없습니다.</div>';
                         }
                     }
+
+                    // 3) 실시간 속보 한줄 티커 & 호버 전체목록 바인딩
+                    bindBreakingTicker(n.breakingArticles || []);
                 }
             })
             .catch(() => {});
+        }
+
+        // 🚨 실시간 속보 세로 롤링 및 호버 전체목록 제어
+        let breakingTickerTimer = null;
+        function bindBreakingTicker(articles) {
+            const trackEl = document.getElementById('breakingTickerTrack');
+            const dropdownListEl = document.getElementById('breakingDropdownItems');
+            const bannerEl = document.getElementById('breakingBannerBar');
+            if (!trackEl || !dropdownListEl) return;
+
+            if (!articles || articles.length === 0) {
+                trackEl.innerHTML = `
+                    <div class="breaking-ticker-item">
+                        <span class="breaking-item-title" style="color:#94a3b8;">현재 수집된 실시간 긴급 속보가 없습니다.</span>
+                    </div>
+                `;
+                dropdownListEl.innerHTML = '<div style="color:#94a3b8; font-size:0.82rem; padding:1.2rem; text-align:center;">최근 24시간 내 수집된 속보가 없습니다.</div>';
+                return;
+            }
+
+            // 1) 롤링 트랙 아이템 주입
+            trackEl.innerHTML = articles.map(a => `
+                <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item" title="${a.title}">
+                    <span class="breaking-item-title">${a.title}</span>
+                    ${a.media_name ? `<span class="breaking-item-media">${a.media_name}</span>` : ''}
+                </a>
+            `).join('');
+
+            // 2) 호버 시 노출될 드롭다운 전체 목록 주입
+            dropdownListEl.innerHTML = articles.map(a => {
+                const timeStr = a.published_at ? (a.published_at.slice(11, 16) || a.published_at.slice(5, 16)) : '';
+                return `
+                    <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="breaking-dropdown-item" title="${a.title}">
+                        <span class="breaking-dropdown-item-title">${a.title}</span>
+                        <div class="breaking-dropdown-item-meta">
+                            ${a.media_name ? `<span>${a.media_name}</span>` : ''}
+                            ${timeStr ? `<span>${timeStr}</span>` : ''}
+                        </div>
+                    </a>
+                `;
+            }).join('');
+
+            // 3) 1줄 세로 슬라이드 롤링 타이머 (3.5초 간격)
+            if (breakingTickerTimer) clearInterval(breakingTickerTimer);
+            let curIdx = 0;
+            const itemHeight = 24;
+            const count = articles.length;
+            if (count <= 1) return;
+
+            function startRolling() {
+                if (breakingTickerTimer) clearInterval(breakingTickerTimer);
+                breakingTickerTimer = setInterval(() => {
+                    curIdx = (curIdx + 1) % count;
+                    trackEl.style.transform = `translateY(-${curIdx * itemHeight}px)`;
+                }, 3500);
+            }
+
+            function stopRolling() {
+                if (breakingTickerTimer) clearInterval(breakingTickerTimer);
+            }
+
+            startRolling();
+
+            // 마우스 호버 시 롤링 일시 정지, 마우스 떠나면 재개
+            if (bannerEl) {
+                bannerEl.onmouseenter = stopRolling;
+                bannerEl.onmouseleave = startRolling;
+            }
         }
 
         // 초기 요약 데이터 로드 실행
@@ -1904,6 +2005,14 @@
         window.addEventListener('DOMContentLoaded', () => {
             fetchNotificationHistory();
             setTimeout(registerWebPushSubscription, 1500);
+
+            // 🔔 외부 링크(?open=notification 또는 #notification)로부터 유입 시 알림 모달 즉시 오픈
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('open') === 'notification' || window.location.hash === '#notification') {
+                setTimeout(() => {
+                    openNotificationModal();
+                }, 300);
+            }
         });
     </script>
 

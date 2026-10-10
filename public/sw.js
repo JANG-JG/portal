@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v2';
+const CACHE_NAME = 'jg-portal-v3';
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
@@ -45,14 +45,31 @@ self.addEventListener('push', (event) => {
         }
     }
 
+    // 알림 성격에 맞춘 동적 액션 버튼 라벨 지정
+    let actionTitle = '자세히 보기';
+    const notifTitle = data.title || '';
+    if (notifTitle.includes('속보')) {
+        actionTitle = '속보 확인하기';
+    } else if (notifTitle.includes('날씨')) {
+        actionTitle = '날씨 확인하기';
+    } else if (notifTitle.includes('증시') || notifTitle.includes('환율')) {
+        actionTitle = '증시 확인하기';
+    } else if (notifTitle.includes('혈압') || notifTitle.includes('복약') || notifTitle.includes('약')) {
+        actionTitle = '혈압앱 열기';
+    } else if (notifTitle.includes('서버') || notifTitle.includes('경보')) {
+        actionTitle = '관리센터 열기';
+    }
+
+    const defaultUrl = data.title?.includes('속보') ? 'https://news.j-jg.cc/breaking' : 'https://j-jg.cc/';
+
     const options = {
         body: data.body,
         icon: data.icon || 'https://j-jg.cc/favicon.svg',
         badge: data.badge || 'https://j-jg.cc/favicon.svg',
         vibrate: [200, 100, 200],
-        data: data.data || { url: 'https://news.j-jg.cc/breaking' },
+        data: data.data || { url: defaultUrl },
         actions: [
-            { action: 'open', title: '속보 확인하기' }
+            { action: 'open', title: actionTitle }
         ]
     };
 
