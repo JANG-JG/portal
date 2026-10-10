@@ -214,7 +214,16 @@
                     </div>
                 </div>
 
-                <!-- 6. 로그아웃 -->
+                <!-- 6. 알림 센터 -->
+                <div class="unav-item">
+                    <button type="button" class="unav-link unav-notif-btn" onclick="openNotificationModal()" title="통합 알림 센터" style="background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; font-family: inherit; font-size: inherit; color: inherit;">
+                        <span style="font-size: 1.15rem; line-height: 1;">🔔</span>
+                        <span>알림</span>
+                        <span id="unavNotifBadge" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold; line-height: 1.2;">0</span>
+                    </button>
+                </div>
+
+                <!-- 7. 로그아웃 -->
                 <div class="unav-item">
                     <a href="https://j-jg.cc/logout" class="unav-link unav-logout-btn">
                         <span>🚪</span>
@@ -302,6 +311,14 @@
                             <a href="https://j-jg.cc/admin#tab-news">📰 뉴스 브리핑</a>
                             <a href="https://j-jg.cc/admin#tab-security">👤 보안 및 계정</a>
                         </div>
+                    </div>
+
+                    <!-- 6. 알림 센터 (모바일) -->
+                    <div class="unav-m-group">
+                        <button type="button" class="unav-m-title" onclick="openNotificationModal(); const d=document.getElementById('unavDrawer'); const b=document.getElementById('unavHamburgerBtn'); if(d)d.classList.remove('open'); if(b)b.classList.remove('open');" style="display: flex; align-items: center; justify-content: space-between;">
+                            <span>🔔 통합 알림 센터</span>
+                            <span id="unavMNotifBadge" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold;">0</span>
+                        </button>
                     </div>
                 </div>
 
@@ -749,6 +766,1008 @@
             checkPwaInstalled();
             deferredInstallPrompt = null;
             alert('🎉 JG 통합 포털 앱이 홈 화면에 성공적으로 설치되었습니다!');
+        });
+    </script>
+
+    <!-- ========================================== -->
+    <!-- 🔔 [신규] JG 통합 알림 센터 모달 팝업 -->
+    <!-- ========================================== -->
+    <div id="notificationModal" class="notif-modal-backdrop" style="display: none;">
+        <div class="notif-modal-dialog">
+            <!-- 모달 상단 고정 헤더 -->
+            <div class="notif-modal-header">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.3rem;">🔔</span>
+                    <h3 style="margin: 0; color: #1e293b; font-size: 1.15rem; font-weight: 700;">통합 알림 센터</h3>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: 600; cursor: pointer; font-size: 0.85rem; color: #334155; margin: 0;">
+                        <input type="checkbox" id="notifMasterEnabled" checked style="width: 17px; height: 17px; accent-color: #2563eb; cursor: pointer;">
+                        <span>전체 켜기</span>
+                    </label>
+                    <button type="button" onclick="closeNotificationModal()" class="notif-close-x" aria-label="닫기">✕</button>
+                </div>
+            </div>
+
+            <!-- 메인 탭 전환 바 (설정 vs 수신 내역) -->
+            <div class="notif-main-tabs">
+                <button type="button" id="notifMainTabSettings" class="notif-tab-item active" onclick="switchNotifMainTab('settings')">
+                    <span>⚙️ 알림 맞춤 설정</span>
+                </button>
+                <button type="button" id="notifMainTabHistory" class="notif-tab-item" onclick="switchNotifMainTab('history')">
+                    <span>📬 알림 수신 내역</span>
+                    <span id="notifHistoryBadge" class="notif-tab-badge">0</span>
+                </button>
+            </div>
+
+            <!-- 모달 본문 스크롤 영역 -->
+            <div class="notif-modal-scroll">
+                <!-- 1️⃣ 탭 1: 알림 설정 뷰 -->
+                <div id="notifMainViewSettings">
+                    <!-- 브라우저 권한 배너 -->
+                    <div id="notifPermissionBanner" class="notif-perm-banner">
+                        <span id="notifPermissionStatusText">🔒 브라우저 알림 권한 상태 확인 중...</span>
+                        <button type="button" id="btnRequestNotifPermission" onclick="requestBrowserNotificationPermission()">권한 허용</button>
+                    </div>
+
+                    <!-- 1. 🚨 실시간 속보 브리핑 알림 -->
+                    <div class="notif-card-group">
+                        <label class="notif-toggle-row">
+                            <input type="checkbox" id="notifBreakingNewsEnabled" checked>
+                            <div class="notif-toggle-content">
+                                <strong>🚨 실시간 속보 브리핑 알림</strong>
+                                <p>주요 언론사의 실시간 긴급 속보 발생 시 10분 주기 자동 수집하여 웹앱 푸시를 발송합니다.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- 2. 🌤️ 아침 기상 특보 & 우산 알림 (신규 1번) -->
+                    <div class="notif-card-group">
+                        <label class="notif-toggle-row">
+                            <input type="checkbox" id="notifWeatherMorningEnabled" checked>
+                            <div class="notif-toggle-content">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+                                    <strong>🌤️ 아침 기상 특보 & 우산 알림</strong>
+                                    <div class="notif-inline-time" onclick="event.preventDefault(); event.stopPropagation();">
+                                        <span>발송 시각:</span>
+                                        <input type="time" id="inputWeatherTime" value="07:00">
+                                    </div>
+                                </div>
+                                <p>출근 전 당일 날씨와 기온 요약, 비/눈 예보 시 우산 챙기기 알림을 전송합니다.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- 3. 💰 국내 증시 마감 & 환율 리포트 (신규 2번) -->
+                    <div class="notif-card-group">
+                        <label class="notif-toggle-row">
+                            <input type="checkbox" id="notifAssetReportEnabled" checked>
+                            <div class="notif-toggle-content">
+                                <strong>💰 국내 증시 마감 & 환율 리포트 (평일 15:30)</strong>
+                                <p>평일 장 마감 후 코스피, 코스닥 지수 변동과 실시간 원/달러 환율 브리핑을 전송합니다.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- 4. 🎯 당일 혈압 미측정 저녁 리마인드 (신규 3번) -->
+                    <div class="notif-card-group">
+                        <label class="notif-toggle-row">
+                            <input type="checkbox" id="notifBpReminderEnabled" checked>
+                            <div class="notif-toggle-content">
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+                                    <strong>🎯 당일 혈압 미측정 저녁 리마인드</strong>
+                                    <div class="notif-inline-time" onclick="event.preventDefault(); event.stopPropagation();">
+                                        <span>리마인드 시각:</span>
+                                        <input type="time" id="inputBpReminderTime" value="21:00">
+                                    </div>
+                                </div>
+                                <p>오늘 혈압 측정 기록이 없는 경우, 취침 전 편안한 상태에서 측정하도록 알림을 보냅니다.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- 5. 🏥 병원 진료 예약 오픈 알림 -->
+                    <div class="notif-card-group">
+                        <label class="notif-toggle-row">
+                            <input type="checkbox" id="notifHospitalPushEnabled" checked>
+                            <div class="notif-toggle-content">
+                                <strong>🏥 병원 진료 예약 오픈 알림 (웹 푸시 동시 수신)</strong>
+                                <p>약 잔여량 기준 예약 오픈 시각(금요일 오전 11시 등)에 이메일과 함께 푸시를 동시 발송합니다.</p>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- 6 & 7. 💊 복약 및 🩸 혈압 측정 정기 시간표 설정 -->
+                    <div class="notif-card-group" style="padding: 0.85rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                            <strong style="color: #0f172a; font-size: 0.95rem;">⏰ 정기 복약 & 혈압 측정 시간표</strong>
+                            <div class="notif-sub-tabs">
+                                <button type="button" id="notifTabWeekday" class="active" onclick="switchNotifSubTab('weekday')">평일 (월~금)</button>
+                                <button type="button" id="notifTabWeekend" onclick="switchNotifSubTab('weekend')">주말 / 공휴일</button>
+                            </div>
+                        </div>
+
+                        <!-- 평일 설정 -->
+                        <div id="notifSubTabWeekday">
+                            <div class="notif-time-box">
+                                <div class="notif-time-box-header">
+                                    <span style="color: #2563eb; font-weight: bold;">💊 약 복용 알림 시각 (평일)</span>
+                                    <div style="display: flex; gap: 0.25rem;">
+                                        <input type="time" id="inputWeekdayMedTime">
+                                        <button type="button" class="btn-time-add" onclick="addNotifTime('weekday', 'med')">추가 +</button>
+                                    </div>
+                                </div>
+                                <div id="containerWeekdayMedTimes" class="chips-container"></div>
+                            </div>
+
+                            <div class="notif-time-box" style="margin-top: 0.5rem;">
+                                <div class="notif-time-box-header">
+                                    <span style="color: #dc2626; font-weight: bold;">🩸 혈압 측정 알림 시각 (평일)</span>
+                                    <div style="display: flex; gap: 0.25rem;">
+                                        <input type="time" id="inputWeekdayBpTime">
+                                        <button type="button" class="btn-time-add" style="background:#dc2626;" onclick="addNotifTime('weekday', 'bp')">추가 +</button>
+                                    </div>
+                                </div>
+                                <div id="containerWeekdayBpTimes" class="chips-container"></div>
+                            </div>
+                        </div>
+
+                        <!-- 주말/공휴일 설정 -->
+                        <div id="notifSubTabWeekend" style="display: none;">
+                            <div class="notif-time-box">
+                                <div class="notif-time-box-header">
+                                    <span style="color: #2563eb; font-weight: bold;">💊 약 복용 알림 시각 (주말/휴일)</span>
+                                    <div style="display: flex; gap: 0.25rem;">
+                                        <input type="time" id="inputWeekendMedTime">
+                                        <button type="button" class="btn-time-add" onclick="addNotifTime('weekend', 'med')">추가 +</button>
+                                    </div>
+                                </div>
+                                <div id="containerWeekendMedTimes" class="chips-container"></div>
+                            </div>
+
+                            <div class="notif-time-box" style="margin-top: 0.5rem;">
+                                <div class="notif-time-box-header">
+                                    <span style="color: #dc2626; font-weight: bold;">🩸 혈압 측정 알림 시각 (주말/휴일)</span>
+                                    <div style="display: flex; gap: 0.25rem;">
+                                        <input type="time" id="inputWeekendBpTime">
+                                        <button type="button" class="btn-time-add" style="background:#dc2626;" onclick="addNotifTime('weekend', 'bp')">추가 +</button>
+                                    </div>
+                                </div>
+                                <div id="containerWeekendBpTimes" class="chips-container"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 8. 🖥️ 서버 시스템 프로세스 장애 긴급 경보 (신규 4번 - 관리자 전용) -->
+                    <div class="notif-card-group admin-only-section">
+                        <label class="notif-toggle-row">
+                            <input type="checkbox" id="notifSystemAlertEnabled" checked>
+                            <div class="notif-toggle-content">
+                                <div style="display: flex; align-items: center; gap: 0.35rem;">
+                                    <strong>🖥️ 서버 시스템 장애 긴급 경보</strong>
+                                    <span class="badge-admin">관리자 전용</span>
+                                </div>
+                                <p>PM2 핵심 프로세스(포털, 혈압, 자산, 뉴스) 다운 감지 시 <strong>관리자 계정에만 즉시 긴급 푸시</strong>를 발송합니다.</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 2️⃣ 탭 2: 푸시 알림 수신 내역 뷰 -->
+                <div id="notifMainViewHistory" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #f1f5f9;">
+                        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">최근 수신 내역 (최대 50건)</span>
+                        <div style="display: flex; gap: 0.35rem;">
+                            <button type="button" onclick="fetchNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
+                            <button type="button" onclick="clearAllNotificationHistory()" class="btn-history-tool btn-danger-tool">🗑️ 전체 삭제</button>
+                        </div>
+                    </div>
+                    <!-- 알림 목록 컨테이너 -->
+                    <div id="notifHistoryList" class="notif-history-scroll">
+                        <div style="text-align: center; color: #94a3b8; padding: 2.5rem 0; font-size: 0.88rem;">알림 내역을 불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 모달 하단 고정 액션 버튼 바 -->
+            <div class="notif-modal-footer">
+                <button type="button" onclick="saveNotificationSettings()" class="btn-notif-save">💾 설정 저장 및 권한 등록</button>
+                <button type="button" onclick="sendTestNotification()" class="btn-notif-test">🔔 테스트 발송</button>
+                <button type="button" onclick="closeNotificationModal()" class="btn-notif-close">닫기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 통합 알림 센터 전용 스타일 -->
+    <style>
+        .notif-modal-backdrop {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(4px);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .notif-modal-dialog {
+            background: #ffffff;
+            width: 100%;
+            max-width: 520px;
+            max-height: calc(100dvh - 2rem);
+            border-radius: 14px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: notifModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes notifModalFadeIn {
+            from { opacity: 0; transform: scale(0.96) translateY(8px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .notif-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 1.1rem;
+            border-bottom: 1px solid #e2e8f0;
+            background: #ffffff;
+            flex-shrink: 0;
+        }
+        .notif-close-x {
+            background: #f1f5f9;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .notif-close-x:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+        .notif-main-tabs {
+            display: flex;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        .notif-tab-item {
+            flex: 1;
+            padding: 0.7rem 0.5rem;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #64748b;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+        }
+        .notif-tab-item.active {
+            color: #2563eb;
+            background: #ffffff;
+            border-bottom-color: #2563eb;
+        }
+        .notif-tab-badge {
+            background: #ef4444;
+            color: white;
+            border-radius: 10px;
+            padding: 1px 6px;
+            font-size: 0.72rem;
+            font-weight: bold;
+        }
+        .notif-modal-scroll {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 1rem 1.1rem;
+            background: #f8fafc;
+            box-sizing: border-box;
+        }
+        .notif-perm-banner {
+            font-size: 0.82rem;
+            padding: 0.55rem 0.8rem;
+            border-radius: 8px;
+            margin-bottom: 0.85rem;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #1e40af;
+        }
+        .notif-perm-banner button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .notif-card-group {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 0.75rem 0.9rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+        }
+        .notif-card-group.admin-only-section {
+            background: #fffbeb;
+            border-color: #fde68a;
+        }
+        .notif-toggle-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            cursor: pointer;
+            margin: 0;
+        }
+        .notif-toggle-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #2563eb;
+            margin-top: 3px;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .notif-toggle-content {
+            flex: 1;
+        }
+        .notif-toggle-content strong {
+            display: block;
+            color: #0f172a;
+            font-size: 0.92rem;
+            line-height: 1.35;
+        }
+        .notif-toggle-content p {
+            margin: 0.25rem 0 0 0;
+            font-size: 0.8rem;
+            color: #64748b;
+            line-height: 1.4;
+        }
+        .notif-inline-time {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.78rem;
+            color: #475569;
+            background: #f1f5f9;
+            padding: 0.15rem 0.4rem;
+            border-radius: 5px;
+        }
+        .notif-inline-time input[type="time"] {
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 0.15rem 0.3rem;
+            font-size: 0.78rem;
+            font-family: inherit;
+        }
+        .badge-admin {
+            background: #f59e0b;
+            color: white;
+            font-size: 0.68rem;
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+        .notif-sub-tabs {
+            display: inline-flex;
+            gap: 0.25rem;
+            background: #f1f5f9;
+            padding: 2px;
+            border-radius: 6px;
+        }
+        .notif-sub-tabs button {
+            background: transparent;
+            border: none;
+            padding: 0.25rem 0.55rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #64748b;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .notif-sub-tabs button.active {
+            background: #ffffff;
+            color: #2563eb;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+        }
+        .notif-time-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 0.6rem 0.75rem;
+        }
+        .notif-time-box-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            margin-bottom: 0.45rem;
+        }
+        .notif-time-box-header input[type="time"] {
+            padding: 0.15rem 0.3rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 0.78rem;
+        }
+        .btn-time-add {
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.76rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            min-height: 24px;
+        }
+        .notif-time-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            padding: 0.15rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .notif-time-chip button {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 0;
+            line-height: 1;
+        }
+        .notif-time-chip button:hover {
+            color: #ef4444;
+        }
+        .notif-modal-footer {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.75rem 1.1rem;
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .btn-notif-save {
+            flex: 1;
+            min-width: 140px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            padding: 0.6rem 0.9rem;
+            font-weight: 700;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-notif-save:hover { background: #059669; }
+        .btn-notif-test {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            padding: 0.6rem 0.8rem;
+            font-weight: 600;
+            font-size: 0.84rem;
+            cursor: pointer;
+        }
+        .btn-notif-test:hover { background: #2563eb; }
+        .btn-notif-close {
+            background: #64748b;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            padding: 0.6rem 0.85rem;
+            font-weight: 600;
+            font-size: 0.84rem;
+            cursor: pointer;
+        }
+        .btn-notif-close:hover { background: #475569; }
+        .btn-history-tool {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            padding: 0.25rem 0.55rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: #475569;
+            cursor: pointer;
+        }
+        .btn-danger-tool {
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #dc2626;
+        }
+        .notif-history-scroll {
+            max-height: 400px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .notif-history-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 9px;
+            padding: 0.7rem 0.85rem;
+            margin-bottom: 0.55rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            transition: transform 0.1s;
+        }
+        .notif-history-card:hover {
+            border-color: #cbd5e1;
+        }
+        .notif-h-icon {
+            font-size: 1.3rem;
+            line-height: 1;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .notif-h-body {
+            flex: 1;
+            min-width: 0;
+        }
+        .notif-h-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.2rem;
+            gap: 0.4rem;
+        }
+        .notif-h-title {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .notif-h-time {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+        .notif-h-msg {
+            font-size: 0.8rem;
+            color: #475569;
+            line-height: 1.35;
+            margin: 0 0 0.35rem 0;
+            word-break: break-all;
+        }
+        .notif-h-actions {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+        .notif-h-btn-link {
+            font-size: 0.74rem;
+            color: #2563eb;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 1px 6px;
+            background: #eff6ff;
+            border-radius: 4px;
+        }
+        .notif-h-btn-del {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 0 4px;
+            margin-left: auto;
+        }
+        .notif-h-btn-del:hover { color: #ef4444; }
+    </style>
+
+    <!-- 통합 알림 센터 동작 스크립트 -->
+    <script>
+        let portalNotifSettings = {
+            enabled: 1,
+            hospital_push_enabled: 1,
+            breaking_news_enabled: 1,
+            weather_morning_enabled: 1,
+            weather_morning_time: '07:00',
+            asset_report_enabled: 1,
+            bp_reminder_enabled: 1,
+            bp_reminder_time: '21:00',
+            system_alert_enabled: 1,
+            weekday_med_times: ['08:00', '19:00'],
+            weekday_bp_times: ['07:30', '21:30'],
+            weekend_med_times: ['09:00', '19:30'],
+            weekend_bp_times: ['08:30', '22:00']
+        };
+
+        function openNotificationModal() {
+            const modal = document.getElementById('notificationModal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            updateBrowserPermissionUI();
+            fetchNotificationSettings();
+            fetchNotificationHistory();
+        }
+
+        function closeNotificationModal() {
+            const modal = document.getElementById('notificationModal');
+            if (modal) modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        // 모달 배경 클릭 시 닫기
+        document.getElementById('notificationModal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'notificationModal') {
+                closeNotificationModal();
+            }
+        });
+
+        function switchNotifMainTab(tab) {
+            const isSettings = tab === 'settings';
+            document.getElementById('notifMainViewSettings').style.display = isSettings ? 'block' : 'none';
+            document.getElementById('notifMainViewHistory').style.display = isSettings ? 'none' : 'block';
+            document.getElementById('notifMainTabSettings').classList.toggle('active', isSettings);
+            document.getElementById('notifMainTabHistory').classList.toggle('active', !isSettings);
+            if (!isSettings) {
+                fetchNotificationHistory();
+            }
+        }
+
+        function switchNotifSubTab(type) {
+            const isWeekday = type === 'weekday';
+            document.getElementById('notifSubTabWeekday').style.display = isWeekday ? 'block' : 'none';
+            document.getElementById('notifSubTabWeekend').style.display = isWeekday ? 'none' : 'block';
+            document.getElementById('notifTabWeekday').classList.toggle('active', isWeekday);
+            document.getElementById('notifTabWeekend').classList.toggle('active', !isWeekday);
+        }
+
+        function updateBrowserPermissionUI() {
+            const textEl = document.getElementById('notifPermissionStatusText');
+            const btnEl = document.getElementById('btnRequestNotifPermission');
+            if (!('Notification' in window)) {
+                if (textEl) textEl.textContent = '❌ 이 브라우저는 웹 푸시를 지원하지 않습니다.';
+                if (btnEl) btnEl.style.display = 'none';
+                return;
+            }
+            if (Notification.permission === 'granted') {
+                if (textEl) textEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
+                if (btnEl) btnEl.style.display = 'none';
+            } else if (Notification.permission === 'denied') {
+                if (textEl) textEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
+                if (btnEl) btnEl.style.display = 'none';
+            } else {
+                if (textEl) textEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
+                if (btnEl) btnEl.style.display = 'inline-block';
+            }
+        }
+
+        async function requestBrowserNotificationPermission() {
+            if (!('Notification' in window)) {
+                alert('현재 브라우저에서는 알림 권한을 지원하지 않습니다.');
+                return;
+            }
+            const perm = await Notification.requestPermission();
+            updateBrowserPermissionUI();
+            if (perm === 'granted') {
+                await registerWebPushSubscription();
+                alert('🎉 알림 권한이 성공적으로 허용되었습니다!');
+            } else {
+                alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
+            }
+        }
+
+        async function fetchNotificationSettings() {
+            try {
+                const res = await fetch('/api/notification/settings');
+                const data = await res.json();
+                if (data.success && data.settings) {
+                    portalNotifSettings = data.settings;
+                    // 체크박스 반영
+                    const setCheck = (id, val) => {
+                        const el = document.getElementById(id);
+                        if (el) el.checked = Boolean(val !== 0);
+                    };
+                    setCheck('notifMasterEnabled', portalNotifSettings.enabled);
+                    setCheck('notifBreakingNewsEnabled', portalNotifSettings.breaking_news_enabled);
+                    setCheck('notifWeatherMorningEnabled', portalNotifSettings.weather_morning_enabled);
+                    setCheck('notifAssetReportEnabled', portalNotifSettings.asset_report_enabled);
+                    setCheck('notifBpReminderEnabled', portalNotifSettings.bp_reminder_enabled);
+                    setCheck('notifHospitalPushEnabled', portalNotifSettings.hospital_push_enabled);
+                    setCheck('notifSystemAlertEnabled', portalNotifSettings.system_alert_enabled);
+
+                    // 시간 입력값 반영
+                    const setVal = (id, val) => {
+                        const el = document.getElementById(id);
+                        if (el && val) el.value = val;
+                    };
+                    setVal('inputWeatherTime', portalNotifSettings.weather_morning_time || '07:00');
+                    setVal('inputBpReminderTime', portalNotifSettings.bp_reminder_time || '21:00');
+
+                    renderNotifChips();
+                }
+            } catch (e) {
+                console.error('[포털 알림 설정 조회 실패]:', e);
+            }
+        }
+
+        function renderNotifChips() {
+            const renderBox = (containerId, arr, key) => {
+                const container = document.getElementById(containerId);
+                if (!container) return;
+                if (!arr || arr.length === 0) {
+                    container.innerHTML = '<span style="font-size:0.78rem; color:#94a3b8;">등록된 알림 시간이 없습니다.</span>';
+                    return;
+                }
+                container.innerHTML = arr.map((t, idx) => `
+                    <span class="notif-time-chip">
+                        <span>⏰ ${t}</span>
+                        <button type="button" onclick="removeNotifTime('${key}', ${idx})" title="삭제">✕</button>
+                    </span>
+                `).join('');
+            };
+
+            renderBox('containerWeekdayMedTimes', portalNotifSettings.weekday_med_times, 'weekday_med_times');
+            renderBox('containerWeekdayBpTimes', portalNotifSettings.weekday_bp_times, 'weekday_bp_times');
+            renderBox('containerWeekendMedTimes', portalNotifSettings.weekend_med_times, 'weekend_med_times');
+            renderBox('containerWeekendBpTimes', portalNotifSettings.weekend_bp_times, 'weekend_bp_times');
+        }
+
+        function addNotifTime(dayType, category) {
+            const inputId = dayType === 'weekday'
+                ? (category === 'med' ? 'inputWeekdayMedTime' : 'inputWeekdayBpTime')
+                : (category === 'med' ? 'inputWeekendMedTime' : 'inputWeekendBpTime');
+
+            const key = `${dayType}_${category}_times`;
+            const inputEl = document.getElementById(inputId);
+            if (!inputEl || !inputEl.value) {
+                alert('추가할 알림 시간을 먼저 선택해 주세요.');
+                return;
+            }
+            const val = inputEl.value;
+            if (!portalNotifSettings[key]) portalNotifSettings[key] = [];
+            if (portalNotifSettings[key].includes(val)) {
+                alert('이미 등록된 시간입니다.');
+                return;
+            }
+            portalNotifSettings[key].push(val);
+            portalNotifSettings[key].sort();
+            inputEl.value = '';
+            renderNotifChips();
+        }
+
+        function removeNotifTime(key, index) {
+            if (portalNotifSettings[key]) {
+                portalNotifSettings[key].splice(index, 1);
+                renderNotifChips();
+            }
+        }
+
+        async function saveNotificationSettings() {
+            const getCheck = (id) => {
+                const el = document.getElementById(id);
+                return el ? (el.checked ? 1 : 0) : 1;
+            };
+            const getVal = (id, fallback) => {
+                const el = document.getElementById(id);
+                return (el && el.value.trim()) ? el.value.trim() : fallback;
+            };
+
+            portalNotifSettings.enabled = getCheck('notifMasterEnabled');
+            portalNotifSettings.breaking_news_enabled = getCheck('notifBreakingNewsEnabled');
+            portalNotifSettings.weather_morning_enabled = getCheck('notifWeatherMorningEnabled');
+            portalNotifSettings.weather_morning_time = getVal('inputWeatherTime', '07:00');
+            portalNotifSettings.asset_report_enabled = getCheck('notifAssetReportEnabled');
+            portalNotifSettings.bp_reminder_enabled = getCheck('notifBpReminderEnabled');
+            portalNotifSettings.bp_reminder_time = getVal('inputBpReminderTime', '21:00');
+            portalNotifSettings.hospital_push_enabled = getCheck('notifHospitalPushEnabled');
+            portalNotifSettings.system_alert_enabled = getCheck('notifSystemAlertEnabled');
+
+            try {
+                const saveRes = await fetch('/api/notification/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(portalNotifSettings)
+                });
+                const result = await saveRes.json();
+
+                // 푸시 권한이 활성화되어 있으면 브라우저 토큰 재등록
+                if (portalNotifSettings.enabled) {
+                    await registerWebPushSubscription();
+                }
+
+                updateBrowserPermissionUI();
+                alert(result.message || '알림 설정이 성공적으로 저장되었습니다.');
+                closeNotificationModal();
+            } catch (err) {
+                console.error('[알림 설정 저장 오류]:', err);
+                alert('알림 설정 저장 중 오류가 발생했습니다.');
+            }
+        }
+
+        async function registerWebPushSubscription() {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+            if (Notification.permission !== 'granted') return;
+
+            try {
+                const keyRes = await fetch('/api/notification/vapid-key');
+                const { publicKey } = await keyRes.json();
+                if (!publicKey) return;
+
+                const reg = await navigator.serviceWorker.ready;
+                let sub = await reg.pushManager.getSubscription();
+
+                if (!sub) {
+                    const convertedKey = urlBase64ToUint8Array(publicKey);
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: convertedKey
+                    });
+                }
+
+                await fetch('/api/notification/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ subscription: sub })
+                });
+                console.log('✅ 포털 웹 푸시 구독 토큰 등록 완료');
+            } catch (e) {
+                console.error('[푸시 구독 등록 실패]:', e);
+            }
+        }
+
+        async function sendTestNotification() {
+            try {
+                const res = await fetch('/api/notification/test', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n수신 내역 탭에서도 확인하실 수 있습니다.');
+                    setTimeout(fetchNotificationHistory, 500);
+                } else {
+                    alert('테스트 알림 발송 실패: ' + (data.message || '서버 응답 오류'));
+                }
+            } catch (e) {
+                alert('테스트 알림 요청 중 오류 발생: ' + e.message);
+            }
+        }
+
+        async function fetchNotificationHistory() {
+            const listEl = document.getElementById('notifHistoryList');
+            try {
+                const res = await fetch('/api/notification/history');
+                const data = await res.json();
+                const history = data.history || [];
+
+                // 상단바 및 탭 배지 업데이트
+                const badgeCount = history.length;
+                const updateBadge = (id, cnt) => {
+                    const b = document.getElementById(id);
+                    if (b) {
+                        b.textContent = cnt;
+                        b.style.display = cnt > 0 ? 'inline-block' : 'none';
+                    }
+                };
+                updateBadge('unavNotifBadge', badgeCount);
+                updateBadge('unavMNotifBadge', badgeCount);
+                updateBadge('notifHistoryBadge', badgeCount);
+
+                if (!listEl) return;
+                if (history.length === 0) {
+                    listEl.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 2.5rem 0; font-size: 0.88rem;">수신된 푸시 알림 내역이 없습니다.</div>';
+                    return;
+                }
+
+                const typeIconMap = {
+                    'breaking': '🚨',
+                    'weather': '🌤️',
+                    'asset': '💰',
+                    'blood_pressure': '🩸',
+                    'medication': '💊',
+                    'hospital': '🏥',
+                    'system': '🖥️',
+                    'test': '🔔'
+                };
+
+                listEl.innerHTML = history.map(item => {
+                    const icon = typeIconMap[item.type] || item.icon || '🔔';
+                    const timeStr = item.created_at ? item.created_at.replace('T', ' ').slice(5, 16) : '';
+                    const linkUrl = item.url || '#';
+                    return `
+                        <div class="notif-history-card">
+                            <span class="notif-h-icon">${icon}</span>
+                            <div class="notif-h-body">
+                                <div class="notif-h-top">
+                                    <span class="notif-h-title">${item.title || '알림'}</span>
+                                    <span class="notif-h-time">${timeStr}</span>
+                                </div>
+                                <p class="notif-h-msg">${item.body || ''}</p>
+                                <div class="notif-h-actions">
+                                    <a href="${linkUrl}" class="notif-h-btn-link" target="_self">바로가기 ↗</a>
+                                    <button type="button" class="notif-h-btn-del" onclick="deleteNotificationItem(${item.id})" title="삭제">🗑️ 삭제</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('[알림 내역 조회 오류]:', e);
+                if (listEl) listEl.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 2rem 0; font-size: 0.88rem;">알림 내역을 불러오지 못했습니다.</div>';
+            }
+        }
+
+        async function deleteNotificationItem(id) {
+            if (!confirm('이 알림 내역을 삭제하시겠습니까?')) return;
+            try {
+                const res = await fetch(`/api/notification/history/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    fetchNotificationHistory();
+                } else {
+                    alert('삭제 실패: ' + (data.message || '오류'));
+                }
+            } catch (e) {
+                alert('삭제 중 오류: ' + e.message);
+            }
+        }
+
+        async function clearAllNotificationHistory() {
+            if (!confirm('수신된 모든 알림 내역을 삭제하시겠습니까?')) return;
+            try {
+                const res = await fetch('/api/notification/history/clear/all', { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    fetchNotificationHistory();
+                } else {
+                    alert('전체 삭제 실패: ' + (data.message || '오류'));
+                }
+            } catch (e) {
+                alert('전체 삭제 중 오류: ' + e.message);
+            }
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+
+        // 페이지 진입 시 초기 배지 로드 및 자동 구독 갱신
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchNotificationHistory();
+            setTimeout(registerWebPushSubscription, 1500);
         });
     </script>
 

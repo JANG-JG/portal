@@ -1359,7 +1359,378 @@ app.post('/api/admin/change-password', authenticateToken, async (req, res) => {
     });
 });
 
-// 7. 헬스 체크
+// ==========================================
+// 🔔 [통합 포털 알림 센터 API]
+// ==========================================
+const VAPID_PUBLIC_KEY = 'BOChfX_5sr0NH0ljWstk0YdSqjggR1M5V97nb6xOzOxfTT7yZZ7ipQVZACLtVk97Y0L0lJSvtqxmBzL_xsOW1BA';
+
+// 1. VAPID 공개키 조회
+app.get('/api/notification/vapid-key', (req, res) => {
+    res.json({ success: true, publicKey: VAPID_PUBLIC_KEY });
+});
+
+// 2. 푸시 구독 토큰 등록 API
+app.post('/api/notification/subscribe', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const { subscription } = req.body;
+
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+        return res.status(400).json({ success: false, message: '유효하지 않은 구독 정보입니다.' });
+    }
+
+    const { endpoint, keys } = subscription;
+    const query = `
+        INSERT INTO push_subscriptions (user_id, endpoint, keys_p256dh, keys_auth)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            endpoint = excluded.endpoint,
+            keys_p256dh = excluded.keys_p256dh,
+            keys_auth = excluded.keys_auth,
+            updated_at = CURRENT_TIMESTAMP
+    `;
+
+    db.run(query, [userId, endpoint, keys.p256dh, keys.auth], (err) => {
+        if (err) {
+            console.error('[WebPush] 포털 구독 토큰 저장 실패:', err);
+            return res.status(500).json({ success: false, message: '구독 토큰 저장 실패' });
+        }
+        res.json({ success: true, message: '푸시 알림 구독이 등록되었습니다.' });
+    });
+});
+
+// 3. 알림 맞춤 설정 조회 API
+app.get('/api/notification/settings', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+
+    db.get("SELECT * FROM notification_settings WHERE user_id = ? OR user_id = 'admin' ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END LIMIT 1", [userId, userId], (err, row) => {
+        if (err) return res.status(500).json({ success: false, message: '알림 설정 조회 실패' });
+
+        const safeParse = (str, fallback) => {
+            try { return JSON.parse(str) || fallback; } catch (e) { return fallback; }
+        };
+
+        if (!row) {
+            return res.json({
+                success: true,
+                settings: {
+                    enabled: 1,
+                    hospital_push_enabled: 1,
+                    breaking_news_enabled: 1,
+                    weather_morning_enabled: 1,
+                    weather_morning_time: '07:00',
+                    asset_report_enabled: 1,
+                    bp_reminder_enabled: 1,
+                    bp_reminder_time: '21:00',
+                    system_alert_enabled: 1,
+                    weekday_med_times: ['08:00', '19:00'],
+                    weekday_bp_times: ['07:30', '21:30'],
+                    weekend_med_times: ['09:00', '19:30'],
+                    weekend_bp_times: ['08:30', '22:00']
+                }
+            });
+        }
+
+        res.json({
+            success: true,
+            settings: {
+                enabled: row.enabled !== undefined ? row.enabled : 1,
+                hospital_push_enabled: row.hospital_push_enabled !== undefined ? row.hospital_push_enabled : 1,
+                breaking_news_enabled: row.breaking_news_enabled !== undefined ? row.breaking_news_enabled : 1,
+                weather_morning_enabled: row.weather_morning_enabled !== undefined ? row.weather_morning_enabled : 1,
+                weather_morning_time: row.weather_morning_time || '07:00',
+                asset_report_enabled: row.asset_report_enabled !== undefined ? row.asset_report_enabled : 1,
+                bp_reminder_enabled: row.bp_reminder_enabled !== undefined ? row.bp_reminder_enabled : 1,
+                bp_reminder_time: row.bp_reminder_time || '21:00',
+                system_alert_enabled: row.system_alert_enabled !== undefined ? row.system_alert_enabled : 1,
+                weekday_med_times: safeParse(row.weekday_med_times, ['08:00', '19:00']),
+                weekday_bp_times: safeParse(row.weekday_bp_times, ['07:30', '21:30']),
+                weekend_med_times: safeParse(row.weekend_med_times, ['09:00', '19:30']),
+                weekend_bp_times: safeParse(row.weekend_bp_times, ['08:30', '22:00'])
+            }
+        });
+    });
+});
+
+// 4. 알림 맞춤 설정 저장 API
+app.post('/api/notification/settings', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const {
+        enabled, hospital_push_enabled, breaking_news_enabled,
+        weather_morning_enabled, weather_morning_time,
+        asset_report_enabled, bp_reminder_enabled, bp_reminder_time,
+        system_alert_enabled,
+        weekday_med_times, weekday_bp_times,
+        weekend_med_times, weekend_bp_times
+    } = req.body;
+
+    const query = `
+        INSERT INTO notification_settings 
+        (user_id, enabled, hospital_push_enabled, breaking_news_enabled, weather_morning_enabled, weather_morning_time, asset_report_enabled, bp_reminder_enabled, bp_reminder_time, system_alert_enabled, weekday_med_times, weekday_bp_times, weekend_med_times, weekend_bp_times)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            enabled = excluded.enabled,
+            hospital_push_enabled = excluded.hospital_push_enabled,
+            breaking_news_enabled = excluded.breaking_news_enabled,
+            weather_morning_enabled = excluded.weather_morning_enabled,
+            weather_morning_time = excluded.weather_morning_time,
+            asset_report_enabled = excluded.asset_report_enabled,
+            bp_reminder_enabled = excluded.bp_reminder_enabled,
+            bp_reminder_time = excluded.bp_reminder_time,
+            system_alert_enabled = excluded.system_alert_enabled,
+            weekday_med_times = excluded.weekday_med_times,
+            weekday_bp_times = excluded.weekday_bp_times,
+            weekend_med_times = excluded.weekend_med_times,
+            weekend_bp_times = excluded.weekend_bp_times,
+            updated_at = CURRENT_TIMESTAMP
+    `;
+
+    db.run(query, [
+        userId,
+        enabled !== undefined ? (enabled ? 1 : 0) : 1,
+        hospital_push_enabled !== undefined ? (hospital_push_enabled ? 1 : 0) : 1,
+        breaking_news_enabled !== undefined ? (breaking_news_enabled ? 1 : 0) : 1,
+        weather_morning_enabled !== undefined ? (weather_morning_enabled ? 1 : 0) : 1,
+        (weather_morning_time || '07:00').trim(),
+        asset_report_enabled !== undefined ? (asset_report_enabled ? 1 : 0) : 1,
+        bp_reminder_enabled !== undefined ? (bp_reminder_enabled ? 1 : 0) : 1,
+        (bp_reminder_time || '21:00').trim(),
+        system_alert_enabled !== undefined ? (system_alert_enabled ? 1 : 0) : 1,
+        JSON.stringify(Array.isArray(weekday_med_times) ? weekday_med_times : ['08:00', '19:00']),
+        JSON.stringify(Array.isArray(weekday_bp_times) ? weekday_bp_times : ['07:30', '21:30']),
+        JSON.stringify(Array.isArray(weekend_med_times) ? weekend_med_times : ['09:00', '19:30']),
+        JSON.stringify(Array.isArray(weekend_bp_times) ? weekend_bp_times : ['08:30', '22:00'])
+    ], function(err) {
+        if (err) {
+            console.error('[WebPush] 포털 알림 설정 저장 실패:', err);
+            return res.status(500).json({ success: false, message: '알림 설정 저장 실패' });
+        }
+        res.json({ success: true, message: '포털 통합 알림 설정이 저장되었습니다.' });
+    });
+});
+
+// 5. 알림 수신 내역 조회 API
+app.get('/api/notification/history', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const query = `
+        SELECT * FROM notification_history 
+        WHERE user_id = ? OR user_id = 'admin'
+        ORDER BY id DESC 
+        LIMIT 50
+    `;
+    db.all(query, [userId], (err, rows) => {
+        if (err) return res.status(500).json({ success: false, message: '알림 내역 조회 실패' });
+        res.json({ success: true, history: rows || [] });
+    });
+});
+
+// 6. 알림 수신 내역 개별 삭제 API
+app.delete('/api/notification/history/:id', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const id = req.params.id;
+    db.run("DELETE FROM notification_history WHERE id = ? AND (user_id = ? OR user_id = 'admin')", [id, userId], (err) => {
+        if (err) return res.status(500).json({ success: false, message: '알림 삭제 실패' });
+        res.json({ success: true, message: '알림이 삭제되었습니다.' });
+    });
+});
+
+// 7. 알림 수신 내역 전체 삭제 API
+app.delete('/api/notification/history/clear/all', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    db.run("DELETE FROM notification_history WHERE user_id = ? OR user_id = 'admin'", [userId], (err) => {
+        if (err) return res.status(500).json({ success: false, message: '전체 알림 삭제 실패' });
+        res.json({ success: true, message: '모든 알림 내역이 삭제되었습니다.' });
+    });
+});
+
+// 8. 테스트 푸시 즉시 발송 API
+app.post('/api/notification/test', authenticateToken, async (req, res) => {
+    try {
+        const resp = await fetch('http://127.0.0.1:3000/api/notification/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: '🔔 포털 통합 알림 테스트',
+                body: '웹 푸시 알림이 정상적으로 연동되었습니다! 속보, 날씨, 증시, 복약 및 혈압 알림을 실시간 수신할 수 있습니다.',
+                url: 'https://j-jg.cc/',
+                type: 'test'
+            })
+        });
+        const data = await resp.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, message: '테스트 알림 발송 실패: ' + e.message });
+    }
+});
+
+// 9. 알림 브로드캐스트 프록시 API
+app.post('/api/notification/broadcast', authenticateToken, async (req, res) => {
+    try {
+        const resp = await fetch('http://127.0.0.1:3000/api/notification/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        const data = await resp.json();
+        res.json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, message: '브로드캐스트 실패: ' + e.message });
+    }
+});
+
+// ==========================================
+// ⏰ [통합 포털 알림 1~4번 자동화 스케줄러]
+// ==========================================
+let lastWeatherSentDate = '';
+let lastAssetSentDate = '';
+let lastBpSentDate = '';
+const pm2DownAlertState = {};
+
+function sendPortalPushNotification({ title, body, url, type, adminOnly = false }) {
+    return fetch('http://127.0.0.1:3000/api/notification/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body, url, type, adminOnly })
+    }).catch(err => {
+        console.error('[Portal Notification Error]:', err.message);
+    });
+}
+
+// 1분 주기 감시 루프
+setInterval(async () => {
+    const now = new Date();
+    const kstFormatter = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    const parts = kstFormatter.formatToParts(now);
+    const getPart = (type) => parts.find(p => p.type === type)?.value || '';
+    const kstDateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+    const kstTimeStr = `${getPart('hour')}:${getPart('minute')}`;
+    const dayOfWeek = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getDay();
+
+    // 알림 설정 확인
+    db.get("SELECT * FROM notification_settings WHERE user_id = 'upt0731' OR user_id = 'admin' LIMIT 1", async (err, settings) => {
+        if (err) return;
+        const s = settings || {
+            enabled: 1,
+            weather_morning_enabled: 1,
+            weather_morning_time: '07:00',
+            asset_report_enabled: 1,
+            bp_reminder_enabled: 1,
+            bp_reminder_time: '21:00',
+            system_alert_enabled: 1
+        };
+
+        if (s.enabled === 0) return;
+
+        // 🌤️ 1번: 아침 기상 특보 & 우산 알림
+        const targetWeatherTime = (s.weather_morning_time || '07:00').trim();
+        if (s.weather_morning_enabled !== 0 && kstTimeStr === targetWeatherTime && lastWeatherSentDate !== kstDateStr) {
+            lastWeatherSentDate = kstDateStr;
+            try {
+                const weather = await getLiveWeatherData();
+                let umbrellaTip = '오늘도 쾌청하고 상쾌한 하루 보내세요! ☀️';
+                const cond = weather.condition || '';
+                if (cond.includes('비') || cond.includes('소나기') || cond.includes('뇌우') || cond.includes('눈')) {
+                    umbrellaTip = '오늘 강수 소식이 있으니 출근길 우산을 꼭 챙기세요! ☔';
+                } else if (cond.includes('흐림') || cond.includes('구름')) {
+                    umbrellaTip = '하늘이 다소 흐리니 따뜻하게 챙겨 입으세요! ⛅';
+                }
+
+                sendPortalPushNotification({
+                    title: `🌤️ 오늘 아침 기상 특보 & 날씨 브리핑`,
+                    body: `현재 ${weather.city || '계룡'} ${weather.temp} (${weather.condition}). ${umbrellaTip}`,
+                    url: 'https://news.j-jg.cc/weather',
+                    type: 'weather'
+                });
+            } catch (wErr) {
+                console.error('[아침 날씨 알림 생성 실패]:', wErr);
+            }
+        }
+
+        // 💰 2번: 평일 15:30 국내 증시 마감 & 환율 리포트
+        if (s.asset_report_enabled !== 0 && dayOfWeek >= 1 && dayOfWeek <= 5 && kstTimeStr === '15:30' && lastAssetSentDate !== kstDateStr) {
+            lastAssetSentDate = kstDateStr;
+            try {
+                const market = await getLiveMarketData();
+                const kospi = market.kospi ? `코스피 ${market.kospi.price}(${market.kospi.ratio})` : '';
+                const usdkrw = market.usdkrw ? `환율 ${market.usdkrw.price}원` : '';
+                const marketSummary = [kospi, usdkrw].filter(Boolean).join(' | ');
+
+                sendPortalPushNotification({
+                    title: `💰 국내 증시 마감 & 환율 리포트`,
+                    body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 자산 변동 내역을 확인하세요.',
+                    url: 'https://asset.j-jg.cc/',
+                    type: 'asset'
+                });
+            } catch (mErr) {
+                console.error('[장마감 알림 생성 실패]:', mErr);
+            }
+        }
+
+        // 🎯 3번: 당일 혈압 미측정 저녁 리마인드
+        const targetBpTime = (s.bp_reminder_time || '21:00').trim();
+        if (s.bp_reminder_enabled !== 0 && kstTimeStr === targetBpTime && lastBpSentDate !== kstDateStr) {
+            lastBpSentDate = kstDateStr;
+            db.get(
+                "SELECT COUNT(*) as count FROM records WHERE substr(measured_at, 1, 10) = ?",
+                [kstDateStr],
+                (rErr, row) => {
+                    if (rErr) return;
+                    if (!row || row.count === 0) {
+                        sendPortalPushNotification({
+                            title: `🎯 당일 혈압 미측정 리마인드`,
+                            body: `오늘 아직 혈압 측정 기록이 없습니다. 취침 전 편안한 상태에서 혈압을 측정해 주세요!`,
+                            url: 'https://blood.j-jg.cc/dashboard.html',
+                            type: 'blood_pressure'
+                        });
+                    }
+                }
+            );
+        }
+    });
+
+    // 🖥️ 4번: PM2 프로세스 헬스체크 (관리자 전용 긴급 경보)
+    exec('pm2 jlist', (err, stdout) => {
+        if (err || !stdout) return;
+        try {
+            const procList = JSON.parse(stdout);
+            const monitoredApps = ['portal', 'blood-pressure-app', 'asset', 'news-dashboard'];
+
+            monitoredApps.forEach(appName => {
+                const proc = procList.find(p => p.name === appName);
+                if (proc) {
+                    const isOnline = proc.pm2_env.status === 'online';
+                    if (!isOnline && !pm2DownAlertState[appName]) {
+                        pm2DownAlertState[appName] = true;
+                        console.warn(`🚨 [PM2 ALERT] ${appName} 프로세스 다운 감지 (${proc.pm2_env.status})`);
+                        sendPortalPushNotification({
+                            title: `🚨 [긴급 서버 경보] ${appName} 프로세스 장애`,
+                            body: `프로세스 상태: ${proc.pm2_env.status}. 즉시 서버 관리 센터에서 확인해 주세요!`,
+                            url: 'https://j-jg.cc/admin#tab-overview',
+                            type: 'system',
+                            adminOnly: true // ★ 관리자 전용
+                        });
+                    } else if (isOnline && pm2DownAlertState[appName]) {
+                        pm2DownAlertState[appName] = false;
+                        console.log(`✅ [PM2 RECOVERY] ${appName} 프로세스 정상 복구`);
+                        sendPortalPushNotification({
+                            title: `✅ [서버 복구] ${appName} 정상 가동`,
+                            body: `${appName} 프로세스가 다시 온라인(online) 상태로 복구되었습니다.`,
+                            url: 'https://j-jg.cc/admin#tab-overview',
+                            type: 'system',
+                            adminOnly: true // ★ 관리자 전용
+                        });
+                    }
+                }
+            });
+        } catch (parseErr) {}
+    });
+
+}, 60000);
+
+// 헬스 체크
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'JG Portal' });
 });
