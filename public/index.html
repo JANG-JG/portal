@@ -955,16 +955,23 @@
 
                 <!-- 2️⃣ 탭 2: 푸시 알림 수신 내역 뷰 -->
                 <div id="notifMainViewHistory" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #f1f5f9;">
-                        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">최근 수신 내역 (최대 50건)</span>
-                        <div style="display: flex; gap: 0.35rem;">
-                            <button type="button" onclick="fetchNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 0.4rem;">
+                        <span id="notifHistoryCountLabel" style="font-size: 0.82rem; color: #64748b; font-weight: 600;">알림 내역</span>
+                        <div style="display: flex; gap: 0.3rem; align-items: center;">
+                            <button type="button" onclick="markAllNotificationsAsRead()" class="btn-history-tool" style="color: #2563eb; border-color: #bfdbfe; background: #eff6ff; font-weight: 700;">✓ 모두 읽음</button>
+                            <button type="button" onclick="refreshNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
                             <button type="button" onclick="clearAllNotificationHistory()" class="btn-history-tool btn-danger-tool">🗑️ 전체 삭제</button>
                         </div>
                     </div>
                     <!-- 알림 목록 컨테이너 -->
                     <div id="notifHistoryList" class="notif-history-scroll">
                         <div style="text-align: center; color: #94a3b8; padding: 2.5rem 0; font-size: 0.88rem;">알림 내역을 불러오는 중...</div>
+                    </div>
+                    <!-- 이전 알림 더보기 버튼 박스 -->
+                    <div id="notifLoadMoreBox" style="text-align: center; margin-top: 0.65rem; display: none;">
+                        <button type="button" onclick="loadMoreNotificationHistory()" class="btn-history-tool" style="width: 100%; padding: 0.5rem; font-size: 0.82rem; background: #ffffff; border-color: #cbd5e1; color: #334155; font-weight: 600;">
+                            + 이전 알림 더보기
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1322,7 +1329,28 @@
             display: flex;
             align-items: flex-start;
             gap: 0.65rem;
-            transition: transform 0.1s;
+            transition: all 0.15s;
+        }
+        .notif-history-card.is-unread {
+            background: #ffffff;
+            border-color: #bfdbfe;
+            border-left: 3.5px solid #2563eb;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.06);
+        }
+        .notif-history-card.is-read {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            opacity: 0.8;
+        }
+        .badge-unread-dot {
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 4px;
+            letter-spacing: -0.2px;
+            display: inline-block;
         }
         .notif-history-card:hover {
             border-color: #cbd5e1;
@@ -1659,15 +1687,35 @@
             }
         }
 
-        async function fetchNotificationHistory() {
+        let notifHistoryOffset = 0;
+        const NOTIF_HISTORY_LIMIT = 30;
+        let notifHistoryTotal = 0;
+        let notifHistoryListItems = [];
+
+        function refreshNotificationHistory() {
+            notifHistoryOffset = 0;
+            notifHistoryListItems = [];
+            fetchNotificationHistory(false);
+        }
+
+        function loadMoreNotificationHistory() {
+            notifHistoryOffset += NOTIF_HISTORY_LIMIT;
+            fetchNotificationHistory(true);
+        }
+
+        async function fetchNotificationHistory(isAppend = false) {
             const listEl = document.getElementById('notifHistoryList');
+            const loadMoreBox = document.getElementById('notifLoadMoreBox');
+            const countLabel = document.getElementById('notifHistoryCountLabel');
+
             try {
-                const res = await fetch('/api/notification/history');
+                const res = await fetch(`/api/notification/history?limit=${NOTIF_HISTORY_LIMIT}&offset=${notifHistoryOffset}`);
                 const data = await res.json();
                 const history = data.history || [];
+                const unreadCount = data.unreadCount || 0;
+                notifHistoryTotal = data.totalCount || 0;
 
-                // 상단바 및 탭 배지 업데이트
-                const badgeCount = history.length;
+                // 🌟 상단바 배지는 '안 읽은 알림(unreadCount)'만 표시! (0건이면 완전 숨김)
                 const updateBadge = (id, cnt) => {
                     const b = document.getElementById(id);
                     if (b) {
@@ -1675,13 +1723,24 @@
                         b.style.display = cnt > 0 ? 'inline-block' : 'none';
                     }
                 };
-                updateBadge('unavNotifBadge', badgeCount);
-                updateBadge('unavMNotifBadge', badgeCount);
-                updateBadge('notifHistoryBadge', badgeCount);
+                updateBadge('unavNotifBadge', unreadCount);
+                updateBadge('unavMNotifBadge', unreadCount);
+                updateBadge('notifHistoryBadge', unreadCount);
+
+                if (isAppend) {
+                    notifHistoryListItems = notifHistoryListItems.concat(history);
+                } else {
+                    notifHistoryListItems = history;
+                }
+
+                if (countLabel) {
+                    countLabel.textContent = `알림 내역 (${notifHistoryListItems.length}/${notifHistoryTotal}건, 미확인 ${unreadCount}건)`;
+                }
 
                 if (!listEl) return;
-                if (history.length === 0) {
+                if (notifHistoryListItems.length === 0) {
                     listEl.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 2.5rem 0; font-size: 0.88rem;">수신된 푸시 알림 내역이 없습니다.</div>';
+                    if (loadMoreBox) loadMoreBox.style.display = 'none';
                     return;
                 }
 
@@ -1696,30 +1755,107 @@
                     'test': '🔔'
                 };
 
-                listEl.innerHTML = history.map(item => {
+                listEl.innerHTML = notifHistoryListItems.map(item => {
                     const icon = typeIconMap[item.type] || item.icon || '🔔';
                     const timeStr = item.created_at ? item.created_at.replace('T', ' ').slice(5, 16) : '';
                     const linkUrl = item.url || '#';
+                    const isUnread = item.is_read === 0;
+                    const cardClass = isUnread ? 'notif-history-card is-unread' : 'notif-history-card is-read';
+                    const newBadge = isUnread ? '<span class="badge-unread-dot">NEW</span>' : '';
+
                     return `
-                        <div class="notif-history-card">
+                        <div class="${cardClass}" id="notif-card-${item.id}">
                             <span class="notif-h-icon">${icon}</span>
                             <div class="notif-h-body">
                                 <div class="notif-h-top">
-                                    <span class="notif-h-title">${item.title || '알림'}</span>
+                                    <div style="display: flex; align-items: center; gap: 0.35rem; min-width: 0;">
+                                        ${newBadge}
+                                        <span class="notif-h-title">${item.title || '알림'}</span>
+                                    </div>
                                     <span class="notif-h-time">${timeStr}</span>
                                 </div>
                                 <p class="notif-h-msg">${item.body || ''}</p>
                                 <div class="notif-h-actions">
-                                    <a href="${linkUrl}" class="notif-h-btn-link" target="_self">바로가기 ↗</a>
+                                    <button type="button" class="notif-h-btn-link" onclick="openAndReadNotification(${item.id}, '${linkUrl}')">바로가기 ↗</button>
+                                    ${isUnread ? `<button type="button" class="notif-h-btn-link" style="color: #64748b; background: #f1f5f9;" onclick="markSingleAsRead(${item.id})">읽음</button>` : ''}
                                     <button type="button" class="notif-h-btn-del" onclick="deleteNotificationItem(${item.id})" title="삭제">🗑️ 삭제</button>
                                 </div>
                             </div>
                         </div>
                     `;
                 }).join('');
+
+                // 더보기 버튼 표시 여부
+                if (loadMoreBox) {
+                    loadMoreBox.style.display = notifHistoryListItems.length < notifHistoryTotal ? 'block' : 'none';
+                }
+
             } catch (e) {
                 console.error('[알림 내역 조회 오류]:', e);
                 if (listEl) listEl.innerHTML = '<div style="text-align: center; color: #ef4444; padding: 2rem 0; font-size: 0.88rem;">알림 내역을 불러오지 못했습니다.</div>';
+            }
+        }
+
+        // 전체 읽음 처리
+        async function markAllNotificationsAsRead() {
+            try {
+                const res = await fetch('/api/notification/history/read-all', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    refreshNotificationHistory();
+                } else {
+                    alert('읽음 처리 실패: ' + (data.message || '오류'));
+                }
+            } catch (e) {
+                console.error('전체 읽음 처리 오류:', e);
+            }
+        }
+
+        // 개별 읽음 처리 후 페이지 이동
+        async function openAndReadNotification(id, url) {
+            try {
+                fetch(`/api/notification/history/${id}/read`, { method: 'POST' }).catch(() => {});
+            } catch (e) {}
+
+            if (url && url !== '#') {
+                window.location.href = url;
+            } else {
+                markSingleAsRead(id);
+            }
+        }
+
+        // 개별 읽음 처리 (UI 즉시 반영)
+        async function markSingleAsRead(id) {
+            try {
+                const res = await fetch(`/api/notification/history/${id}/read`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    const card = document.getElementById(`notif-card-${id}`);
+                    if (card) {
+                        card.classList.remove('is-unread');
+                        card.classList.add('is-read');
+                        const newBadge = card.querySelector('.badge-unread-dot');
+                        if (newBadge) newBadge.remove();
+                    }
+                    const item = notifHistoryListItems.find(i => i.id === id);
+                    if (item) item.is_read = 1;
+
+                    // 미확인 배지 -1
+                    const currentUnread = parseInt(document.getElementById('unavNotifBadge')?.textContent || '1', 10);
+                    const newUnread = Math.max(0, currentUnread - 1);
+                    const updateBadge = (bId, cnt) => {
+                        const b = document.getElementById(bId);
+                        if (b) {
+                            b.textContent = cnt;
+                            b.style.display = cnt > 0 ? 'inline-block' : 'none';
+                        }
+                    };
+                    updateBadge('unavNotifBadge', newUnread);
+                    updateBadge('unavMNotifBadge', newUnread);
+                    updateBadge('notifHistoryBadge', newUnread);
+                }
+            } catch (e) {
+                console.error('개별 읽음 처리 오류:', e);
             }
         }
 
@@ -1729,7 +1865,7 @@
                 const res = await fetch(`/api/notification/history/${id}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.success) {
-                    fetchNotificationHistory();
+                    refreshNotificationHistory();
                 } else {
                     alert('삭제 실패: ' + (data.message || '오류'));
                 }

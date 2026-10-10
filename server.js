@@ -1512,18 +1512,72 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
     });
 });
 
-// 5. 알림 수신 내역 조회 API
+// 5. 알림 수신 내역 조회 API (페이징 & 안 읽은 알림 카운트 지원)
 app.get('/api/notification/history', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
-    const query = `
-        SELECT * FROM notification_history 
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 30, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+    const countQuery = `
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread
+        FROM notification_history 
         WHERE user_id = ? OR user_id = 'admin'
-        ORDER BY id DESC 
-        LIMIT 50
     `;
-    db.all(query, [userId], (err, rows) => {
-        if (err) return res.status(500).json({ success: false, message: '알림 내역 조회 실패' });
-        res.json({ success: true, history: rows || [] });
+
+    db.get(countQuery, [userId], (cntErr, counts) => {
+        if (cntErr) {
+            console.error('[WebPush] 포털 알림 카운트 조회 오류:', cntErr);
+            return res.status(500).json({ success: false, message: '알림 카운트 조회 실패' });
+        }
+
+        const dataQuery = `
+            SELECT id, user_id, type, title, body, icon, url, is_read, created_at 
+            FROM notification_history 
+            WHERE user_id = ? OR user_id = 'admin'
+            ORDER BY id DESC 
+            LIMIT ? OFFSET ?
+        `;
+
+        db.all(dataQuery, [userId, limit, offset], (err, rows) => {
+            if (err) return res.status(500).json({ success: false, message: '알림 내역 조회 실패' });
+            res.json({
+                success: true,
+                history: rows || [],
+                unreadCount: counts ? (counts.unread || 0) : 0,
+                totalCount: counts ? (counts.total || 0) : 0,
+                limit,
+                offset
+            });
+        });
+    });
+});
+
+// 5-1. 전체 알림 읽음 처리 API
+app.post('/api/notification/history/read-all', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const query = `UPDATE notification_history SET is_read = 1 WHERE user_id = ? OR user_id = 'admin'`;
+    db.run(query, [userId], function(err) {
+        if (err) {
+            console.error('[WebPush] 전체 읽음 처리 오류:', err);
+            return res.status(500).json({ success: false, message: '전체 읽음 처리 실패' });
+        }
+        res.json({ success: true, message: '모든 알림을 읽음 처리했습니다.', updated: this.changes });
+    });
+});
+
+// 5-2. 개별 알림 읽음 처리 API
+app.post('/api/notification/history/:id/read', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const id = req.params.id;
+    const query = `UPDATE notification_history SET is_read = 1 WHERE id = ? AND (user_id = ? OR user_id = 'admin')`;
+    db.run(query, [id, userId], function(err) {
+        if (err) {
+            console.error('[WebPush] 개별 읽음 처리 오류:', err);
+            return res.status(500).json({ success: false, message: '개별 읽음 처리 실패' });
+        }
+        res.json({ success: true, message: '알림을 읽음 처리했습니다.' });
     });
 });
 
@@ -1612,6 +1666,15 @@ setInterval(async () => {
     const kstDateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
     const kstTimeStr = `${getPart('hour')}:${getPart('minute')}`;
     const dayOfWeek = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getDay();
+
+    // 30일 경과 알림 내역 자동 정리 (매일 자정 00:00 1회 실행)
+    if (kstTimeStr === '00:00') {
+        db.run("DELETE FROM notification_history WHERE datetime(created_at) < datetime('now', '-30 days', 'localtime')", function(cleanErr) {
+            if (!cleanErr && this && this.changes > 0) {
+                console.log(`[DB Cleanup] 30일 경과 알림 내역 ${this.changes}건 자동 정리 완료`);
+            }
+        });
+    }
 
     // 알림 설정 확인
     db.get("SELECT * FROM notification_settings WHERE user_id = 'upt0731' OR user_id = 'admin' LIMIT 1", async (err, settings) => {
