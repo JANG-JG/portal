@@ -297,3 +297,219 @@
         </div>
     </div>
 </header>
+
+<!-- ========================================== -->
+<!-- 🔔 [전 사이트 공통] JG 통합 알림 센터 모달 팝업 -->
+<!-- ========================================== -->
+<div id="notificationModal" class="notif-modal-backdrop" style="display: none;">
+    <div class="notif-modal-dialog">
+        <!-- 모달 상단 고정 헤더 -->
+        <div class="notif-modal-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.3rem;">🔔</span>
+                <h3 style="margin: 0; color: #1e293b; font-size: 1.15rem; font-weight: 700;">통합 알림 센터</h3>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: 600; cursor: pointer; font-size: 0.85rem; color: #334155; margin: 0;">
+                    <input type="checkbox" id="notifMasterEnabled" checked style="width: 17px; height: 17px; accent-color: #2563eb; cursor: pointer;">
+                    <span>전체 켜기</span>
+                </label>
+                <button type="button" onclick="closeNotificationModal()" class="notif-close-x" aria-label="닫기">✕</button>
+            </div>
+        </div>
+
+        <!-- 메인 탭 전환 바 (설정 vs 수신 내역) -->
+        <div class="notif-main-tabs">
+            <button type="button" id="notifMainTabSettings" class="notif-tab-item active" onclick="switchNotifMainTab('settings')">
+                <span>⚙️ 알림 맞춤 설정</span>
+            </button>
+            <button type="button" id="notifMainTabHistory" class="notif-tab-item" onclick="switchNotifMainTab('history')">
+                <span>📬 알림 수신 내역</span>
+                <span id="notifHistoryBadge" class="notif-tab-badge">0</span>
+            </button>
+        </div>
+
+        <!-- 모달 본문 스크롤 영역 -->
+        <div class="notif-modal-scroll">
+            <!-- 1️⃣ 탭 1: 알림 설정 뷰 -->
+            <div id="notifMainViewSettings">
+                <!-- 브라우저 권한 배너 -->
+                <div id="notifPermissionBanner" class="notif-perm-banner">
+                    <span id="notifPermissionStatusText">🔒 브라우저 알림 권한 상태 확인 중...</span>
+                    <button type="button" id="btnRequestNotifPermission" onclick="requestBrowserNotificationPermission()">권한 허용</button>
+                </div>
+
+                <!-- 1. 🚨 실시간 속보 브리핑 알림 -->
+                <div class="notif-card-group">
+                    <label class="notif-toggle-row">
+                        <input type="checkbox" id="notifBreakingNewsEnabled" checked>
+                        <div class="notif-toggle-content">
+                            <strong>🚨 실시간 속보 브리핑 알림</strong>
+                            <p>주요 언론사의 실시간 긴급 속보 발생 시 10분 주기 자동 수집하여 웹앱 푸시를 발송합니다.</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- 2. 🌤️ 아침 날씨 -->
+                <div class="notif-card-group">
+                    <label class="notif-toggle-row">
+                        <input type="checkbox" id="notifWeatherMorningEnabled" checked>
+                        <div class="notif-toggle-content">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+                                <strong>🌤️ 아침 날씨</strong>
+                                <div class="notif-inline-time" onclick="event.preventDefault(); event.stopPropagation();">
+                                    <span>발송 시각:</span>
+                                    <input type="time" id="inputWeatherTime" value="07:00">
+                                </div>
+                            </div>
+                            <p>출근 전 당일 날씨와 기온 요약, 비/눈 예보 시 우산 챙기기 알림을 전송합니다.</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- 3. 💰 증시/환율 -->
+                <div class="notif-card-group">
+                    <label class="notif-toggle-row">
+                        <input type="checkbox" id="notifAssetReportEnabled" checked>
+                        <div class="notif-toggle-content">
+                            <strong>💰 증시/환율 (평일 15:30)</strong>
+                            <p>평일 장 마감 후 코스피, 코스닥 지수 변동과 실시간 원/달러 환율 브리핑을 전송합니다.</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- 4. 🎯 혈압 리마인드 -->
+                <div class="notif-card-group">
+                    <label class="notif-toggle-row">
+                        <input type="checkbox" id="notifBpReminderEnabled" checked>
+                        <div class="notif-toggle-content">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+                                <strong>🎯 혈압 리마인드</strong>
+                                <div class="notif-inline-time" onclick="event.preventDefault(); event.stopPropagation();">
+                                    <span>리마인드 시각:</span>
+                                    <input type="time" id="inputBpReminderTime" value="21:00">
+                                </div>
+                            </div>
+                            <p>오늘 혈압 측정 기록이 없는 경우, 취침 전 편안한 상태에서 측정하도록 알림을 보냅니다.</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- 5. 🏥 병원 진료 예약 오픈 알림 -->
+                <div class="notif-card-group">
+                    <label class="notif-toggle-row">
+                        <input type="checkbox" id="notifHospitalPushEnabled" checked>
+                        <div class="notif-toggle-content">
+                            <strong>🏥 병원 진료 예약 오픈 알림 (웹 푸시 동시 수신)</strong>
+                            <p>약 잔여량 기준 예약 오픈 시각(금요일 오전 11시 등)에 이메일과 함께 푸시를 동시 발송합니다.</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- 6 & 7. 💊 복약 및 🩸 혈압 측정 정기 시간표 설정 -->
+                <div class="notif-card-group" style="padding: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
+                        <strong style="color: #0f172a; font-size: 0.95rem;">⏰ 정기 복약 & 혈압 측정 시간표</strong>
+                        <div class="notif-sub-tabs">
+                            <button type="button" id="notifTabWeekday" class="active" onclick="switchNotifSubTab('weekday')">평일 (월~금)</button>
+                            <button type="button" id="notifTabWeekend" onclick="switchNotifSubTab('weekend')">주말 / 공휴일</button>
+                        </div>
+                    </div>
+
+                    <!-- 평일 설정 -->
+                    <div id="notifSubTabWeekday">
+                        <div class="notif-time-box">
+                            <div class="notif-time-box-header">
+                                <span style="color: #2563eb; font-weight: bold;">💊 약 복용 알림 시각 (평일)</span>
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <input type="time" id="inputWeekdayMedTime">
+                                    <button type="button" class="btn-time-add" onclick="addNotifTime('weekday', 'med')">추가 +</button>
+                                </div>
+                            </div>
+                            <div id="containerWeekdayMedTimes" class="chips-container"></div>
+                        </div>
+
+                        <div class="notif-time-box" style="margin-top: 0.5rem;">
+                            <div class="notif-time-box-header">
+                                <span style="color: #dc2626; font-weight: bold;">🩸 혈압 측정 알림 시각 (평일)</span>
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <input type="time" id="inputWeekdayBpTime">
+                                    <button type="button" class="btn-time-add" style="background:#dc2626;" onclick="addNotifTime('weekday', 'bp')">추가 +</button>
+                                </div>
+                            </div>
+                            <div id="containerWeekdayBpTimes" class="chips-container"></div>
+                        </div>
+                    </div>
+
+                    <!-- 주말/공휴일 설정 -->
+                    <div id="notifSubTabWeekend" style="display: none;">
+                        <div class="notif-time-box">
+                            <div class="notif-time-box-header">
+                                <span style="color: #2563eb; font-weight: bold;">💊 약 복용 알림 시각 (주말/휴일)</span>
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <input type="time" id="inputWeekendMedTime">
+                                    <button type="button" class="btn-time-add" onclick="addNotifTime('weekend', 'med')">추가 +</button>
+                                </div>
+                            </div>
+                            <div id="containerWeekendMedTimes" class="chips-container"></div>
+                        </div>
+
+                        <div class="notif-time-box" style="margin-top: 0.5rem;">
+                            <div class="notif-time-box-header">
+                                <span style="color: #dc2626; font-weight: bold;">🩸 혈압 측정 알림 시각 (주말/휴일)</span>
+                                <div style="display: flex; gap: 0.25rem;">
+                                    <input type="time" id="inputWeekendBpTime">
+                                    <button type="button" class="btn-time-add" style="background:#dc2626;" onclick="addNotifTime('weekend', 'bp')">추가 +</button>
+                                </div>
+                            </div>
+                            <div id="containerWeekendBpTimes" class="chips-container"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. 🖥️ 서버 경보 (관리자 전용) -->
+                <div class="notif-card-group admin-only-section">
+                    <label class="notif-toggle-row">
+                        <input type="checkbox" id="notifSystemAlertEnabled" checked>
+                        <div class="notif-toggle-content">
+                            <div style="display: flex; align-items: center; gap: 0.35rem;">
+                                <strong>🖥️ 서버 경보</strong>
+                                <span class="badge-admin">관리자 전용</span>
+                            </div>
+                            <p>PM2 핵심 프로세스(포털, 혈압, 자산, 뉴스) 다운 감지 시 <strong>관리자 계정에만 즉시 긴급 푸시</strong>를 발송합니다.</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 2️⃣ 탭 2: 푸시 알림 수신 내역 뷰 -->
+            <div id="notifMainViewHistory" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 0.4rem;">
+                    <span id="notifHistoryCountLabel" style="font-size: 0.82rem; color: #64748b; font-weight: 600;">알림 내역</span>
+                    <div style="display: flex; gap: 0.3rem; align-items: center;">
+                        <button type="button" onclick="markAllNotificationsAsRead()" class="btn-history-tool" style="color: #2563eb; border-color: #bfdbfe; background: #eff6ff; font-weight: 700;">✓ 모두 읽음</button>
+                        <button type="button" onclick="refreshNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
+                        <button type="button" onclick="clearAllNotificationHistory()" class="btn-history-tool btn-danger-tool">🗑️ 전체 삭제</button>
+                    </div>
+                </div>
+                <!-- 알림 목록 컨테이너 -->
+                <div id="notifHistoryList" class="notif-history-scroll">
+                    <div style="text-align: center; color: #94a3b8; padding: 2.5rem 0; font-size: 0.88rem;">알림 내역을 불러오는 중...</div>
+                </div>
+                <!-- 이전 알림 더보기 버튼 박스 -->
+                <div id="notifLoadMoreBox" style="text-align: center; margin-top: 0.65rem; display: none;">
+                    <button type="button" onclick="loadMoreNotificationHistory()" class="btn-history-tool" style="width: 100%; padding: 0.5rem; font-size: 0.82rem; background: #ffffff; border-color: #cbd5e1; color: #334155; font-weight: 600;">
+                        + 이전 알림 더보기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 모달 하단 고정 액션 버튼 바 -->
+        <div class="notif-modal-footer">
+            <button type="button" onclick="saveNotificationSettings()" class="btn-notif-save">💾 설정 저장 및 권한 등록</button>
+            <button type="button" onclick="sendTestNotification()" class="btn-notif-test">🔔 테스트 발송</button>
+            <button type="button" onclick="closeNotificationModal()" class="btn-notif-close">닫기</button>
+        </div>
+    </div>
+</div>
