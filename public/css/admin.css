@@ -723,13 +723,13 @@
     border-radius: 2px;
 }
 
-/* 2. 사이드바 배경 오버레이 */
+/* 2. 사이드바 배경 오버레이 (뉴스 티커 999999보다 최상위) */
 .admin-sidebar-overlay {
     position: fixed;
     inset: 0;
     background: rgba(15, 23, 42, 0.65);
     backdrop-filter: blur(4px);
-    z-index: 999998;
+    z-index: 9999998 !important;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.25s ease, visibility 0.25s ease;
@@ -739,7 +739,7 @@
     visibility: visible;
 }
 
-/* 3. 좌측 슬라이드인 사이드바 */
+/* 3. 좌측 슬라이드인 사이드바 (뉴스 티커 999999보다 최상위) */
 .admin-sidebar {
     position: fixed;
     top: 0;
@@ -749,7 +749,7 @@
     max-width: 86vw;
     background: #0f172a;
     color: #f8fafc;
-    z-index: 999999;
+    z-index: 9999999 !important;
     box-shadow: 6px 0 28px rgba(0, 0, 0, 0.55);
     display: flex;
     flex-direction: column;
@@ -800,7 +800,7 @@
     padding: 1rem 0.85rem;
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
+    gap: 0.5rem;
 }
 .admin-sidebar-section-label {
     font-size: 0.72rem;
@@ -811,56 +811,93 @@
     padding: 0.6rem 0.6rem 0.25rem 0.6rem;
 }
 
-.admin-sidebar-link {
+/* 🗂️ 계층형 사이드바 대메뉴 & 서브메뉴 아코디언 스타일 */
+.admin-sidebar-group {
+    border-radius: 0.625rem;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid #1e293b;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+.admin-sidebar-group.expanded {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: #334155;
+}
+.admin-sidebar-parent {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 0.9rem;
-    border-radius: 0.625rem;
-    color: #cbd5e1;
-    text-decoration: none;
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: all 0.18s ease;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    color: #e2e8f0;
+    background: transparent;
+    border: none;
     cursor: pointer;
-    border: 1px solid transparent;
+    font-size: 0.9rem;
+    font-weight: 700;
+    transition: all 0.15s ease;
+    text-align: left;
+    font-family: inherit;
 }
-.admin-sidebar-link:hover {
+.admin-sidebar-parent:hover {
     background: #1e293b;
     color: #ffffff;
-    border-color: #334155;
-    transform: translateX(2px);
 }
-.admin-sidebar-link.active {
-    background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 100%);
+.admin-sidebar-parent.active {
+    color: #60a5fa;
+    font-weight: 800;
+}
+.admin-sidebar-parent-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.admin-sidebar-parent-chevron {
+    font-size: 0.75rem;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    color: #94a3b8;
+}
+.admin-sidebar-group.expanded .admin-sidebar-parent-chevron {
+    transform: rotate(180deg);
+    color: #60a5fa;
+}
+.admin-sidebar-sublist {
+    display: none;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.25rem 0.6rem 0.6rem 1.85rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.admin-sidebar-group.expanded .admin-sidebar-sublist {
+    display: flex;
+}
+.admin-sidebar-sublink {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 0.45rem;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+    width: 100%;
+}
+.admin-sidebar-sublink:hover {
+    background: rgba(37, 99, 235, 0.18);
+    color: #ffffff;
+    padding-left: 0.85rem;
+}
+.admin-sidebar-sublink.active {
+    background: #2563eb;
     color: #ffffff;
     font-weight: 700;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
-}
-.admin-sidebar-link-icon {
-    font-size: 1.25rem;
-    line-height: 1;
-    flex-shrink: 0;
-}
-.admin-sidebar-link-text {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-.admin-sidebar-link-text strong {
-    font-size: 0.9rem;
-    color: inherit;
-    line-height: 1.25;
-}
-.admin-sidebar-link-text small {
-    font-size: 0.72rem;
-    color: #94a3b8;
-    line-height: 1.2;
-    margin-top: 0.2rem;
-}
-.admin-sidebar-link.active .admin-sidebar-link-text small {
-    color: #bfdbfe;
 }
 
 .admin-sidebar-footer {
@@ -872,14 +909,21 @@
     gap: 0.5rem;
 }
 
-/* 4. 상단 캡슐형 탭 내비게이션 (모바일 & 데스크탑 동시 최적화) */
+/* 4. 상단 고정(Sticky) 탭 & 2단 서브탭 내비게이션 */
+.admin-nav-sticky-wrapper {
+    position: sticky;
+    top: 56px;
+    z-index: 800;
+    background: #f8fafc;
+    padding: 0.4rem 0 0.6rem 0;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
 .admin-tabs-nav {
     display: flex;
     gap: 0.45rem;
-    border-bottom: 1px solid #e2e8f0;
-    margin-bottom: 1.5rem;
     overflow-x: auto;
-    padding: 0.2rem 0.1rem 0.65rem 0.1rem;
+    padding: 0.1rem 0.1rem 0.4rem 0.1rem;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 }
@@ -889,18 +933,19 @@
     background: #f1f5f9;
     border: 1px solid #cbd5e1;
     border-radius: 9999px;
-    padding: 0.5rem 1rem;
-    font-size: 0.88rem;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.86rem;
     font-weight: 600;
     color: #475569;
     cursor: pointer;
     white-space: nowrap;
-    transition: all 0.2s ease;
+    transition: all 0.18s ease;
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.4rem;
     user-select: none;
     flex-shrink: 0;
+    font-family: inherit;
 }
 .admin-tab-btn:hover {
     background: #e2e8f0;
@@ -914,8 +959,135 @@
     font-weight: 700;
 }
 
+/* 2단 서브탭 바 */
+.admin-subtabs-nav {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding: 0.35rem 0.4rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    background: #ffffff;
+    border-radius: 0.65rem;
+    border: 1px solid #e2e8f0;
+    margin-top: 0.35rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+.admin-subtabs-nav::-webkit-scrollbar { display: none; }
+
+.admin-subtab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.45rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+.admin-subtab-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+.admin-subtab-btn.active {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #2563eb;
+    font-weight: 700;
+}
+
+/* 각 서브메뉴 창/카드 뷰 제어 클래스 */
+.admin-sub-pane {
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+}
+.admin-sub-pane.hidden-pane {
+    display: none !important;
+}
+
+/* 🔑 관리자 마스터 비밀번호 변경 전용 팝업 모달 */
+.admin-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 99999999 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+.admin-modal-dialog {
+    background: #ffffff;
+    width: 100%;
+    max-width: 440px;
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+    animation: adminModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+}
+@keyframes adminModalFadeIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.admin-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #0f172a;
+    color: #ffffff;
+}
+.admin-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #ffffff;
+}
+.admin-modal-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #cbd5e1;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    line-height: 1;
+}
+.admin-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+.admin-modal-body {
+    padding: 1.25rem;
+    background: #ffffff;
+}
+
 /* 5. 카드 및 테이블 모바일 가독성 극대화 */
 @media (max-width: 768px) {
+    .admin-nav-sticky-wrapper {
+        top: 52px;
+    }
     .admin-grid-2, .admin-grid-3 {
         grid-template-columns: 1fr;
         gap: 0.85rem;

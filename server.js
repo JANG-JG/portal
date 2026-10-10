@@ -665,10 +665,10 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             });
         });
 
-        // 6-1) 실시간 속보 기사 목록 (날씨 아래 롤링 티커 및 호버 팝업용 최신 8건)
+        // 6-1) 실시간 속보 기사 목록 (최근 1시간 이내 기사만 유효, 만료 시 빈 배열 -> 상단 티커 자동 숨김)
         const breakingArticles = await new Promise((resolve) => {
             newsDb.all(
-                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE category_name = '속보' OR title LIKE '%[속보]%' ORDER BY id DESC LIMIT 8",
+                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') AND datetime(created_at) >= datetime('now', 'localtime', '-1 hour') AND (published_at = '' OR datetime(published_at) >= datetime('now', 'localtime', '-1 hour')) ORDER BY id DESC LIMIT 8",
                 [],
                 (bErr, rows) => resolve(rows || [])
             );
