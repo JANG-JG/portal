@@ -37,9 +37,18 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 app.use((req, res, next) => {
-    if (!req.url.startsWith('/css') && !req.url.startsWith('/favicon')) {
+    if (!req.url.startsWith('/css') && !req.url.startsWith('/favicon') && !req.url.startsWith('/js') && !req.url.startsWith('/components')) {
         console.log(`[PORTAL] ${req.method} ${req.url}`);
     }
     next();
@@ -713,21 +722,31 @@ app.get('/api/ticker', (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Cache-Control', 'public, max-age=60');
 
+    // 1. 일반 기사 (속보는 제외)
     newsDb.all(
-        'SELECT id, title, link, category_name, media_name, published_at FROM news_articles ORDER BY id DESC LIMIT 12',
+        "SELECT id, title, link, category_name, media_name, published_at FROM news_articles WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' ORDER BY id DESC LIMIT 12",
         [],
-        async (err, articles) => {
-            const [weather, market] = await Promise.all([
-                getLiveWeatherData(),
-                getLiveMarketData()
-            ]);
+        (err, articles) => {
+            // 2. 실시간 속보 (최근 1시간 이내 기사)
+            newsDb.all(
+                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE category_name = '속보' AND datetime(created_at) >= datetime('now', 'localtime', '-1 hour') ORDER BY id DESC LIMIT 5",
+                [],
+                async (bErr, breakingRows) => {
+                    const [weather, market] = await Promise.all([
+                        getLiveWeatherData(),
+                        getLiveMarketData()
+                    ]);
 
-            res.json({
-                success: true,
-                articles: articles || [],
-                weather,
-                market
-            });
+                    res.json({
+                        success: true,
+                        articles: articles || [],
+                        breakingArticles: breakingRows || [],
+                        breakingCount: breakingRows ? breakingRows.length : 0,
+                        weather,
+                        market
+                    });
+                }
+            );
         }
     );
 });

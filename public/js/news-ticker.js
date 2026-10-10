@@ -6,15 +6,20 @@
     // 중복 실행 방지
     if (document.getElementById('jg-global-ticker-bar')) return;
 
-    // 1. 하단 여백 확보 (기존 콘텐츠 가림 방지)
-    const applyBottomPadding = () => {
+    // 0. 메인 포털 여부 판별 (메인페이지에 접속한게 아니라면 속보가 있을 때만 하단바 노출)
+    const isMainPortal = (window.location.hostname === 'j-jg.cc' || window.location.hostname === 'localhost') && (window.location.pathname === '/' || window.location.pathname === '/index.html');
+
+    // 1. 하단 여백 확보 (메인 포털에서만 기본 여백 적용, 서브 페이지는 속보 감지 시 동적 적용)
+    const applyBottomPadding = (enable) => {
         if (document.body) {
-            document.body.style.paddingBottom = '52px';
+            document.body.style.paddingBottom = enable ? '52px' : '0px';
         } else {
-            window.addEventListener('DOMContentLoaded', applyBottomPadding);
+            window.addEventListener('DOMContentLoaded', () => applyBottomPadding(enable));
         }
     };
-    applyBottomPadding();
+    if (isMainPortal) {
+        applyBottomPadding(true);
+    }
 
     // 2. 전용 독립 스타일 주입
     const style = document.createElement('style');
@@ -182,6 +187,9 @@
     // 3. 하단바 DOM 요소 생성
     const bar = document.createElement('div');
     bar.id = 'jg-global-ticker-bar';
+    if (!isMainPortal) {
+        bar.style.display = 'none';
+    }
     bar.innerHTML = `
         <div class="jg-ticker-badge">
             <span class="jg-ticker-dot"></span>
@@ -206,6 +214,8 @@
         if (document.body) {
             document.body.appendChild(bar);
             fetchTickerData();
+            // 60초 주기 갱신
+            setInterval(fetchTickerData, 60000);
         } else {
             window.addEventListener('DOMContentLoaded', injectBar);
         }
@@ -219,12 +229,37 @@
             const data = await res.json();
             if (!data.success) return;
 
+            // 서브 서비스(메인페이지 아님)일 경우: 속보가 없으면 하단바 숨김, 속보가 있을 때만 긴급 노출
+            if (!isMainPortal) {
+                const hasBreaking = data.breakingArticles && data.breakingArticles.length > 0;
+                if (!hasBreaking) {
+                    bar.style.display = 'none';
+                    applyBottomPadding(false);
+                    return;
+                } else {
+                    bar.style.display = 'flex';
+                    applyBottomPadding(true);
+                    const badgeTextFull = bar.querySelector('.jg-badge-text-full');
+                    const badgeTextMobile = bar.querySelector('.jg-badge-text-mobile');
+                    if (badgeTextFull) badgeTextFull.textContent = '🚨 긴급 속보';
+                    if (badgeTextMobile) badgeTextMobile.textContent = '속보';
+                }
+            } else {
+                bar.style.display = 'flex';
+                applyBottomPadding(true);
+            }
+
             // 4-1. 기사 트랙 구성
             const track = document.getElementById('jg-track');
-            if (track && data.articles && data.articles.length > 0) {
-                const makeItems = () => data.articles.map(a => `
+            const targetArticles = (!isMainPortal && data.breakingArticles && data.breakingArticles.length > 0)
+                ? data.breakingArticles
+                : (data.articles || []);
+
+            if (track && targetArticles.length > 0) {
+                const isShowingBreaking = (!isMainPortal && data.breakingArticles && data.breakingArticles.length > 0);
+                const makeItems = () => targetArticles.map(a => `
                     <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="jg-ticker-link">
-                        <span class="jg-ticker-cat">${a.category_name || '뉴스'}</span>
+                        <span class="jg-ticker-cat" style="${isShowingBreaking ? 'background:#ef4444 !important; color:#ffffff !important;' : ''}">${isShowingBreaking ? '🚨 속보' : (a.category_name || '뉴스')}</span>
                         <span>${escapeHtml(a.title)}</span>
                         ${a.media_name ? `<span style="color:#64748b; font-size:10px;">(${a.media_name})</span>` : ''}
                         <span style="color:#475569; margin: 0 4px;">•</span>

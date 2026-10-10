@@ -352,11 +352,12 @@
             </div>
             <p>오늘의 통합 서비스 현황을 한눈에 확인하고 바로 이동하세요.</p>
 
-            <!-- 🚨 [신규] 실시간 속보 한줄 롤링 티커 & 호버 전체목록 드롭다운 -->
-            <div class="breaking-banner-bar" id="breakingBannerBar">
+            <!-- 🚨 실시간 속보 한줄 롤링 티커 & 호버 전체목록 드롭다운 (속보가 있을 때만 노출) -->
+            <div class="breaking-banner-bar" id="breakingBannerBar" style="display: none;">
                 <div class="breaking-badge">
                     <span class="breaking-pulse-dot"></span>
-                    <span class="breaking-badge-text">🚨 실시간 속보</span>
+                    <span class="breaking-badge-text-full">🚨 실시간 속보</span>
+                    <span class="breaking-badge-text-mobile" style="display:none;">🚨 속보</span>
                 </div>
                 <div class="breaking-ticker-viewport" id="breakingTickerViewport">
                     <div class="breaking-ticker-track" id="breakingTickerTrack">
@@ -366,7 +367,8 @@
                     </div>
                 </div>
                 <a href="https://news.j-jg.cc/breaking" class="breaking-more-btn" title="속보 브리핑 바로가기">
-                    <span>속보 브리핑</span>
+                    <span class="breaking-more-text-full">속보 브리핑</span>
+                    <span class="breaking-more-text-mobile" style="display:none;">브리핑</span>
                     <span class="breaking-arrow">›</span>
                 </a>
 
@@ -663,14 +665,10 @@
             if (!trackEl || !dropdownListEl) return;
 
             if (!articles || articles.length === 0) {
-                trackEl.innerHTML = `
-                    <div class="breaking-ticker-item">
-                        <span class="breaking-item-title" style="color:#94a3b8;">현재 수집된 실시간 긴급 속보가 없습니다.</span>
-                    </div>
-                `;
-                dropdownListEl.innerHTML = '<div style="color:#94a3b8; font-size:0.82rem; padding:1.2rem; text-align:center;">최근 24시간 내 수집된 속보가 없습니다.</div>';
+                if (bannerEl) bannerEl.style.display = 'none';
                 return;
             }
+            if (bannerEl) bannerEl.style.display = 'flex';
 
             // 1) 롤링 트랙 아이템 주입
             trackEl.innerHTML = articles.map(a => `
