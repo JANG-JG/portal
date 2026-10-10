@@ -607,8 +607,12 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
                 try {
                     const articlePromises = categories.map(cat => {
                         return new Promise(innerResolve => {
+                            const query = cat.name === '속보'
+                                ? 'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? ORDER BY id DESC LIMIT 1'
+                                : 'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? AND title NOT LIKE "%[속보]%" AND title NOT LIKE "%(속보)%" ORDER BY id DESC LIMIT 1';
+
                             newsDb.get(
-                                'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? ORDER BY id DESC LIMIT 1',
+                                query,
                                 [cat.name],
                                 (err, row) => innerResolve(row || null)
                             );
@@ -1639,7 +1643,7 @@ setInterval(async () => {
                 }
 
                 sendPortalPushNotification({
-                    title: `🌤️ 오늘 아침 기상 특보 & 날씨 브리핑`,
+                    title: '아침 날씨',
                     body: `현재 ${weather.city || '계룡'} ${weather.temp} (${weather.condition}). ${umbrellaTip}`,
                     url: 'https://news.j-jg.cc/weather',
                     type: 'weather'
@@ -1659,7 +1663,7 @@ setInterval(async () => {
                 const marketSummary = [kospi, usdkrw].filter(Boolean).join(' | ');
 
                 sendPortalPushNotification({
-                    title: `💰 국내 증시 마감 & 환율 리포트`,
+                    title: '증시/환율',
                     body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 자산 변동 내역을 확인하세요.',
                     url: 'https://asset.j-jg.cc/',
                     type: 'asset'
@@ -1680,7 +1684,7 @@ setInterval(async () => {
                     if (rErr) return;
                     if (!row || row.count === 0) {
                         sendPortalPushNotification({
-                            title: `🎯 당일 혈압 미측정 리마인드`,
+                            title: '혈압 리마인드',
                             body: `오늘 아직 혈압 측정 기록이 없습니다. 취침 전 편안한 상태에서 혈압을 측정해 주세요!`,
                             url: 'https://blood.j-jg.cc/dashboard.html',
                             type: 'blood_pressure'
@@ -1706,8 +1710,8 @@ setInterval(async () => {
                         pm2DownAlertState[appName] = true;
                         console.warn(`🚨 [PM2 ALERT] ${appName} 프로세스 다운 감지 (${proc.pm2_env.status})`);
                         sendPortalPushNotification({
-                            title: `🚨 [긴급 서버 경보] ${appName} 프로세스 장애`,
-                            body: `프로세스 상태: ${proc.pm2_env.status}. 즉시 서버 관리 센터에서 확인해 주세요!`,
+                            title: '서버 경보',
+                            body: `${appName} 프로세스 장애 발생 (${proc.pm2_env.status}). 즉시 확인이 필요합니다!`,
                             url: 'https://j-jg.cc/admin#tab-overview',
                             type: 'system',
                             adminOnly: true // ★ 관리자 전용
@@ -1716,8 +1720,8 @@ setInterval(async () => {
                         pm2DownAlertState[appName] = false;
                         console.log(`✅ [PM2 RECOVERY] ${appName} 프로세스 정상 복구`);
                         sendPortalPushNotification({
-                            title: `✅ [서버 복구] ${appName} 정상 가동`,
-                            body: `${appName} 프로세스가 다시 온라인(online) 상태로 복구되었습니다.`,
+                            title: '서버 복구',
+                            body: `${appName} 프로세스가 다시 온라인(online) 상태로 정상 복구되었습니다.`,
                             url: 'https://j-jg.cc/admin#tab-overview',
                             type: 'system',
                             adminOnly: true // ★ 관리자 전용
