@@ -10,7 +10,7 @@
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             const isLocal = window.location.hostname === 'localhost';
-            link.href = isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css';
+            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=' + Date.now();
             document.head.appendChild(link);
         }
     }
@@ -21,24 +21,20 @@
 
         try {
             const isLocal = window.location.hostname === 'localhost';
-            const compUrl = isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html';
-            const res = await fetch(compUrl, { credentials: 'include' });
+            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=' + Date.now();
+            const res = await fetch(compUrl);
             if (res.ok) {
                 const html = await res.text();
-                let target = document.getElementById('unified-nav-root') || document.getElementById('unavRoot');
-                if (!target) {
-                    const existingHeader = document.querySelector('header.unav-header');
-                    if (existingHeader) {
-                        target = existingHeader;
-                        // 헤더 외부 독립 드로어가 있을 경우 중복 방지 제거
-                        const oldDrawer = document.getElementById('unavDrawer');
-                        if (oldDrawer && oldDrawer.parentNode !== existingHeader) {
-                            oldDrawer.remove();
-                        }
-                    }
-                }
+                let target = document.getElementById('unified-nav-root') || 
+                             document.getElementById('unavRoot') || 
+                             document.querySelector('header.unav-header');
 
                 if (target) {
+                    // 구버전 외부 독립 드로어가 있을 경우 중복 방지 제거
+                    const oldDrawer = document.getElementById('unavDrawer');
+                    if (oldDrawer && oldDrawer.parentNode !== target) {
+                        oldDrawer.remove();
+                    }
                     target.outerHTML = html;
                 } else if (document.body) {
                     document.body.insertAdjacentHTML('afterbegin', html);

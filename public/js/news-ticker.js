@@ -1,60 +1,171 @@
 /**
- * news-ticker.js - JG 통합 포털 및 모든 서브 서비스 공통 TV 뉴스 티커 하단바 위젯
- * 모든 사이트에서 <script src="https://j-jg.cc/js/news-ticker.js"></script> 한 줄로 구동됩니다.
+ * news-ticker.js - JG 통합 포털 및 모든 서브 서비스(뉴스, 자산, 혈압) 공통 하단바 & 긴급 속보 위젯
+ * 모든 사이트에서 <script src="https://j-jg.cc/js/news-ticker.js?v=20261011_v3"></script> 한 줄로 구동됩니다.
+ * - 기본 하단바: 최신 뉴스 브리핑 헤드라인 및 우측 날씨/증시 실시간 롤링 (모든 사이트 상시 노출)
+ * - 긴급 속보 바: 실시간 속보 발생 시 기본 하단바 바로 '위에' 빨간색 긴급 속보 띠가 새로 나타남
+ * - 속보 닫기: 사용자가 속보를 확인한 후 [✕ 닫기]를 누르면 속보 바가 닫히고 기존 뉴스만 깔끔하게 표시됨
  */
 (function() {
     // 중복 실행 방지
     if (document.getElementById('jg-global-ticker-bar')) return;
 
-    // 0. 메인 포털 여부 판별 (메인페이지에 접속한게 아니라면 속보가 있을 때만 하단바 노출)
-    const isMainPortal = (window.location.hostname === 'j-jg.cc' || window.location.hostname === 'localhost') && (window.location.pathname === '/' || window.location.pathname === '/index.html');
-
-    // 1. 하단 여백 확보 (메인 포털에서만 기본 여백 적용, 서브 페이지는 속보 감지 시 동적 적용)
-    const applyBottomPadding = (enable) => {
+    // 1. 하단 여백 동적 적용 (속보 여부에 따라 48px 또는 82px)
+    function updateBottomPadding(hasBreaking) {
+        const pad = hasBreaking ? '82px' : '48px';
         if (document.body) {
-            document.body.style.paddingBottom = enable ? '52px' : '0px';
+            document.body.style.paddingBottom = pad;
         } else {
-            window.addEventListener('DOMContentLoaded', () => applyBottomPadding(enable));
+            window.addEventListener('DOMContentLoaded', () => updateBottomPadding(hasBreaking));
         }
-    };
-    if (isMainPortal) {
-        applyBottomPadding(true);
     }
+    updateBottomPadding(false);
 
     // 2. 전용 독립 스타일 주입
     const style = document.createElement('style');
     style.textContent = `
+        /* 🚨 긴급 속보 상단 띠 (속보 발생 시 기본 하단바 바로 위에 노출) */
+        #jg-global-breaking-bar {
+            position: fixed !important;
+            bottom: 44px !important;
+            left: 0 !important;
+            right: 0 !important;
+            height: 36px !important;
+            background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #7f1d1d 100%) !important;
+            border-top: 1px solid #ef4444 !important;
+            border-bottom: 1px solid #450a0a !important;
+            color: #ffffff !important;
+            z-index: 999998 !important;
+            display: none;
+            align-items: center !important;
+            padding: 0 12px !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Pretendard", system-ui, sans-serif !important;
+            font-size: 11.5px !important;
+            box-shadow: 0 -2px 10px rgba(185, 28, 28, 0.4) !important;
+            user-select: none !important;
+            box-sizing: border-box !important;
+            transition: transform 0.3s ease, opacity 0.3s ease !important;
+        }
+        .jg-breaking-badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 5px !important;
+            background: #ffffff !important;
+            color: #b91c1c !important;
+            font-weight: 900 !important;
+            font-size: 10.5px !important;
+            padding: 2.5px 7px !important;
+            border-radius: 5px !important;
+            margin-right: 10px !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            letter-spacing: -0.3px !important;
+            animation: jg-pulse-shadow 1.5s infinite !important;
+        }
+        @keyframes jg-pulse-shadow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            50% { box-shadow: 0 0 0 4px rgba(255, 255, 255, 0); }
+        }
+        .jg-breaking-track {
+            display: inline-flex !important;
+            white-space: nowrap !important;
+            animation: jg-breaking-scroll 60s linear infinite !important;
+        }
+        .jg-breaking-track:hover {
+            animation-play-state: paused !important;
+        }
+        @keyframes jg-breaking-scroll {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+        }
+        .jg-breaking-link {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            color: #ffffff !important;
+            text-decoration: none !important;
+            margin-right: 24px !important;
+            font-weight: 600 !important;
+            font-size: 11.5px !important;
+            transition: opacity 0.2s !important;
+        }
+        .jg-breaking-link:hover {
+            text-decoration: underline !important;
+            color: #fef08a !important;
+        }
+        .jg-breaking-actions {
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            margin-left: 8px !important;
+            flex-shrink: 0 !important;
+        }
+        .jg-breaking-more {
+            padding: 2px 7px !important;
+            background: rgba(0, 0, 0, 0.3) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 4px !important;
+            color: #fef08a !important;
+            text-decoration: none !important;
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            white-space: nowrap !important;
+            transition: background 0.2s !important;
+        }
+        .jg-breaking-more:hover {
+            background: rgba(0, 0, 0, 0.5) !important;
+        }
+        .jg-breaking-close-btn {
+            background: rgba(0, 0, 0, 0.4) !important;
+            border: 1px solid rgba(255, 255, 255, 0.4) !important;
+            color: #ffffff !important;
+            border-radius: 4px !important;
+            padding: 2px 7px !important;
+            font-size: 10.5px !important;
+            font-weight: 700 !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 3px !important;
+            transition: all 0.2s !important;
+        }
+        .jg-breaking-close-btn:hover {
+            background: rgba(0, 0, 0, 0.7) !important;
+            color: #f87171 !important;
+            border-color: #f87171 !important;
+        }
+
+        /* 📰 기본 하단 뉴스 브리핑 바 (모든 사이트 상시 노출) */
         #jg-global-ticker-bar {
             position: fixed !important;
             bottom: 0 !important;
             left: 0 !important;
             right: 0 !important;
-            height: 48px !important;
+            height: 44px !important;
             background: #020617 !important;
             border-top: 1px solid #1e293b !important;
             color: #f8fafc !important;
             z-index: 999999 !important;
             display: flex !important;
             align-items: center !important;
-            padding: 0 14px !important;
+            padding: 0 12px !important;
             font-family: -apple-system, BlinkMacSystemFont, "Pretendard", system-ui, sans-serif !important;
             font-size: 12px !important;
             box-shadow: 0 -4px 16px rgba(0,0,0,0.3) !important;
             user-select: none !important;
             box-sizing: border-box !important;
         }
-        #jg-global-ticker-bar * {
+        #jg-global-ticker-bar *, #jg-global-breaking-bar * {
             box-sizing: border-box !important;
         }
         .jg-ticker-badge {
             display: inline-flex !important;
             align-items: center !important;
-            gap: 6px !important;
-            background: #e11d48 !important;
+            gap: 5px !important;
+            background: #2563eb !important;
             color: #ffffff !important;
             font-weight: 800 !important;
             font-size: 11px !important;
-            padding: 4px 8px !important;
+            padding: 3.5px 8px !important;
             border-radius: 6px !important;
             margin-right: 12px !important;
             white-space: nowrap !important;
@@ -105,7 +216,7 @@
             transition: color 0.2s !important;
         }
         .jg-ticker-link:hover {
-            color: #fde047 !important;
+            color: #38bdf8 !important;
             text-decoration: underline !important;
         }
         .jg-ticker-cat {
@@ -119,17 +230,17 @@
         }
         .jg-ticker-right {
             flex-shrink: 0 !important;
-            margin-left: 12px !important;
-            padding-left: 12px !important;
+            margin-left: 10px !important;
+            padding-left: 10px !important;
             border-left: 1px solid #1e293b !important;
-            height: 32px !important;
+            height: 30px !important;
             display: flex !important;
             align-items: center !important;
         }
         .jg-v-box {
             position: relative !important;
-            height: 32px !important;
-            width: 140px !important;
+            height: 30px !important;
+            width: 135px !important;
             overflow: hidden !important;
         }
         .jg-v-item {
@@ -151,50 +262,84 @@
         @media (max-width: 640px) {
             #jg-global-ticker-bar {
                 padding: 0 6px !important;
-                height: 44px !important;
+                height: 42px !important;
+            }
+            #jg-global-breaking-bar {
+                bottom: 42px !important;
+                height: 34px !important;
+                padding: 0 6px !important;
+                font-size: 11px !important;
             }
             .jg-ticker-badge {
-                padding: 3px 6px !important;
+                padding: 2.5px 6px !important;
                 margin-right: 6px !important;
                 font-size: 10px !important;
-                gap: 4px !important;
             }
             .jg-badge-text-full { display: none !important; }
             .jg-badge-text-mobile { display: inline !important; }
             .jg-ticker-right {
                 margin-left: 6px !important;
                 padding-left: 6px !important;
-                height: 28px !important;
+                height: 26px !important;
             }
             .jg-v-box {
-                width: 105px !important;
-                height: 28px !important;
+                width: 100px !important;
+                height: 26px !important;
             }
             .jg-v-item {
-                font-size: 10.5px !important;
-                gap: 3px !important;
-                padding: 0 4px !important;
-                white-space: nowrap !important;
+                font-size: 10px !important;
+                gap: 2px !important;
+                padding: 0 3px !important;
             }
             .jg-ticker-link {
                 font-size: 11px !important;
-                margin-right: 16px !important;
+                margin-right: 14px !important;
             }
         }
     `;
     document.head.appendChild(style);
 
-    // 3. 하단바 DOM 요소 생성
-    const bar = document.createElement('div');
-    bar.id = 'jg-global-ticker-bar';
-    if (!isMainPortal) {
-        bar.style.display = 'none';
-    }
-    bar.innerHTML = `
+    // 3. 긴급 속보 상단 띠 DOM 생성
+    let currentBreakingSignature = '';
+    const breakingBar = document.createElement('div');
+    breakingBar.id = 'jg-global-breaking-bar';
+    breakingBar.innerHTML = `
+        <div class="jg-breaking-badge">
+            <span class="jg-ticker-dot" style="background:#b91c1c !important;"></span>
+            <span>🚨 긴급 속보</span>
+        </div>
+        <div class="jg-ticker-scroll-area">
+            <div id="jg-breaking-track" class="jg-breaking-track"></div>
+        </div>
+        <div class="jg-breaking-actions">
+            <a href="https://news.j-jg.cc/breaking" class="jg-breaking-more" title="실시간 속보 브리핑 바로가기">
+                속보 브리핑 ❯
+            </a>
+            <button type="button" class="jg-breaking-close-btn" onclick="window.jgDismissBreaking()" title="속보 닫고 기존 뉴스만 보기">
+                <span>✕</span> <span>닫기</span>
+            </button>
+        </div>
+    `;
+
+    // 4. 속보 닫기 전역 핸들러
+    window.jgDismissBreaking = function() {
+        breakingBar.style.display = 'none';
+        updateBottomPadding(false);
+        if (currentBreakingSignature) {
+            try {
+                sessionStorage.setItem('jg_dismissed_breaking_sig', currentBreakingSignature);
+            } catch (e) {}
+        }
+    };
+
+    // 5. 기본 하단 티커 바 DOM 생성
+    const tickerBar = document.createElement('div');
+    tickerBar.id = 'jg-global-ticker-bar';
+    tickerBar.innerHTML = `
         <div class="jg-ticker-badge">
             <span class="jg-ticker-dot"></span>
             <span class="jg-badge-text-full">뉴스 브리핑</span>
-            <span class="jg-badge-text-mobile" style="display:none;">브리핑</span>
+            <span class="jg-badge-text-mobile" style="display:none;">뉴스</span>
         </div>
         <div class="jg-ticker-scroll-area">
             <div id="jg-track" class="jg-ticker-track">
@@ -210,80 +355,106 @@
         </div>
     `;
 
-    const injectBar = () => {
+    // 6. DOM 주입 및 데이터 조회 시작
+    const injectBars = () => {
         if (document.body) {
-            document.body.appendChild(bar);
+            document.body.appendChild(breakingBar);
+            document.body.appendChild(tickerBar);
             fetchTickerData();
-            // 60초 주기 갱신
-            setInterval(fetchTickerData, 60000);
+            // 45초 주기 갱신
+            setInterval(fetchTickerData, 45000);
         } else {
-            window.addEventListener('DOMContentLoaded', injectBar);
+            window.addEventListener('DOMContentLoaded', injectBars);
         }
     };
-    injectBar();
+    injectBars();
 
-    // 4. 포털 API 호출 및 데이터 바인딩
+    // 7. 데이터 바인딩
     async function fetchTickerData() {
         try {
-            const res = await fetch('https://j-jg.cc/api/ticker');
+            const isLocal = window.location.hostname === 'localhost';
+            const apiUrl = (isLocal ? '/api/ticker' : 'https://j-jg.cc/api/ticker') + '?_t=' + Date.now();
+            const res = await fetch(apiUrl);
+            if (!res.ok) throw new Error('API 응답 에러');
             const data = await res.json();
             if (!data.success) return;
 
-            // 서브 서비스(메인페이지 아님)일 경우: 속보가 없으면 하단바 숨김, 속보가 있을 때만 긴급 노출
-            if (!isMainPortal) {
-                const hasBreaking = data.breakingArticles && data.breakingArticles.length > 0;
-                if (!hasBreaking) {
-                    bar.style.display = 'none';
-                    applyBottomPadding(false);
-                    return;
+            // 7-1. 긴급 속보 처리
+            const breakingList = data.breakingArticles || [];
+            const hasBreaking = breakingList.length > 0;
+            const breakingTrack = document.getElementById('jg-breaking-track');
+
+            if (hasBreaking && breakingTrack) {
+                // 속보 고유 식별값 (기사 id 목록)
+                const newSig = breakingList.map(a => a.id).join(',');
+                currentBreakingSignature = newSig;
+
+                // 사용자가 닫은 속보인지 확인
+                let dismissedSig = '';
+                try {
+                    dismissedSig = sessionStorage.getItem('jg_dismissed_breaking_sig') || '';
+                } catch (e) {}
+
+                if (dismissedSig === newSig) {
+                    // 사용자가 이미 닫은 속보이므로 숨김 유지
+                    breakingBar.style.display = 'none';
+                    updateBottomPadding(false);
                 } else {
-                    bar.style.display = 'flex';
-                    applyBottomPadding(true);
-                    const badgeTextFull = bar.querySelector('.jg-badge-text-full');
-                    const badgeTextMobile = bar.querySelector('.jg-badge-text-mobile');
-                    if (badgeTextFull) badgeTextFull.textContent = '🚨 긴급 속보';
-                    if (badgeTextMobile) badgeTextMobile.textContent = '속보';
+                    // 새 속보이거나 닫지 않은 상태이면 노출
+                    breakingBar.style.display = 'flex';
+                    updateBottomPadding(true);
+
+                    const makeBreakingItems = () => breakingList.map(a => `
+                        <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="jg-breaking-link">
+                            <span style="background:#fee2e2; color:#991b1b; padding:1px 5px; border-radius:3px; font-weight:800; font-size:10px;">속보</span>
+                            <span>${escapeHtml(a.title)}</span>
+                            ${a.media_name ? `<span style="opacity:0.8; font-size:10px;">(${a.media_name})</span>` : ''}
+                            <span style="opacity:0.5; margin: 0 4px;">•</span>
+                        </a>
+                    `).join('');
+
+                    breakingTrack.innerHTML = makeBreakingItems() + makeBreakingItems();
                 }
             } else {
-                bar.style.display = 'flex';
-                applyBottomPadding(true);
+                breakingBar.style.display = 'none';
+                updateBottomPadding(false);
             }
 
-            // 4-1. 기사 트랙 구성
+            // 7-2. 기본 뉴스 브리핑 헤드라인 처리 (모든 사이트 공통 상시 노출)
             const track = document.getElementById('jg-track');
-            const targetArticles = (!isMainPortal && data.breakingArticles && data.breakingArticles.length > 0)
-                ? data.breakingArticles
-                : (data.articles || []);
+            const articles = data.articles || [];
 
-            if (track && targetArticles.length > 0) {
-                const isShowingBreaking = (!isMainPortal && data.breakingArticles && data.breakingArticles.length > 0);
-                const makeItems = () => targetArticles.map(a => `
-                    <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="jg-ticker-link">
-                        <span class="jg-ticker-cat" style="${isShowingBreaking ? 'background:#ef4444 !important; color:#ffffff !important;' : ''}">${isShowingBreaking ? '🚨 속보' : (a.category_name || '뉴스')}</span>
-                        <span>${escapeHtml(a.title)}</span>
-                        ${a.media_name ? `<span style="color:#64748b; font-size:10px;">(${a.media_name})</span>` : ''}
-                        <span style="color:#475569; margin: 0 4px;">•</span>
-                    </a>
-                `).join('');
+            if (track) {
+                if (articles.length > 0) {
+                    const makeItems = () => articles.map(a => `
+                        <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="jg-ticker-link">
+                            <span class="jg-ticker-cat">${escapeHtml(a.category_name || '뉴스')}</span>
+                            <span>${escapeHtml(a.title)}</span>
+                            ${a.media_name ? `<span style="color:#64748b; font-size:10px;">(${a.media_name})</span>` : ''}
+                            <span style="color:#475569; margin: 0 4px;">•</span>
+                        </a>
+                    `).join('');
 
-                // 무한 순환을 위해 2벌 연속 배치
-                track.innerHTML = makeItems() + makeItems();
+                    track.innerHTML = makeItems() + makeItems();
+                } else {
+                    track.innerHTML = '<span class="jg-ticker-link" style="color:#94a3b8;">최신 뉴스 브리핑을 준비 중입니다.</span>';
+                }
             }
 
-            // 4-2. 우측 롤링 위젯 구성 (날씨, 코스피, 코스닥, 달러)
+            // 7-3. 우측 날씨/증시 롤링 위젯 구성
             const vBox = document.getElementById('jg-v-box');
             if (vBox) {
                 const weather = data.weather || { city: '계룡', temp: '22°C', icon: '☀️' };
                 const market = data.market || {};
-                const kospi = market.kospi || { price: '6,625.9', direction: 'down' };
-                const kosdaq = market.kosdaq || { price: '892.3', direction: 'down' };
-                const usd = market.usd_krw || { price: '1,342.7', direction: 'up' };
+                const kospi = market.kospi || { price: '2,600.0', direction: 'down' };
+                const kosdaq = market.kosdaq || { price: '850.0', direction: 'down' };
+                const usd = market.usd_krw || { price: '1,350.0', direction: 'up' };
 
                 const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
                 const usdPriceText = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
 
                 const slides = [
-                    `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="실시간 날씨 브리핑 바로가기">
+                    `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="실시간 날씨 상세 보기">
                         <span>${weather.icon || '☀️'} ${cityName}</span>
                         <span style="color:#38bdf8; font-weight:700;">${weather.temp || '-'}</span>
                     </a>`,
@@ -309,11 +480,17 @@
             }
         } catch (e) {
             console.warn('[Ticker] 데이터 로드 실패:', e);
+            const track = document.getElementById('jg-track');
+            if (track && track.textContent.includes('로드 중')) {
+                track.innerHTML = '<span class="jg-ticker-link" style="color:#94a3b8;">실시간 뉴스 브리핑을 불러오는 중입니다...</span>';
+            }
         }
     }
 
-    // 4-3. 우측 위젯 3.5초 수직 롤링 타이머
+    // 8. 우측 위젯 3.5초 수직 롤링 타이머
+    let rollingTimer = null;
     function startVerticalRolling(container) {
+        if (rollingTimer) clearInterval(rollingTimer);
         const items = container.querySelectorAll('.jg-v-item');
         if (items.length <= 1) return;
 
@@ -330,7 +507,7 @@
             }
         });
 
-        setInterval(() => {
+        rollingTimer = setInterval(() => {
             const prev = items[curIdx];
             curIdx = (curIdx + 1) % items.length;
             const next = items[curIdx];
@@ -366,4 +543,3 @@
             .replace(/"/g, '&quot;');
     }
 })();
-
