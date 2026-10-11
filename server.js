@@ -15,7 +15,11 @@ const { initUnifiedNotificationScheduler } = require('./services/unifiedNotifica
 const app = express();
 app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3004;
-const JWT_SECRET = process.env.JWT_SECRET || 'jg-portal-master-super-secret-key-2026!@#';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    console.error('🚨 [보안 오류] JWT_SECRET 환경변수가 누락되었습니다. .env 설정을 확인하세요.');
+    process.exit(1);
+}
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.j-jg.cc';
 
 // 서브 프로젝트 기본 경로 자동 탐색 (환경 변수 -> 상위 폴더 상대경로 -> 노트9 workspace)
@@ -28,14 +32,36 @@ const BLOOD_DB_PATH = process.env.DB_PATH || path.join(BLOOD_DIR, 'health.db');
 const ASSET_DB_PATH = process.env.ASSET_DB_PATH || path.join(ASSET_DIR, 'asset.db');
 const NEWS_DB_PATH = process.env.NEWS_DB_PATH || path.join(NEWS_DIR, 'briefing.db');
 
-// 🌐 모든 서브도메인 간 알림 API 연동을 위한 CORS 설정 (.j-jg.cc)
+// 🌐 서브도메인 및 로컬 개발 환경 맞춤형 CORS 화이트리스트 검증 미들웨어
+const ALLOWED_ORIGINS = [
+    'https://j-jg.cc',
+    'https://blood.j-jg.cc',
+    'https://asset.j-jg.cc',
+    'https://news.j-jg.cc',
+    'http://localhost:3000',
+    'http://localhost:3003',
+    'http://localhost:3004',
+    'http://localhost:5050'
+];
+
+function isOriginAllowed(origin) {
+    if (!origin) return false;
+    if (ALLOWED_ORIGINS.includes(origin)) return true;
+    try {
+        const u = new URL(origin);
+        return u.hostname === 'j-jg.cc' || u.hostname.endsWith('.j-jg.cc');
+    } catch (e) {
+        return false;
+    }
+}
+
 app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin && (origin.endsWith('.j-jg.cc') || origin === 'https://j-jg.cc' || origin === 'http://localhost:3000' || origin === 'http://localhost:3004')) {
+    if (origin && isOriginAllowed(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
     }
     if (req.method === 'OPTIONS') {
         return res.sendStatus(204);
@@ -47,21 +73,6 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
-app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
 app.use(express.static(path.join(__dirname, 'public'), {
     index: false,
     setHeaders: (res, filePath) => {
@@ -128,19 +139,11 @@ function authenticateToken(req, res, next) {
         return res.redirect('/login');
     }
 
-    const candidateSecrets = [
-        JWT_SECRET,
-        'jg-portal-master-super-secret-key-2026-upt0731',
-        'jg-portal-master-super-secret-key-2026!@',
-        'jg-portal-master-super-secret-key-2026!@#',
-        'portal-master-secret-key-2026-upt0731!@#'
-    ];
     let user = null;
-    for (const secret of candidateSecrets) {
-        try {
-            user = jwt.verify(token, secret);
-            if (user && user.username) break;
-        } catch (err) {}
+    try {
+        user = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+        user = null;
     }
 
     if (!user || !user.username) {
