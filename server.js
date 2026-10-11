@@ -10,6 +10,7 @@ const fs = require('fs');
 const { exec } = require('child_process');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3004;
 const JWT_SECRET = process.env.JWT_SECRET || 'jg-portal-master-super-secret-key-2026!@#';
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.j-jg.cc';
@@ -78,6 +79,8 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
     if (err) console.error('❌ 혈압 DB 연결 실패:', err);
     else {
         console.log('✅ 마스터 계정 DB 로드 완료:', BLOOD_DB_PATH);
+        db.run('PRAGMA journal_mode = WAL;');
+        db.run('PRAGMA busy_timeout = 5000;');
         db.run(`CREATE TABLE IF NOT EXISTS login_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
@@ -95,13 +98,21 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
 // 자산관리 DB 연결 (asset.db)
 const assetDb = new sqlite3.Database(ASSET_DB_PATH, (err) => {
     if (err) console.error('❌ 자산 DB 연결 실패:', err);
-    else console.log('✅ 자산 DB 로드 완료:', ASSET_DB_PATH);
+    else {
+        console.log('✅ 자산 DB 로드 완료:', ASSET_DB_PATH);
+        assetDb.run('PRAGMA journal_mode = WAL;');
+        assetDb.run('PRAGMA busy_timeout = 5000;');
+    }
 });
 
 // 뉴스 대시보드 DB 연결 (briefing.db)
 const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
     if (err) console.error('❌ 뉴스 DB 연결 실패:', err);
-    else console.log('✅ 뉴스 DB 로드 완료:', NEWS_DB_PATH);
+    else {
+        console.log('✅ 뉴스 DB 로드 완료:', NEWS_DB_PATH);
+        newsDb.run('PRAGMA journal_mode = WAL;');
+        newsDb.run('PRAGMA busy_timeout = 5000;');
+    }
 });
 
 // 토큰 인증 미들웨어
