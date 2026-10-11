@@ -1026,6 +1026,12 @@
             return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
         }
 
+        // 터미널 ANSI 색상 이스케이프 코드 제거 유틸리티
+        function stripAnsi(str) {
+            if (!str) return '';
+            return String(str).replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+        }
+
 
         // 🗂️ 대메뉴별 서브메뉴(창) 설정 명세
         const SUBTABS_CONFIG = {
@@ -1494,7 +1500,7 @@
                 const res = await fetch(url);
                 const data = await res.json();
                 if (data.success) {
-                    consoleEl.textContent = data.logs || '현재 기록된 로그가 없습니다.';
+                    consoleEl.textContent = stripAnsi(data.logs) || '현재 기록된 로그가 없습니다.';
                     consoleEl.scrollTop = consoleEl.scrollHeight;
                 } else {
                     consoleEl.textContent = '로그 로딩 실패: ' + (data.logs || '오류 발생');
