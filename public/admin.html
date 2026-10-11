@@ -1017,6 +1017,13 @@
             }, 3500);
         }
 
+        // HTML 특수문자 이스케이프 유틸리티
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]);
+        }
+
+
         // 🗂️ 대메뉴별 서브메뉴(창) 설정 명세
         const SUBTABS_CONFIG = {
             'tab-overview': [
@@ -1368,6 +1375,7 @@
                                     </button>
                                 </div>
                             </div>
+                        `;
                     }).join('');
                 }
 
