@@ -30,7 +30,7 @@ self.addEventListener('fetch', (event) => {
 // 🔔 [Web Push] 실시간 속보 및 시스템 알림 수신 처리
 self.addEventListener('push', (event) => {
     let data = {
-        title: '🚨 [JG 통합 포털] 알림',
+        title: '🚨 알림',
         body: '새로운 알림이 도착했습니다.',
         icon: 'https://j-jg.cc/favicon.svg',
         badge: 'https://j-jg.cc/favicon.svg',
@@ -43,6 +43,10 @@ self.addEventListener('push', (event) => {
         } catch (e) {
             data.body = event.data.text();
         }
+    }
+
+    if (data.title) {
+        data.title = data.title.replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '').replace(/^\[?JG\s*포털\]?\s*/i, '').trim();
     }
 
     // 알림 성격에 맞춘 동적 액션 버튼 라벨 지정

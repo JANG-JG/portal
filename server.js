@@ -1704,7 +1704,7 @@ app.post('/api/notification/test', authenticateToken, async (req, res) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                title: '🔔 포털 통합 알림 테스트',
+                title: '🔔 알림 테스트',
                 body: '웹 푸시 알림이 정상적으로 연동되었습니다! 속보, 날씨, 증시, 복약 및 혈압 알림을 실시간 수신할 수 있습니다.',
                 url: 'https://j-jg.cc/',
                 type: 'test'
