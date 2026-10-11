@@ -1364,9 +1364,9 @@ function cleanPm2Logs(raw, procName) {
         if (procName === 'cloudflared') {
             return '🛡️ [Cloudflare 보안 터널 - 정상 가동 중]\n- 터널 상태: 🟢 온라인 (Cloudflare Edge 정상 연결)\n- 서비스 도메인: j-jg.cc, blood.j-jg.cc, asset.j-jg.cc, news.j-jg.cc\n- 최근 수집된 에러나 경고 로그가 없습니다. (오류 0건, 정상 트래픽 송수신 중)';
         }
-        return `🟢 [${procName || 'PM2 전체'}] 최근 기록된 에러나 콘솔 출력 로그가 없습니다. (정상 가동 중)`;
+        return `🟢 [${procName || 'PM2 전체 서비스'}] 최근 기록된 시스템 에러나 출력 로그가 없습니다. (모든 프로세스 정상 가동 중)`;
     }
-    return clean;
+    return contentLines.join('\n');
 }
 
 // 2-1. PM2 실시간 서버 콘솔 로그 조회 API (최신 50줄)
