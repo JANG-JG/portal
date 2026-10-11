@@ -278,14 +278,101 @@
                     </div>
                 </div>
 
-                <!-- 5대 서비스 PM2 프로세스 목록 -->
+                <!-- 🖥️ 듀얼 서버 인프라 상태 (주 서버 & 보조 서버) -->
+                <div class="admin-card" style="margin-top:1.5rem;">
+                    <div class="admin-card-header" style="margin-bottom:1rem;">
+                        <div>
+                            <h3 style="margin-bottom:0.25rem;">🖥️ 듀얼 서버 인프라 상태 (주 서버 & 보조 서버)</h3>
+                            <span style="font-size:0.82rem; color:#64748b;">메인 앱 서버와 500GB 보조 백업 스토리지 서버의 실시간 통신 및 헬스체크 현황</span>
+                        </div>
+                        <span class="live-indicator"><span class="live-dot"></span>15초 자동 갱신</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1rem;">
+                        <!-- 1. 주 서버 (삼성 갤럭시 노트 9) -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:1.25rem; display:flex; flex-direction:column; justify-content:space-between; position:relative;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                                    <div>
+                                        <div style="font-size:0.75rem; font-weight:700; color:#3b82f6; text-transform:uppercase; letter-spacing:0.05em;">PRIMARY SERVER</div>
+                                        <h4 style="margin:0.25rem 0 0 0; font-size:1.05rem; color:#0f172a; font-weight:800;">📱 삼성 갤럭시 노트 9</h4>
+                                    </div>
+                                    <span class="badge-online" id="primaryServerBadge">🟢 메인 운영 (Active)</span>
+                                </div>
+                                <div style="font-size:0.85rem; color:#475569; display:flex; flex-direction:column; gap:0.35rem; margin-top:0.5rem;">
+                                    <div><strong style="color:#1e293b;">네트워크 주소:</strong> <code style="background:#e2e8f0; padding:1px 5px; border-radius:3px;">192.168.50.111:2222</code></div>
+                                    <div><strong style="color:#1e293b;">주요 역할:</strong> 웹 포털, 혈압, 자산, AI 뉴스, Cloudflare 터널</div>
+                                    <div><strong style="color:#1e293b;">서버 가동 시간:</strong> <span id="primaryServerUptime">-</span></div>
+                                </div>
+                            </div>
+                            <div style="margin-top:1rem; padding-top:0.75rem; border-top:1px dashed #cbd5e1; display:flex; gap:1rem; font-size:0.8rem; color:#64748b;">
+                                <span>CPU 부하: <strong id="primaryServerCpu" style="color:#0f172a;">-%</strong></span>
+                                <span>RAM 점유: <strong id="primaryServerMem" style="color:#0f172a;">-%</strong></span>
+                            </div>
+                        </div>
+
+                        <!-- 2. 보조 서버 (HP 노트북) -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:1.25rem; display:flex; flex-direction:column; justify-content:space-between; position:relative;">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                                    <div>
+                                        <div style="font-size:0.75rem; font-weight:700; color:#8b5cf6; text-transform:uppercase; letter-spacing:0.05em;">SECONDARY STORAGE</div>
+                                        <h4 style="margin:0.25rem 0 0 0; font-size:1.05rem; color:#0f172a; font-weight:800;">💻 HP 노트북 15-g008au</h4>
+                                    </div>
+                                    <span class="badge-online" id="secondaryServerBadge">확인 중...</span>
+                                </div>
+                                <div style="font-size:0.85rem; color:#475569; display:flex; flex-direction:column; gap:0.35rem; margin-top:0.5rem;">
+                                    <div><strong style="color:#1e293b;">네트워크 주소:</strong> <code style="background:#e2e8f0; padding:1px 5px; border-radius:3px;">192.168.50.75:22</code></div>
+                                    <div><strong style="color:#1e293b;">주요 역할:</strong> 500GB 보조 HDD 백업 저장소 (새벽 4시 rsync)</div>
+                                    <div><strong style="color:#1e293b;">통신 핑 응답:</strong> <span id="secondaryServerLatency">-</span></div>
+                                </div>
+                            </div>
+                            <div style="margin-top:1rem; padding-top:0.75rem; border-top:1px dashed #cbd5e1; font-size:0.8rem; color:#64748b;">
+                                <span>동기화 정책: <strong style="color:#0f172a;">매일 04:00 데이터 백업 rsync 전송</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 전체 서비스 PM2 프로세스 목록 -->
                 <div class="admin-card" style="margin-top:1.5rem;">
                     <div class="admin-card-header">
-                        <h3>🚀 5대 서비스 프로세스 상태 (PM2)</h3>
+                        <h3>🚀 전체 서비스 프로세스 상태 (PM2)</h3>
                         <span style="font-size:0.85rem; color:#64748b;">시작 / 중지 / 재기동 원클릭 제어</span>
                     </div>
                     <div id="processListContainer" style="display:flex; flex-direction:column; gap:0.75rem;">
                         <div style="text-align:center; padding:2rem; color:#64748b;">프로세스 상태 조회 중...</div>
+                    </div>
+                </div>
+
+                <!-- 💾 RAM(메모리) 상위 점유 프로세스 (TOP 10) -->
+                <div class="admin-card" style="margin-top:1.5rem;">
+                    <div class="admin-card-header" style="margin-bottom:0.75rem;">
+                        <div>
+                            <h3 style="margin-bottom:0.25rem;">💾 메모리(RAM) 상위 점유 프로세스 (TOP 10)</h3>
+                            <span style="font-size:0.82rem; color:#64748b;">서버 램(RAM) 자원을 가장 많이 차지하고 있는 상위 프로세스 실시간 목록</span>
+                        </div>
+                        <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadOverviewData()">
+                            🔄 실시간 갱신
+                        </button>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="admin-table" style="font-size:0.85rem; width:100%; text-align:left;">
+                            <thead>
+                                <tr style="background:#f1f5f9; color:#475569;">
+                                    <th style="padding:0.6rem 0.75rem; width:45px;">순위</th>
+                                    <th style="padding:0.6rem 0.75rem; width:70px;">PID</th>
+                                    <th style="padding:0.6rem 0.75rem;">프로세스 / 명령어</th>
+                                    <th style="padding:0.6rem 0.75rem; width:95px; text-align:right;">사용량 (RSS)</th>
+                                    <th style="padding:0.6rem 0.75rem; width:80px; text-align:right;">RAM 점유</th>
+                                    <th style="padding:0.6rem 0.75rem; width:70px; text-align:right;">CPU</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topMemProcessTableBody">
+                                <tr>
+                                    <td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">메모리 점유 프로세스 데이터 로딩 중...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -300,10 +387,10 @@
                                 <option value="all">전체 통합 로그</option>
                                 <option value="portal">🏠 portal</option>
                                 <option value="blood-pressure-app">🩸 blood-pressure-app</option>
-                                <option value="blood-pressure-app-test">🩸 blood-pressure-app-test</option>
                                 <option value="asset">💰 asset</option>
                                 <option value="news-dashboard">📰 news-dashboard</option>
                                 <option value="news-scheduler">⏱️ news-scheduler</option>
+                                <option value="cloudflared">🛡️ cloudflared</option>
                             </select>
                             <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="fetchPm2Logs()">
                                 🔄 로그 새로고침
@@ -1281,8 +1368,54 @@
                                     </button>
                                 </div>
                             </div>
-                        `;
                     }).join('');
+                }
+
+                // 5) 듀얼 서버 인프라 상태 (주 서버 & 보조 서버) 갱신
+                if (data.dualServers) {
+                    const p = data.dualServers.primary;
+                    if (p) {
+                        const upEl = document.getElementById('primaryServerUptime');
+                        const cpuEl = document.getElementById('primaryServerCpu');
+                        const memEl = document.getElementById('primaryServerMem');
+                        if (upEl) upEl.textContent = p.uptime || '-';
+                        if (cpuEl) cpuEl.textContent = p.cpu || '-%';
+                        if (memEl) memEl.textContent = p.mem || '-%';
+                    }
+                    const s = data.dualServers.secondary;
+                    if (s) {
+                        const badgeEl = document.getElementById('secondaryServerBadge');
+                        const latEl = document.getElementById('secondaryServerLatency');
+                        if (badgeEl) {
+                            badgeEl.className = s.online ? 'badge-online' : 'badge-stopped';
+                            badgeEl.textContent = s.online ? '🟢 온라인 (정상 연결)' : '🔴 오프라인 (대기)';
+                        }
+                        if (latEl) {
+                            latEl.textContent = s.online ? (s.latency || '정상') : '네트워크 응답 없음 (오프라인)';
+                        }
+                    }
+                }
+
+                // 6) RAM(메모리) 상위 점유 프로세스 (TOP 10) 테이블 갱신
+                const topMemBody = document.getElementById('topMemProcessTableBody');
+                if (topMemBody && data.topMemoryProcesses) {
+                    if (data.topMemoryProcesses.length === 0) {
+                        topMemBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">수집된 프로세스 정보가 없습니다.</td></tr>';
+                    } else {
+                        topMemBody.innerHTML = data.topMemoryProcesses.map((proc, idx) => `
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:0.55rem 0.75rem; font-weight:700; color:#64748b;">${idx + 1}</td>
+                                <td style="padding:0.55rem 0.75rem; font-family:monospace; color:#334155;">${proc.pid}</td>
+                                <td style="padding:0.55rem 0.75rem;">
+                                    <div style="font-weight:700; color:#0f172a;">${escapeHtml(proc.name || proc.command)}</div>
+                                    <div style="font-size:0.72rem; color:#64748b; font-family:monospace;" title="${escapeHtml(proc.fullCommand)}">${escapeHtml(proc.fullCommand)}</div>
+                                </td>
+                                <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:700; color:#2563eb;">${proc.rss}</td>
+                                <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:700; color:#0f172a;">${proc.mem}</td>
+                                <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:600; color:#475569;">${proc.cpu}</td>
+                            </tr>
+                        `).join('');
+                    }
                 }
             } catch (err) {
                 console.error('관리자 상태 로드 오류:', err);
@@ -1433,9 +1566,29 @@
         }
 
         // 전체 DB 일괄 ZIP 다운로드
-        function downloadAllDatabases() {
-            showToast('전체 DB 백업 파일을 압축 생성하여 다운로드합니다...');
-            window.location.href = '/api/admin/backup/all';
+        async function downloadAllDatabases() {
+            showToast('전체 DB 백업 파일을 압축 생성 중입니다. 잠시만 기다려주세요...');
+            try {
+                const res = await fetch('/api/admin/backup/all');
+                if (!res.ok) {
+                    const errJson = await res.json().catch(() => ({}));
+                    throw new Error(errJson.message || `HTTP ${res.status}`);
+                }
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const nowStr = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+                a.download = `jg_all_databases_${nowStr}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showToast('✅ 전체 DB 백업 압축 파일(.zip) 다운로드가 완료되었습니다!');
+            } catch (err) {
+                console.error('[일괄 백업 다운로드 실패]', err);
+                showToast('❌ 전체 DB 백업 실패: ' + err.message);
+            }
         }
 
         // 2. 혈압 관리 데이터 로드

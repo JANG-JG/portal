@@ -7,7 +7,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const { exec } = require('child_process');
+const { exec, execFile } = require('child_process');
 const webPush = require('web-push');
 const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
 
@@ -845,7 +845,7 @@ app.get('/go/:service', authenticateToken, (req, res) => {
 // ⚙️ [통합 관리자 제어 센터 API 및 실시간 모니터링]
 // ==========================================
 
-// 1) 실시간 호스트 CPU 사용률 백그라운드 계산기 (/proc/stat 기반, 3초 주기)
+// 1) 실시간 호스트 CPU 사용률 백그라운드 계산기 (PRoot 가상화 환경 호환)
 let currentCpuPercent = 0;
 let prevCpuStat = null;
 
@@ -855,24 +855,126 @@ function updateCpuUsage() {
         const parts = line.trim().split(/\s+/).slice(1).map(Number);
         const idle = parts[3] + (parts[4] || 0);
         const total = parts.reduce((a, b) => a + b, 0);
-        if (prevCpuStat) {
+        
+        let calculated = false;
+        if (prevCpuStat && prevCpuStat.total > 0) {
             const idleDelta = idle - prevCpuStat.idle;
             const totalDelta = total - prevCpuStat.total;
             if (totalDelta > 0) {
                 currentCpuPercent = Math.max(0, Math.min(100, Math.round(((totalDelta - idleDelta) / totalDelta) * 100)));
+                calculated = true;
             }
         }
         prevCpuStat = { idle, total };
+
+        // PRoot 환경에서 /proc/stat이 갱신되지 않아 totalDelta가 0인 경우 loadavg 기반 계산
+        if (!calculated) {
+            const load = os.loadavg()[0];
+            const cpus = os.cpus().length || 8;
+            currentCpuPercent = Math.max(0, Math.min(100, Math.round((load / cpus) * 100)));
+        }
     } catch (e) {
         const load = os.loadavg()[0];
-        const cpus = os.cpus().length || 1;
-        currentCpuPercent = Math.min(100, Math.round((load / cpus) * 100));
+        const cpus = os.cpus().length || 8;
+        currentCpuPercent = Math.max(0, Math.min(100, Math.round((load / cpus) * 100)));
     }
 }
 updateCpuUsage();
 setInterval(updateCpuUsage, 3000);
 
-// 2) CPU 하드웨어 온도 측정 (1분 캐시로 센서 부하 방지)
+// 서버 가동 시간 사람이 읽기 좋은 포맷 변환기
+function formatUptime(seconds) {
+    if (!seconds || seconds <= 0) return '방금 시작됨';
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (d > 0) return `${d}일 ${h}시간 ${m}분`;
+    if (h > 0) return `${h}시간 ${m}분`;
+    if (m > 0) return `${m}분 ${s}초`;
+    return `${s}초`;
+}
+
+// 2) 보조 서버 (HP 노트북: 192.168.50.75) 실시간 핑 헬스체크 (15초 캐시)
+let secondaryServerCache = {
+    ip: '192.168.50.75',
+    name: 'HP 노트북 (보조 백업 스토리지)',
+    role: '500GB 보조 HDD 백업 저장소',
+    online: false,
+    latency: null,
+    checkedAt: 0
+};
+
+async function getSecondaryServerStatus() {
+    const now = Date.now();
+    if (now - secondaryServerCache.checkedAt < 15000) {
+        return secondaryServerCache;
+    }
+    return new Promise((resolve) => {
+        exec('ping -c 1 -W 1 192.168.50.75', { timeout: 2000 }, (err, stdout) => {
+            if (err || !stdout) {
+                secondaryServerCache = {
+                    ...secondaryServerCache,
+                    online: false,
+                    latency: null,
+                    checkedAt: now
+                };
+            } else {
+                const match = stdout.match(/time=([\d.]+)\s*ms/);
+                const latency = match ? `${parseFloat(match[1]).toFixed(1)} ms` : '정상';
+                secondaryServerCache = {
+                    ...secondaryServerCache,
+                    online: true,
+                    latency,
+                    checkedAt: now
+                };
+            }
+            resolve(secondaryServerCache);
+        });
+    });
+}
+
+// 3) RAM(메모리) 상위 점유 프로세스 TOP 10 실시간 수집기
+async function getTopMemoryProcesses() {
+    return new Promise((resolve) => {
+        exec('ps -eo pid,user,%cpu,%mem,rss,args --sort=-%mem | head -n 11', { timeout: 3000 }, (err, stdout) => {
+            if (err || !stdout) return resolve([]);
+            try {
+                const lines = stdout.trim().split('\n').slice(1);
+                const list = lines.map(line => {
+                    const parts = line.trim().split(/\s+/);
+                    if (parts.length < 6) return null;
+                    const pid = parts[0];
+                    const user = parts[1];
+                    const cpu = parseFloat(parts[2]) || 0;
+                    const mem = parseFloat(parts[3]) || 0;
+                    const rssKb = parseInt(parts[4], 10) || 0;
+                    const fullCmd = parts.slice(5).join(' ');
+                    let shortName = path.basename(parts[5]);
+                    if (shortName === 'node' && parts[6]) {
+                        shortName = 'node ' + path.basename(parts[6]);
+                    } else if (shortName.startsWith('python') && parts[6]) {
+                        shortName = 'python ' + path.basename(parts[parts.length - 1]);
+                    }
+                    return {
+                        pid,
+                        user,
+                        cpu: `${cpu.toFixed(1)}%`,
+                        mem: `${mem.toFixed(1)}%`,
+                        rss: `${(rssKb / 1024).toFixed(1)} MB`,
+                        name: shortName,
+                        fullCommand: fullCmd.slice(0, 80)
+                    };
+                }).filter(Boolean);
+                resolve(list);
+            } catch (e) {
+                resolve([]);
+            }
+        });
+    });
+}
+
+// 4) CPU 하드웨어 온도 측정 (1분 캐시로 센서 부하 방지)
 let cpuTempCache = {
     timestamp: 0,
     temp: null,
@@ -887,7 +989,10 @@ async function getCpuTemperature() {
 
     return new Promise((resolve) => {
         exec('sensors -j', { timeout: 3000 }, (err, stdout) => {
-            if (err || !stdout) return resolve(cpuTempCache);
+            if (err || !stdout) {
+                // 안드로이드 PRoot 비루팅 환경에서는 SELinux에 의해 /sys/class/thermal 차단됨
+                return resolve(cpuTempCache);
+            }
             try {
                 const data = JSON.parse(stdout);
                 let tempVal = null;
@@ -981,12 +1086,14 @@ async function getDiskUsage() {
     });
 }
 
-// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황
+// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링
 app.get('/api/admin/overview', authenticateToken, async (req, res) => {
     try {
-        const [tempInfo, diskInfo] = await Promise.all([
+        const [tempInfo, diskInfo, secondaryServer, topMemList] = await Promise.all([
             getCpuTemperature(),
-            getDiskUsage()
+            getDiskUsage(),
+            getSecondaryServerStatus(),
+            getTopMemoryProcesses()
         ]);
 
         exec('pm2 jlist', (err, stdout) => {
@@ -997,22 +1104,22 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
                     const displayNames = {
                         'portal': '🏠 JG 통합 포털',
                         'blood-pressure-app': '🩸 혈압 관리 서비스',
-                        'blood-pressure-app-test': '🩸 혈압 관리 (테스트)',
                         'asset': '💰 내 자산 관리 서비스',
                         'news-dashboard': '📰 AI 뉴스 대시보드',
-                        'news-scheduler': '⏱️ 모닝 뉴스 스케줄러 데몬'
+                        'news-scheduler': '⏱️ 모닝 뉴스 스케줄러 데몬',
+                        'cloudflared': '🛡️ Cloudflare 보안 터널'
                     };
                     const ports = {
                         'portal': '3004',
                         'blood-pressure-app': '3000',
-                        'blood-pressure-app-test': '3001',
                         'asset': '3003',
                         'news-dashboard': '5050',
-                        'news-scheduler': 'Daemon'
+                        'news-scheduler': 'Daemon',
+                        'cloudflared': 'Tunnel'
                     };
                     processes = list.map(p => ({
                         name: p.name,
-                        displayName: displayNames[p.name] || p.name,
+                        displayName: displayNames[p.name] || (`⚙️ ${p.name}`),
                         status: p.pm2_env?.status || 'unknown',
                         pid: p.pid,
                         pm_id: p.pm_id,
@@ -1046,21 +1153,34 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
             const usedMem = totalMem - freeMem;
             const memPercentNum = Math.round((usedMem / totalMem) * 100);
             const memPercent = `${memPercentNum}%`;
-            const uptimeHours = (os.uptime() / 3600).toFixed(1) + '시간';
+            const uptimeStr = formatUptime(os.uptime());
 
             res.json({
                 success: true,
                 processes,
                 dbs,
+                topMemoryProcesses: topMemList || [],
+                dualServers: {
+                    primary: {
+                        name: '삼성 갤럭시 노트 9 (메인 앱 서버)',
+                        ip: '192.168.50.111:2222',
+                        role: '포털, 혈압, 자산, AI 뉴스, Cloudflare 터널',
+                        status: 'online',
+                        uptime: uptimeStr,
+                        cpu: `${currentCpuPercent}%`,
+                        mem: memPercent
+                    },
+                    secondary: secondaryServer
+                },
                 system: {
                     memUsage: memPercent,
                     memFree: (freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
                     memTotal: (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
-                    uptimeStr: uptimeHours,
+                    uptimeStr: uptimeStr,
                     cpu: {
                         percent: `${currentCpuPercent}%`,
                         percentNum: currentCpuPercent,
-                        temp: tempInfo.temp !== null ? `${tempInfo.temp}°C` : '측정 불가',
+                        temp: tempInfo.temp !== null ? `${tempInfo.temp}°C` : '비인가 (SELinux 격리)',
                         tempStatus: tempInfo.status
                     },
                     memory: {
@@ -1085,14 +1205,14 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
     }
 });
 
-// 2. PM2 개별 프로세스 제어 (시작, 중지, 재기동)
+// 2. PM2 개별 프로세스 제어 (시작, 중지, 재기동 - 동적 프로세스 허용)
 app.post('/api/admin/pm2/action', authenticateToken, (req, res) => {
     const { action, processName } = req.body;
-    const allowedProcesses = ['portal', 'blood-pressure-app', 'blood-pressure-app-test', 'asset', 'news-dashboard', 'news-scheduler'];
     const allowedActions = ['start', 'stop', 'restart'];
+    const validNameRegex = /^[a-zA-Z0-9_\-]+$/;
 
-    if (!processName || !allowedProcesses.includes(processName)) {
-        return res.status(400).json({ success: false, message: '허용되지 않은 프로세스 이름입니다.' });
+    if (!processName || !validNameRegex.test(processName)) {
+        return res.status(400).json({ success: false, message: '올바르지 않은 프로세스 이름입니다.' });
     }
     if (!action || !allowedActions.includes(action)) {
         return res.status(400).json({ success: false, message: '허용되지 않은 제어 명령입니다 (start, stop, restart만 가능).' });
@@ -1114,9 +1234,9 @@ app.post('/api/admin/pm2/action', authenticateToken, (req, res) => {
 // 기존 재기동 호환 API 유지
 app.post('/api/admin/pm2/restart', authenticateToken, (req, res) => {
     const { processName } = req.body;
-    const allowed = ['portal', 'blood-pressure-app', 'blood-pressure-app-test', 'asset', 'news-dashboard', 'news-scheduler'];
-    if (!processName || !allowed.includes(processName)) {
-        return res.status(400).json({ success: false, message: '허용되지 않은 프로세스 이름입니다.' });
+    const validNameRegex = /^[a-zA-Z0-9_\-]+$/;
+    if (!processName || !validNameRegex.test(processName)) {
+        return res.status(400).json({ success: false, message: '올바르지 않은 프로세스 이름입니다.' });
     }
 
     exec(`pm2 restart ${processName}`, (err) => {
@@ -1127,11 +1247,11 @@ app.post('/api/admin/pm2/restart', authenticateToken, (req, res) => {
 
 // 2-1. PM2 실시간 서버 콘솔 로그 조회 API (최신 50줄)
 app.get('/api/admin/pm2/logs', authenticateToken, (req, res) => {
-    const allowedProcesses = ['portal', 'blood-pressure-app', 'blood-pressure-app-test', 'asset', 'news-dashboard', 'news-scheduler'];
     const proc = req.query.process;
+    const validNameRegex = /^[a-zA-Z0-9_\-]+$/;
     const lines = Math.min(Math.max(parseInt(req.query.lines, 10) || 50, 10), 200);
 
-    const target = (proc && allowedProcesses.includes(proc)) ? proc : '';
+    const target = (proc && validNameRegex.test(proc)) ? proc : '';
     const cmd = target ? `pm2 logs ${target} --lines ${lines} --raw --nostream` : `pm2 logs --lines ${lines} --raw --nostream`;
 
     exec(cmd, { timeout: 6000 }, (err, stdout, stderr) => {
@@ -1175,15 +1295,23 @@ app.get('/api/admin/backup/:type', authenticateToken, (req, res) => {
     res.status(404).send('해당 DB 백업 파일을 찾을 수 없습니다.');
 });
 
-// 4. 전체 DB 원클릭 압축 일괄 백업 (.zip)
+// 4. 전체 DB 원클릭 압축 일괄 백업 (.zip) - execFile 안전 실행
 app.get('/api/admin/backup/all', authenticateToken, (req, res) => {
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
     const tmpZip = path.join('/tmp', `jg_all_databases_${timestamp}.zip`);
-    const pyScript = `import zipfile, os; zpath='${tmpZip}'; zf=zipfile.ZipFile(zpath, 'w', zipfile.ZIP_DEFLATED); os.path.exists('${BLOOD_DB_PATH}') and zf.write('${BLOOD_DB_PATH}', 'health.db'); os.path.exists('${ASSET_DB_PATH}') and zf.write('${ASSET_DB_PATH}', 'asset.db'); os.path.exists('${NEWS_DB_PATH}') and zf.write('${NEWS_DB_PATH}', 'briefing.db'); zf.close()`;
+    const pyScript = `import zipfile, os
+zpath = "${tmpZip}"
+zf = zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED)
+for p, arc in [("${BLOOD_DB_PATH}", "health.db"), ("${ASSET_DB_PATH}", "asset.db"), ("${NEWS_DB_PATH}", "briefing.db")]:
+    if os.path.exists(p):
+        zf.write(p, arc)
+zf.close()
+`;
 
-    exec(`python3 -c "${pyScript}"`, (err) => {
+    execFile('python3', ['-c', pyScript], (err) => {
         if (err || !fs.existsSync(tmpZip)) {
-            return res.status(500).json({ success: false, message: '전체 DB 압축 생성 실패' });
+            console.error('[일괄 백업 압축 오류]', err);
+            return res.status(500).json({ success: false, message: '전체 DB 압축 생성 실패: ' + (err ? err.message : '파일 없음') });
         }
         res.download(tmpZip, `jg_all_databases_${timestamp}.zip`, () => {
             try { fs.unlinkSync(tmpZip); } catch (e) {}
