@@ -838,14 +838,6 @@ app.post('/api/blood/quick-med', authenticateToken, (req, res) => {
 
 // 🌟 [전 사이트 공통 TV 뉴스 티커 API]
 app.get('/api/ticker', (req, res) => {
-    const origin = req.headers.origin;
-    if (origin) {
-        res.setHeader('Access-Control-Allow-Origin', origin);
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
-    } else {
-        res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-    res.setHeader('Access-Control-Allow-Methods', 'GET');
     res.setHeader('Cache-Control', 'public, max-age=30');
 
     // 1. 일반 기사 (속보는 제외)
