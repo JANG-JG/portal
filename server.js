@@ -896,6 +896,65 @@ function formatUptime(seconds) {
     return `${s}초`;
 }
 
+// Android Host / Termux 실제 서버 가동 시간 측정 (PRoot 정적 uptime 파일 우회)
+let uptimeCache = { value: '측정 중...', checkedAt: 0 };
+async function getRealServerUptime() {
+    const now = Date.now();
+    if (now - uptimeCache.checkedAt < 10000) {
+        return uptimeCache.value;
+    }
+    return new Promise((resolve) => {
+        exec('/data/data/com.termux/files/usr/bin/uptime 2>/dev/null || uptime', { timeout: 1500 }, (err, stdout) => {
+            if (!err && stdout) {
+                const match = stdout.match(/up\s+([^,]+(?:,\s*[^,]+)?),\s*\d+\s+users?/);
+                if (match) {
+                    const part = match[1].trim();
+                    const hmOnly = part.match(/^(\d+):(\d+)$/);
+                    if (hmOnly) {
+                        const val = `${parseInt(hmOnly[1], 10)}시간 ${parseInt(hmOnly[2], 10)}분`;
+                        uptimeCache = { value: val, checkedAt: now };
+                        return resolve(val);
+                    }
+                    const dayHm = part.match(/^(\d+)\s+days?,\s*(\d+):(\d+)$/);
+                    if (dayHm) {
+                        const val = `${dayHm[1]}일 ${parseInt(dayHm[2], 10)}시간 ${parseInt(dayHm[3], 10)}분`;
+                        uptimeCache = { value: val, checkedAt: now };
+                        return resolve(val);
+                    }
+                    const dayMin = part.match(/^(\d+)\s+days?,\s*(\d+)\s+min/);
+                    if (dayMin) {
+                        const val = `${dayMin[1]}일 ${dayMin[2]}분`;
+                        uptimeCache = { value: val, checkedAt: now };
+                        return resolve(val);
+                    }
+                    const minOnly = part.match(/^(\d+)\s+min/);
+                    if (minOnly) {
+                        const val = `${minOnly[1]}분`;
+                        uptimeCache = { value: val, checkedAt: now };
+                        return resolve(val);
+                    }
+                    uptimeCache = { value: part, checkedAt: now };
+                    return resolve(part);
+                }
+            }
+            // fallback: 최장 실행 데몬 프로세스 etimes
+            exec('ps -eo etimes | sort -nr | head -n 1', { timeout: 1000 }, (pErr, pStdout) => {
+                if (!pErr && pStdout) {
+                    const sec = parseInt(pStdout.trim(), 10);
+                    if (sec > 0) {
+                        const val = formatUptime(sec);
+                        uptimeCache = { value: val, checkedAt: now };
+                        return resolve(val);
+                    }
+                }
+                const fallback = formatUptime(os.uptime());
+                uptimeCache = { value: fallback, checkedAt: now };
+                resolve(fallback);
+            });
+        });
+    });
+}
+
 // 2) 보조 서버 (HP 노트북: 192.168.50.75) 실시간 소켓 헬스체크 (15초 캐시)
 let secondaryServerCache = {
     ip: '192.168.50.75:22',
@@ -1101,11 +1160,12 @@ async function getDiskUsage() {
 // 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링
 app.get('/api/admin/overview', authenticateToken, async (req, res) => {
     try {
-        const [tempInfo, diskInfo, secondaryServer, topMemList] = await Promise.all([
+        const [tempInfo, diskInfo, secondaryServer, topMemList, realUptime] = await Promise.all([
             getCpuTemperature(),
             getDiskUsage(),
             getSecondaryServerStatus(),
-            getTopMemoryProcesses()
+            getTopMemoryProcesses(),
+            getRealServerUptime()
         ]);
 
         exec('pm2 jlist', (err, stdout) => {
@@ -1165,7 +1225,7 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
             const usedMem = totalMem - freeMem;
             const memPercentNum = Math.round((usedMem / totalMem) * 100);
             const memPercent = `${memPercentNum}%`;
-            const uptimeStr = formatUptime(os.uptime());
+            const uptimeStr = realUptime || formatUptime(os.uptime());
 
             res.json({
                 success: true,
