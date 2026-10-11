@@ -2021,7 +2021,7 @@ app.post('/api/notification/broadcast', async (req, res) => {
     const isLocal = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    const hasCookie = req.cookies && req.cookies[COOKIE_NAME];
+    const hasCookie = req.cookies && req.cookies.portal_token;
 
     if (!isLocal && !token && !hasCookie) {
         return res.status(401).json({ success: false, message: '알림 발송 권한이 필요합니다.' });
