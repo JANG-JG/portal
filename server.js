@@ -958,22 +958,36 @@ async function getRealServerUptime() {
 // 2) 보조 서버 (HP 노트북: 192.168.50.75) 실시간 소켓 헬스체크 (15초 캐시)
 let secondaryServerCache = {
     ip: '192.168.50.75:22',
-    name: 'HP 노트북 (보조 백업 스토리지)',
-    role: '500GB 보조 HDD 백업 저장소',
+    name: 'HP 노트북 15-g008au (보조 백업 스토리지)',
+    role: '500GB 보조 HDD 백업 저장소 (새벽 4시 rsync)',
     online: false,
     latency: null,
-    checkedAt: 0
+    checkedAt: 0,
+    storage: {
+        capacity: '500 GB',
+        type: 'SATA HDD',
+        mountPath: '/home/upt0731/backups/jg_server',
+        policy: '매일 04:00 rsync 자동 증분 동기화 (30일 보존 후 자동 롤오버)',
+        retentionDays: 30,
+        targets: [
+            { name: '혈압 관리 데이터베이스', file: 'health.db', desc: '혈압, 맥박, 복약 일지, 병원 진료 예약' },
+            { name: '자산 관리 데이터베이스', file: 'asset.db', desc: '포트폴리오, 입출금 이력, 계좌 스냅샷' },
+            { name: 'AI 뉴스 데이터베이스', file: 'briefing.db', desc: '아침 뉴스 브리핑, 속보 수집 기록' },
+            { name: '서비스 데몬 실행 로그', file: 'logs/pm2/*', desc: 'PM2 6대 프로세스 표준/에러 로그' },
+            { name: '뉴스 수집 실행 로그', file: 'logs/news/*', desc: 'AI 뉴스 크롤러 상세 실행 로그' }
+        ]
+    }
 };
 
-async function getSecondaryServerStatus() {
+async function getSecondaryServerStatus(forceRefresh = false) {
     const now = Date.now();
-    if (now - secondaryServerCache.checkedAt < 15000) {
+    if (!forceRefresh && (now - secondaryServerCache.checkedAt < 15000)) {
         return secondaryServerCache;
     }
     return new Promise((resolve) => {
         const startTime = Date.now();
         let settled = false;
-        const socket = net.createConnection({ host: '192.168.50.75', port: 22, timeout: 1500 }, () => {
+        const socket = net.createConnection({ host: '192.168.50.75', port: 22, timeout: 2000 }, () => {
             if (settled) return;
             settled = true;
             const latency = Date.now() - startTime;
@@ -1274,6 +1288,16 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error('관리자 오버뷰 조회 오류:', err);
         res.status(500).json({ success: false, message: '서버 상태 조회 실패' });
+    }
+});
+
+// 1-2. 보조 서버(HP 노트북) 즉시 실시간 핑 테스트 API
+app.get('/api/admin/secondary/ping', authenticateToken, async (req, res) => {
+    try {
+        const secondary = await getSecondaryServerStatus(true);
+        res.json({ success: true, secondary });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '보조 서버 핑 테스트 실패: ' + e.message });
     }
 });
 
