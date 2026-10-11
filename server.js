@@ -684,11 +684,12 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             });
         });
 
-        // 6-1) 실시간 속보 기사 목록 (최근 1시간 이내 기사만 유효, 만료 시 빈 배열 -> 상단 티커 자동 숨김)
+        // 6-1) 실시간 속보 기사 목록 (정확한 KST 기준 최근 1시간 이내 기사만 유효, 만료 시 빈 배열 -> 상단 티커 자동 숨김)
+        const breakingThreshold = getKstDateTimeString(-60);
         const breakingArticles = await new Promise((resolve) => {
             newsDb.all(
-                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') AND datetime(created_at) >= datetime('now', 'localtime', '-1 hour') AND (published_at = '' OR datetime(published_at) >= datetime('now', 'localtime', '-1 hour')) ORDER BY id DESC LIMIT 8",
-                [],
+                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') AND created_at >= ? ORDER BY id DESC LIMIT 8",
+                [breakingThreshold],
                 (bErr, rows) => resolve(rows || [])
             );
         });
@@ -718,6 +719,20 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
         res.status(500).json({ success: false, message: '요약 데이터 조회 실패' });
     }
 });
+
+// KST (Asia/Seoul) 기준 현재 또는 오프셋 시각 문자열 생성 헬퍼 (YYYY-MM-DD HH:mm:ss)
+function getKstDateTimeString(offsetMinutes = 0) {
+    const d = new Date(Date.now() + offsetMinutes * 60 * 1000);
+    const kstFormatter = new Intl.DateTimeFormat('ko-KR', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+    });
+    const parts = kstFormatter.formatToParts(d);
+    const getPart = (type) => parts.find(p => p.type === type)?.value || '';
+    return `${getPart('year')}-${getPart('month')}-${getPart('day')} ${getPart('hour')}:${getPart('minute')}:${getPart('second')}`;
+}
 
 // 6-1. [신규] 지금 혈압약 복용 (원터치 등록) API
 app.post('/api/blood/quick-med', authenticateToken, (req, res) => {
@@ -765,10 +780,11 @@ app.get('/api/ticker', (req, res) => {
         "SELECT id, title, link, category_name, media_name, published_at FROM news_articles WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' ORDER BY id DESC LIMIT 12",
         [],
         (err, articles) => {
-            // 2. 실시간 속보 (최근 1시간 이내 기사)
+            // 2. 실시간 속보 (정확한 KST 기준 최근 1시간 이내 기사만 유효)
+            const breakingThreshold = getKstDateTimeString(-60);
             newsDb.all(
-                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE category_name = '속보' AND datetime(created_at) >= datetime('now', 'localtime', '-1 hour') ORDER BY id DESC LIMIT 5",
-                [],
+                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE category_name = '속보' AND created_at >= ? ORDER BY id DESC LIMIT 5",
+                [breakingThreshold],
                 async (bErr, breakingRows) => {
                     const [weather, market] = await Promise.all([
                         getLiveWeatherData(),
