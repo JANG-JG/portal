@@ -202,9 +202,30 @@
         window.openNotificationModal();
     };
 
-    // 알림 모달 열기
-    window.openNotificationModal = function() {
-        const modal = document.getElementById('notificationModal');
+    // 알림 모달 열기 (미발견 시 자동 마운트 Self-Healing 보장)
+    window.openNotificationModal = async function() {
+        let modal = document.getElementById('notificationModal');
+        if (!modal) {
+            console.log('[UnifiedNav] notificationModal 미발견 -> 실시간 마운트 시도...');
+            try {
+                const isLocal = window.location.hostname === 'localhost';
+                const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=' + Date.now();
+                const res = await fetch(compUrl);
+                if (res.ok) {
+                    const html = await res.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const fetchedModal = doc.getElementById('notificationModal');
+                    if (fetchedModal) {
+                        document.body.appendChild(fetchedModal);
+                        modal = fetchedModal;
+                    }
+                }
+            } catch (err) {
+                console.warn('[UnifiedNav] 모달 동적 로드 실패:', err);
+            }
+        }
+        modal = document.getElementById('notificationModal');
         if (!modal) {
             console.warn('[UnifiedNav] notificationModal 요소를 찾을 수 없습니다.');
             return;
