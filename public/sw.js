@@ -66,6 +66,8 @@ self.addEventListener('push', (event) => {
         body: data.body,
         icon: data.icon || 'https://j-jg.cc/favicon.svg',
         badge: data.badge || 'https://j-jg.cc/favicon.svg',
+        tag: data.tag || undefined,
+        renotify: false,
         vibrate: [200, 100, 200],
         data: data.data || { url: defaultUrl },
         actions: [
@@ -83,8 +85,18 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
     const notifData = (event.notification.data) || {};
-    const targetUrl = notifData.url || 'https://news.j-jg.cc/breaking';
+    let rawUrl = notifData.url || 'https://news.j-jg.cc/breaking';
     const notifId = notifData.notifId;
+
+    // 상대 경로가 전달된 경우 적절한 도메인으로 보정
+    let targetUrl = rawUrl;
+    if (rawUrl.startsWith('/')) {
+        if (rawUrl.includes('dashboard') || rawUrl.includes('hospital')) {
+            targetUrl = `https://blood.j-jg.cc${rawUrl}`;
+        } else {
+            targetUrl = `https://j-jg.cc${rawUrl}`;
+        }
+    }
 
     // 🌟 알림 클릭 시 백그라운드에서 즉시 읽음 처리 API 호출
     const markReadPromise = notifId ? fetch(`https://j-jg.cc/api/notification/history/${notifId}/read`, {
@@ -106,18 +118,20 @@ self.addEventListener('notificationclick', (event) => {
             }
         }
 
-        // 2순위: 사용자가 PWA 웹앱 또는 포털 창(j-jg.cc)을 이미 열어둔 경우,
-        // 새 외부 브라우저 창을 띄우지 않고 기존 웹앱 창으로 포커스하여 앱 내에서 바로 페이지 이동
-        for (const client of clientList) {
-            if (client.url && client.url.includes('j-jg.cc') && 'focus' in client) {
-                if ('navigate' in client) {
-                    client.navigate(targetUrl);
+        // 2순위: 대상 도메인과 일치하는 창이 열려있는 경우 (예: blood.j-jg.cc 타겟이면 blood 창)
+        try {
+            const targetOrigin = new URL(targetUrl).origin;
+            for (const client of clientList) {
+                if (client.url && client.url.startsWith(targetOrigin) && 'focus' in client) {
+                    if ('navigate' in client) {
+                        client.navigate(targetUrl);
+                    }
+                    return client.focus();
                 }
-                return client.focus();
             }
-        }
+        } catch (e) {}
 
-        // 3순위: 열려있는 앱/창이 없는 경우에만 새 창/웹앱 창 열기
+        // 3순위: 열려있는 적합한 창이 없는 경우 새 창 열기
         if (clients.openWindow) {
             return clients.openWindow(targetUrl);
         }

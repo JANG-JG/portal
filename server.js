@@ -1740,11 +1740,11 @@ let lastAssetSentDate = '';
 let lastBpSentDate = '';
 const pm2DownAlertState = {};
 
-function sendPortalPushNotification({ title, body, url, type, adminOnly = false }) {
+function sendPortalPushNotification({ title, body, url, type, tag, adminOnly = false }) {
     return fetch('http://127.0.0.1:3000/api/notification/broadcast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, url, type, adminOnly })
+        body: JSON.stringify({ title, body, url, type, tag, adminOnly })
     }).catch(err => {
         console.error('[Portal Notification Error]:', err.message);
     });
@@ -1806,7 +1806,8 @@ setInterval(async () => {
                     title: '아침 날씨',
                     body: `현재 ${weather.city || '계룡'} ${weather.temp} (${weather.condition}). ${umbrellaTip}`,
                     url: 'https://news.j-jg.cc/weather',
-                    type: 'weather'
+                    type: 'weather',
+                    tag: 'jg-weather'
                 });
             } catch (wErr) {
                 console.error('[아침 날씨 알림 생성 실패]:', wErr);
@@ -1826,7 +1827,8 @@ setInterval(async () => {
                     title: '증시/환율',
                     body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 자산 변동 내역을 확인하세요.',
                     url: 'https://asset.j-jg.cc/',
-                    type: 'asset'
+                    type: 'asset',
+                    tag: 'jg-asset'
                 });
             } catch (mErr) {
                 console.error('[장마감 알림 생성 실패]:', mErr);
@@ -1847,7 +1849,8 @@ setInterval(async () => {
                             title: '혈압 리마인드',
                             body: `오늘 아직 혈압 측정 기록이 없습니다. 취침 전 편안한 상태에서 혈압을 측정해 주세요!`,
                             url: 'https://blood.j-jg.cc/dashboard.html',
-                            type: 'blood_pressure'
+                            type: 'blood_pressure',
+                            tag: 'jg-evening-bp-remind'
                         });
                     }
                 }
@@ -1874,6 +1877,7 @@ setInterval(async () => {
                             body: `${appName} 프로세스 장애 발생 (${proc.pm2_env.status}). 즉시 확인이 필요합니다!`,
                             url: 'https://j-jg.cc/admin#tab-overview',
                             type: 'system',
+                            tag: `jg-pm2-${appName}`,
                             adminOnly: true // ★ 관리자 전용
                         });
                     } else if (isOnline && pm2DownAlertState[appName]) {
@@ -1884,6 +1888,7 @@ setInterval(async () => {
                             body: `${appName} 프로세스가 다시 온라인(online) 상태로 정상 복구되었습니다.`,
                             url: 'https://j-jg.cc/admin#tab-overview',
                             type: 'system',
+                            tag: `jg-pm2-${appName}`,
                             adminOnly: true // ★ 관리자 전용
                         });
                     }
