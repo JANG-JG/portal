@@ -727,7 +727,7 @@
                                     <span class="terminal-dot dot-yellow"></span>
                                     <span class="terminal-dot dot-green"></span>
                                 </div>
-                                <span class="terminal-title" id="newsTerminalTitle">tail -n 120 /home/upt0731/news-dashboard/logs/collector.log</span>
+                                <span class="terminal-title" id="newsTerminalTitle">tail -n 120 news-dashboard/logs/collector.log</span>
                             </div>
                             <span style="font-size:0.7rem; color:#64748b; font-family:monospace;">tail -n 120 (live)</span>
                         </div>
@@ -1662,7 +1662,7 @@
             const logType = selectEl.value || 'collector';
             const logFileName = logType === 'scheduler' ? 'scheduler.log' : 'collector.log';
             if (titleEl) {
-                titleEl.textContent = `tail -n 120 /home/upt0731/news-dashboard/logs/${logFileName}`;
+                titleEl.textContent = `tail -n 120 news-dashboard/logs/${logFileName}`;
             }
 
             consoleEl.textContent = `[${new Date().toLocaleTimeString()}] ${logFileName} 최신 로그를 불러오는 중입니다...`;

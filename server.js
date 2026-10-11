@@ -14,9 +14,15 @@ const PORT = process.env.PORT || 3004;
 const JWT_SECRET = process.env.JWT_SECRET || 'jg-portal-master-super-secret-key-2026!@#';
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.j-jg.cc';
 
-const BLOOD_DB_PATH = process.env.DB_PATH || '/home/upt0731/blood-pressure-app/health.db';
-const ASSET_DB_PATH = process.env.ASSET_DB_PATH || '/home/upt0731/asset/asset.db';
-const NEWS_DB_PATH = process.env.NEWS_DB_PATH || '/home/upt0731/news-dashboard/briefing.db';
+// 서브 프로젝트 기본 경로 자동 탐색 (환경 변수 -> 상위 폴더 상대경로 -> 노트9 workspace)
+const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || path.resolve(__dirname, '..');
+const BLOOD_DIR = process.env.BLOOD_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'blood-pressure-app')) ? path.join(WORKSPACE_ROOT, 'blood-pressure-app') : '/home/upt0731/workspace/blood-pressure-app');
+const ASSET_DIR = process.env.ASSET_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'asset')) ? path.join(WORKSPACE_ROOT, 'asset') : '/home/upt0731/workspace/asset');
+const NEWS_DIR = process.env.NEWS_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'news-dashboard')) ? path.join(WORKSPACE_ROOT, 'news-dashboard') : '/home/upt0731/workspace/news-dashboard');
+
+const BLOOD_DB_PATH = process.env.DB_PATH || path.join(BLOOD_DIR, 'health.db');
+const ASSET_DB_PATH = process.env.ASSET_DB_PATH || path.join(ASSET_DIR, 'asset.db');
+const NEWS_DB_PATH = process.env.NEWS_DB_PATH || path.join(NEWS_DIR, 'briefing.db');
 
 // 🌐 모든 서브도메인 간 알림 API 연동을 위한 CORS 설정 (.j-jg.cc)
 app.use((req, res, next) => {
@@ -1221,9 +1227,10 @@ app.get('/api/admin/blood/recent', authenticateToken, (req, res) => {
 
 // 8. 혈압 알림 메일 (SMTP) 전송 테스트
 app.post('/api/admin/blood/test-email', authenticateToken, (req, res) => {
-    const testScript = `require('dotenv').config({ path: '/home/upt0731/blood-pressure-app/.env' }); const nodemailer = require('nodemailer'); if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) { console.error('MISSING_ENV'); process.exit(1); } const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } }); transporter.sendMail({ from: process.env.EMAIL_USER, to: process.env.EMAIL_USER, subject: '🩸 JG 포털 통합 관리자 - 구글 SMTP 연결 테스트', text: '통합 관리자 센터에서 요청하신 Gmail SMTP 알림 메일 발송 테스트가 성공하였습니다! 일시: ' + new Date().toLocaleString() }).then(() => { process.exit(0); }).catch(e => { console.error(e.message); process.exit(2); });`;
+    const bloodEnvPath = path.join(BLOOD_DIR, '.env');
+    const testScript = `require('dotenv').config({ path: '${bloodEnvPath}' }); const nodemailer = require('nodemailer'); if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) { console.error('MISSING_ENV'); process.exit(1); } const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } }); transporter.sendMail({ from: process.env.EMAIL_USER, to: process.env.EMAIL_USER, subject: '🩸 JG 포털 통합 관리자 - 구글 SMTP 연결 테스트', text: '통합 관리자 센터에서 요청하신 Gmail SMTP 알림 메일 발송 테스트가 성공하였습니다! 일시: ' + new Date().toLocaleString() }).then(() => { process.exit(0); }).catch(e => { console.error(e.message); process.exit(2); });`;
 
-    exec(`node -e "${testScript}"`, { cwd: '/home/upt0731/blood-pressure-app' }, (err, stdout, stderr) => {
+    exec(`node -e "${testScript}"`, { cwd: BLOOD_DIR }, (err, stdout, stderr) => {
         if (err) {
             return res.status(500).json({ success: false, message: `발송 실패: ${stderr || err.message}` });
         }
@@ -1367,11 +1374,19 @@ app.get('/api/admin/news/file-logs', authenticateToken, (req, res) => {
     }
 
     const logFile = logType === 'scheduler' ? 'scheduler.log' : 'collector.log';
-    const filePath = path.join('/home/upt0731/news-dashboard/logs', logFile);
+    
+    // 여러 후보 경로 자동 탐색 (NEWS_DIR, 노트9 workspace, 레거시)
+    const candidatePaths = [
+        path.join(NEWS_DIR, 'logs', logFile),
+        path.join('/home/upt0731/workspace/news-dashboard/logs', logFile),
+        path.join('/home/upt0731/news-dashboard/logs', logFile)
+    ];
+
+    const filePath = candidatePaths.find(p => fs.existsSync(p));
     const linesCount = Math.min(Math.max(parseInt(req.query.lines, 10) || 120, 10), 300);
 
-    if (!fs.existsSync(filePath)) {
-        return res.json({ success: true, logs: `[알림] ${logFile} 파일이 아직 생성되지 않았거나 비어 있습니다.` });
+    if (!filePath) {
+        return res.json({ success: true, logs: `[알림] ${logFile} 파일이 아직 생성되지 않았거나 비어 있습니다.\n(확인 경로: ${path.join(NEWS_DIR, 'logs', logFile)})` });
     }
 
     exec(`tail -n ${linesCount} "${filePath}"`, (err, stdout, stderr) => {
@@ -1387,10 +1402,17 @@ app.post('/api/admin/news/trigger', authenticateToken, (req, res) => {
     const { mode } = req.body;
     const isBriefing = mode === 'briefing';
     const flag = isBriefing ? '--run-briefing-now' : '--run-collect-now';
-    const pyPath = '/home/upt0731/news-dashboard/venv/bin/python';
-    const scriptPath = '/home/upt0731/news-dashboard/scheduler.py';
+    
+    const pyCandidates = [
+        path.join(NEWS_DIR, 'venv/bin/python3'),
+        path.join(NEWS_DIR, 'venv/bin/python'),
+        '/home/upt0731/workspace/news-dashboard/venv/bin/python3',
+        'python3'
+    ];
+    const pyPath = pyCandidates.find(p => fs.existsSync(p)) || 'python3';
+    const scriptPath = path.join(NEWS_DIR, 'scheduler.py');
 
-    exec(`${pyPath} ${scriptPath} ${flag}`, { cwd: '/home/upt0731/news-dashboard' }, (err, stdout, stderr) => {
+    exec(`"${pyPath}" "${scriptPath}" ${flag}`, { cwd: NEWS_DIR }, (err, stdout, stderr) => {
         if (err) console.error('[NEWS_TRIGGER_ERR]', err, stderr);
     });
 
