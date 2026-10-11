@@ -999,11 +999,34 @@ let secondaryServerCache = {
     }
 };
 
+let isUpdatingSecondary = false;
+
 async function getSecondaryServerStatus(forceRefresh = false) {
     const now = Date.now();
-    if (!forceRefresh && (now - secondaryServerCache.checkedAt < 15000)) {
+    // 🚀 [논블로킹 캐시] 15초 이내 캐시이거나 이미 백그라운드 갱신 중이면 즉시 반환 (지연 0ms)
+    if (!forceRefresh && (now - secondaryServerCache.checkedAt < 15000 || isUpdatingSecondary)) {
         return secondaryServerCache;
     }
+
+    // 이미 이전 데이터가 있으면 백그라운드로 갱신을 트리거하고 즉시 캐시 반환 (Stale-While-Revalidate)
+    const hasCache = secondaryServerCache.checkedAt > 0;
+    if (hasCache && !forceRefresh) {
+        // 비동기 백그라운드 갱신 트리거 (결과 대기 안 함)
+        refreshSecondaryServerInBackground();
+        return secondaryServerCache;
+    }
+
+    return performSecondaryServerCheck();
+}
+
+function refreshSecondaryServerInBackground() {
+    if (isUpdatingSecondary) return;
+    performSecondaryServerCheck().catch(() => {});
+}
+
+async function performSecondaryServerCheck() {
+    isUpdatingSecondary = true;
+    const now = Date.now();
 
     // 공개키 읽기
     let pubKey = '';
@@ -1017,15 +1040,16 @@ async function getSecondaryServerStatus(forceRefresh = false) {
     return new Promise((resolve) => {
         const startTime = Date.now();
         let settled = false;
-        const socket = net.createConnection({ host: '192.168.50.75', port: 22, timeout: 2000 }, () => {
+        const socket = net.createConnection({ host: '192.168.50.75', port: 22, timeout: 1000 }, () => {
             if (settled) return;
             settled = true;
             const latency = Date.now() - startTime;
             socket.destroy();
 
-            // 온라인 확인 후 SSH 리소스 조회 시도 (2.5초 타임아웃)
-            const sshCmd = "ssh -p 22 -o ConnectTimeout=2 -o BatchMode=yes -o StrictHostKeyChecking=accept-new upt0731@192.168.50.75 \"uptime && free -m && df -m /home/upt0731 2>/dev/null\"";
-            exec(sshCmd, { timeout: 2500 }, (sshErr, stdout) => {
+            // 온라인 확인 후 SSH 리소스 조회 시도 (1.2초 타임아웃으로 단축)
+            const sshCmd = "ssh -p 22 -o ConnectTimeout=1 -o BatchMode=yes -o StrictHostKeyChecking=accept-new upt0731@192.168.50.75 \"uptime && free -m && df -m /home/upt0731 2>/dev/null\"";
+            exec(sshCmd, { timeout: 1200 }, (sshErr, stdout) => {
+                isUpdatingSecondary = false;
                 let cpuObj = { percent: '2%', percentNum: 2, temp: '정상 (대기)' };
                 let memObj = { percent: '28%', percentNum: 28, used: '1.1 GB', total: '4.0 GB' };
                 let diskObj = { percent: '31%', percentNum: 31, used: '142.5 GB', total: '465.8 GB' };
@@ -1089,6 +1113,7 @@ async function getSecondaryServerStatus(forceRefresh = false) {
         });
 
         const handleFail = () => {
+            isUpdatingSecondary = false;
             if (settled) return;
             settled = true;
             socket.destroy();

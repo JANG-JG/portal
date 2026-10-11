@@ -373,7 +373,8 @@
     async function fetchTickerData() {
         try {
             const isLocal = window.location.hostname === 'localhost';
-            const apiUrl = (isLocal ? '/api/ticker' : 'https://j-jg.cc/api/ticker') + '?_t=' + Date.now();
+            const cacheBucket = Math.floor(Date.now() / 60000);
+            const apiUrl = (isLocal ? '/api/ticker' : 'https://j-jg.cc/api/ticker') + '?_t=' + cacheBucket;
             const res = await fetch(apiUrl);
             if (!res.ok) throw new Error('API 응답 에러');
             const data = await res.json();

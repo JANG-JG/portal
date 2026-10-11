@@ -10,7 +10,7 @@
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             const isLocal = window.location.hostname === 'localhost';
-            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=' + Date.now();
+            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261012_v1';
             document.head.appendChild(link);
         }
     }
@@ -21,7 +21,7 @@
 
         try {
             const isLocal = window.location.hostname === 'localhost';
-            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=' + Date.now();
+            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=20261012_v1';
             const res = await fetch(compUrl);
             if (res.ok) {
                 const html = await res.text();
