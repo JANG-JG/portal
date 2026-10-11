@@ -420,3 +420,4 @@ function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBr
 }
 
 module.exports = { initUnifiedNotificationScheduler };
+
