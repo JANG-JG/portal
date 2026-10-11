@@ -309,10 +309,15 @@
                                 </div>
                             </div>
                         </div>
-                        <div style="display:flex; gap:1.25rem; font-size:0.85rem; color:#475569; background:#f8fafc; padding:0.4rem 0.85rem; border-radius:0.5rem; border:1px solid #e2e8f0;">
-                            <span>CPU 부하: <strong id="primaryServerCpu" style="color:#0f172a;">-%</strong></span>
-                            <span>RAM 점유: <strong id="primaryServerMem" style="color:#0f172a;">-%</strong></span>
-                            <span>가동 시간: <strong id="primaryServerUptime" style="color:#0f172a;">-</strong></span>
+                        <div style="display:flex; gap:0.75rem; font-size:0.82rem; color:#475569; background:#f8fafc; padding:0.4rem 0.85rem; border-radius:0.5rem; border:1px solid #e2e8f0; align-items:center; flex-wrap:wrap;">
+                            <span>하드웨어: <strong style="color:#0f172a;">Exynos 9810 &bull; 6GB RAM</strong></span>
+                            <span style="color:#cbd5e1;">|</span>
+                            <span>환경: <strong style="color:#0f172a;">Ubuntu (Termux) &bull; aarch64</strong></span>
+                            <span style="color:#cbd5e1;">|</span>
+                            <span>터널: <strong style="color:#2563eb;">Cloudflare 24/7</strong></span>
+                            <span style="display:none;" id="primaryServerCpu"></span>
+                            <span style="display:none;" id="primaryServerMem"></span>
+                            <span style="display:none;" id="primaryServerUptime"></span>
                         </div>
                     </div>
 
@@ -442,14 +447,17 @@
                                 </div>
                             </div>
                         </div>
-                        <div style="display:flex; gap:1.25rem; font-size:0.85rem; color:#475569; background:#faf5ff; padding:0.4rem 0.85rem; border-radius:0.5rem; border:1px solid #e9d5ff;">
-                            <span>통신 응답: <strong id="secondaryServerLatency" style="color:#7c3aed;">-</strong></span>
-                            <span>백업 주기: <strong style="color:#0f172a;">매일 04:00 (cron)</strong></span>
-                            <span>보존 정책: <strong style="color:#0f172a;">30일</strong></span>
+                        <div style="display:flex; gap:0.75rem; font-size:0.82rem; color:#475569; background:#faf5ff; padding:0.4rem 0.85rem; border-radius:0.5rem; border:1px solid #e9d5ff; align-items:center; flex-wrap:wrap;">
+                            <span>하드웨어: <strong style="color:#0f172a;">AMD APU &bull; 4GB RAM</strong></span>
+                            <span style="color:#cbd5e1;">|</span>
+                            <span>스토리지: <strong style="color:#7c3aed;">500GB (2.5" SATA HDD)</strong></span>
+                            <span style="color:#cbd5e1;">|</span>
+                            <span>환경: <strong style="color:#0f172a;">Linux x86_64</strong></span>
+                            <span style="display:none;" id="secondaryServerLatency"></span>
                         </div>
                     </div>
 
-                    <!-- 보조 서버 3대 핵심 상태 카드 그리드 -->
+                    <!-- 보조 서버 3대 핵심 상태 및 리소스 게이지 카드 그리드 -->
                     <div class="admin-grid-3">
                         <!-- 카드 1: 통신 헬스체크 & 핑 -->
                         <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
@@ -464,40 +472,70 @@
                                 </div>
                             </div>
                             <div style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size:0.8rem; color:#10b981; font-weight:600;">초고속 기가비트 Wi-Fi 연결</span>
+                                <span style="font-size:0.8rem; color:#10b981; font-weight:600;">초고속 홈 네트워크 연결</span>
                                 <button class="btn-admin btn-admin-outline btn-admin-sm" id="btnSecPing" onclick="pingSecondaryServer()" style="font-size:0.78rem; padding:4px 8px;">
                                     🔄 지금 핑 테스트
                                 </button>
                             </div>
                         </div>
 
-                        <!-- 카드 2: 500GB 백업 스토리지 현황 -->
+                        <!-- 카드 2: 🌟 보조 서버 핵심 리소스 상태바 게이지 (CPU, RAM, 500GB HDD) -->
                         <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-                            <div>
-                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">보조 백업 스토리지</div>
-                                <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;">약 500 GB</div>
-                                <div style="font-size:0.82rem; color:#475569; margin-top:0.5rem; line-height:1.4;">
-                                    <div><strong>규격:</strong> 2.5" SATA HDD</div>
-                                    <div><strong>경로:</strong> <code style="font-size:0.78rem; background:#f1f5f9; padding:1px 4px; border-radius:3px;">~/backups/jg_server</code></div>
-                                </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="color:#64748b; font-size:0.85rem; font-weight:700;">보조 서버 핵심 리소스 & 상태</span>
+                                <span class="live-indicator"><span class="live-dot" style="background:#7c3aed;"></span><span id="secResourceSource">실시간 SSH/소켓</span></span>
                             </div>
-                            <div style="font-size:0.8rem; color:#64748b; margin-top:0.75rem; padding-top:0.5rem; border-top:1px dashed #e2e8f0;">
-                                보존 정책: 30일 초과 백업본 자동 롤오버 정리
+                            <div class="resource-gauge-container">
+                                <!-- 1. CPU 게이지 -->
+                                <div class="resource-gauge-item">
+                                    <div class="resource-gauge-header">
+                                        <span class="resource-gauge-title">⚡ CPU</span>
+                                        <span class="resource-gauge-val">
+                                            <span id="gaugeSecCpuVal">-%</span>
+                                            <span id="gaugeSecCpuTemp" class="temp-badge temp-badge-normal">대기</span>
+                                        </span>
+                                    </div>
+                                    <div class="gauge-track">
+                                        <div id="gaugeSecCpuBar" class="gauge-fill gauge-fill-cpu" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+
+                                <!-- 2. 메모리(RAM) 게이지 -->
+                                <div class="resource-gauge-item">
+                                    <div class="resource-gauge-header">
+                                        <span class="resource-gauge-title">💾 RAM</span>
+                                        <span class="resource-gauge-val" id="gaugeSecMemVal">-% (- / -)</span>
+                                    </div>
+                                    <div class="gauge-track">
+                                        <div id="gaugeSecMemBar" class="gauge-fill gauge-fill-mem" style="width: 0%;"></div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. 저장공간(Disk 500GB HDD) 게이지 -->
+                                <div class="resource-gauge-item">
+                                    <div class="resource-gauge-header">
+                                        <span class="resource-gauge-title">💽 Disk (500GB SATA HDD)</span>
+                                        <span class="resource-gauge-val" id="gaugeSecDiskVal">-% (- / -)</span>
+                                    </div>
+                                    <div class="gauge-track">
+                                        <div id="gaugeSecDiskBar" class="gauge-fill gauge-fill-disk" style="width: 0%;"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 카드 3: 자동 동기화 정책 & 무결성 -->
+                        <!-- 카드 3: 서버 가동 시간 & 백업 스케줄 -->
                         <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
                             <div>
-                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">자동 동기화 스케줄 & 무결성</div>
-                                <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;">매일 04:00</div>
-                                <div style="font-size:0.82rem; color:#475569; margin-top:0.5rem; line-height:1.4;">
-                                    <div><strong>스냅샷:</strong> SQLite WAL 핫 백업 (<code style="font-size:0.78rem;">.backup</code>)</div>
-                                    <div><strong>전송:</strong> rsync + SSH 암호화 파이프라인</div>
-                                </div>
+                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">보조 서버 가동 시간 (Uptime)</div>
+                                <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="secServerUptime">-</div>
                             </div>
-                            <div style="font-size:0.8rem; color:#10b981; font-weight:600; margin-top:0.75rem; padding-top:0.5rem; border-top:1px dashed #e2e8f0;">
-                                무손실 원터치 재해 복구 준비 완료
+                            <div style="font-size:0.82rem; color:#475569; margin-top:0.5rem; line-height:1.4;">
+                                <div><strong>스케줄:</strong> 매일 04:00 (cron rsync)</div>
+                                <div><strong>보존 주기:</strong> 30일 보존 후 자동 롤오버</div>
+                            </div>
+                            <div style="font-size:0.8rem; color:#10b981; font-weight:600; margin-top:0.5rem; padding-top:0.4rem; border-top:1px dashed #e2e8f0;">
+                                SQLite 핫 스냅샷 무손실 복구 대기 중
                             </div>
                         </div>
                     </div>
@@ -563,18 +601,25 @@
                         </div>
                     </div>
 
-                    <!-- 보조 스토리지 수동 동기화 및 관리 안내 카드 -->
+                    <!-- 보조 스토리지 수동 동기화 및 SSH 연동 안내 카드 -->
                     <div class="admin-card" style="margin-top:1.5rem; background:#f8fafc; border:1px dashed #cbd5e1;">
                         <div class="admin-card-header" style="margin-bottom:0.5rem;">
-                            <h4 style="margin:0; font-size:0.95rem; color:#1e293b;">🛠️ 보조 서버 수동 동기화 & 터미널 명령 가이드</h4>
-                            <span style="font-size:0.8rem; color:#64748b;">필요 시 즉시 수동 백업 실행</span>
+                            <h4 style="margin:0; font-size:0.95rem; color:#1e293b;">🛠️ 보조 서버 수동 동기화 & 원격 SSH 연동 가이드</h4>
+                            <span style="font-size:0.8rem; color:#64748b;">원클릭 복사 및 실시간 OS 수치 연동</span>
                         </div>
                         <div style="font-size:0.85rem; color:#475569; line-height:1.6;">
-                            <div>주 서버(노트 9) 터미널에서 즉시 보조 서버로 전체 데이터를 동기화하려면 아래 스크립트를 실행합니다:</div>
-                            <div style="margin:0.5rem 0; background:#0f172a; color:#f8fafc; padding:0.6rem 0.85rem; border-radius:0.4rem; font-family:monospace; font-size:0.82rem;">
-                                bash /home/upt0731/scripts/backup-to-secondary.sh
+                            <div><strong>1. 수동 백업 즉시 실행</strong> (주 서버 터미널에서 실행):</div>
+                            <div style="margin:0.4rem 0 0.8rem; background:#0f172a; color:#f8fafc; padding:0.6rem 0.85rem; border-radius:0.4rem; font-family:monospace; font-size:0.82rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                <code>bash /home/upt0731/scripts/backup-to-secondary.sh</code>
+                                <button class="btn-admin-xs" style="background:#334155; color:#f8fafc; border:none; padding:3px 8px; border-radius:4px; cursor:pointer;" onclick="copyText('bash /home/upt0731/scripts/backup-to-secondary.sh', '백업 스크립트 명령어 복사 완료!')">복사</button>
                             </div>
-                            <div style="font-size:0.8rem; color:#64748b;">
+
+                            <div style="margin-top:0.75rem;"><strong>2. 보조 서버 SSH 공개키 1초 등록</strong> (HP 노트북 터미널에서 최초 1회 붙여넣기 시 실제 OS 수치 100% 실시간 연동):</div>
+                            <div style="margin:0.4rem 0; background:#1e1b4b; color:#e0e7ff; padding:0.6rem 0.85rem; border-radius:0.4rem; font-family:monospace; font-size:0.78rem; word-break:break-all; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                <code id="secSshRegisterCmd">mkdir -p ~/.ssh && echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHDSTfnXOjSxy+v/fS564BvpR2067rqgWw8J+Zxo9w4Y upt0731@localhost" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys</code>
+                                <button class="btn-admin-xs" style="background:#4338ca; color:#f8fafc; border:none; padding:3px 8px; border-radius:4px; cursor:pointer; white-space:nowrap;" onclick="copyText(document.getElementById('secSshRegisterCmd').innerText, 'SSH 등록 명령어가 복사되었습니다!')">명령어 복사</button>
+                            </div>
+                            <div style="font-size:0.8rem; color:#64748b; margin-top:0.5rem;">
                                 &bull; 백업 실행 로그: <code>/home/upt0731/scripts/backup.log</code> | &bull; 보조 서버 대상 경로: <code>upt0731@192.168.50.75:~/backups/jg_server</code>
                             </div>
                         </div>
@@ -1605,35 +1650,8 @@
                         if (cpuEl) cpuEl.textContent = p.cpu || '-%';
                         if (memEl) memEl.textContent = p.mem || '-%';
                     }
-                    const s = data.dualServers.secondary;
-                    if (s) {
-                        const badgeEl = document.getElementById('secondaryServerBadge');
-                        const latEl = document.getElementById('secondaryServerLatency');
-                        const pingLarge = document.getElementById('secPingLarge');
-                        const cardBadge = document.getElementById('secBadgeCard');
-                        const tabBadge = document.getElementById('secondaryTabBadge');
-
-                        if (badgeEl) {
-                            badgeEl.className = s.online ? 'badge-online' : 'badge-stopped';
-                            badgeEl.textContent = s.online ? '🟢 온라인 (정상 연결)' : '🔴 오프라인 (대기)';
-                        }
-                        if (cardBadge) {
-                            cardBadge.className = s.online ? 'badge-online' : 'badge-stopped';
-                            cardBadge.textContent = s.online ? '🟢 포트 22 정상' : '🔴 포트 22 닫힘';
-                        }
-                        if (latEl) {
-                            latEl.textContent = s.online ? (s.latency || '정상') : '네트워크 응답 없음 (오프라인)';
-                        }
-                        if (pingLarge) {
-                            pingLarge.textContent = s.online ? (s.latency || '정상') : '연결 안 됨';
-                            pingLarge.style.color = s.online ? '#7c3aed' : '#ef4444';
-                        }
-                        if (tabBadge) {
-                            tabBadge.textContent = s.online ? `🟢 ${s.latency || '온라인'}` : '🔴 오프라인';
-                            tabBadge.style.color = s.online ? '#7c3aed' : '#dc2626';
-                            tabBadge.style.background = s.online ? '#f3e8ff' : '#fee2e2';
-                            tabBadge.style.borderColor = s.online ? '#ddd6fe' : '#fecaca';
-                        }
+                    if (data.dualServers.secondary) {
+                        updateSecondaryServerUI(data.dualServers.secondary);
                     }
                 }
 
@@ -1663,6 +1681,130 @@
             }
         }
 
+        // 🌟 보조 서버 UI 및 실시간 리소스 상태바 게이지 통합 갱신
+        function updateSecondaryServerUI(s) {
+            if (!s) return;
+            const badgeEl = document.getElementById('secondaryServerBadge');
+            const latEl = document.getElementById('secondaryServerLatency');
+            const pingLarge = document.getElementById('secPingLarge');
+            const cardBadge = document.getElementById('secBadgeCard');
+            const tabBadge = document.getElementById('secondaryTabBadge');
+            const upEl = document.getElementById('secServerUptime');
+            const sourceEl = document.getElementById('secResourceSource');
+
+            // 1. 온라인 / 오프라인 상태 뱃지
+            if (badgeEl) {
+                badgeEl.className = s.online ? 'badge-online' : 'badge-stopped';
+                badgeEl.textContent = s.online ? (s.sshConnected ? '🟢 온라인 (SSH 실시간 연동)' : '🟢 온라인 (소켓 헬스 정상)') : '🔴 오프라인 (대기)';
+            }
+            if (cardBadge) {
+                cardBadge.className = s.online ? 'badge-online' : 'badge-stopped';
+                cardBadge.textContent = s.online ? `SSH 22 (${s.sshConnected ? '실시간 연동' : '열림'})` : 'SSH 22 닫힘';
+            }
+            if (latEl) {
+                latEl.textContent = s.online ? (s.latency || '정상') : '오프라인';
+            }
+            if (pingLarge) {
+                pingLarge.textContent = s.online ? (s.latency || '정상') : '연결 안 됨';
+                pingLarge.style.color = s.online ? '#7c3aed' : '#ef4444';
+            }
+            if (tabBadge) {
+                tabBadge.textContent = s.online ? `🟢 ${s.latency || '온라인'}` : '🔴 오프라인';
+                tabBadge.style.color = s.online ? '#7c3aed' : '#dc2626';
+                tabBadge.style.background = s.online ? '#f3e8ff' : '#fee2e2';
+                tabBadge.style.borderColor = s.online ? '#ddd6fe' : '#fecaca';
+            }
+            if (upEl) {
+                upEl.textContent = s.uptimeStr || (s.online ? '정상 가동 중' : '오프라인');
+            }
+            if (sourceEl) {
+                sourceEl.textContent = s.sshConnected ? 'SSH 실시간 OS' : '소켓 헬스 연동';
+            }
+
+            // 2. ⚡ 보조 서버 CPU 게이지
+            if (s.cpu) {
+                const secCpuVal = document.getElementById('gaugeSecCpuVal');
+                const secCpuBar = document.getElementById('gaugeSecCpuBar');
+                const secCpuTemp = document.getElementById('gaugeSecCpuTemp');
+                const cpuPct = s.cpu.percentNum !== undefined ? s.cpu.percentNum : (parseInt(s.cpu.percent, 10) || 0);
+                if (secCpuVal) secCpuVal.textContent = s.cpu.percent || `${cpuPct}%`;
+                if (secCpuBar) {
+                    secCpuBar.style.width = Math.min(100, Math.max(0, cpuPct)) + '%';
+                    secCpuBar.classList.toggle('warn', cpuPct >= 80);
+                }
+                if (secCpuTemp && s.cpu.temp) {
+                    secCpuTemp.textContent = s.cpu.temp;
+                }
+            }
+
+            // 3. 💾 보조 서버 RAM 게이지
+            if (s.memory) {
+                const secMemVal = document.getElementById('gaugeSecMemVal');
+                const secMemBar = document.getElementById('gaugeSecMemBar');
+                const memPct = s.memory.percentNum !== undefined ? s.memory.percentNum : (parseInt(s.memory.percent, 10) || 0);
+                const memUsed = s.memory.used || '-';
+                const memTotal = s.memory.total || '-';
+                if (secMemVal) secMemVal.textContent = `${s.memory.percent || memPct + '%'} (${memUsed} / ${memTotal})`;
+                if (secMemBar) {
+                    secMemBar.style.width = Math.min(100, Math.max(0, memPct)) + '%';
+                    secMemBar.classList.toggle('warn', memPct >= 85);
+                }
+            }
+
+            // 4. 𒒽 보조 서버 Disk 게이지 (500GB HDD)
+            if (s.disk) {
+                const secDiskVal = document.getElementById('gaugeSecDiskVal');
+                const secDiskBar = document.getElementById('gaugeSecDiskBar');
+                const diskPct = s.disk.percentNum !== undefined ? s.disk.percentNum : (parseInt(s.disk.percent, 10) || 0);
+                const diskUsed = s.disk.used || '-';
+                const diskTotal = s.disk.total || '-';
+                if (secDiskVal) secDiskVal.textContent = `${s.disk.percent || diskPct + '%'} (${diskUsed} / ${diskTotal})`;
+                if (secDiskBar) {
+                    secDiskBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
+                    secDiskBar.classList.toggle('warn', diskPct >= 90);
+                }
+            }
+
+            // 5. 공개키가 서버에서 전달되었을 경우 복사 명령어 업데이트
+            if (s.publicKey) {
+                const cmdEl = document.getElementById('secSshRegisterCmd');
+                if (cmdEl) {
+                    cmdEl.textContent = `mkdir -p ~/.ssh && echo "${s.publicKey}" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`;
+                }
+            }
+        }
+
+        // 🌟 텍스트 클립보드 원클릭 복사 유틸리티
+        function copyText(text, msg) {
+            if (!text) return;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(msg || '클립보드에 복사되었습니다.');
+                }).catch(() => {
+                    fallbackCopyText(text, msg);
+                });
+            } else {
+                fallbackCopyText(text, msg);
+            }
+        }
+
+        function fallbackCopyText(text, msg) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast(msg || '클립보드에 복사되었습니다.');
+            } catch (e) {
+                showToast('클립보드 복사 실패: ' + e.message, true);
+            }
+        }
+
         // 🌟 주 서버 / 보조 서버 탭 전환 제어
         function switchServerTab(serverType) {
             const isPrimary = serverType === 'primary';
@@ -1684,12 +1826,6 @@
         // 🌟 보조 서버(HP 노트북) 즉시 핑 테스트 실행
         async function pingSecondaryServer() {
             const btn = document.getElementById('btnSecPing');
-            const badgeEl = document.getElementById('secondaryServerBadge');
-            const latEl = document.getElementById('secondaryServerLatency');
-            const pingLarge = document.getElementById('secPingLarge');
-            const cardBadge = document.getElementById('secBadgeCard');
-            const tabBadge = document.getElementById('secondaryTabBadge');
-
             if (btn) {
                 btn.disabled = true;
                 btn.innerHTML = '⏳ 핑 측정 중...';
@@ -1700,29 +1836,8 @@
                 const res = await fetch('/api/admin/secondary/ping');
                 const data = await res.json();
                 if (data.success && data.secondary) {
-                    const s = data.secondary;
-                    if (badgeEl) {
-                        badgeEl.className = s.online ? 'badge-online' : 'badge-stopped';
-                        badgeEl.textContent = s.online ? '🟢 온라인 (정상 연결)' : '🔴 오프라인 (대기)';
-                    }
-                    if (cardBadge) {
-                        cardBadge.className = s.online ? 'badge-online' : 'badge-stopped';
-                        cardBadge.textContent = s.online ? '🟢 포트 22 정상' : '🔴 포트 22 닫힘';
-                    }
-                    if (latEl) {
-                        latEl.textContent = s.online ? (s.latency || '정상') : '네트워크 응답 없음 (오프라인)';
-                    }
-                    if (pingLarge) {
-                        pingLarge.textContent = s.online ? (s.latency || '정상') : '연결 안 됨';
-                        pingLarge.style.color = s.online ? '#7c3aed' : '#ef4444';
-                    }
-                    if (tabBadge) {
-                        tabBadge.textContent = s.online ? `🟢 ${s.latency || '온라인'}` : '🔴 오프라인';
-                        tabBadge.style.color = s.online ? '#7c3aed' : '#dc2626';
-                        tabBadge.style.background = s.online ? '#f3e8ff' : '#fee2e2';
-                        tabBadge.style.borderColor = s.online ? '#ddd6fe' : '#fecaca';
-                    }
-                    showToast(s.online ? `✅ 보조 서버 연결 정상 (응답: ${s.latency})` : '⚠️ 보조 서버가 오프라인 상태입니다.', !s.online);
+                    updateSecondaryServerUI(data.secondary);
+                    showToast(data.secondary.online ? `✅ 보조 서버 연결 정상 (응답: ${data.secondary.latency})` : '⚠️ 보조 서버가 오프라인 상태입니다.', !data.secondary.online);
                 } else {
                     showToast('보조 서버 핑 응답 실패', true);
                 }
