@@ -1753,14 +1753,18 @@ app.post('/api/admin/change-password', authenticateToken, async (req, res) => {
 // ==========================================
 // 🔔 [통합 포털 알림 센터 API]
 // ==========================================
-const VAPID_PUBLIC_KEY = 'BOChfX_5sr0NH0ljWstk0YdSqjggR1M5V97nb6xOzOxfTT7yZZ7ipQVZACLtVk97Y0L0lJSvtqxmBzL_xsOW1BA';
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 
-webPush.setVapidDetails(
-    'mailto:admin@example.com',
-    VAPID_PUBLIC_KEY,
-    VAPID_PRIVATE_KEY
-);
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+    webPush.setVapidDetails(
+        'mailto:upt0731@gmail.com',
+        VAPID_PUBLIC_KEY,
+        VAPID_PRIVATE_KEY
+    );
+} else {
+    console.warn('⚠️ [VAPID] VAPID keys not configured in process.env!');
+}
 
 // 알림 수신 내역 DB 보관 헬퍼 함수
 function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon = 'https://j-jg.cc/favicon.svg', url = 'https://j-jg.cc/' }, callback) {

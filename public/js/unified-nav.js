@@ -464,9 +464,32 @@
 
             const reg = await navigator.serviceWorker.ready;
             let sub = await reg.pushManager.getSubscription();
+            const convertedKey = urlBase64ToUint8Array(publicKey);
+
+            // 🔄 VAPID 키 교체 감지: 기존 구독의 키와 서버 공개키가 다르면 구독 갱신
+            if (sub && sub.options && sub.options.applicationServerKey) {
+                const currentKey = new Uint8Array(sub.options.applicationServerKey);
+                let isMatch = currentKey.length === convertedKey.length;
+                if (isMatch) {
+                    for (let i = 0; i < currentKey.length; i++) {
+                        if (currentKey[i] !== convertedKey[i]) {
+                            isMatch = false;
+                            break;
+                        }
+                    }
+                }
+                if (!isMatch) {
+                    console.log('🔄 [VAPID Key Changed] 새 VAPID 키 감지: 기존 푸시 구독 취소 후 새 키로 자동 재구독합니다.');
+                    try {
+                        await sub.unsubscribe();
+                    } catch (unsubErr) {
+                        console.warn('[구독 해제 경고]:', unsubErr);
+                    }
+                    sub = null;
+                }
+            }
 
             if (!sub) {
-                const convertedKey = urlBase64ToUint8Array(publicKey);
                 sub = await reg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: convertedKey
