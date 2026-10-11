@@ -1281,21 +1281,7 @@ app.get('/api/admin/logs/news', authenticateToken, (req, res) => {
     });
 });
 
-// 3. 개별 데이터베이스 백업 파일 다운로드
-app.get('/api/admin/backup/:type', authenticateToken, (req, res) => {
-    const type = req.params.type;
-    const now = new Date().toISOString().slice(0, 10);
-    if (type === 'health') {
-        return res.download(BLOOD_DB_PATH, `health_backup_${now}.db`);
-    } else if (type === 'asset') {
-        return res.download(ASSET_DB_PATH, `asset_backup_${now}.db`);
-    } else if (type === 'briefing') {
-        return res.download(NEWS_DB_PATH, `briefing_backup_${now}.db`);
-    }
-    res.status(404).send('해당 DB 백업 파일을 찾을 수 없습니다.');
-});
-
-// 4. 전체 DB 원클릭 압축 일괄 백업 (.zip) - execFile 안전 실행
+// 3. 전체 DB 원클릭 압축 일괄 백업 (.zip) - execFile 안전 실행 (고정 경로 우선 등록)
 app.get('/api/admin/backup/all', authenticateToken, (req, res) => {
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
     const tmpZip = path.join('/tmp', `jg_all_databases_${timestamp}.zip`);
@@ -1317,6 +1303,22 @@ zf.close()
             try { fs.unlinkSync(tmpZip); } catch (e) {}
         });
     });
+});
+
+// 4. 개별 데이터베이스 백업 파일 다운로드 (동적 파라미터는 하위 등록)
+app.get('/api/admin/backup/:type', authenticateToken, (req, res) => {
+    const type = req.params.type;
+    const now = new Date().toISOString().slice(0, 10);
+    if (type === 'all') {
+        return res.redirect('/api/admin/backup/all');
+    } else if (type === 'health') {
+        return res.download(BLOOD_DB_PATH, `health_backup_${now}.db`);
+    } else if (type === 'asset') {
+        return res.download(ASSET_DB_PATH, `asset_backup_${now}.db`);
+    } else if (type === 'briefing') {
+        return res.download(NEWS_DB_PATH, `briefing_backup_${now}.db`);
+    }
+    res.status(404).send('해당 DB 백업 파일을 찾을 수 없습니다.');
 });
 
 // 5. 혈압 CSV 내보내기
