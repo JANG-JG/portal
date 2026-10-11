@@ -1255,15 +1255,37 @@ app.get('/api/admin/pm2/logs', authenticateToken, (req, res) => {
     const cmd = target ? `pm2 logs ${target} --lines ${lines} --raw --nostream` : `pm2 logs --lines ${lines} --raw --nostream`;
 
     exec(cmd, { timeout: 6000 }, (err, stdout, stderr) => {
-        if (err && !stdout) {
+        if (err && !stdout && !stderr) {
             return res.json({ success: false, logs: '로그를 불러오는 중 오류가 발생했거나 PM2가 준비되지 않았습니다.' });
+        }
+        const outText = (stdout || '').trim();
+        const errText = (stderr || '').trim();
+        let combined = '';
+        if (outText) combined += outText;
+        if (errText) {
+            if (combined) combined += '\n\n--- [ 에러 로그 (STDERR) ] ---\n';
+            combined += errText;
         }
         res.json({
             success: true,
-            logs: stdout || stderr || '현재 기록된 로그가 없습니다.'
+            logs: combined.trim() || '현재 기록된 로그가 없습니다.'
         });
     });
 });
+
+// 2-1-1. PM2 로그 비우기 (flush) API
+app.post('/api/admin/pm2/flush', authenticateToken, (req, res) => {
+    const { processName } = req.body;
+    const validNameRegex = /^[a-zA-Z0-9_\-]+$/;
+    const target = (processName && validNameRegex.test(processName)) ? processName : '';
+    const cmd = target ? `pm2 flush ${target}` : `pm2 flush`;
+
+    exec(cmd, (err) => {
+        if (err) return res.status(500).json({ success: false, message: '로그 비우기 실패: ' + err.message });
+        res.json({ success: true, message: target ? `[${target}] 로그를 깨끗이 비웠습니다.` : '전체 PM2 로그를 깨끗이 비웠습니다.' });
+    });
+});
+
 
 // 2-2. 보안 로그인 시도 이력 조회 API (최근 50건)
 app.get('/api/admin/logs/login', authenticateToken, (req, res) => {
