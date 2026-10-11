@@ -30,7 +30,7 @@ self.addEventListener('fetch', (event) => {
 // 🔔 [Web Push] 실시간 속보 및 시스템 알림 수신 처리
 self.addEventListener('push', (event) => {
     let data = {
-        title: '🚨 JG 통합 포털 알림',
+        title: '🚨 [JG 통합 포털] 알림',
         body: '새로운 알림이 도착했습니다.',
         icon: 'https://j-jg.cc/favicon.svg',
         badge: 'https://j-jg.cc/favicon.svg',
