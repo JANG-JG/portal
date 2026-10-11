@@ -188,6 +188,51 @@ function getClientIp(req) {
     return req.ip || req.socket.remoteAddress || '127.0.0.1';
 }
 
+// 🛡️ [보안 강화] 로그인 무차별 대입(Brute-Force) 방어 인메모리 레이트 리미터
+const loginAttemptsMap = new Map(); // IP -> { count, lockedUntil, firstAttemptAt }
+
+function checkLoginRateLimit(ip) {
+    const now = Date.now();
+    const entry = loginAttemptsMap.get(ip);
+    if (!entry) return { allowed: true };
+
+    if (entry.lockedUntil && entry.lockedUntil > now) {
+        const remainingMinutes = Math.ceil((entry.lockedUntil - now) / 60000);
+        return { allowed: false, remainingMinutes };
+    }
+
+    if (now - entry.firstAttemptAt > 15 * 60 * 1000) {
+        loginAttemptsMap.delete(ip);
+        return { allowed: true };
+    }
+
+    return { allowed: true };
+}
+
+function recordLoginFailure(ip) {
+    const now = Date.now();
+    const entry = loginAttemptsMap.get(ip) || { count: 0, lockedUntil: 0, firstAttemptAt: now };
+    entry.count += 1;
+    if (entry.count >= 5) {
+        entry.lockedUntil = now + 15 * 60 * 1000; // 15분 잠금
+    }
+    loginAttemptsMap.set(ip, entry);
+}
+
+function recordLoginSuccess(ip) {
+    loginAttemptsMap.delete(ip);
+}
+
+// 30분마다 만료된 엔트리 정리
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of loginAttemptsMap.entries()) {
+        if ((entry.lockedUntil && entry.lockedUntil <= now) || (now - entry.firstAttemptAt > 30 * 60 * 1000)) {
+            loginAttemptsMap.delete(ip);
+        }
+    }
+}, 30 * 60 * 1000);
+
 // 보안 로그인 시도 이력 기록 헬퍼
 function recordLoginLog(username, ip, status) {
     try {
@@ -203,18 +248,30 @@ function recordLoginLog(username, ip, status) {
     }
 }
 
-// 3. 로그인 처리 API (실시간 로그인 이력 수집 연동)
+// 3. 로그인 처리 API (실시간 로그인 이력 및 브루트포스 방어 연동)
 app.post('/api/login', (req, res) => {
     const { username, password, rememberMe } = req.body;
     const clientIp = getClientIp(req);
 
+    // 🛡️ 브루트포스 연속 실패 잠금 확인
+    const limitCheck = checkLoginRateLimit(clientIp);
+    if (!limitCheck.allowed) {
+        recordLoginLog(username || '미입력', clientIp, 'BLOCKED_RATE_LIMIT');
+        return res.status(429).json({
+            success: false,
+            message: `로그인 시도가 너무 많습니다. 보안을 위해 약 ${limitCheck.remainingMinutes}분 후에 다시 시도해 주세요.`
+        });
+    }
+
     if (!username || !password) {
+        recordLoginFailure(clientIp);
         recordLoginLog(username || '미입력', clientIp, 'FAILED');
         return res.status(400).json({ success: false, message: '아이디와 비밀번호를 입력해주세요.' });
     }
 
     db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
         if (err || !user) {
+            recordLoginFailure(clientIp);
             recordLoginLog(username, clientIp, 'FAILED');
             return res.status(401).json({ success: false, message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
         }
@@ -222,11 +279,13 @@ app.post('/api/login', (req, res) => {
         try {
             const match = await bcrypt.compare(password, user.password);
             if (!match) {
+                recordLoginFailure(clientIp);
                 recordLoginLog(username, clientIp, 'FAILED');
                 return res.status(401).json({ success: false, message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
             }
 
-            // 로그인 성공 기록
+            // 로그인 성공 시 카운트 리셋 및 성공 기록
+            recordLoginSuccess(clientIp);
             recordLoginLog(user.username, clientIp, 'SUCCESS');
 
             // [보안 옵션 A]: 로그인 유지 체크 여부에 따라 쿠키 수명 분기
