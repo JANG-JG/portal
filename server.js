@@ -684,11 +684,21 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             });
         });
 
-        // 6-1) 실시간 속보 기사 목록 (정확한 KST 기준 최근 1시간 이내 기사만 유효, 만료 시 빈 배열 -> 상단 티커 자동 숨김)
-        const breakingThreshold = getKstDateTimeString(-60);
+        // 6-1) 실시간 속보 기사 목록 (정확한 KST 기준 기사 발행 시각 published_at 1시간 이내 기사만 유효, 만료 시 빈 배열 -> 상단 티커 자동 숨김)
+        const breakingThreshold = getKstDateTimeString(-60).slice(0, 16);
         const breakingArticles = await new Promise((resolve) => {
             newsDb.all(
-                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') AND created_at >= ? ORDER BY id DESC LIMIT 8",
+                `SELECT id, title, link, media_name, published_at 
+                 FROM news_articles 
+                 WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') 
+                   AND (
+                     CASE 
+                       WHEN published_at IS NOT NULL AND published_at != '' AND length(published_at) >= 16 
+                       THEN substr(published_at, 1, 16) 
+                       ELSE substr(created_at, 1, 16) 
+                     END
+                   ) >= ? 
+                 ORDER BY id DESC LIMIT 8`,
                 [breakingThreshold],
                 (bErr, rows) => resolve(rows || [])
             );
@@ -780,10 +790,20 @@ app.get('/api/ticker', (req, res) => {
         "SELECT id, title, link, category_name, media_name, published_at FROM news_articles WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' ORDER BY id DESC LIMIT 12",
         [],
         (err, articles) => {
-            // 2. 실시간 속보 (정확한 KST 기준 최근 1시간 이내 기사만 유효)
-            const breakingThreshold = getKstDateTimeString(-60);
+            // 2. 실시간 속보 (정확한 KST 기준 기사 발행 시각 published_at 1시간 이내 기사만 유효)
+            const breakingThreshold = getKstDateTimeString(-60).slice(0, 16);
             newsDb.all(
-                "SELECT id, title, link, media_name, published_at FROM news_articles WHERE category_name = '속보' AND created_at >= ? ORDER BY id DESC LIMIT 5",
+                `SELECT id, title, link, media_name, published_at 
+                 FROM news_articles 
+                 WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') 
+                   AND (
+                     CASE 
+                       WHEN published_at IS NOT NULL AND published_at != '' AND length(published_at) >= 16 
+                       THEN substr(published_at, 1, 16) 
+                       ELSE substr(created_at, 1, 16) 
+                     END
+                   ) >= ? 
+                 ORDER BY id DESC LIMIT 5`,
                 [breakingThreshold],
                 async (bErr, breakingRows) => {
                     const [weather, market] = await Promise.all([
