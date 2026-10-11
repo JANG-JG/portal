@@ -1,0 +1,422 @@
+const cron = require('node-cron');
+const axios = require('axios');
+const nodemailer = require('nodemailer');
+const { exec } = require('child_process');
+
+// ==============================================================================
+// 🌟 JG 통합 포털 단일 알림 스케줄러 (Unified Notification Scheduler)
+// 모든 서비스(날씨, 증시, 복약, 혈압, 병원, 서버경보)의 스케줄링을 단일 중앙 관리
+// ==============================================================================
+
+// 구글 대한민국 공휴일 캘린더 ID
+const HOLIDAY_CALENDAR_ID = 'ko.south_korea#holiday@group.v.calendar.google.com';
+
+// 인메모리 캐시 상태
+let cachedHolidays = [];
+const sentHistoryCache = new Set(); // 키: userId:type:YYYY-MM-DD_HH:mm
+let lastWeatherSentDate = '';
+let lastAssetSentDate = '';
+let lastBpSentDate = '';
+const pm2DownAlertState = {};
+
+// 이메일 발송기 (Gmail SMTP)
+const mailTransporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+// Google Calendar API로 올해 한국 공휴일 가져오기
+async function fetchGoogleHolidays() {
+    const apiKey = process.env.GOOGLE_CALENDAR_API_KEY;
+    if (!apiKey) {
+        console.log('[UnifiedScheduler] ⚠️ GOOGLE_CALENDAR_API_KEY 미설정 -> 주말(토/일) 기준으로만 공휴일 판별');
+        return;
+    }
+
+    const currentYear = new Date().getFullYear();
+    const timeMin = `${currentYear}-01-01T00:00:00Z`;
+    const timeMax = `${currentYear}-12-31T23:59:59Z`;
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(HOLIDAY_CALENDAR_ID)}/events`;
+
+    try {
+        const response = await axios.get(url, {
+            params: {
+                key: apiKey,
+                timeMin,
+                timeMax,
+                singleEvents: true
+            }
+        });
+
+        if (response.data && response.data.items) {
+            cachedHolidays = response.data.items
+                .map(item => item.start ? (item.start.date || item.start.dateTime?.substring(0, 10)) : null)
+                .filter(Boolean);
+            console.log(`[UnifiedScheduler] ${currentYear}년 공휴일 ${cachedHolidays.length}개 동기화 완료`);
+        }
+    } catch (err) {
+        console.error('[UnifiedScheduler] 구글 공휴일 동기화 실패 (주말 검사로 동작):', err.response?.data?.error?.message || err.message);
+    }
+}
+
+// 오늘이 주말(토/일)이거나 구글 공휴일인지 검사
+function isWeekendOrHoliday(dateObj) {
+    const dayOfWeek = dateObj.getDay(); // 0: 일요일, 6: 토요일
+    if (dayOfWeek === 0 || dayOfWeek === 6) return true;
+
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    return cachedHolidays.includes(dateStr);
+}
+
+// 병원 진료 예약 오픈일 계산 (약 소진 3일 전 일자의 전주 금요일 11시)
+function calculateReservationOpenDate(nextVisitDateStr) {
+    const nextVisit = new Date(nextVisitDateStr);
+    const dayOfWeek = nextVisit.getDay();
+    const sunday = new Date(nextVisit);
+    sunday.setDate(nextVisit.getDate() - dayOfWeek);
+
+    const openFriday = new Date(sunday);
+    openFriday.setDate(sunday.getDate() - 2);
+
+    const year = openFriday.getFullYear();
+    const month = String(openFriday.getMonth() + 1).padStart(2, '0');
+    const day = String(openFriday.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day} 11:00:00`;
+}
+
+/**
+ * 단일 통합 알림 스케줄러 초기화
+ * @param {object} db - SQLite 데이터베이스 인스턴스 (health.db)
+ * @param {function} sendBroadcastPush - 포털 중앙 푸시 발송 함수
+ * @param {function} getLiveWeatherData - 실시간 날씨 데이터 조회 함수
+ * @param {function} getLiveMarketData - 실시간 증시/환율 데이터 조회 함수
+ */
+function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherData, getLiveMarketData) {
+    console.log('⏰ [UnifiedScheduler] 단일 통합 알림 스케줄러 기동 시작...');
+
+    // 1. 공휴일 초기 로드
+    fetchGoogleHolidays();
+
+    // 2. 매일 자정(00:00 KST) 일괄 유지보수 스케줄
+    cron.schedule('0 0 * * *', () => {
+        fetchGoogleHolidays();
+        sentHistoryCache.clear();
+        console.log('[UnifiedScheduler] 자정 스케줄: 공휴일 갱신 및 중복발송 캐시 초기화 완료');
+
+        // 30일 경과 알림 내역 자동 정리
+        db.run("DELETE FROM notification_history WHERE datetime(created_at) < datetime('now', '-30 days', 'localtime')", function(cleanErr) {
+            if (!cleanErr && this && this.changes > 0) {
+                console.log(`[UnifiedScheduler] 30일 경과 알림 내역 ${this.changes}건 자동 정리 완료`);
+            }
+        });
+    });
+
+    // 3. 매 1분 감시 루프
+    cron.schedule('* * * * *', () => {
+        const now = new Date();
+        const kstFormatter = new Intl.DateTimeFormat('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', hour12: false
+        });
+        const parts = kstFormatter.formatToParts(now);
+        const getPart = (type) => parts.find(p => p.type === type)?.value || '';
+        const kstDateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+        const kstTimeStr = `${getPart('hour')}:${getPart('minute')}`;
+        const kstNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+        const dayOfWeek = kstNow.getDay();
+        const currentTargetDateTime = `${kstDateStr} ${kstTimeStr}:00`;
+        const isHoliday = isWeekendOrHoliday(kstNow);
+
+        // ======================================================================
+        // [A] 유저별 설정 기반 알림 (날씨, 증시, 복약, 혈압, 병원)
+        // ======================================================================
+        db.all("SELECT * FROM notification_settings WHERE enabled = 1", [], (err, userList) => {
+            if (err || !userList || userList.length === 0) return;
+
+            userList.forEach(async (u) => {
+                const userId = u.user_id;
+
+                // ------------------------------------------------------------------
+                // 1. 🌤️ 아침 기상 특보 & 우산 알림
+                // ------------------------------------------------------------------
+                const targetWeatherTime = (u.weather_morning_time || '07:00').trim();
+                if (u.weather_morning_enabled !== 0 && kstTimeStr === targetWeatherTime && lastWeatherSentDate !== kstDateStr) {
+                    const cacheKey = `${userId}:weather:${kstDateStr}_${kstTimeStr}`;
+                    if (!sentHistoryCache.has(cacheKey)) {
+                        sentHistoryCache.add(cacheKey);
+                        lastWeatherSentDate = kstDateStr;
+                        try {
+                            const weather = await getLiveWeatherData();
+                            let umbrellaTip = '오늘도 쾌청하고 상쾌한 하루 보내세요! ☀️';
+                            const cond = weather.condition || '';
+                            if (cond.includes('비') || cond.includes('소나기') || cond.includes('뇌우') || cond.includes('눈')) {
+                                umbrellaTip = '오늘 강수 소식이 있으니 출근길 우산을 꼭 챙기세요! ☔';
+                            } else if (cond.includes('흐림') || cond.includes('구름')) {
+                                umbrellaTip = '하늘이 다소 흐리니 따뜻하게 챙겨 입으세요! ⛅';
+                            }
+
+                            sendBroadcastPush({
+                                title: '🌤️ 아침 날씨',
+                                body: `현재 ${weather.city || '계룡'} ${weather.temp} (${weather.condition}). ${umbrellaTip}`,
+                                url: 'https://news.j-jg.cc/weather',
+                                type: 'weather',
+                                tag: 'jg-weather',
+                                userId
+                            });
+                        } catch (wErr) {
+                            console.error('[UnifiedScheduler] 아침 날씨 알림 생성 실패:', wErr.message);
+                        }
+                    }
+                }
+
+                // ------------------------------------------------------------------
+                // 2. 💰 평일 15:30 국내 증시 마감 & 환율 리포트 (휴장일 제외)
+                // ------------------------------------------------------------------
+                if (u.asset_report_enabled !== 0 && dayOfWeek >= 1 && dayOfWeek <= 5 && !isHoliday && kstTimeStr === '15:30' && lastAssetSentDate !== kstDateStr) {
+                    const cacheKey = `${userId}:asset:${kstDateStr}_${kstTimeStr}`;
+                    if (!sentHistoryCache.has(cacheKey)) {
+                        sentHistoryCache.add(cacheKey);
+                        lastAssetSentDate = kstDateStr;
+                        try {
+                            const market = await getLiveMarketData();
+                            const kospi = market.kospi ? `코스피 ${market.kospi.price}(${market.kospi.ratio})` : '';
+                            const usdkrw = market.usdkrw ? `환율 ${market.usdkrw.price}원` : '';
+                            const marketSummary = [kospi, usdkrw].filter(Boolean).join(' | ');
+
+                            sendBroadcastPush({
+                                title: '💰 증시/환율',
+                                body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 자산 변동 내역을 확인하세요.',
+                                url: 'https://asset.j-jg.cc/',
+                                type: 'asset',
+                                tag: 'jg-asset',
+                                userId
+                            });
+                        } catch (mErr) {
+                            console.error('[UnifiedScheduler] 증시 알림 생성 실패:', mErr.message);
+                        }
+                    }
+                }
+
+                // ------------------------------------------------------------------
+                // 3. 💊 정기 복약 시간 알림 (공휴일/주말 맞춤 시간표)
+                // ------------------------------------------------------------------
+                let medTimes = [];
+                let bpTimes = [];
+                try {
+                    medTimes = JSON.parse(isHoliday ? (u.weekend_med_times || '[]') : (u.weekday_med_times || '[]'));
+                    bpTimes = JSON.parse(isHoliday ? (u.weekend_bp_times || '[]') : (u.weekday_bp_times || '[]'));
+                } catch (pErr) {
+                    console.error(`[UnifiedScheduler] 유저(${userId}) 시간표 JSON 파싱 실패:`, pErr.message);
+                }
+
+                if (medTimes.includes(kstTimeStr)) {
+                    const cacheKey = `${userId}:medication:${kstDateStr}_${kstTimeStr}`;
+                    if (!sentHistoryCache.has(cacheKey)) {
+                        sentHistoryCache.add(cacheKey);
+                        sendBroadcastPush({
+                            title: '💊 약 복용 알림',
+                            body: `설정하신 ${kstTimeStr} 약 복용 시간입니다. 잊지 말고 복용해 주세요!`,
+                            url: 'https://blood.j-jg.cc/dashboard.html',
+                            type: 'medication',
+                            tag: 'jg-medication',
+                            userId
+                        });
+                    }
+                }
+
+                // ------------------------------------------------------------------
+                // 4. 🩸 정기 혈압 측정 시간 알림
+                // ------------------------------------------------------------------
+                if (bpTimes.includes(kstTimeStr)) {
+                    const cacheKey = `${userId}:blood_pressure:${kstDateStr}_${kstTimeStr}`;
+                    if (!sentHistoryCache.has(cacheKey)) {
+                        sentHistoryCache.add(cacheKey);
+                        sendBroadcastPush({
+                            title: '🩸 혈압 측정 알림',
+                            body: `설정하신 ${kstTimeStr} 혈압 측정 시간입니다. 편안한 상태에서 측정해 주세요!`,
+                            url: 'https://blood.j-jg.cc/dashboard.html',
+                            type: 'blood_pressure',
+                            tag: 'jg-blood-pressure',
+                            userId
+                        });
+                    }
+                }
+
+                // ------------------------------------------------------------------
+                // 5. 🎯 당일 혈압 미측정 저녁 리마인드 (오늘 기록 0건일 때 21:00)
+                // ------------------------------------------------------------------
+                const targetBpTime = (u.bp_reminder_time || '21:00').trim();
+                if (u.bp_reminder_enabled !== 0 && kstTimeStr === targetBpTime && lastBpSentDate !== kstDateStr) {
+                    const cacheKey = `${userId}:bp_evening_remind:${kstDateStr}_${kstTimeStr}`;
+                    if (!sentHistoryCache.has(cacheKey)) {
+                        sentHistoryCache.add(cacheKey);
+                        lastBpSentDate = kstDateStr;
+                        db.get(
+                            "SELECT COUNT(*) as count FROM records WHERE substr(measured_at, 1, 10) = ?",
+                            [kstDateStr],
+                            (rErr, row) => {
+                                if (rErr) return;
+                                if (!row || row.count === 0) {
+                                    sendBroadcastPush({
+                                        title: '🩸 혈압 리마인드',
+                                        body: '오늘 아직 혈압 측정 기록이 없습니다. 취침 전 편안한 상태에서 혈압을 측정해 주세요!',
+                                        url: 'https://blood.j-jg.cc/dashboard.html',
+                                        type: 'blood_pressure',
+                                        tag: 'jg-evening-bp-remind',
+                                        userId
+                                    });
+                                }
+                            }
+                        );
+                    }
+                }
+
+                // ------------------------------------------------------------------
+                // 6. 🏥 병원 진료 예약 오픈 알림 (실시간 약 잔여량 기준 11:00 오픈 시)
+                // ------------------------------------------------------------------
+                if (u.hospital_push_enabled !== 0) {
+                    checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBroadcastPush);
+                }
+            });
+        });
+
+        // ======================================================================
+        // [B] 🖥️ PM2 프로세스 다운/복구 헬스체크 (실시간 감시 -> 관리자 전용)
+        // ======================================================================
+        exec('pm2 jlist', (err, stdout) => {
+            if (err || !stdout) return;
+            try {
+                const procList = JSON.parse(stdout);
+                const monitoredApps = ['portal', 'blood-pressure-app', 'asset', 'news-dashboard'];
+
+                monitoredApps.forEach(appName => {
+                    const proc = procList.find(p => p.name === appName);
+                    if (proc) {
+                        const isOnline = proc.pm2_env.status === 'online';
+                        if (!isOnline && !pm2DownAlertState[appName]) {
+                            pm2DownAlertState[appName] = true;
+                            console.warn(`🚨 [PM2 ALERT] ${appName} 프로세스 다운 감지 (${proc.pm2_env.status})`);
+                            sendBroadcastPush({
+                                title: '🚨 서버 경보',
+                                body: `${appName} 프로세스 장애 발생 (${proc.pm2_env.status}). 즉시 확인이 필요합니다!`,
+                                url: 'https://j-jg.cc/admin#tab-overview',
+                                type: 'system',
+                                tag: `jg-pm2-${appName}`,
+                                adminOnly: true
+                            });
+                        } else if (isOnline && pm2DownAlertState[appName]) {
+                            pm2DownAlertState[appName] = false;
+                            console.log(`✅ [PM2 RECOVERY] ${appName} 프로세스 정상 복구`);
+                            sendBroadcastPush({
+                                title: '✅ 서버 복구',
+                                body: `${appName} 프로세스가 다시 온라인(online) 상태로 정상 복구되었습니다.`,
+                                url: 'https://j-jg.cc/admin#tab-overview',
+                                type: 'system',
+                                tag: `jg-pm2-${appName}`,
+                                adminOnly: true
+                            });
+                        }
+                    }
+                });
+            } catch (parseErr) {}
+        });
+    });
+
+    console.log('✅ [UnifiedScheduler] 단일 통합 알림 스케줄러 등록 완료!');
+}
+
+// 병원 진료 예약 오픈 알림 조건 검사 및 발송
+function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBroadcastPush) {
+    const summaryQuery = `
+        SELECT MIN(visit_date) as first_visit, SUM(prescription_days) as total_prescribed
+        FROM hospital_visits
+        WHERE user_id = ?
+    `;
+
+    db.get(summaryQuery, [userId], (sumErr, visitSummary) => {
+        if (sumErr || !visitSummary || !visitSummary.first_visit) return;
+
+        const medQuery = `
+            SELECT COUNT(DISTINCT substr(measured_at, 1, 10)) as total_taken 
+            FROM records 
+            WHERE substr(measured_at, 1, 10) >= ? 
+              AND medication_time IS NOT NULL 
+              AND length(medication_time) > 5
+        `;
+
+        db.get(medQuery, [visitSummary.first_visit], (medErr, medResult) => {
+            const totalTaken = medResult ? medResult.total_taken : 0;
+            const totalPrescribed = visitSummary.total_prescribed || 0;
+            const remainingPills = Math.max(0, totalPrescribed - totalTaken);
+
+            const now = new Date();
+            const predictedVisit = new Date(now);
+            predictedVisit.setDate(now.getDate() + remainingPills - 3);
+            const predictedVisitStr = predictedVisit.toISOString().split('T')[0];
+
+            const dynamicOpenDate = calculateReservationOpenDate(predictedVisitStr);
+
+            if (dynamicOpenDate <= currentTargetDateTime) {
+                db.get(
+                    `SELECT * FROM hospital_visits WHERE user_id = ? AND send_notification = 1 AND notified = 0 ORDER BY visit_date DESC LIMIT 1`,
+                    [userId],
+                    (rowErr, row) => {
+                        if (!row) return;
+
+                        // 중복 발송 방지를 위해 먼저 알림 완료 처리
+                        db.run(`UPDATE hospital_visits SET notified = 1 WHERE id = ?`, [row.id]);
+
+                        const hospitalNameDisplay = row.hospital_name ? `[${row.hospital_name}] ` : '';
+                        const targetEmail = row.notification_email || process.env.EMAIL_USER;
+
+                        // 1. Gmail SMTP 이메일 발송
+                        if (process.env.EMAIL_USER && process.env.EMAIL_PASS && targetEmail) {
+                            const mailOptions = {
+                                from: process.env.EMAIL_USER,
+                                to: targetEmail,
+                                subject: `[알림] 🏥 ${hospitalNameDisplay}진료 예약 오픈 안내`,
+                                html: `
+                                    <h3>🏥 병원 진료 예약 안내</h3>
+                                    <p>현재 약 잔여량 기준, <strong>예약 오픈 시각(오전 11시)</strong>이 되었습니다.</p>
+                                    <ul>
+                                        <li><strong>진료 병원:</strong> ${row.hospital_name || '미지정'} ${row.department ? '(' + row.department + ')' : ''}</li>
+                                        <li><strong>최근 진료일:</strong> ${row.visit_date}</li>
+                                        <li><strong>현재 남은 약:</strong> ${remainingPills}일분</li>
+                                        <li><strong>예측 방문일:</strong> ${predictedVisitStr}</li>
+                                        <li><strong>메모:</strong> ${row.memo || '없음'}</li>
+                                    </ul>
+                                    <p><a href="https://blood.j-jg.cc/hospital.html" target="_blank" style="display:inline-block; padding:10px 18px; background:#4f46e5; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold;">🏥 병원 진료 일정 관리 바로가기</a></p>
+                                `
+                            };
+                            mailTransporter.sendMail(mailOptions, (error) => {
+                                if (error) console.error('[UnifiedScheduler] 예약 알림 메일 발송 실패:', error.message);
+                                else console.log(`[UnifiedScheduler] ✉️ 예약 알림 메일 발송 완료: ${targetEmail}`);
+                            });
+                        }
+
+                        // 2. 통합 웹 푸시 발송
+                        sendBroadcastPush({
+                            title: `🏥 ${hospitalNameDisplay}진료 예약 오픈 알림`,
+                            body: `오전 11시 예약 오픈 시간입니다! 남은 약: ${remainingPills}일분 (예상 진료일: ${predictedVisitStr})`,
+                            url: 'https://blood.j-jg.cc/hospital.html',
+                            type: 'hospital',
+                            tag: 'jg-hospital',
+                            userId
+                        });
+                    }
+                );
+            }
+        });
+    });
+}
+
+module.exports = { initUnifiedNotificationScheduler };

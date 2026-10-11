@@ -8,6 +8,8 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const { exec } = require('child_process');
+const webPush = require('web-push');
+const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -1464,6 +1466,139 @@ app.post('/api/admin/change-password', authenticateToken, async (req, res) => {
 // 🔔 [통합 포털 알림 센터 API]
 // ==========================================
 const VAPID_PUBLIC_KEY = 'BOChfX_5sr0NH0ljWstk0YdSqjggR1M5V97nb6xOzOxfTT7yZZ7ipQVZACLtVk97Y0L0lJSvtqxmBzL_xsOW1BA';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+
+webPush.setVapidDetails(
+    'mailto:admin@example.com',
+    VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY
+);
+
+// 알림 수신 내역 DB 보관 헬퍼 함수
+function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon = 'https://j-jg.cc/favicon.svg', url = 'https://j-jg.cc/' }, callback) {
+    const query = `
+        INSERT INTO notification_history (user_id, type, title, body, icon, url, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+    `;
+    db.run(query, [userId, type, title, body, icon, url], function(err) {
+        if (err) console.error('[알림 내역 DB 저장 실패]:', err.message);
+        const insertedId = this ? this.lastID : null;
+        if (callback && typeof callback === 'function') {
+            callback(insertedId);
+        }
+    });
+}
+
+// 🌟 [통합 포털 단일 WebPush 발송 엔진]
+function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, userId = null, adminOnly = false }) {
+    return new Promise((resolve) => {
+        let cleanTitle = (title || '알림')
+            .replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '')
+            .replace(/^\[?JG\s*포털\]?\s*/i, '')
+            .trim();
+
+        let targetUrl = url || 'https://j-jg.cc/';
+        if (targetUrl.startsWith('/')) {
+            if (targetUrl.includes('dashboard') || targetUrl.includes('hospital')) {
+                targetUrl = `https://blood.j-jg.cc${targetUrl}`;
+            } else {
+                targetUrl = `https://j-jg.cc${targetUrl}`;
+            }
+        }
+
+        // 수신 대상 필터 구성
+        let userCondition = '';
+        if (userId) {
+            userCondition = `AND ps.user_id = '${userId}'`;
+        } else if (adminOnly) {
+            userCondition = "AND ps.user_id IN ('upt0731', 'admin')";
+        }
+
+        let categoryCondition = '';
+        if (type === 'breaking') {
+            categoryCondition = 'AND (ns.breaking_news_enabled IS NULL OR ns.breaking_news_enabled = 1)';
+        } else if (type === 'weather') {
+            categoryCondition = 'AND (ns.weather_morning_enabled IS NULL OR ns.weather_morning_enabled = 1)';
+        } else if (type === 'asset') {
+            categoryCondition = 'AND (ns.asset_report_enabled IS NULL OR ns.asset_report_enabled = 1)';
+        } else if (type === 'system') {
+            categoryCondition = 'AND (ns.system_alert_enabled IS NULL OR ns.system_alert_enabled = 1)';
+        }
+
+        const query = `
+            SELECT ps.*, COALESCE(ns.enabled, 1) as enabled
+            FROM push_subscriptions ps
+            LEFT JOIN notification_settings ns ON ps.user_id = ns.user_id
+            WHERE (ns.enabled IS NULL OR ns.enabled = 1)
+            ${categoryCondition}
+            ${userCondition}
+        `;
+
+        db.all(query, [], (err, rows) => {
+            if (err || !rows || rows.length === 0) {
+                console.log(`[UnifiedPush] 발송 대상 구독 기기 없음 (type: ${type}, user: ${userId || 'all'})`);
+                return resolve({ success: true, count: 0, targetCount: 0 });
+            }
+
+            saveNotificationHistory({
+                userId: userId || (adminOnly ? 'admin' : (rows[0] ? rows[0].user_id : 'admin')),
+                type,
+                title: cleanTitle,
+                body,
+                icon: 'https://j-jg.cc/favicon.svg',
+                url: targetUrl
+            }, (notifId) => {
+                const sep = targetUrl.includes('?') ? '&' : '?';
+                const linkWithId = notifId ? `${targetUrl}${sep}notif_id=${notifId}` : targetUrl;
+
+                const payload = JSON.stringify({
+                    title: cleanTitle,
+                    body,
+                    icon: 'https://j-jg.cc/favicon.svg',
+                    badge: 'https://j-jg.cc/favicon.svg',
+                    tag: tag || `jg-${type}`,
+                    data: {
+                        url: linkWithId,
+                        notifId: notifId || null
+                    }
+                });
+
+                let successCount = 0;
+                let failCount = 0;
+
+                const promises = rows.map(subRow => {
+                    const pushSubscription = {
+                        endpoint: subRow.endpoint,
+                        keys: {
+                            p256dh: subRow.keys_p256dh,
+                            auth: subRow.keys_auth
+                        }
+                    };
+
+                    return webPush.sendNotification(pushSubscription, payload)
+                        .then(() => { successCount++; })
+                        .catch(pErr => {
+                            failCount++;
+                            if (pErr.statusCode === 410 || pErr.statusCode === 404) {
+                                db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [subRow.endpoint]);
+                            }
+                        });
+                });
+
+                Promise.all(promises).then(() => {
+                    console.log(`[UnifiedPush 완료] ${cleanTitle} (성공: ${successCount}/${rows.length})`);
+                    resolve({
+                        success: true,
+                        targetCount: rows.length,
+                        successCount,
+                        failCount,
+                        notifId
+                    });
+                });
+            });
+        });
+    });
+}
 
 // 1. VAPID 공개키 조회
 app.get('/api/notification/vapid-key', (req, res) => {
@@ -1700,204 +1835,45 @@ app.delete('/api/notification/history/clear/all', authenticateToken, (req, res) 
 // 8. 테스트 푸시 즉시 발송 API
 app.post('/api/notification/test', authenticateToken, async (req, res) => {
     try {
-        const resp = await fetch('http://127.0.0.1:3000/api/notification/broadcast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: '🔔 알림 테스트',
-                body: '웹 푸시 알림이 정상적으로 연동되었습니다! 속보, 날씨, 증시, 복약 및 혈압 알림을 실시간 수신할 수 있습니다.',
-                url: 'https://j-jg.cc/',
-                type: 'test'
-            })
+        const result = await sendUnifiedPushNotification({
+            title: '🔔 알림 테스트',
+            body: '통합 포털 단일 알림 허브가 성공적으로 연결되었습니다! 속보, 날씨, 증시, 복약 및 혈압 알림을 실시간 수신할 수 있습니다.',
+            url: 'https://j-jg.cc/',
+            type: 'test',
+            tag: 'jg-test',
+            userId: req.user.username || 'admin'
         });
-        const data = await resp.json();
-        res.json(data);
+        res.json(result);
     } catch (e) {
         res.status(500).json({ success: false, message: '테스트 알림 발송 실패: ' + e.message });
     }
 });
 
-// 9. 알림 브로드캐스트 프록시 API
-app.post('/api/notification/broadcast', authenticateToken, async (req, res) => {
+// 9. 통합 포털 단일 알림 브로드캐스트 엔진 API (모든 서비스 공통 접수구)
+app.post('/api/notification/broadcast', async (req, res) => {
+    // 내부 루프백(뉴스 수집기 등) 또는 인증된 사용자 요청 허용
+    const isLocal = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    const hasCookie = req.cookies && req.cookies[COOKIE_NAME];
+
+    if (!isLocal && !token && !hasCookie) {
+        return res.status(401).json({ success: false, message: '알림 발송 권한이 필요합니다.' });
+    }
+
     try {
-        const resp = await fetch('http://127.0.0.1:3000/api/notification/broadcast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(req.body)
-        });
-        const data = await resp.json();
-        res.json(data);
+        const result = await sendUnifiedPushNotification(req.body);
+        res.json(result);
     } catch (e) {
-        res.status(500).json({ success: false, message: '브로드캐스트 실패: ' + e.message });
+        res.status(500).json({ success: false, message: '브로드캐스트 발송 실패: ' + e.message });
     }
 });
 
 // ==========================================
-// ⏰ [통합 포털 알림 1~4번 자동화 스케줄러]
+// ⏰ [통합 포털 단일 알림 스케줄러 기동]
+// 모든 서비스(날씨, 증시, 복약, 혈압, 병원, 서버경보) 단일 중앙 실행
 // ==========================================
-let lastWeatherSentDate = '';
-let lastAssetSentDate = '';
-let lastBpSentDate = '';
-const pm2DownAlertState = {};
-
-function sendPortalPushNotification({ title, body, url, type, tag, adminOnly = false }) {
-    return fetch('http://127.0.0.1:3000/api/notification/broadcast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, url, type, tag, adminOnly })
-    }).catch(err => {
-        console.error('[Portal Notification Error]:', err.message);
-    });
-}
-
-// 1분 주기 감시 루프
-setInterval(async () => {
-    const now = new Date();
-    const kstFormatter = new Intl.DateTimeFormat('ko-KR', {
-        timeZone: 'Asia/Seoul',
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', hour12: false
-    });
-    const parts = kstFormatter.formatToParts(now);
-    const getPart = (type) => parts.find(p => p.type === type)?.value || '';
-    const kstDateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
-    const kstTimeStr = `${getPart('hour')}:${getPart('minute')}`;
-    const dayOfWeek = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getDay();
-
-    // 30일 경과 알림 내역 자동 정리 (매일 자정 00:00 1회 실행)
-    if (kstTimeStr === '00:00') {
-        db.run("DELETE FROM notification_history WHERE datetime(created_at) < datetime('now', '-30 days', 'localtime')", function(cleanErr) {
-            if (!cleanErr && this && this.changes > 0) {
-                console.log(`[DB Cleanup] 30일 경과 알림 내역 ${this.changes}건 자동 정리 완료`);
-            }
-        });
-    }
-
-    // 알림 설정 확인
-    db.get("SELECT * FROM notification_settings WHERE user_id = 'upt0731' OR user_id = 'admin' LIMIT 1", async (err, settings) => {
-        if (err) return;
-        const s = settings || {
-            enabled: 1,
-            weather_morning_enabled: 1,
-            weather_morning_time: '07:00',
-            asset_report_enabled: 1,
-            bp_reminder_enabled: 1,
-            bp_reminder_time: '21:00',
-            system_alert_enabled: 1
-        };
-
-        if (s.enabled === 0) return;
-
-        // 🌤️ 1번: 아침 기상 특보 & 우산 알림
-        const targetWeatherTime = (s.weather_morning_time || '07:00').trim();
-        if (s.weather_morning_enabled !== 0 && kstTimeStr === targetWeatherTime && lastWeatherSentDate !== kstDateStr) {
-            lastWeatherSentDate = kstDateStr;
-            try {
-                const weather = await getLiveWeatherData();
-                let umbrellaTip = '오늘도 쾌청하고 상쾌한 하루 보내세요! ☀️';
-                const cond = weather.condition || '';
-                if (cond.includes('비') || cond.includes('소나기') || cond.includes('뇌우') || cond.includes('눈')) {
-                    umbrellaTip = '오늘 강수 소식이 있으니 출근길 우산을 꼭 챙기세요! ☔';
-                } else if (cond.includes('흐림') || cond.includes('구름')) {
-                    umbrellaTip = '하늘이 다소 흐리니 따뜻하게 챙겨 입으세요! ⛅';
-                }
-
-                sendPortalPushNotification({
-                    title: '아침 날씨',
-                    body: `현재 ${weather.city || '계룡'} ${weather.temp} (${weather.condition}). ${umbrellaTip}`,
-                    url: 'https://news.j-jg.cc/weather',
-                    type: 'weather',
-                    tag: 'jg-weather'
-                });
-            } catch (wErr) {
-                console.error('[아침 날씨 알림 생성 실패]:', wErr);
-            }
-        }
-
-        // 💰 2번: 평일 15:30 국내 증시 마감 & 환율 리포트
-        if (s.asset_report_enabled !== 0 && dayOfWeek >= 1 && dayOfWeek <= 5 && kstTimeStr === '15:30' && lastAssetSentDate !== kstDateStr) {
-            lastAssetSentDate = kstDateStr;
-            try {
-                const market = await getLiveMarketData();
-                const kospi = market.kospi ? `코스피 ${market.kospi.price}(${market.kospi.ratio})` : '';
-                const usdkrw = market.usdkrw ? `환율 ${market.usdkrw.price}원` : '';
-                const marketSummary = [kospi, usdkrw].filter(Boolean).join(' | ');
-
-                sendPortalPushNotification({
-                    title: '증시/환율',
-                    body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 자산 변동 내역을 확인하세요.',
-                    url: 'https://asset.j-jg.cc/',
-                    type: 'asset',
-                    tag: 'jg-asset'
-                });
-            } catch (mErr) {
-                console.error('[장마감 알림 생성 실패]:', mErr);
-            }
-        }
-
-        // 🎯 3번: 당일 혈압 미측정 저녁 리마인드
-        const targetBpTime = (s.bp_reminder_time || '21:00').trim();
-        if (s.bp_reminder_enabled !== 0 && kstTimeStr === targetBpTime && lastBpSentDate !== kstDateStr) {
-            lastBpSentDate = kstDateStr;
-            db.get(
-                "SELECT COUNT(*) as count FROM records WHERE substr(measured_at, 1, 10) = ?",
-                [kstDateStr],
-                (rErr, row) => {
-                    if (rErr) return;
-                    if (!row || row.count === 0) {
-                        sendPortalPushNotification({
-                            title: '혈압 리마인드',
-                            body: `오늘 아직 혈압 측정 기록이 없습니다. 취침 전 편안한 상태에서 혈압을 측정해 주세요!`,
-                            url: 'https://blood.j-jg.cc/dashboard.html',
-                            type: 'blood_pressure',
-                            tag: 'jg-evening-bp-remind'
-                        });
-                    }
-                }
-            );
-        }
-    });
-
-    // 🖥️ 4번: PM2 프로세스 헬스체크 (관리자 전용 긴급 경보)
-    exec('pm2 jlist', (err, stdout) => {
-        if (err || !stdout) return;
-        try {
-            const procList = JSON.parse(stdout);
-            const monitoredApps = ['portal', 'blood-pressure-app', 'asset', 'news-dashboard'];
-
-            monitoredApps.forEach(appName => {
-                const proc = procList.find(p => p.name === appName);
-                if (proc) {
-                    const isOnline = proc.pm2_env.status === 'online';
-                    if (!isOnline && !pm2DownAlertState[appName]) {
-                        pm2DownAlertState[appName] = true;
-                        console.warn(`🚨 [PM2 ALERT] ${appName} 프로세스 다운 감지 (${proc.pm2_env.status})`);
-                        sendPortalPushNotification({
-                            title: '서버 경보',
-                            body: `${appName} 프로세스 장애 발생 (${proc.pm2_env.status}). 즉시 확인이 필요합니다!`,
-                            url: 'https://j-jg.cc/admin#tab-overview',
-                            type: 'system',
-                            tag: `jg-pm2-${appName}`,
-                            adminOnly: true // ★ 관리자 전용
-                        });
-                    } else if (isOnline && pm2DownAlertState[appName]) {
-                        pm2DownAlertState[appName] = false;
-                        console.log(`✅ [PM2 RECOVERY] ${appName} 프로세스 정상 복구`);
-                        sendPortalPushNotification({
-                            title: '서버 복구',
-                            body: `${appName} 프로세스가 다시 온라인(online) 상태로 정상 복구되었습니다.`,
-                            url: 'https://j-jg.cc/admin#tab-overview',
-                            type: 'system',
-                            tag: `jg-pm2-${appName}`,
-                            adminOnly: true // ★ 관리자 전용
-                        });
-                    }
-                }
-            });
-        } catch (parseErr) {}
-    });
-
-}, 60000);
+initUnifiedNotificationScheduler(db, sendUnifiedPushNotification, getLiveWeatherData, getLiveMarketData);
 
 // 헬스 체크
 app.get('/health', (req, res) => {
