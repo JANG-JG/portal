@@ -79,11 +79,18 @@ app.use(express.static(path.join(__dirname, 'public'), {
     etag: true,
     lastModified: true,
     setHeaders: (res, filePath) => {
+        // 모든 정적 에셋(CSS, JS, 폰트, HTML 컴포넌트)에 Cross-Origin 허용
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+
         if (filePath.endsWith('.html')) {
             // HTML 문서는 최신 상태 즉각 반영을 위해 no-cache (ETag 304 활용)
             res.setHeader('Cache-Control', 'no-cache, must-revalidate');
-        } else if (filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.match(/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf)$/i)) {
-            // JS, CSS, 이미지, 폰트는 CDN 및 브라우저에서 1일 캐시, 백그라운드 갱신 7일
+        } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+            // JS, CSS는 5분 캐시 및 변경 시 ETag 즉시 재검증 (모바일 브라우저 캐시 고착 방지)
+            res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+        } else if (filePath.match(/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf)$/i)) {
+            // 이미지 및 폰트는 1일 캐시
             res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
         }
     }

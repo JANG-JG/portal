@@ -6,8 +6,8 @@
     --text-main: #0f172a;
     --text-muted: #64748b;
     --border: #e2e8f0;
-    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
 
 * {
@@ -1306,32 +1306,46 @@ body {
     margin-bottom: 1.25rem;
     gap: 0.75rem;
     flex-wrap: wrap;
+    width: 100%;
 }
 
 .memo-filter-tabs {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.45rem;
     overflow-x: auto;
-    padding-bottom: 2px;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+    padding: 2px 2px 6px 2px;
     scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
 .memo-filter-tabs::-webkit-scrollbar {
     display: none;
+    height: 0;
 }
 
 .memo-tab-btn {
+    flex-shrink: 0;
     background: #ffffff;
     border: 1px solid var(--border);
     color: #64748b;
-    padding: 0.35rem 0.75rem;
+    padding: 0.4rem 0.8rem;
     border-radius: 0.5rem;
     font-size: 0.82rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.15s ease;
     white-space: nowrap;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .memo-tab-btn:hover {
@@ -1629,6 +1643,16 @@ body {
     .memo-filter-bar {
         flex-direction: column;
         align-items: stretch;
+        gap: 0.65rem;
+        width: 100%;
+    }
+    .memo-filter-tabs {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow-x: scroll;
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: 6px;
     }
     .memo-search-box {
         width: 100%;
