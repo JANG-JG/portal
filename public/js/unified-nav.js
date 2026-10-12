@@ -4,22 +4,45 @@
  * - https://j-jg.cc/components/unified-nav.html 단일 컴포넌트 자동 주입 및 현재 페이지 하이라이트
  */
 (function() {
+    // 0. PWA 설치 프롬프트 전역 핸들러
+    window.deferredInstallPrompt = window.deferredInstallPrompt || null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredInstallPrompt = e;
+        const mobileInstallBtn = document.getElementById('btnPwaInstallMobile');
+        if (mobileInstallBtn) mobileInstallBtn.style.display = 'flex';
+        const desktopInstallBtn = document.getElementById('btnPwaInstall');
+        if (desktopInstallBtn) desktopInstallBtn.style.display = 'inline-flex';
+    });
+    window.triggerPwaInstall = async function() {
+        if (window.deferredInstallPrompt) {
+            window.deferredInstallPrompt.prompt();
+            const { outcome } = await window.deferredInstallPrompt.userChoice;
+            if (outcome === 'accepted') {
+                localStorage.setItem('pwa_installed', 'true');
+            }
+            window.deferredInstallPrompt = null;
+        } else {
+            alert('스마트폰(Android/Chrome, iOS/Safari) 또는 브라우저의 [공유] 또는 [메뉴(⋮)] > [홈 화면에 추가] 또는 [앱 설치]를 선택해 설치할 수 있습니다.');
+        }
+    };
+
     // 1. 공통 CSS 스타일시트 자동 주입 확인
     function ensureUnifiedNavCss() {
         if (!document.querySelector('link[href*="unified-nav.css"]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             const isLocal = window.location.hostname === 'localhost';
-            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261013_v2';
+            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261013_v3';
             document.head.appendChild(link);
         }
     }
 
-    // 2. 상단 내비게이션 HTML 컴포넌트 비동기 로드 및 마운트
+    // 2. 상단 내비게이션 HTML 컴포넌트 비동기 로드 및 마운트 (SWR 패턴: 항상 최신 통합 컴포넌트 유지)
     async function mountUnifiedNav() {
         ensureUnifiedNavCss();
 
-        const CACHE_KEY = 'jg_unav_html_v20261013_v2';
+        const CACHE_KEY = 'jg_unav_html_v20261013_v3';
         let cachedHtml = null;
         try {
             cachedHtml = sessionStorage.getItem(CACHE_KEY);
@@ -43,36 +66,31 @@
             }
         };
 
-        // 0) 이미 페이지 마크업에 정상적인 .unav-container가 정적으로 마운트되어 있다면 fetch 및 재렌더링 불필요
-        const existingNav = document.querySelector('header.unav-header .unav-container');
-        if (existingNav) {
-            highlightActiveMenu();
-            initUnifiedNav();
-            return;
-        }
-
         // 1) 캐시가 있으면 즉시 렌더링 (0ms 레이턴시)
         if (cachedHtml) {
             applyHtml(cachedHtml);
             highlightActiveMenu();
             initUnifiedNav();
-            return;
         }
 
-        // 2) 캐시가 없으면 1회 네트워크 로드 후 sessionStorage 보관
+        // 2) 최신 컴포넌트를 네트워크로 로드하여 항상 동기화 유지
         try {
             const isLocal = window.location.hostname === 'localhost';
-            const compUrl = isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html';
+            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=20261013_v3';
             const res = await fetch(compUrl);
             if (res.ok) {
                 const html = await res.text();
-                applyHtml(html);
-                try {
-                    sessionStorage.setItem(CACHE_KEY, html);
-                } catch (e) {}
+                if (html !== cachedHtml || !cachedHtml) {
+                    applyHtml(html);
+                    try {
+                        sessionStorage.setItem(CACHE_KEY, html);
+                    } catch (e) {}
+                    highlightActiveMenu();
+                    initUnifiedNav();
+                }
             }
         } catch (err) {
-            console.warn('[UnifiedNav] 동적 컴포넌트 로드 실패, 기존 마크업 유지:', err);
+            console.warn('[UnifiedNav] 동적 컴포넌트 로드 실패:', err);
         }
 
         // 현재 서비스/경로에 따른 활성 탭 자동 하이라이트

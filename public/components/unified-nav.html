@@ -147,36 +147,36 @@
                     <a href="https://j-jg.cc/admin#tab-overview" class="unav-sublink">
                         <span class="unav-sub-icon">🖥️</span>
                         <div class="unav-sub-text">
-                            <strong>통합 모니터링 & 제어</strong>
-                            <small>5대 서비스 프로세스 및 실시간 시스템 로그</small>
+                            <strong>통합 관리자 센터</strong>
+                            <small>전체 모니터링 & PM2 프로세스 제어</small>
                         </div>
                     </a>
                     <a href="https://j-jg.cc/admin#tab-blood" class="unav-sublink">
                         <span class="unav-sub-icon">🩸</span>
                         <div class="unav-sub-text">
-                            <strong>혈압 관리 설정</strong>
-                            <small>위험 기준치 설정 및 혈압 DB 백업/복원</small>
+                            <strong>혈압 관리</strong>
+                            <small>혈압 통계 및 실시간 측정 데이터 현황</small>
                         </div>
                     </a>
                     <a href="https://j-jg.cc/admin#tab-asset" class="unav-sublink">
                         <span class="unav-sub-icon">💰</span>
                         <div class="unav-sub-text">
-                            <strong>자산 관리 설정</strong>
-                            <small>증권 계좌 현황 및 보유 종목/DB 관리</small>
+                            <strong>자산 관리</strong>
+                            <small>총 자산 지표 및 보유 종목/거래 현황</small>
                         </div>
                     </a>
                     <a href="https://j-jg.cc/admin#tab-news" class="unav-sublink">
                         <span class="unav-sub-icon">📰</span>
                         <div class="unav-sub-text">
-                            <strong>뉴스 브리핑 설정</strong>
-                            <small>즉시 수집 마스터 제어 및 뉴스 DB 백업</small>
+                            <strong>뉴스 브리핑</strong>
+                            <small>뉴스 수집 이력 및 즉시 수집/발송 제어</small>
                         </div>
                     </a>
                     <a href="https://j-jg.cc/admin#tab-security" class="unav-sublink">
                         <span class="unav-sub-icon">👤</span>
                         <div class="unav-sub-text">
-                            <strong>보안 및 계정 관리</strong>
-                            <small>통합 마스터 비밀번호 및 접속 보안 로그</small>
+                            <strong>보안 및 계정</strong>
+                            <small>로그인 시도 로그 및 관리자 암호 변경</small>
                         </div>
                     </a>
                 </div>
@@ -277,20 +277,24 @@
                         <span class="unav-m-chevron">▾</span>
                     </button>
                     <div class="unav-m-submenu">
-                        <a href="https://j-jg.cc/admin#tab-overview">🖥️ 통합 모니터링 & 제어</a>
-                        <a href="https://j-jg.cc/admin#tab-blood">🩸 혈압 관리 설정</a>
-                        <a href="https://j-jg.cc/admin#tab-asset">💰 자산 관리 설정</a>
-                        <a href="https://j-jg.cc/admin#tab-news">📰 뉴스 브리핑 설정</a>
-                        <a href="https://j-jg.cc/admin#tab-security">👤 보안 및 계정 관리</a>
+                        <a href="https://j-jg.cc/admin#tab-overview">🖥️ 통합 관리자 센터</a>
+                        <a href="https://j-jg.cc/admin#tab-blood">🩸 혈압 관리</a>
+                        <a href="https://j-jg.cc/admin#tab-asset">💰 자산 관리</a>
+                        <a href="https://j-jg.cc/admin#tab-news">📰 뉴스 브리핑</a>
+                        <a href="https://j-jg.cc/admin#tab-security">👤 보안 및 계정</a>
                     </div>
                 </div>
+            </div>
 
-                <!-- 7. 로그아웃 -->
-                <div class="unav-m-group">
-                    <a href="https://j-jg.cc/logout" class="unav-m-title" style="color: #ef4444 !important; text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
-                        <span>🚪 로그아웃</span>
-                    </a>
-                </div>
+            <div class="unav-m-footer">
+                <button type="button" class="unav-m-install-btn" id="btnPwaInstallMobile" onclick="triggerPwaInstall()">
+                    <span>📲</span>
+                    <span>홈 화면에 앱으로 설치</span>
+                </button>
+                <a href="https://j-jg.cc/logout" class="unav-m-logout-btn">
+                    <span>🚪</span>
+                    <span>안전하게 로그아웃</span>
+                </a>
             </div>
         </div>
     </div>
