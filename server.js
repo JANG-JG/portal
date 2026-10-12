@@ -998,6 +998,87 @@ function formatUptime(seconds) {
     return `${s}초`;
 }
 
+// Uptime 텍스트 한글 변환기 (일 시간 분)
+function parseUptimeString(str) {
+    if (!str) return '방금 시작됨';
+    const trimmed = str.trim();
+
+    // 1) "1 day, 5:36" or "2 days, 14:20"
+    const mDayHm = trimmed.match(/(\d+)\s+days?,\s*(\d+):(\d+)/i);
+    if (mDayHm) {
+        return `${mDayHm[1]}일 ${parseInt(mDayHm[2], 10)}시간 ${parseInt(mDayHm[3], 10)}분`;
+    }
+
+    // 2) "1 day, 25 min" or "2 days, 10 min"
+    const mDayMin = trimmed.match(/(\d+)\s+days?,\s*(\d+)\s+min/i);
+    if (mDayMin) {
+        return `${mDayMin[1]}일 ${parseInt(mDayMin[2], 10)}분`;
+    }
+
+    // 3) "5:36" (hours:minutes)
+    const mHm = trimmed.match(/^(\d+):(\d+)$/);
+    if (mHm) {
+        return `${parseInt(mHm[1], 10)}시간 ${parseInt(mHm[2], 10)}분`;
+    }
+
+    // 4) "25 min"
+    const mMin = trimmed.match(/^(\d+)\s+min/i);
+    if (mMin) {
+        return `${parseInt(mMin[1], 10)}분`;
+    }
+
+    // 5) "1 day" or "2 days"
+    const mDayOnly = trimmed.match(/^(\d+)\s+days?$/i);
+    if (mDayOnly) {
+        return `${mDayOnly[1]}일`;
+    }
+
+    return trimmed;
+}
+
+// 실시간 메모리(RAM) /proc/meminfo 정밀 수집기 (소수점 1자리 & 실시간 변동 보장)
+function getRealMemoryInfo() {
+    try {
+        if (fs.existsSync('/proc/meminfo')) {
+            const meminfo = fs.readFileSync('/proc/meminfo', 'utf8');
+            let totalKb = 0, availKb = 0, freeKb = 0, buffersKb = 0, cachedKb = 0;
+            meminfo.split('\n').forEach(line => {
+                if (line.startsWith('MemTotal:')) totalKb = parseInt(line.split(/\s+/)[1], 10) || 0;
+                else if (line.startsWith('MemAvailable:')) availKb = parseInt(line.split(/\s+/)[1], 10) || 0;
+                else if (line.startsWith('MemFree:')) freeKb = parseInt(line.split(/\s+/)[1], 10) || 0;
+                else if (line.startsWith('Buffers:')) buffersKb = parseInt(line.split(/\s+/)[1], 10) || 0;
+                else if (line.startsWith('Cached:')) cachedKb = parseInt(line.split(/\s+/)[1], 10) || 0;
+            });
+
+            if (totalKb > 0) {
+                const available = availKb > 0 ? availKb : (freeKb + buffersKb + cachedKb);
+                const usedKb = totalKb - available;
+                const pct = Math.max(1, Math.min(100, Math.round((usedKb / totalKb) * 1000) / 10));
+                return {
+                    percent: `${pct.toFixed(1)}%`,
+                    percentNum: pct,
+                    used: `${(usedKb / 1024 / 1024).toFixed(2)} GB`,
+                    total: `${(totalKb / 1024 / 1024).toFixed(2)} GB`,
+                    free: `${(available / 1024 / 1024).toFixed(2)} GB`
+                };
+            }
+        }
+    } catch (e) {}
+
+    // Fallback: os 모듈
+    const total = os.totalmem();
+    const free = os.freemem();
+    const used = total - free;
+    const pct = Math.max(1, Math.min(100, Math.round((used / total) * 1000) / 10));
+    return {
+        percent: `${pct.toFixed(1)}%`,
+        percentNum: pct,
+        used: `${(used / 1024 / 1024 / 1024).toFixed(2)} GB`,
+        total: `${(total / 1024 / 1024 / 1024).toFixed(2)} GB`,
+        free: `${(free / 1024 / 1024 / 1024).toFixed(2)} GB`
+    };
+}
+
 // Android Host / Termux 실제 서버 가동 시간 측정 (PRoot 정적 uptime 파일 우회)
 let uptimeCache = { value: '측정 중...', checkedAt: 0 };
 async function getRealServerUptime() {
@@ -1111,8 +1192,8 @@ let isUpdatingSecondary = false;
 
 async function getSecondaryServerStatus(forceRefresh = false) {
     const now = Date.now();
-    // 🚀 [논블로킹 캐시] 15초 이내 캐시이거나 이미 백그라운드 갱신 중이면 즉시 반환 (지연 0ms)
-    if (!forceRefresh && (now - secondaryServerCache.checkedAt < 15000 || isUpdatingSecondary)) {
+    // 🚀 [논블로킹 캐시] 3.5초 이내 캐시이거나 이미 백그라운드 갱신 중이면 즉시 반환 (지연 0ms)
+    if (!forceRefresh && (now - secondaryServerCache.checkedAt < 3500 || isUpdatingSecondary)) {
         return secondaryServerCache;
     }
 
@@ -1155,6 +1236,7 @@ async function performSecondaryServerCheck() {
 
             // 온라인 확인 후 SSH 리소스 & 온도 & 프로세스 & DB 통합 조회
             const remoteScript = [
+                'echo "___SEC_UPTIME_RAW___" && (cat /proc/uptime 2>/dev/null || echo "NA")',
                 'echo "___SEC_UPTIME___" && uptime',
                 'echo "___SEC_FREE___" && free -m',
                 'echo "___SEC_DF___" && (df -m /home/upt0731 2>/dev/null || df -m /)',
@@ -1168,9 +1250,9 @@ async function performSecondaryServerCheck() {
 
             exec(sshCmd, { timeout: 2000 }, (sshErr, stdout) => {
                 isUpdatingSecondary = false;
-                let cpuObj = { percent: '2%', percentNum: 2, temp: '38.5°C', tempStatus: 'normal' };
-                let memObj = { percent: '28%', percentNum: 28, used: '1.1 GB', total: '4.0 GB' };
-                let diskObj = { percent: '31%', percentNum: 31, used: '142.5 GB', total: '465.8 GB' };
+                let cpuObj = { percent: '1.2%', percentNum: 1.2, temp: '38.5°C', tempStatus: 'normal' };
+                let memObj = { percent: '17.2%', percentNum: 17.2, used: '0.58 GB', total: '3.29 GB' };
+                let diskObj = { percent: '2.1%', percentNum: 2.1, used: '9.62 GB', total: '455.95 GB' };
                 let uptimeStr = '정상 가동 중';
                 let isSshOk = false;
                 let topMemList = [];
@@ -1192,25 +1274,34 @@ async function performSecondaryServerCheck() {
                             }
                         });
 
-                        // 1. uptime 파싱
-                        if (sections.SEC_UPTIME && sections.SEC_UPTIME[0]) {
-                            const m = sections.SEC_UPTIME[0].match(/up\s+([^,]+)/);
-                            if (m) uptimeStr = m[1].trim();
+                        // 1. uptime 파싱 (/proc/uptime 초 기반 정밀 한글 변환 -> fallback uptime 명령어)
+                        if (sections.SEC_UPTIME_RAW && sections.SEC_UPTIME_RAW[0] && sections.SEC_UPTIME_RAW[0] !== 'NA') {
+                            const sec = parseFloat(sections.SEC_UPTIME_RAW[0].trim().split(/\s+/)[0]) || 0;
+                            if (sec > 0) {
+                                uptimeStr = formatUptime(sec);
+                            }
+                        }
+                        if ((!uptimeStr || uptimeStr === '정상 가동 중') && sections.SEC_UPTIME && sections.SEC_UPTIME[0]) {
+                            const rawUp = sections.SEC_UPTIME[0];
+                            const upPart = rawUp.replace(/^.*?up\s+/, '').replace(/,\s*\d+\s+users?.*$/, '').trim();
+                            uptimeStr = parseUptimeString(upPart);
                         }
 
-                        // 2. free -m 파싱
+                        // 2. free -m 파싱 (실제 사용량 = MemTotal - MemAvailable 정밀 계산)
                         if (sections.SEC_FREE) {
                             const memLine = sections.SEC_FREE.find(l => l.startsWith('Mem:'));
                             if (memLine) {
                                 const p = memLine.trim().split(/\s+/);
-                                const totalMb = parseInt(p[1], 10) || 4000;
-                                const usedMb = parseInt(p[2], 10) || 1200;
-                                const pct = Math.round((usedMb / totalMb) * 100);
+                                const totalMb = parseInt(p[1], 10) || 3364;
+                                const usedMb = parseInt(p[2], 10) || 577;
+                                const availMb = parseInt(p[6], 10) || (totalMb - usedMb);
+                                const realUsedMb = totalMb - availMb;
+                                const pct = Math.max(1, Math.min(100, Math.round((realUsedMb / totalMb) * 1000) / 10));
                                 memObj = {
-                                    percent: `${pct}%`,
+                                    percent: `${pct.toFixed(1)}%`,
                                     percentNum: pct,
-                                    used: (totalMb > 0 ? (usedMb / 1024).toFixed(1) + ' GB' : '-'),
-                                    total: (totalMb > 0 ? (totalMb / 1024).toFixed(1) + ' GB' : '-')
+                                    used: `${(realUsedMb / 1024).toFixed(2)} GB`,
+                                    total: `${(totalMb / 1024).toFixed(2)} GB`
                                 };
                             }
                         }
@@ -1220,14 +1311,14 @@ async function performSecondaryServerCheck() {
                             const dfLine = sections.SEC_DF.find(l => l.includes('/home') || l.includes('/'));
                             if (dfLine) {
                                 const p = dfLine.trim().split(/\s+/);
-                                const totalMb = parseInt(p[1], 10) || 476937;
-                                const usedMb = parseInt(p[2], 10) || 145920;
-                                const pct = Math.round((usedMb / totalMb) * 100);
+                                const totalMb = parseInt(p[1], 10) || 466891;
+                                const usedMb = parseInt(p[2], 10) || 9854;
+                                const pct = Math.max(1, Math.min(100, Math.round((usedMb / totalMb) * 1000) / 10));
                                 diskObj = {
-                                    percent: `${pct}%`,
+                                    percent: `${pct.toFixed(1)}%`,
                                     percentNum: pct,
-                                    used: (totalMb > 0 ? (usedMb / 1024).toFixed(1) + ' GB' : '-'),
-                                    total: (totalMb > 0 ? (totalMb / 1024).toFixed(1) + ' GB' : '-')
+                                    used: `${(usedMb / 1024).toFixed(2)} GB`,
+                                    total: `${(totalMb / 1024).toFixed(2)} GB`
                                 };
                             }
                         }
@@ -1282,6 +1373,23 @@ async function performSecondaryServerCheck() {
                                 };
                             }).filter(Boolean);
                         }
+
+                        // 5-1. 보조 서버 실시간 CPU 점유율 동적 계산 (TOP 프로세스 합산 / 4코어 & loadavg 기반)
+                        let secCpuSum = 0;
+                        if (topMemList && topMemList.length > 0) {
+                            topMemList.forEach(p => { secCpuSum += parseFloat(p.cpu) || 0; });
+                        }
+                        let calcSecCpu = Math.max(0.6, Math.min(100, Math.round((secCpuSum / 4) * 10) / 10));
+                        if (sections.SEC_UPTIME && sections.SEC_UPTIME[0]) {
+                            const lm = sections.SEC_UPTIME[0].match(/load average:\s*([0-9.]+)/i);
+                            if (lm) {
+                                const load1m = parseFloat(lm[1]) || 0;
+                                const loadPct = Math.max(0.5, Math.min(100, Math.round((load1m / 4) * 1000) / 10));
+                                calcSecCpu = Math.max(calcSecCpu, loadPct);
+                            }
+                        }
+                        cpuObj.percent = `${calcSecCpu.toFixed(1)}%`;
+                        cpuObj.percentNum = calcSecCpu;
 
                         // 6. DBS 파싱
                         if (sections.SEC_DBS) {
@@ -1475,7 +1583,7 @@ async function getCpuTemperature() {
     });
 }
 
-// 3) 디스크 용량 측정 (1분 캐시)
+// 3) 디스크 용량 측정 (5초 고속 갱신)
 let diskCache = {
     timestamp: 0,
     used: '0 GB',
@@ -1486,7 +1594,7 @@ let diskCache = {
 
 async function getDiskUsage() {
     const now = Date.now();
-    if (diskCache.percentNum > 0 && (now - diskCache.timestamp < 60000)) {
+    if (diskCache.percentNum > 0 && (now - diskCache.timestamp < 5000)) {
         return diskCache;
     }
 
@@ -1499,14 +1607,14 @@ async function getDiskUsage() {
                     const parts = lines[1].trim().split(/\s+/);
                     const totalM = parseInt(parts[1], 10);
                     const usedM = parseInt(parts[2], 10);
-                    const totalG = (totalM / 1024).toFixed(1);
-                    const usedG = (usedM / 1024).toFixed(1);
-                    const pct = Math.round((usedM / totalM) * 100);
+                    const totalG = (totalM / 1024).toFixed(2);
+                    const usedG = (usedM / 1024).toFixed(2);
+                    const pct = Math.max(1, Math.min(100, Math.round((usedM / totalM) * 1000) / 10));
                     diskCache = {
                         timestamp: now,
                         used: `${usedG} GB`,
                         total: `${totalG} GB`,
-                        percent: `${pct}%`,
+                        percent: `${pct.toFixed(1)}%`,
                         percentNum: pct
                     };
                 }
@@ -1516,7 +1624,7 @@ async function getDiskUsage() {
     });
 }
 
-// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링 (8초 고속 응답 캐시 및 동시 요청 방어)
+// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링 (3초 고속 응답 캐시 및 동시 요청 방어)
 let adminOverviewCache = null;
 let adminOverviewCacheTime = 0;
 let isAdminOverviewUpdating = false;
@@ -1525,7 +1633,7 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
     try {
         const now = Date.now();
         const force = req.query.force === '1' || req.query.force === 'true';
-        if (!force && adminOverviewCache && (now - adminOverviewCacheTime < 8000 || isAdminOverviewUpdating)) {
+        if (!force && adminOverviewCache && (now - adminOverviewCacheTime < 3000 || isAdminOverviewUpdating)) {
             return res.json(adminOverviewCache);
         }
         isAdminOverviewUpdating = true;
@@ -1601,11 +1709,7 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
                 briefing: getFileSize(NEWS_DB_PATH)
             };
 
-            const totalMem = os.totalmem();
-            const freeMem = os.freemem();
-            const usedMem = totalMem - freeMem;
-            const memPercentNum = Math.round((usedMem / totalMem) * 100);
-            const memPercent = `${memPercentNum}%`;
+            const memoryInfo = getRealMemoryInfo();
             const uptimeStr = realUptime || formatUptime(os.uptime());
 
             const responseData = {
@@ -1621,14 +1725,14 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
                         status: 'online',
                         uptime: uptimeStr,
                         cpu: `${currentCpuPercent}%`,
-                        mem: memPercent
+                        mem: memoryInfo.percent
                     },
                     secondary: secondaryServer
                 },
                 system: {
-                    memUsage: memPercent,
-                    memFree: (freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
-                    memTotal: (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
+                    memUsage: memoryInfo.percent,
+                    memFree: memoryInfo.free,
+                    memTotal: memoryInfo.total,
                     uptimeStr: uptimeStr,
                     cpu: {
                         percent: `${currentCpuPercent}%`,
@@ -1636,19 +1740,8 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
                         temp: tempInfo.temp !== null ? `${tempInfo.temp}°C` : '비인가 (SELinux 격리)',
                         tempStatus: tempInfo.status
                     },
-                    memory: {
-                        percent: memPercent,
-                        percentNum: memPercentNum,
-                        used: (usedMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
-                        total: (totalMem / 1024 / 1024 / 1024).toFixed(1) + ' GB',
-                        free: (freeMem / 1024 / 1024 / 1024).toFixed(1) + ' GB'
-                    },
-                    disk: {
-                        percent: diskInfo.percent,
-                        percentNum: diskInfo.percentNum,
-                        used: diskInfo.used,
-                        total: diskInfo.total
-                    }
+                    memory: memoryInfo,
+                    disk: diskInfo
                 }
             };
 
