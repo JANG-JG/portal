@@ -19,33 +19,57 @@
     async function mountUnifiedNav() {
         ensureUnifiedNavCss();
 
+        const CACHE_KEY = 'jg_unav_html_v20261012';
+        let cachedHtml = null;
+        try {
+            cachedHtml = sessionStorage.getItem(CACHE_KEY);
+        } catch (e) {}
+
+        const applyHtml = (html) => {
+            let target = document.getElementById('unified-nav-root') || 
+                         document.getElementById('unavRoot') || 
+                         document.querySelector('header.unav-header');
+
+            if (target) {
+                const oldDrawer = document.getElementById('unavDrawer');
+                if (oldDrawer && oldDrawer.parentNode !== target) oldDrawer.remove();
+                const oldModal = document.getElementById('notificationModal');
+                if (oldModal && oldModal.parentNode !== target) oldModal.remove();
+                target.outerHTML = html;
+            } else if (document.body) {
+                const oldModal = document.getElementById('notificationModal');
+                if (oldModal) oldModal.remove();
+                document.body.insertAdjacentHTML('afterbegin', html);
+            }
+        };
+
+        // 0) 이미 페이지 마크업에 정상적인 .unav-container가 정적으로 마운트되어 있다면 fetch 및 재렌더링 불필요
+        const existingNav = document.querySelector('header.unav-header .unav-container');
+        if (existingNav) {
+            highlightActiveMenu();
+            initUnifiedNav();
+            return;
+        }
+
+        // 1) 캐시가 있으면 즉시 렌더링 (0ms 레이턴시)
+        if (cachedHtml) {
+            applyHtml(cachedHtml);
+            highlightActiveMenu();
+            initUnifiedNav();
+            return;
+        }
+
+        // 2) 캐시가 없으면 1회 네트워크 로드 후 sessionStorage 보관
         try {
             const isLocal = window.location.hostname === 'localhost';
-            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=20261012_v1';
+            const compUrl = isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html';
             const res = await fetch(compUrl);
             if (res.ok) {
                 const html = await res.text();
-                let target = document.getElementById('unified-nav-root') || 
-                             document.getElementById('unavRoot') || 
-                             document.querySelector('header.unav-header');
-
-                if (target) {
-                    // 구버전 외부 독립 드로어가 있을 경우 중복 방지 제거
-                    const oldDrawer = document.getElementById('unavDrawer');
-                    if (oldDrawer && oldDrawer.parentNode !== target) {
-                        oldDrawer.remove();
-                    }
-                    // 구버전 외부 독립 notificationModal이 있을 경우 중복 방지 제거
-                    const oldModal = document.getElementById('notificationModal');
-                    if (oldModal && oldModal.parentNode !== target) {
-                        oldModal.remove();
-                    }
-                    target.outerHTML = html;
-                } else if (document.body) {
-                    const oldModal = document.getElementById('notificationModal');
-                    if (oldModal) oldModal.remove();
-                    document.body.insertAdjacentHTML('afterbegin', html);
-                }
+                applyHtml(html);
+                try {
+                    sessionStorage.setItem(CACHE_KEY, html);
+                } catch (e) {}
             }
         } catch (err) {
             console.warn('[UnifiedNav] 동적 컴포넌트 로드 실패, 기존 마크업 유지:', err);

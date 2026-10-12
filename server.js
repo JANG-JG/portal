@@ -75,9 +75,15 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public'), {
     index: false,
+    etag: true,
+    lastModified: true,
     setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.html')) {
+        if (filePath.endsWith('.html')) {
+            // HTML 문서는 최신 상태 즉각 반영을 위해 no-cache (ETag 304 활용)
             res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+        } else if (filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.match(/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf)$/i)) {
+            // JS, CSS, 이미지, 폰트는 CDN 및 브라우저에서 1일 캐시, 백그라운드 갱신 7일
+            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
         }
     }
 }));
@@ -449,39 +455,22 @@ function getWeatherIcon(desc) {
 // 실시간 날씨 캐시 (10분 유효)
 let weatherCache = {
     timestamp: 0,
-    data: null
-};
-
-async function getLiveWeatherData() {
-    const now = Date.now();
-    if (weatherCache.data && (now - weatherCache.timestamp < 10 * 60 * 1000)) {
-        return weatherCache.data;
-    }
-
-    // 1) DB에서 설정된 도시 조회
-    let rawCity = 'Gyeryong';
-    try {
-        const row = await new Promise((res) => {
-            newsDb.get("SELECT value FROM system_settings WHERE key = 'weather_city'", (err, r) => res(r || null));
-        });
-        if (row && row.value && row.value.trim()) {
-            rawCity = row.value.trim();
-        }
-    } catch (e) {}
-
-    const korCityName = CITY_KO_MAP[rawCity] || rawCity;
-
-    let weatherObj = {
-        city: korCityName,
+    data: {
+        city: '계룡시',
         temp: '13°C',
         condition: '맑음',
         icon: '🌤️'
-    };
+    }
+};
+let isWeatherFetching = false;
 
-    // 2) wttr.in 실시간 API 호출
+// 백그라운드에서 wttr.in 최신 정보 갱신 (API 블로킹 방지)
+async function refreshWeatherInBackground(rawCity, korCityName) {
+    if (isWeatherFetching) return;
+    isWeatherFetching = true;
     try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
+        const timeout = setTimeout(() => controller.abort(), 3500);
         const resp = await fetch(`https://wttr.in/${encodeURIComponent(rawCity)}?format=j1`, {
             headers: { 'User-Agent': 'curl/7.68.0' },
             signal: controller.signal
@@ -495,19 +484,57 @@ async function getLiveWeatherData() {
                 const tempC = cur.temp_C ? `${cur.temp_C}°C` : '-';
                 const desc = cur.weatherDesc && cur.weatherDesc[0] ? cur.weatherDesc[0].value : '';
                 const icon = getWeatherIcon(desc);
-                weatherObj = {
-                    city: korCityName,
-                    temp: tempC,
-                    condition: desc || '맑음',
-                    icon: icon
+                weatherCache = {
+                    timestamp: Date.now(),
+                    data: {
+                        city: korCityName,
+                        temp: tempC,
+                        condition: desc || '맑음',
+                        icon: icon
+                    }
                 };
-                weatherCache = { timestamp: now, data: weatherObj };
-                return weatherObj;
+                return;
             }
         }
-    } catch (apiErr) {}
+    } catch (e) {
+        // 네트워크 실패 시 조용히 무시 (기존 캐시 유지)
+    } finally {
+        isWeatherFetching = false;
+    }
+}
 
-    // 3) 실패 시 daily_weather 테이블에서 fallback 파싱
+async function getLiveWeatherData() {
+    const now = Date.now();
+    // 1) 10분 이내 유효한 캐시가 있으면 즉시 반환 (0ms)
+    if (weatherCache.data && (now - weatherCache.timestamp < 10 * 60 * 1000)) {
+        return weatherCache.data;
+    }
+
+    // 2) 설정된 도시 조회
+    let rawCity = 'Gyeryong';
+    try {
+        const row = await new Promise((res) => {
+            newsDb.get("SELECT value FROM system_settings WHERE key = 'weather_city'", (err, r) => res(r || null));
+        });
+        if (row && row.value && row.value.trim()) {
+            rawCity = row.value.trim();
+        }
+    } catch (e) {}
+    const korCityName = CITY_KO_MAP[rawCity] || rawCity;
+
+    // 3) 캐시가 만료되었더라도 기존 캐시가 있으면 즉시 반환하고 백그라운드에서 갱신 (Stale-While-Revalidate)
+    if (weatherCache.data && weatherCache.timestamp > 0) {
+        refreshWeatherInBackground(rawCity, korCityName);
+        return weatherCache.data;
+    }
+
+    // 4) 최초 기동 시 캐시가 없다면 로컬 SQLite daily_weather에서 0.1ms 만에 읽어서 즉시 반환
+    let weatherObj = {
+        city: korCityName,
+        temp: '13°C',
+        condition: '맑음',
+        icon: '🌤️'
+    };
     try {
         const dwRow = await new Promise((res) => {
             newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', (err, r) => res(r || null));
@@ -515,9 +542,7 @@ async function getLiveWeatherData() {
         if (dwRow && dwRow.weather_info) {
             const info = dwRow.weather_info;
             const tempMatch = info.match(/(\d+)°C/);
-            if (tempMatch) {
-                weatherObj.temp = `${tempMatch[1]}°C`;
-            }
+            if (tempMatch) weatherObj.temp = `${tempMatch[1]}°C`;
             if (info.includes('안개')) weatherObj.icon = '🌫️';
             else if (info.includes('비')) weatherObj.icon = '🌧️';
             else if (info.includes('눈')) weatherObj.icon = '❄️';
@@ -527,6 +552,7 @@ async function getLiveWeatherData() {
     } catch (e) {}
 
     weatherCache = { timestamp: now, data: weatherObj };
+    refreshWeatherInBackground(rawCity, korCityName);
     return weatherObj;
 }
 
@@ -539,13 +565,11 @@ let marketCache = {
         usd_krw: { name: 'USD/KRW', price: '-', ratio: '-', direction: 'up' }
     }
 };
+let isMarketFetching = false;
 
-async function getLiveMarketData() {
-    const now = Date.now();
-    if (marketCache.data && (now - marketCache.timestamp < 300000)) {
-        return marketCache.data;
-    }
-
+async function refreshMarketInBackground() {
+    if (isMarketFetching) return;
+    isMarketFetching = true;
     try {
         const [kRes, qRes, uRes] = await Promise.allSettled([
             fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI', { 
@@ -597,11 +621,26 @@ async function getLiveMarketData() {
             nextData.usd_krw = { name: 'USD/KRW', price: p, ratio, direction: dir };
         }
 
-        marketCache = { timestamp: now, data: nextData };
-        return nextData;
+        marketCache = { timestamp: Date.now(), data: nextData };
     } catch (e) {
+    } finally {
+        isMarketFetching = false;
+    }
+}
+
+async function getLiveMarketData() {
+    const now = Date.now();
+    if (marketCache.data && (now - marketCache.timestamp < 300000)) {
         return marketCache.data;
     }
+    // 만료되었더라도 기존 캐시가 있으면 즉시 반환하고 백그라운드 갱신 (0ms 지연)
+    if (marketCache.data && marketCache.timestamp > 0) {
+        refreshMarketInBackground();
+        return marketCache.data;
+    }
+    // 최초 실행 시
+    refreshMarketInBackground();
+    return marketCache.data;
 }
 
 // 6. 요약 데이터 조회 API (메인 대시보드 카드용)
