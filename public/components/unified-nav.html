@@ -200,12 +200,18 @@
             </div>
         </nav>
 
-        <!-- 모바일 햄버거 토글 버튼 -->
-        <button type="button" class="unav-hamburger" id="unavHamburgerBtn" aria-label="메뉴 열기" aria-expanded="false">
-            <span class="unav-bar"></span>
-            <span class="unav-bar"></span>
-            <span class="unav-bar"></span>
-        </button>
+        <!-- 모바일 상단 우측 액션 버튼 (종 아이콘 + 삼선 햄버거) -->
+        <div class="unav-actions">
+            <button type="button" class="unav-mobile-notif-btn" id="unavMobileNotifBtn" onclick="handleUnifiedNotifClick(event)" aria-label="통합 알림 센터" title="통합 알림 센터">
+                <span class="unav-mobile-notif-icon">🔔</span>
+                <span class="unav-notif-badge unav-mobile-badge" id="unavMobileNotifBadge" style="display: none;">0</span>
+            </button>
+            <button type="button" class="unav-hamburger" id="unavHamburgerBtn" aria-label="메뉴 열기/닫기" aria-expanded="false">
+                <span class="unav-bar"></span>
+                <span class="unav-bar"></span>
+                <span class="unav-bar"></span>
+            </button>
+        </div>
     </div>
 
     <!-- 모바일 드로어 메뉴 -->
@@ -277,14 +283,6 @@
                         <a href="https://j-jg.cc/admin#tab-news">📰 뉴스 브리핑 설정</a>
                         <a href="https://j-jg.cc/admin#tab-security">👤 보안 및 계정 관리</a>
                     </div>
-                </div>
-
-                <!-- 6. 알림 센터 (🔔) -->
-                <div class="unav-m-group">
-                    <button type="button" class="unav-m-title unav-m-notif-btn" onclick="handleUnifiedNotifClick(event)" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                        <span>🔔 통합 알림 센터</span>
-                        <span class="unav-notif-badge" id="unavMNotifBadge" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold;">0</span>
-                    </button>
                 </div>
 
                 <!-- 7. 로그아웃 -->

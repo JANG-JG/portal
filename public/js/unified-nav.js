@@ -10,7 +10,7 @@
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             const isLocal = window.location.hostname === 'localhost';
-            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261012_v1';
+            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261013_v1';
             document.head.appendChild(link);
         }
     }
@@ -19,7 +19,7 @@
     async function mountUnifiedNav() {
         ensureUnifiedNavCss();
 
-        const CACHE_KEY = 'jg_unav_html_v20261012';
+        const CACHE_KEY = 'jg_unav_html_v20261013';
         let cachedHtml = null;
         try {
             cachedHtml = sessionStorage.getItem(CACHE_KEY);
@@ -781,8 +781,9 @@
         return outputArray;
     }
 
-    // 내비게이션 바에 알림 항목이 없을 경우 자동 주입 (fallback)
+    // 내비게이션 바에 알림 항목이 없을 경우 자동 주입 및 보정 (fallback & self-healing)
     function ensureNotificationNavItems() {
+        // 1. 데스크톱 내비게이션 메뉴 알림 버튼 보정
         const menu = document.querySelector('.unav-menu');
         if (menu && !document.querySelector('.unav-notif-btn')) {
             const logoutItem = menu.querySelector('.unav-logout-btn')?.closest('.unav-item') || menu.lastElementChild;
@@ -792,7 +793,7 @@
                 <button type="button" class="unav-link unav-notif-btn" onclick="handleUnifiedNotifClick(event)" title="통합 알림 센터" style="background: none; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.35rem; font-family: inherit; font-size: inherit; color: inherit;">
                     <span style="font-size: 1.15rem; line-height: 1;">🔔</span>
                     <span>알림</span>
-                    <span class="unav-notif-badge" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold; line-height: 1.2;">0</span>
+                    <span class="unav-notif-badge" id="unavNotifBadge" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold; line-height: 1.2;">0</span>
                 </button>
             `;
             if (logoutItem) {
@@ -802,17 +803,45 @@
             }
         }
 
-        const mList = document.querySelector('.unav-m-list');
-        if (mList && !document.querySelector('.unav-m-notif-btn')) {
-            const notifMGroup = document.createElement('div');
-            notifMGroup.className = 'unav-m-group';
-            notifMGroup.innerHTML = `
-                <button type="button" class="unav-m-title unav-m-notif-btn" onclick="handleUnifiedNotifClick(event)" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                    <span>🔔 통합 알림 센터</span>
-                    <span class="unav-notif-badge" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem; font-weight: bold;">0</span>
-                </button>
+        // 2. 모바일 상단 우측 삼선 바 옆 종 아이콘 버튼 보정
+        const hamburgerBtn = document.getElementById('unavHamburgerBtn');
+        let mobileNotifBtn = document.getElementById('unavMobileNotifBtn');
+        if (hamburgerBtn && !mobileNotifBtn) {
+            let actionsWrap = hamburgerBtn.closest('.unav-actions');
+            if (!actionsWrap) {
+                actionsWrap = document.createElement('div');
+                actionsWrap.className = 'unav-actions';
+                hamburgerBtn.parentNode.insertBefore(actionsWrap, hamburgerBtn);
+                actionsWrap.appendChild(hamburgerBtn);
+            }
+            mobileNotifBtn = document.createElement('button');
+            mobileNotifBtn.type = 'button';
+            mobileNotifBtn.className = 'unav-mobile-notif-btn';
+            mobileNotifBtn.id = 'unavMobileNotifBtn';
+            mobileNotifBtn.onclick = window.handleUnifiedNotifClick;
+            mobileNotifBtn.setAttribute('aria-label', '통합 알림 센터');
+            mobileNotifBtn.setAttribute('title', '통합 알림 센터');
+            mobileNotifBtn.innerHTML = `
+                <span class="unav-mobile-notif-icon">🔔</span>
+                <span class="unav-notif-badge unav-mobile-badge" id="unavMobileNotifBadge" style="display: none;">0</span>
             `;
-            mList.appendChild(notifMGroup);
+            actionsWrap.insertBefore(mobileNotifBtn, hamburgerBtn);
+        }
+
+        // 3. 모바일 드로어(삼선 메뉴) 내부의 중복 알림 항목 완전히 청소 (제거)
+        const mList = document.querySelector('.unav-m-list');
+        if (mList) {
+            const oldNotifItems = mList.querySelectorAll('.unav-m-notif-btn, #unavMNotifBadge');
+            oldNotifItems.forEach(el => {
+                const group = el.closest('.unav-m-group');
+                if (group) group.remove();
+                else el.remove();
+            });
+            mList.querySelectorAll('.unav-m-group').forEach(group => {
+                if (group.textContent && group.textContent.includes('통합 알림 센터')) {
+                    group.remove();
+                }
+            });
         }
     }
 
@@ -825,9 +854,10 @@
             .then(data => {
                 if (data && typeof data.unreadCount === 'number') {
                     const cnt = data.unreadCount;
-                    const badges = document.querySelectorAll('#unavNotifBadge, #unavMNotifBadge, .unav-notif-badge');
+                    const text = cnt > 99 ? '99+' : String(cnt);
+                    const badges = document.querySelectorAll('#unavNotifBadge, #unavMobileNotifBadge, #unavMNotifBadge, .unav-notif-badge');
                     badges.forEach(b => {
-                        b.textContent = cnt;
+                        b.textContent = text;
                         b.style.display = cnt > 0 ? 'inline-block' : 'none';
                     });
                 }
