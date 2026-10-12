@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v4';
+const CACHE_NAME = 'jg-portal-v5';
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
@@ -46,7 +46,27 @@ self.addEventListener('push', (event) => {
     }
 
     if (data.title) {
-        data.title = data.title.replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '').replace(/^\[?JG\s*포털\]?\s*/i, '').trim();
+        data.title = data.title
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/\u00a0/g, ' ')
+            .replace(/&amp;/gi, '&')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;/gi, "'")
+            .replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '')
+            .replace(/^\[?JG\s*포털\]?\s*/i, '')
+            .trim();
+    }
+
+    if (data.body) {
+        data.body = String(data.body)
+            .replace(/&nbsp;/gi, ' ')
+            .replace(/\u00a0/g, ' ')
+            .replace(/&amp;/gi, '&')
+            .replace(/&quot;/gi, '"')
+            .replace(/&#39;/gi, "'")
+            .replace(/<[^>]+>/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
     }
 
     // 알림 성격에 맞춘 동적 액션 버튼 라벨 지정
@@ -66,13 +86,15 @@ self.addEventListener('push', (event) => {
 
     const defaultUrl = data.title?.includes('속보') ? 'https://news.j-jg.cc/breaking' : 'https://j-jg.cc/';
 
+    // 안드로이드 Heads-up (상단 배너 팝업)을 유도하고 알림이 덮어써지지 않도록 옵션 구성
     const options = {
         body: data.body,
         icon: data.icon || 'https://j-jg.cc/favicon.svg',
         badge: data.badge || 'https://j-jg.cc/favicon.svg',
         tag: data.tag || undefined,
-        renotify: false,
-        vibrate: [200, 100, 200],
+        renotify: true,
+        vibrate: [300, 150, 300, 150, 300],
+        timestamp: Date.now(),
         data: data.data || { url: defaultUrl },
         actions: [
             { action: 'open', title: actionTitle }

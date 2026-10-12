@@ -13,7 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JG 포털">
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/unified-nav.css?v=20261013_v1">
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261013_v2">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 -->
@@ -78,13 +78,6 @@
                             <div class="unav-sub-text">
                                 <strong>병원 일정 상세 관리</strong>
                                 <small>진료 방문 내역 및 복용 기반 일정 예측</small>
-                            </div>
-                        </a>
-                        <a href="https://j-jg.cc/admin#tab-blood" class="unav-sublink">
-                            <span class="unav-sub-icon">⚙️</span>
-                            <div class="unav-sub-text">
-                                <strong>관리자 제어 센터</strong>
-                                <small>혈압 DB 백업 및 보안 로그 감시</small>
                             </div>
                         </a>
                     </div>
@@ -156,13 +149,6 @@
                             <div class="unav-sub-text">
                                 <strong>관심 분야 관리</strong>
                                 <small>경제, 사회, 국방 등 카테고리 설정</small>
-                            </div>
-                        </a>
-                        <a href="https://j-jg.cc/admin#tab-news" class="unav-sublink">
-                            <span class="unav-sub-icon">⚙️</span>
-                            <div class="unav-sub-text">
-                                <strong>뉴스 수집 관리</strong>
-                                <small>RSS 피드 수집 및 텔레그램 발송</small>
                             </div>
                         </a>
                     </div>
@@ -272,7 +258,6 @@
                             <a href="https://blood.j-jg.cc/dashboard.html">📋 혈압 관리 메인 페이지</a>
                             <a href="https://blood.j-jg.cc/report.html">📊 진료 리포트 보기</a>
                             <a href="https://blood.j-jg.cc/hospital.html">🏥 병원 일정 상세 관리</a>
-                            <a href="https://j-jg.cc/admin#tab-blood">⚙️ 관리자 제어 센터</a>
                         </div>
                     </div>
 
@@ -300,7 +285,6 @@
                             <a href="https://news.j-jg.cc/breaking">🚨 실시간 속보 브리핑</a>
                             <a href="https://news.j-jg.cc/weather">🌤️ 날씨 브리핑</a>
                             <a href="https://news.j-jg.cc/categories">🏷️ 관심 분야 관리</a>
-                            <a href="https://j-jg.cc/admin#tab-news">⚙️ 뉴스 수집 관리</a>
                         </div>
                     </div>
 
@@ -886,21 +870,21 @@
                 </div>
             </div>
 
-            <!-- 메인 탭 전환 바 (설정 vs 수신 내역) -->
+            <!-- 메인 탭 전환 바 (수신 내역 vs 설정) -->
             <div class="notif-main-tabs">
-                <button type="button" id="notifMainTabSettings" class="notif-tab-item active" onclick="switchNotifMainTab('settings')">
-                    <span>⚙️ 알림 맞춤 설정</span>
-                </button>
-                <button type="button" id="notifMainTabHistory" class="notif-tab-item" onclick="switchNotifMainTab('history')">
+                <button type="button" id="notifMainTabHistory" class="notif-tab-item active" onclick="switchNotifMainTab('history')">
                     <span>📬 알림 수신 내역</span>
                     <span id="notifHistoryBadge" class="notif-tab-badge">0</span>
+                </button>
+                <button type="button" id="notifMainTabSettings" class="notif-tab-item" onclick="switchNotifMainTab('settings')">
+                    <span>⚙️ 알림 맞춤 설정</span>
                 </button>
             </div>
 
             <!-- 모달 본문 스크롤 영역 -->
             <div class="notif-modal-scroll">
                 <!-- 1️⃣ 탭 1: 알림 설정 뷰 -->
-                <div id="notifMainViewSettings">
+                <div id="notifMainViewSettings" style="display: none;">
                     <!-- 브라우저 권한 배너 -->
                     <div id="notifPermissionBanner" class="notif-perm-banner">
                         <span id="notifPermissionStatusText">🔒 브라우저 알림 권한 상태 확인 중...</span>
@@ -1051,7 +1035,7 @@
                 </div>
 
                 <!-- 2️⃣ 탭 2: 푸시 알림 수신 내역 뷰 -->
-                <div id="notifMainViewHistory" style="display: none;">
+                <div id="notifMainViewHistory">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 0.4rem;">
                         <span id="notifHistoryCountLabel" style="font-size: 0.82rem; color: #64748b; font-weight: 600;">알림 내역</span>
                         <div style="display: flex; gap: 0.3rem; align-items: center;">
@@ -1538,6 +1522,7 @@
             if (!modal) return;
             modal.style.display = 'flex';
             document.body.style.overflow = 'hidden';
+            switchNotifMainTab('history');
             updateBrowserPermissionUI();
             fetchNotificationSettings();
             fetchNotificationHistory();
@@ -2021,6 +2006,6 @@
     <!-- 🌟 전 사이트 공통 TV 뉴스 티커 하단바 -->
     <script src="/js/news-ticker.js?v=20261011_v4"></script>
     <!-- 🌐 공통 상단 내비게이션 바 스크립트 -->
-    <script src="/js/unified-nav.js?v=20261013_v1"></script>
+    <script src="/js/unified-nav.js?v=20261013_v2"></script>
 </body>
 </html>

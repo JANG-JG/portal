@@ -2274,13 +2274,31 @@ function saveNotificationHistory({ userId = 'admin', type = 'general', title, bo
     });
 }
 
+// 푸시 알림 텍스트 정제 헬퍼 (&nbsp; 및 불필요한 HTML 엔티티/태그 완전 제거)
+function sanitizePushText(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'")
+        .replace(/&lt;/gi, '<')
+        .replace(/&gt;/gi, '>')
+        .replace(/\u00a0/g, ' ')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 // 🌟 [통합 포털 단일 WebPush 발송 엔진]
 function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, userId = null, adminOnly = false }) {
     return new Promise((resolve) => {
-        let cleanTitle = (title || '알림')
+        let cleanTitle = sanitizePushText(title || '알림')
             .replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '')
             .replace(/^\[?JG\s*포털\]?\s*/i, '')
             .trim();
+
+        const cleanBody = sanitizePushText(body);
 
         let targetUrl = url || 'https://j-jg.cc/';
         if (targetUrl.startsWith('/')) {
@@ -2329,19 +2347,25 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                 userId: userId || (adminOnly ? 'admin' : (rows[0] ? rows[0].user_id : 'admin')),
                 type,
                 title: cleanTitle,
-                body,
+                body: cleanBody,
                 icon: 'https://j-jg.cc/favicon.svg',
                 url: targetUrl
             }, (notifId) => {
                 const sep = targetUrl.includes('?') ? '&' : '?';
                 const linkWithId = notifId ? `${targetUrl}${sep}notif_id=${notifId}` : targetUrl;
 
+                // 알림이 이전 알림을 대체하지 않고 기기에 여러 개 누적되도록 고유 tag 부여
+                const uniqueTag = tag && tag.includes('-') && !tag.endsWith(type)
+                    ? tag
+                    : `jg-${type}-${notifId || Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
                 const payload = JSON.stringify({
                     title: cleanTitle,
-                    body,
+                    body: cleanBody,
                     icon: 'https://j-jg.cc/favicon.svg',
                     badge: 'https://j-jg.cc/favicon.svg',
-                    tag: tag || `jg-${type}`,
+                    tag: uniqueTag,
+                    renotify: true,
                     data: {
                         url: linkWithId,
                         notifId: notifId || null

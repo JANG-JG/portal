@@ -316,21 +316,21 @@
             </div>
         </div>
 
-        <!-- 메인 탭 전환 바 (설정 vs 수신 내역) -->
+        <!-- 메인 탭 전환 바 (수신 내역 vs 설정) -->
         <div class="notif-main-tabs">
-            <button type="button" id="notifMainTabSettings" class="notif-tab-item active" onclick="switchNotifMainTab('settings')">
-                <span>⚙️ 알림 맞춤 설정</span>
-            </button>
-            <button type="button" id="notifMainTabHistory" class="notif-tab-item" onclick="switchNotifMainTab('history')">
+            <button type="button" id="notifMainTabHistory" class="notif-tab-item active" onclick="switchNotifMainTab('history')">
                 <span>📬 알림 수신 내역</span>
                 <span id="notifHistoryBadge" class="notif-tab-badge">0</span>
+            </button>
+            <button type="button" id="notifMainTabSettings" class="notif-tab-item" onclick="switchNotifMainTab('settings')">
+                <span>⚙️ 알림 맞춤 설정</span>
             </button>
         </div>
 
         <!-- 모달 본문 스크롤 영역 -->
         <div class="notif-modal-scroll">
             <!-- 1️⃣ 탭 1: 알림 설정 뷰 -->
-            <div id="notifMainViewSettings">
+            <div id="notifMainViewSettings" style="display: none;">
                 <!-- 브라우저 권한 배너 -->
                 <div id="notifPermissionBanner" class="notif-perm-banner">
                     <span id="notifPermissionStatusText">🔒 브라우저 알림 권한 상태 확인 중...</span>
@@ -481,7 +481,7 @@
             </div>
 
             <!-- 2️⃣ 탭 2: 푸시 알림 수신 내역 뷰 -->
-            <div id="notifMainViewHistory" style="display: none;">
+            <div id="notifMainViewHistory">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 0.4rem;">
                     <span id="notifHistoryCountLabel" style="font-size: 0.82rem; color: #64748b; font-weight: 600;">알림 내역</span>
                     <div style="display: flex; gap: 0.3rem; align-items: center;">

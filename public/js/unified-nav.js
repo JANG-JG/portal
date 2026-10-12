@@ -10,7 +10,7 @@
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             const isLocal = window.location.hostname === 'localhost';
-            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261013_v1';
+            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261013_v2';
             document.head.appendChild(link);
         }
     }
@@ -19,7 +19,7 @@
     async function mountUnifiedNav() {
         ensureUnifiedNavCss();
 
-        const CACHE_KEY = 'jg_unav_html_v20261013';
+        const CACHE_KEY = 'jg_unav_html_v20261013_v2';
         let cachedHtml = null;
         try {
             cachedHtml = sessionStorage.getItem(CACHE_KEY);
@@ -256,6 +256,7 @@
         }
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
+        window.switchNotifMainTab('history');
         window.updateBrowserPermissionUI();
         window.fetchNotificationSettings();
         window.fetchNotificationHistory(false);
@@ -843,6 +844,18 @@
                 }
             });
         }
+
+        // 4. 혈압 관리 및 뉴스 브리핑 서브메뉴의 불필요한 관리자 링크 자동 정리 (데스크톱 및 모바일)
+        document.querySelectorAll('header.unav-header').forEach(header => {
+            header.querySelectorAll('a[href*="admin#tab-blood"]').forEach(a => {
+                const isUnderBlood = a.closest('[data-nav="blood"]') || a.textContent.includes('관리자 제어 센터') || a.textContent.includes('보안 로그 감시');
+                if (isUnderBlood) a.remove();
+            });
+            header.querySelectorAll('a[href*="admin#tab-news"]').forEach(a => {
+                const isUnderNews = a.closest('[data-nav="news"]') || a.textContent.includes('뉴스 수집 관리') || a.textContent.includes('RSS 피드 수집');
+                if (isUnderNews) a.remove();
+            });
+        });
     }
 
     // 미확인 알림 뱃지 카운트 조회
