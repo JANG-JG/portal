@@ -62,6 +62,7 @@ app.use((req, res, next) => {
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+        res.setHeader('Access-Control-Max-Age', '86400');
     }
     if (req.method === 'OPTIONS') {
         return res.sendStatus(204);
@@ -643,21 +644,29 @@ async function getLiveMarketData() {
     return marketCache.data;
 }
 
-// 6. 요약 데이터 조회 API (메인 대시보드 카드용)
+// 6. 요약 데이터 조회 API (메인 대시보드 카드용, 5초 인메모리 고속 캐시 및 완전 병렬 처리)
+let summaryCache = null;
+let summaryCacheTime = 0;
+
 app.get('/api/summary', authenticateToken, async (req, res) => {
     try {
-        // 1) 혈압 최근 측정치
-        const blood = await new Promise((resolve) => {
+        const now = Date.now();
+        if (summaryCache && (now - summaryCacheTime < 5000)) {
+            return res.json(summaryCache);
+        }
+
+        // 1) 혈압 최근 측정치 Promise
+        const bloodPromise = new Promise((resolve) => {
             db.get('SELECT systolic, diastolic, pulse, measured_at FROM records WHERE systolic IS NOT NULL ORDER BY measured_at DESC LIMIT 1', (err, row) => resolve(row || null));
         });
 
-        // 2) 최근 투약 일시
-        const medication = await new Promise((resolve) => {
+        // 2) 최근 투약 일시 Promise
+        const medicationPromise = new Promise((resolve) => {
             db.get("SELECT medication_time FROM records WHERE medication_time IS NOT NULL AND medication_time != '' ORDER BY medication_time DESC LIMIT 1", (err, row) => resolve(row || null));
         });
 
-        // 3) 병원 진료 및 남은 약 수량 계산
-        const hospital = await new Promise((resolve) => {
+        // 3) 병원 진료 및 남은 약 수량 Promise
+        const hospitalPromise = new Promise((resolve) => {
             const hospitalQuery = `
                 SELECT 
                     MIN(visit_date) as first_visit,
@@ -708,10 +717,77 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             });
         });
 
-        // 4) 자산 보유 종목 목록
-        const assets = await new Promise((resolve) => {
+        // 4) 자산 보유 종목 Promise
+        const assetsPromise = new Promise((resolve) => {
             assetDb.all('SELECT symbol, full_name, quantity, avg_price, currency FROM assets WHERE quantity > 0', (err, rows) => resolve(rows || []));
         });
+
+        // 5) 실시간 날씨 Promise
+        const weatherPromise = getLiveWeatherData();
+
+        // 6) 뉴스 추천 기사 Promise
+        const newsPromise = new Promise((resolve) => {
+            newsDb.all("SELECT id, name FROM categories WHERE is_active = 1 AND name != '속보' ORDER BY id ASC", [], async (cErr, categories) => {
+                if (cErr || !categories || categories.length === 0) {
+                    newsDb.all("SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' ORDER BY id DESC LIMIT 5", [], (aErr, fallbackRows) => {
+                        resolve(fallbackRows || []);
+                    });
+                    return;
+                }
+
+                try {
+                    const articlePromises = categories.map(cat => {
+                        return new Promise(innerResolve => {
+                            newsDb.get(
+                                'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? AND title NOT LIKE "%[속보]%" AND title NOT LIKE "%(속보)%" ORDER BY id DESC LIMIT 1',
+                                [cat.name],
+                                (err, row) => innerResolve(row || null)
+                            );
+                        });
+                    });
+
+                    const results = (await Promise.all(articlePromises)).filter(Boolean);
+                    resolve(results);
+                } catch (e) {
+                    resolve([]);
+                }
+            });
+        });
+
+        // 6-1) 실시간 속보 기사 Promise
+        const breakingThreshold = getKstDateTimeString(-60).slice(0, 16);
+        const breakingPromise = new Promise((resolve) => {
+            newsDb.all(
+                `SELECT id, title, link, media_name, published_at 
+                 FROM news_articles 
+                 WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') 
+                   AND (
+                     CASE 
+                       WHEN published_at IS NOT NULL AND published_at != '' AND length(published_at) >= 16 
+                       THEN substr(published_at, 1, 16) 
+                       ELSE substr(created_at, 1, 16) 
+                     END
+                   ) >= ? 
+                 ORDER BY id DESC LIMIT 8`,
+                [breakingThreshold],
+                (bErr, rows) => resolve(rows || [])
+            );
+        });
+
+        // 7) 실시간 시장 지표 Promise
+        const marketPromise = getLiveMarketData();
+
+        // ⚡ 모든 데이터를 병렬(Promise.all)로 동시 조회
+        const [blood, medication, hospital, assets, weather, newsRecommendation, breakingArticles, marketData] = await Promise.all([
+            bloodPromise,
+            medicationPromise,
+            hospitalPromise,
+            assetsPromise,
+            weatherPromise,
+            newsPromise,
+            breakingPromise,
+            marketPromise
+        ]);
 
         // 자산 합산 및 종목별 통합 (복수 계좌 분산 보유 종목 단일화)
         const assetMap = new Map();
@@ -754,62 +830,7 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             };
         });
 
-        // 5) 실시간 날씨 정보 조회 (인사말 옆 뱃지용)
-        const weather = await getLiveWeatherData();
-
-        // 6) 뉴스 관심 분야별 추천 기사 조회 (속보는 별도 상단 티커로 분리하므로 일반 카드에서 제외)
-        const newsRecommendation = await new Promise((resolve) => {
-            newsDb.all("SELECT id, name FROM categories WHERE is_active = 1 AND name != '속보' ORDER BY id ASC", [], async (cErr, categories) => {
-                if (cErr || !categories || categories.length === 0) {
-                    newsDb.all("SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' ORDER BY id DESC LIMIT 5", [], (aErr, fallbackRows) => {
-                        resolve(fallbackRows || []);
-                    });
-                    return;
-                }
-
-                try {
-                    const articlePromises = categories.map(cat => {
-                        return new Promise(innerResolve => {
-                            newsDb.get(
-                                'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? AND title NOT LIKE "%[속보]%" AND title NOT LIKE "%(속보)%" ORDER BY id DESC LIMIT 1',
-                                [cat.name],
-                                (err, row) => innerResolve(row || null)
-                            );
-                        });
-                    });
-
-                    const results = (await Promise.all(articlePromises)).filter(Boolean);
-                    resolve(results);
-                } catch (e) {
-                    resolve([]);
-                }
-            });
-        });
-
-        // 6-1) 실시간 속보 기사 목록 (정확한 KST 기준 기사 발행 시각 published_at 1시간 이내 기사만 유효, 만료 시 빈 배열 -> 상단 티커 자동 숨김)
-        const breakingThreshold = getKstDateTimeString(-60).slice(0, 16);
-        const breakingArticles = await new Promise((resolve) => {
-            newsDb.all(
-                `SELECT id, title, link, media_name, published_at 
-                 FROM news_articles 
-                 WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') 
-                   AND (
-                     CASE 
-                       WHEN published_at IS NOT NULL AND published_at != '' AND length(published_at) >= 16 
-                       THEN substr(published_at, 1, 16) 
-                       ELSE substr(created_at, 1, 16) 
-                     END
-                   ) >= ? 
-                 ORDER BY id DESC LIMIT 8`,
-                [breakingThreshold],
-                (bErr, rows) => resolve(rows || [])
-            );
-        });
-
-        // 7) 실시간 시장 지표
-        const marketData = await getLiveMarketData();
-
-        res.json({
+        const resultData = {
             success: true,
             blood: blood || null,
             medication: medication || null,
@@ -825,7 +846,12 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
                 recommendedArticles: newsRecommendation,
                 breakingArticles: breakingArticles || []
             }
-        });
+        };
+
+        summaryCache = resultData;
+        summaryCacheTime = Date.now();
+
+        res.json(resultData);
     } catch (err) {
         console.error('요약 데이터 조회 오류:', err);
         res.status(500).json({ success: false, message: '요약 데이터 조회 실패' });
@@ -1382,17 +1408,19 @@ async function getDiskUsage() {
     });
 }
 
-// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링 (3초 고속 응답 캐시)
+// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링 (8초 고속 응답 캐시 및 동시 요청 방어)
 let adminOverviewCache = null;
 let adminOverviewCacheTime = 0;
+let isAdminOverviewUpdating = false;
 
 app.get('/api/admin/overview', authenticateToken, async (req, res) => {
     try {
         const now = Date.now();
         const force = req.query.force === '1' || req.query.force === 'true';
-        if (!force && adminOverviewCache && (now - adminOverviewCacheTime < 3000)) {
+        if (!force && adminOverviewCache && (now - adminOverviewCacheTime < 8000 || isAdminOverviewUpdating)) {
             return res.json(adminOverviewCache);
         }
+        isAdminOverviewUpdating = true;
 
         const [tempInfo, diskInfo, secondaryServer, topMemList, realUptime] = await Promise.all([
             getCpuTemperature(),
@@ -1507,9 +1535,11 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
 
             adminOverviewCache = responseData;
             adminOverviewCacheTime = Date.now();
+            isAdminOverviewUpdating = false;
             res.json(responseData);
         });
     } catch (err) {
+        isAdminOverviewUpdating = false;
         console.error('관리자 오버뷰 조회 오류:', err);
         res.status(500).json({ success: false, message: '서버 상태 조회 실패' });
     }
