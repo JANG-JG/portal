@@ -1343,9 +1343,18 @@ async function getDiskUsage() {
     });
 }
 
-// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링
+// 4. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링 (3초 고속 응답 캐시)
+let adminOverviewCache = null;
+let adminOverviewCacheTime = 0;
+
 app.get('/api/admin/overview', authenticateToken, async (req, res) => {
     try {
+        const now = Date.now();
+        const force = req.query.force === '1' || req.query.force === 'true';
+        if (!force && adminOverviewCache && (now - adminOverviewCacheTime < 3000)) {
+            return res.json(adminOverviewCache);
+        }
+
         const [tempInfo, diskInfo, secondaryServer, topMemList, realUptime] = await Promise.all([
             getCpuTemperature(),
             getDiskUsage(),
@@ -1413,7 +1422,7 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
             const memPercent = `${memPercentNum}%`;
             const uptimeStr = realUptime || formatUptime(os.uptime());
 
-            res.json({
+            const responseData = {
                 success: true,
                 processes,
                 dbs,
@@ -1455,7 +1464,11 @@ app.get('/api/admin/overview', authenticateToken, async (req, res) => {
                         total: diskInfo.total
                     }
                 }
-            });
+            };
+
+            adminOverviewCache = responseData;
+            adminOverviewCacheTime = Date.now();
+            res.json(responseData);
         });
     } catch (err) {
         console.error('관리자 오버뷰 조회 오류:', err);
@@ -1529,6 +1542,9 @@ function cleanPm2Logs(raw, procName) {
         if (t.startsWith('[TAILING]')) return false;
         if (t.includes('/.pm2/logs/') && t.endsWith('lines:')) return false;
         if (t.startsWith('--- [') && t.endsWith('] ---')) return false;
+        if (t.includes('connect.session() MemoryStore is not')) return false;
+        if (t.includes('designed for a production environment, as it will leak')) return false;
+        if (t.includes('memory, and will not scale past a single process.')) return false;
         return true;
     });
 
