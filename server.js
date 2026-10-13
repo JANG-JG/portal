@@ -2291,7 +2291,7 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 }
 
 // 알림 수신 내역 DB 보관 헬퍼 함수
-function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon = 'https://j-jg.cc/favicon.svg', url = 'https://j-jg.cc/' }, callback) {
+function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon = 'https://j-jg.cc/icon-192.png', url = 'https://j-jg.cc/' }, callback) {
     const query = `
         INSERT INTO notification_history (user_id, type, title, body, icon, url, created_at)
         VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
@@ -2379,7 +2379,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                 type,
                 title: cleanTitle,
                 body: cleanBody,
-                icon: 'https://j-jg.cc/favicon.svg',
+                icon: 'https://j-jg.cc/icon-192.png',
                 url: targetUrl
             }, (notifId) => {
                 const sep = targetUrl.includes('?') ? '&' : '?';
@@ -2393,15 +2393,25 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                 const payload = JSON.stringify({
                     title: cleanTitle,
                     body: cleanBody,
-                    icon: 'https://j-jg.cc/favicon.svg',
-                    badge: 'https://j-jg.cc/favicon.svg',
+                    icon: 'https://j-jg.cc/icon-192.png',
+                    badge: 'https://j-jg.cc/icon-192.png',
                     tag: uniqueTag,
                     renotify: true,
+                    requireInteraction: true,
                     data: {
                         url: linkWithId,
                         notifId: notifId || null
                     }
                 });
+
+                // 🌟 안드로이드 WebAPK/갤럭시에서 상단 배너 팝업(Heads-up)을 강제하도록 Urgency: high 헤더 부여
+                const pushOptions = {
+                    headers: {
+                        'Urgency': 'high',
+                        'Topic': (type || 'general').replace(/[^a-zA-Z0-9_-]/g, '')
+                    },
+                    TTL: 86400
+                };
 
                 let successCount = 0;
                 let failCount = 0;
@@ -2415,7 +2425,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                         }
                     };
 
-                    return webPush.sendNotification(pushSubscription, payload)
+                    return webPush.sendNotification(pushSubscription, payload, pushOptions)
                         .then(() => { successCount++; })
                         .catch(pErr => {
                             failCount++;

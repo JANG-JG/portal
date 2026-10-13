@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v5';
+const CACHE_NAME = 'jg-portal-v6';
 
 self.addEventListener('install', (event) => {
     self.skipWaiting();
@@ -32,8 +32,8 @@ self.addEventListener('push', (event) => {
     let data = {
         title: '🚨 알림',
         body: '새로운 알림이 도착했습니다.',
-        icon: 'https://j-jg.cc/favicon.svg',
-        badge: 'https://j-jg.cc/favicon.svg',
+        icon: 'https://j-jg.cc/icon-192.png',
+        badge: 'https://j-jg.cc/icon-192.png',
         data: { url: 'https://news.j-jg.cc/breaking' }
     };
 
@@ -86,13 +86,24 @@ self.addEventListener('push', (event) => {
 
     const defaultUrl = data.title?.includes('속보') ? 'https://news.j-jg.cc/breaking' : 'https://j-jg.cc/';
 
-    // 안드로이드 Heads-up (상단 배너 팝업)을 유도하고 알림이 덮어써지지 않도록 옵션 구성
+    // 🌟 안드로이드 WebAPK는 SVG 아이콘을 디코딩하지 못하므로 무조건 PNG로 보정
+    let notifIcon = data.icon || 'https://j-jg.cc/icon-192.png';
+    let notifBadge = data.badge || 'https://j-jg.cc/icon-192.png';
+    if (typeof notifIcon === 'string' && notifIcon.endsWith('.svg')) {
+        notifIcon = 'https://j-jg.cc/icon-192.png';
+    }
+    if (typeof notifBadge === 'string' && notifBadge.endsWith('.svg')) {
+        notifBadge = 'https://j-jg.cc/icon-192.png';
+    }
+
+    // 🌟 안드로이드 Heads-up (상단 배너 팝업)을 유도하고 알림이 덮어써지지 않도록 옵션 구성
     const options = {
         body: data.body,
-        icon: data.icon || 'https://j-jg.cc/favicon.svg',
-        badge: data.badge || 'https://j-jg.cc/favicon.svg',
+        icon: notifIcon,
+        badge: notifBadge,
         tag: data.tag || undefined,
         renotify: true,
+        requireInteraction: true,
         vibrate: [300, 150, 300, 150, 300],
         timestamp: Date.now(),
         data: data.data || { url: defaultUrl },
