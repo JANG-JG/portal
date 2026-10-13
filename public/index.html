@@ -13,8 +13,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JG 포털">
     <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="/css/style.css?v=20261013_v4">
-    <link rel="stylesheet" href="/css/unified-nav.css?v=20261013_v4">
+    <link rel="stylesheet" href="/css/style.css?v=20261013_v5">
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261013_v5">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
@@ -167,8 +167,12 @@
                     <h2>💡 아이디어 & 빠른 메모</h2>
                     <span class="memo-count-badge" id="memoTotalCount">0개</span>
                 </div>
-                <div class="memo-header-desc">
-                    떠오른 아이디어와 중요한 일정을 즉시 기록하고 보관하세요.
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <span class="memo-header-desc" style="margin: 0;">떠오른 아이디어와 중요한 일정을 즉시 기록하고 보관하세요.</span>
+                    <a href="/memo" style="display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.35rem 0.8rem; border-radius: 9999px; background: #2563eb; color: #ffffff; text-decoration: none; font-size: 0.82rem; font-weight: 700; box-shadow: 0 2px 6px rgba(37,99,235,0.25); white-space: nowrap;">
+                        <span>전체 메모장 열기</span>
+                        <span>↗</span>
+                    </a>
                 </div>
             </div>
 
@@ -245,6 +249,14 @@
             <!-- 메모 카드 그리드 -->
             <div class="memo-grid" id="memoGrid">
                 <!-- 동적으로 채워짐 -->
+            </div>
+
+            <!-- 📝 전용 메모장 이동 배너 -->
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <a href="/memo" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.4rem; background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 0.75rem; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.15s ease;">
+                    <span>📝 리치 웹에디터 · 체크리스트 · 전체 메모장 열기</span>
+                    <span style="color: #2563eb;">→</span>
+                </a>
             </div>
         </section>
     </main>
@@ -1927,10 +1939,14 @@
             grid.innerHTML = memos.map(m => {
                 const cat = CATEGORY_MAP[m.category] || CATEGORY_MAP.idea;
                 const formattedDate = formatMemoDate(m.updated_at || m.created_at);
-                const escapedContent = (m.content || '')
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;');
+                let bodyHtml = m.content || '';
+                if (!bodyHtml.includes('<p>') && !bodyHtml.includes('<div>') && !bodyHtml.includes('<ul>')) {
+                    bodyHtml = bodyHtml
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/\n/g, '<br>');
+                }
                 const escapedTitle = m.title ? (m.title || '')
                     .replace(/&/g, '&amp;')
                     .replace(/</g, '&lt;')
@@ -1957,7 +1973,7 @@
                             </div>
                             <div class="memo-card-body">
                                 ${escapedTitle ? `<div class="memo-card-title">${escapedTitle}</div>` : ''}
-                                <div class="memo-card-content">${escapedContent}</div>
+                                <div class="memo-card-content">${bodyHtml}</div>
                             </div>
                         </div>
                         <div class="memo-card-footer">
@@ -2164,6 +2180,6 @@
     <!-- 🌟 전 사이트 공통 TV 뉴스 티커 하단바 -->
     <script src="/js/news-ticker.js?v=20261011_v4"></script>
     <!-- 🌐 공통 상단 내비게이션 바 스크립트 -->
-    <script src="/js/unified-nav.js?v=20261013_v4"></script>
+    <script src="/js/unified-nav.js?v=20261013_v5"></script>
 </body>
 </html>

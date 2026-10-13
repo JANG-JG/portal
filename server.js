@@ -192,6 +192,11 @@ app.get(['/admin', '/admin.html'], authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// 1-2. 아이디어 & 메모장 전용 화면
+app.get(['/memo', '/memo.html', '/memos'], authenticateToken, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'memo.html'));
+});
+
 // 2. 로그인 페이지
 app.get(['/login', '/login.html'], (req, res) => {
     const token = req.cookies.portal_token;
