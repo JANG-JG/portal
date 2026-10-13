@@ -33,7 +33,7 @@
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             const isLocal = window.location.hostname === 'localhost';
-            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261013_v5';
+            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261013_v6';
             document.head.appendChild(link);
         }
     }
@@ -42,7 +42,7 @@
     async function mountUnifiedNav() {
         ensureUnifiedNavCss();
 
-        const CACHE_KEY = 'jg_unav_html_v20261013_v5';
+        const CACHE_KEY = 'jg_unav_html_v20261013_v6';
         let cachedHtml = null;
         try {
             cachedHtml = sessionStorage.getItem(CACHE_KEY);
@@ -76,7 +76,7 @@
         // 2) 최신 컴포넌트를 네트워크로 로드하여 항상 동기화 유지
         try {
             const isLocal = window.location.hostname === 'localhost';
-            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=20261013_v5';
+            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=20261013_v6';
             const res = await fetch(compUrl);
             if (res.ok) {
                 const html = await res.text();
@@ -110,7 +110,7 @@
             activeKey = 'blood';
         } else if (host.includes('asset') || path.includes('/go/asset')) {
             activeKey = 'asset';
-        } else if (host.includes('news') || path.includes('/go/news') || path.includes('weather') || path.includes('breaking')) {
+        } else if (host.includes('news') || path.includes('/go/news') || path.includes('weather') || path.includes('breaking') || path.includes('economy')) {
             activeKey = 'news';
         } else if (path.includes('admin')) {
             activeKey = 'admin';
