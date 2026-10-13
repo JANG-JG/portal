@@ -934,11 +934,18 @@ body {
     transition: all 0.2s ease;
     box-sizing: border-box;
     overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
 }
 .news-market-chip:hover {
     background: #f1f5f9;
-    border-color: #cbd5e1;
-    transform: translateY(-1px);
+    border-color: #3b82f6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.12);
+}
+.news-market-chip:hover .market-name {
+    color: #2563eb;
 }
 .news-market-chip .market-name {
     color: #64748b;
@@ -949,6 +956,7 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: color 0.2s ease;
 }
 .news-market-chip .market-val-row {
     display: flex;
@@ -958,6 +966,7 @@ body {
     flex-wrap: nowrap;
     min-width: 0;
     width: 100%;
+    transition: opacity 0.22s ease, transform 0.22s ease;
 }
 .news-market-chip .market-price {
     font-weight: 800;

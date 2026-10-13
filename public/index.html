@@ -74,31 +74,36 @@
         <div class="card-grid">
             <!-- 1. 뉴스 브리핑 카드 -->
             <div class="service-card card-news">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem;">
                     <div class="card-icon" style="margin-bottom:0;">📰</div>
-                    <a href="https://news.j-jg.cc/categories" class="btn-news-sub" title="관심 뉴스 분야 관리">
-                        🏷️ 관심 분야
-                    </a>
+                    <div style="display:flex; gap:0.35rem; align-items:center;">
+                        <a href="/go/economy" class="btn-news-sub" title="실시간 증시 및 환율 브리핑 바로가기">
+                            📈 증시·환율
+                        </a>
+                        <a href="https://news.j-jg.cc/categories" class="btn-news-sub" title="관심 뉴스 분야 관리">
+                            🏷️ 관심 분야
+                        </a>
+                    </div>
                 </div>
                 <h3>뉴스 브리핑</h3>
                 <p class="card-desc">실시간 AI 뉴스 수집 및 모닝 텔레그램 브리핑</p>
                 
-                <!-- 상단 실시간 시장 지표 미니 칩 바 (상하 2줄 반응형) -->
+                <!-- 상단 실시간 시장 지표 미니 칩 바 (클릭 시 증시/환율 브리핑 이동) -->
                 <div class="news-market-bar" id="newsMarketBar">
-                    <div class="news-market-chip">
-                        <div class="market-name">코스피</div>
-                        <div class="market-val-row">
+                    <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 브리핑 바로가기 (코스피 / 코스닥)">
+                        <div class="market-name" id="marketIndexName">코스피</div>
+                        <div class="market-val-row" id="marketIndexBox">
                             <span class="market-price" id="kospiPrice">-</span>
                             <span class="market-diff" id="kospiDiff">-</span>
                         </div>
-                    </div>
-                    <div class="news-market-chip">
-                        <div class="market-name">USD/KRW</div>
-                        <div class="market-val-row">
+                    </a>
+                    <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 브리핑 바로가기 (USD / JPY / EUR)">
+                        <div class="market-name" id="marketFxName">USD/KRW</div>
+                        <div class="market-val-row" id="marketFxBox">
                             <span class="market-price" id="fxPrice">-</span>
                             <span class="market-diff" id="fxDiff">-</span>
                         </div>
-                    </div>
+                    </a>
                 </div>
 
                 <!-- 관심 분야별 자동 추천 기사 목록 -->
@@ -112,7 +117,10 @@
                     </div>
                 </div>
 
-                <div class="card-actions">
+                <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
+                    <a href="/go/economy" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="실시간 증시 브리핑 열기">
+                        📈 증시 브리핑 ↗
+                    </a>
                     <a href="/go/news" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
                         뉴스 브리핑 열기 →
                     </a>
@@ -151,7 +159,10 @@
                 <div class="card-summary" id="assetSummary">
                     <span>보유 자산 현황 조회 중...</span>
                 </div>
-                <div class="card-actions">
+                <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
+                    <a href="/go/economy" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="실시간 국내외 증시 및 환율 시세 확인">
+                        📈 증시·환율 브리핑 ↗
+                    </a>
                     <a href="/go/asset" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
                         자산 관리 열기 →
                     </a>
@@ -315,27 +326,9 @@
                 // 2-3. 뉴스 브리핑 현황판 (시장 지표 미니 칩 + 관심분야 자동 추천 기사)
                 if (data.news) {
                     const n = data.news;
-                    // 1) 시장 지표 바인딩
+                    // 1) 시장 지표 바인딩 및 순환 페이드 전환
                     if (n.market) {
-                        const k = n.market.kospi;
-                        const f = n.market.usd_krw || n.market.fx;
-                        const kospiPriceEl = document.getElementById('kospiPrice');
-                        const kospiDiffEl = document.getElementById('kospiDiff');
-                        const fxPriceEl = document.getElementById('fxPrice');
-                        const fxDiffEl = document.getElementById('fxDiff');
-
-                        if (k && kospiPriceEl && kospiDiffEl) {
-                            kospiPriceEl.textContent = k.price || '-';
-                            const kArrow = k.direction === 'up' ? '▲ ' : (k.direction === 'down' ? '▼ ' : '');
-                            kospiDiffEl.textContent = kArrow + (k.ratio || '-');
-                            kospiDiffEl.className = 'market-diff ' + (k.direction || 'up');
-                        }
-                        if (f && fxPriceEl && fxDiffEl) {
-                            fxPriceEl.textContent = f.price || '-';
-                            const fArrow = f.direction === 'up' ? '▲ ' : (f.direction === 'down' ? '▼ ' : '');
-                            fxDiffEl.textContent = fArrow + (f.ratio || '-');
-                            fxDiffEl.className = 'market-diff ' + (f.direction || 'up');
-                        }
+                        startMarketFading(n.market);
                     }
 
                     // 2) 관심분야 추천 기사 바인딩
@@ -484,6 +477,97 @@
                     box.style.opacity = '1';
                     box.style.transform = 'translateY(0)';
                 }, 250);
+            }, 3500);
+        }
+
+        // 시장 지표(지수/환율) 부드러운 인라인 페이드 전환 함수 (밀림/레이아웃 흔들림 완전 방지)
+        let marketFadeTimer = null;
+        function startMarketFading(market) {
+            if (!market) return;
+            if (marketFadeTimer) {
+                clearInterval(marketFadeTimer);
+                marketFadeTimer = null;
+            }
+
+            // 1) 지수 목록 (코스피, 코스닥)
+            const indexList = [];
+            if (market.kospi && market.kospi.price && market.kospi.price !== '-') {
+                indexList.push({ ...market.kospi, name: '코스피' });
+            }
+            if (market.kosdaq && market.kosdaq.price && market.kosdaq.price !== '-') {
+                indexList.push({ ...market.kosdaq, name: '코스닥' });
+            }
+
+            // 2) 환율 목록 (USD, JPY, EUR)
+            const fxList = [];
+            const usd = market.usd_krw || market.fx;
+            if (usd && usd.price && usd.price !== '-') {
+                fxList.push({ ...usd, name: 'USD/KRW' });
+            }
+            if (market.jpy_krw && market.jpy_krw.price && market.jpy_krw.price !== '-') {
+                fxList.push({ ...market.jpy_krw, name: 'JPY/KRW' });
+            }
+            if (market.eur_krw && market.eur_krw.price && market.eur_krw.price !== '-') {
+                fxList.push({ ...market.eur_krw, name: 'EUR/KRW' });
+            }
+
+            const indexNameEl = document.getElementById('marketIndexName');
+            const fxNameEl = document.getElementById('marketFxName');
+            const indexBox = document.getElementById('marketIndexBox');
+            const fxBox = document.getElementById('marketFxBox');
+
+            let indexCur = 0;
+            let fxCur = 0;
+
+            function renderIndex(item) {
+                if (!item || !indexNameEl || !indexBox) return;
+                indexNameEl.textContent = item.name;
+                const arrow = item.direction === 'up' ? '▲ ' : (item.direction === 'down' ? '▼ ' : '');
+                indexBox.innerHTML = `
+                    <span class="market-price">${item.price || '-'}</span>
+                    <span class="market-diff ${item.direction || 'up'}">${arrow}${item.ratio || '-'}</span>
+                `;
+            }
+
+            function renderFx(item) {
+                if (!item || !fxNameEl || !fxBox) return;
+                fxNameEl.textContent = item.name;
+                const arrow = item.direction === 'up' ? '▲ ' : (item.direction === 'down' ? '▼ ' : '');
+                fxBox.innerHTML = `
+                    <span class="market-price">${item.price || '-'}</span>
+                    <span class="market-diff ${item.direction || 'up'}">${arrow}${item.ratio || '-'}</span>
+                `;
+            }
+
+            // 초기 렌더링
+            if (indexList.length > 0) renderIndex(indexList[0]);
+            if (fxList.length > 0) renderFx(fxList[0]);
+
+            if (indexList.length <= 1 && fxList.length <= 1) return;
+
+            // 3.5초 주기로 제자리에서 부드럽게 페이드 전환
+            marketFadeTimer = setInterval(() => {
+                if (indexList.length > 1 && indexBox) {
+                    indexBox.style.opacity = '0';
+                    indexBox.style.transform = 'translateY(-2px)';
+                    setTimeout(() => {
+                        indexCur = (indexCur + 1) % indexList.length;
+                        renderIndex(indexList[indexCur]);
+                        indexBox.style.opacity = '1';
+                        indexBox.style.transform = 'translateY(0)';
+                    }, 220);
+                }
+
+                if (fxList.length > 1 && fxBox) {
+                    fxBox.style.opacity = '0';
+                    fxBox.style.transform = 'translateY(-2px)';
+                    setTimeout(() => {
+                        fxCur = (fxCur + 1) % fxList.length;
+                        renderFx(fxList[fxCur]);
+                        fxBox.style.opacity = '1';
+                        fxBox.style.transform = 'translateY(0)';
+                    }, 220);
+                }
             }, 3500);
         }
 

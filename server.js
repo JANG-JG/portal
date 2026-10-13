@@ -638,13 +638,15 @@ async function getLiveWeatherData() {
     return weatherCache.data;
 }
 
-// 실시간 증시 및 환율 캐시 (5분 유효)
+// 실시간 증시 및 환율 캐시 (3분 유효)
 let marketCache = {
     timestamp: 0,
     data: {
         kospi: { name: '코스피', price: '-', ratio: '-', direction: 'up' },
         kosdaq: { name: '코스닥', price: '-', ratio: '-', direction: 'up' },
-        usd_krw: { name: 'USD/KRW', price: '-', ratio: '-', direction: 'up' }
+        usd_krw: { name: 'USD/KRW', price: '-', ratio: '-', direction: 'up' },
+        jpy_krw: { name: 'JPY/KRW', price: '-', ratio: '-', direction: 'up' },
+        eur_krw: { name: 'EUR/KRW', price: '-', ratio: '-', direction: 'up' }
     }
 };
 let isMarketFetching = false;
@@ -653,7 +655,7 @@ async function refreshMarketInBackground() {
     if (isMarketFetching) return;
     isMarketFetching = true;
     try {
-        const [kRes, qRes, uRes] = await Promise.allSettled([
+        const [kRes, qRes, uRes, jRes, eRes] = await Promise.allSettled([
             fetch('https://polling.finance.naver.com/api/realtime/domestic/index/KOSPI', { 
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(3000) 
@@ -663,6 +665,14 @@ async function refreshMarketInBackground() {
                 signal: AbortSignal.timeout(3000) 
             }).then(r => r.json()),
             fetch('https://m.stock.naver.com/front-api/marketIndex/prices?category=exchange&reutersCode=FX_USDKRW', { 
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                signal: AbortSignal.timeout(3000) 
+            }).then(r => r.json()),
+            fetch('https://api.stock.naver.com/marketindex/exchange/FX_JPYKRW', { 
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                signal: AbortSignal.timeout(3000) 
+            }).then(r => r.json()),
+            fetch('https://api.stock.naver.com/marketindex/exchange/FX_EURKRW', { 
                 headers: { 'User-Agent': 'Mozilla/5.0' },
                 signal: AbortSignal.timeout(3000) 
             }).then(r => r.json())
@@ -701,6 +711,28 @@ async function refreshMarketInBackground() {
             const ratioVal = parseFloat(d.fluctuationsRatio || 0);
             const ratio = d.fluctuationsRatio ? `${sign}${Math.abs(ratioVal).toFixed(2)}%` : '-';
             nextData.usd_krw = { name: 'USD/KRW', price: p, ratio, direction: dir };
+        }
+
+        if (jRes.status === 'fulfilled' && jRes.value?.exchangeInfo) {
+            const ex = jRes.value.exchangeInfo;
+            const p = ex.closePrice ? `${ex.closePrice}원` : '-';
+            const statName = ex.fluctuationsType?.name || '';
+            const dir = (statName === 'RISING' || statName === 'UP') ? 'up' : ((statName === 'FALLING' || statName === 'DOWN') ? 'down' : 'flat');
+            const sign = dir === 'up' ? '+' : (dir === 'down' ? '-' : '');
+            const ratioVal = parseFloat(ex.fluctuationsRatio || 0);
+            const ratio = ex.fluctuationsRatio ? `${sign}${Math.abs(ratioVal).toFixed(2)}%` : '-';
+            nextData.jpy_krw = { name: 'JPY/KRW', price: p, ratio, direction: dir };
+        }
+
+        if (eRes.status === 'fulfilled' && eRes.value?.exchangeInfo) {
+            const ex = eRes.value.exchangeInfo;
+            const p = ex.closePrice ? `${ex.closePrice}원` : '-';
+            const statName = ex.fluctuationsType?.name || '';
+            const dir = (statName === 'RISING' || statName === 'UP') ? 'up' : ((statName === 'FALLING' || statName === 'DOWN') ? 'down' : 'flat');
+            const sign = dir === 'up' ? '+' : (dir === 'down' ? '-' : '');
+            const ratioVal = parseFloat(ex.fluctuationsRatio || 0);
+            const ratio = ex.fluctuationsRatio ? `${sign}${Math.abs(ratioVal).toFixed(2)}%` : '-';
+            nextData.eur_krw = { name: 'EUR/KRW', price: p, ratio, direction: dir };
         }
 
         marketCache = { timestamp: Date.now(), data: nextData };
@@ -1034,6 +1066,8 @@ app.get('/go/:service', authenticateToken, (req, res) => {
 
     if (service === 'news') {
         return res.redirect(`https://news.j-jg.cc/?token=${ticket}`);
+    } else if (service === 'economy') {
+        return res.redirect(`https://news.j-jg.cc/economy?token=${ticket}`);
     } else if (service === 'asset') {
         return res.redirect(`https://asset.j-jg.cc/?token=${ticket}`);
     } else if (service === 'blood') {
