@@ -144,6 +144,15 @@ body {
     color: #0284c7;
     font-weight: 700;
 }
+.weather-compact-desc {
+    color: #475569;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #e2e8f0;
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    margin-left: 0.1rem;
+}
 
 /* 📲 PWA 웹앱 설치 버튼 스타일 */
 .btn-pwa-install {

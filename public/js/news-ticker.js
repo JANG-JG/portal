@@ -1,6 +1,6 @@
 /**
  * news-ticker.js - JG 통합 포털 및 모든 서브 서비스(뉴스, 자산, 혈압) 공통 하단바 & 긴급 속보 위젯
- * 모든 사이트에서 <script src="https://j-jg.cc/js/news-ticker.js?v=20261011_v3"></script> 한 줄로 구동됩니다.
+ * 모든 사이트에서 <script src="https://j-jg.cc/js/news-ticker.js?v=20261014_v1"></script> 한 줄로 구동됩니다.
  * - 기본 하단바: 최신 뉴스 브리핑 헤드라인 및 우측 날씨/증시 실시간 롤링 (모든 사이트 상시 노출)
  * - 긴급 속보 바: 실시간 속보 발생 시 기본 하단바 바로 '위에' 빨간색 긴급 속보 띠가 새로 나타남
  * - 속보 닫기: 사용자가 속보를 확인한 후 [✕ 닫기]를 누르면 속보 바가 닫히고 기존 뉴스만 깔끔하게 표시됨
@@ -349,7 +349,7 @@
         <div class="jg-ticker-right">
             <div class="jg-v-box" id="jg-v-box">
                 <div class="jg-v-item" style="transform: translateY(0); opacity: 1;">
-                    <span>☀️ 계룡</span> <span style="color:#38bdf8;">22°C</span>
+                    <span>🌤️ 계룡</span> <span style="color:#38bdf8;">-</span>
                 </div>
             </div>
         </div>
@@ -445,7 +445,7 @@
             // 7-3. 우측 날씨/증시 롤링 위젯 구성
             const vBox = document.getElementById('jg-v-box');
             if (vBox) {
-                const weather = data.weather || { city: '계룡', temp: '22°C', icon: '☀️' };
+                const weather = data.weather || { city: '계룡', temp: '-', condition: '맑음', icon: '🌤️' };
                 const market = data.market || {};
                 const kospi = market.kospi || { price: '2,600.0', direction: 'down' };
                 const kosdaq = market.kosdaq || { price: '850.0', direction: 'down' };
@@ -454,10 +454,14 @@
                 const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
                 const usdPriceText = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
 
+                const weatherTitle = `실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''}) - 클릭 시 날씨 브리핑 이동`;
+                const conditionBadge = weather.condition ? `<span style="color:#cbd5e1; font-size:10px; margin-left:3px; font-weight:500;">${weather.condition}</span>` : '';
+
                 const slides = [
-                    `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="실시간 날씨 상세 보기">
-                        <span>${weather.icon || '☀️'} ${cityName}</span>
+                    `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="${weatherTitle}">
+                        <span>${weather.icon || '🌤️'} ${cityName}</span>
                         <span style="color:#38bdf8; font-weight:700;">${weather.temp || '-'}</span>
+                        ${conditionBadge}
                     </a>`,
                     `<div class="jg-v-item">
                         <span style="color:#94a3b8; font-size:10px;">코스피</span>

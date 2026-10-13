@@ -450,86 +450,159 @@ const CITY_KO_MAP = {
     'Ulsan': '울산',
     'Sejong': '세종',
     'Suwon': '수원',
-    'Jeju': '제주',
-    'Chuncheon': '춘천',
-    'Gangneung': '강릉',
+    'Seongnam': '성남',
+    'Goyang': '고양',
+    'Yongin': '용인',
+    'Cheonan': '천안',
     'Cheongju': '청주',
     'Jeonju': '전주',
     'Changwon': '창원',
-    'Pohang': '포항'
+    'Pohang': '포항',
+    'Chuncheon': '춘천',
+    'Gangneung': '강릉',
+    'Jeju': '제주'
 };
 
-const WEATHER_ICON_MAP = {
-    'sunny': '☀️',
-    'clear': '☀️',
-    'partly cloudy': '🌤️',
-    'cloudy': '☁️',
-    'overcast': '☁️',
-    'mist': '🌫️',
-    'fog': '🌫️',
-    'haze': '🌫️',
-    'smoky': '🌫️',
-    'rain': '🌧️',
-    'patchy rain': '🌦️',
-    'thundery': '⛈️',
-    'snow': '❄️'
+// 한국 주요 도시 위경도 좌표 매핑 (news-dashboard와 100% 동일)
+const CITY_COORDS = {
+    'Seoul': { lat: 37.5665, lon: 126.9780 },
+    'Gyeryong': { lat: 36.3160, lon: 127.2480 },
+    'Daejeon': { lat: 36.3504, lon: 127.3845 },
+    'Busan': { lat: 35.1796, lon: 129.0756 },
+    'Incheon': { lat: 37.4563, lon: 126.7052 },
+    'Daegu': { lat: 35.8714, lon: 128.6014 },
+    'Gwangju': { lat: 35.1595, lon: 126.8526 },
+    'Ulsan': { lat: 35.5384, lon: 129.3114 },
+    'Sejong': { lat: 36.4800, lon: 127.2890 },
+    'Suwon': { lat: 37.2636, lon: 127.0286 },
+    'Seongnam': { lat: 37.4200, lon: 127.1265 },
+    'Goyang': { lat: 37.6584, lon: 126.8320 },
+    'Yongin': { lat: 37.2410, lon: 127.1775 },
+    'Cheonan': { lat: 36.8151, lon: 127.1139 },
+    'Cheongju': { lat: 36.6424, lon: 127.4890 },
+    'Jeonju': { lat: 35.8242, lon: 127.1480 },
+    'Changwon': { lat: 35.2280, lon: 128.6811 },
+    'Pohang': { lat: 36.0190, lon: 129.3435 },
+    'Chuncheon': { lat: 37.8813, lon: 127.7298 },
+    'Gangneung': { lat: 37.7519, lon: 128.8760 },
+    'Jeju': { lat: 33.4996, lon: 126.5312 }
 };
 
-function getWeatherIcon(desc) {
-    if (!desc) return '🌤️';
-    const lower = desc.toLowerCase();
-    for (const [k, v] of Object.entries(WEATHER_ICON_MAP)) {
-        if (lower.includes(k)) return v;
+// WMO 기상 코드 한국어 매핑 테이블 (news-dashboard와 100% 동일)
+const WMO_CODE_KO = {
+    0: '맑음',
+    1: '대체로 맑음',
+    2: '구름 조금',
+    3: '흐림',
+    45: '안개',
+    48: '짙은 안개',
+    51: '약한 이슬비',
+    53: '이슬비',
+    55: '강한 이슬비',
+    56: '어는 이슬비',
+    57: '강한 어는 이슬비',
+    61: '약한 비',
+    63: '비',
+    65: '강한 비',
+    66: '어는 비',
+    67: '강한 어는 비',
+    71: '약한 눈',
+    73: '눈',
+    75: '강한 눈',
+    77: '싸락눈',
+    80: '약한 소나기',
+    81: '소나기',
+    82: '폭우',
+    85: '눈 소나기',
+    86: '강한 눈 소나기',
+    95: '뇌우',
+    96: '우박 동반 뇌우',
+    99: '강한 우박 동반 뇌우'
+};
+
+// 기상 상태 문자열 및 주/야간(is_day: 1=낮, 0=밤)에 매칭되는 이모지 아이콘 (news-dashboard와 100% 동일)
+function getWeatherIcon(condition, is_day = 1) {
+    if (!condition) return is_day === 0 ? '🌙' : '☀️';
+    const cond = String(condition).trim();
+
+    // 야간(is_day === 0)일 때 달 아이콘 우선 적용
+    if (is_day === 0) {
+        if (cond === '맑음' || cond === '대체로 맑음') return '🌙';
+        if (cond === '구름 조금' || cond === '대체로 흐림') return '☁️🌙';
     }
-    return '🌤️';
+
+    if (cond.includes('뇌우') || cond.includes('우박')) return '⛈️';
+    if (cond.includes('눈')) return '❄️';
+    if (cond.includes('소나기')) return '🌦️';
+    if (cond.includes('비') || cond.includes('이슬비')) return '🌧️';
+    if (cond.includes('안개')) return '🌫️';
+    if (cond === '흐림') return '☁️';
+    if (cond === '구름 조금') return is_day === 0 ? '☁️🌙' : '⛅';
+    if (cond === '대체로 맑음') return is_day === 0 ? '🌙' : '🌤️';
+    if (cond === '맑음') return is_day === 0 ? '🌙' : '☀️';
+
+    return is_day === 0 ? '🌙' : '🌤️';
 }
 
 // 실시간 날씨 캐시 (10분 유효)
 let weatherCache = {
     timestamp: 0,
     data: {
-        city: '계룡시',
-        temp: '13°C',
+        city: '계룡',
+        temp: '13.0°C',
         condition: '맑음',
-        icon: '🌤️'
+        icon: '🌤️',
+        is_day: 1
     }
 };
 let isWeatherFetching = false;
 
-// 백그라운드에서 wttr.in 최신 정보 갱신 (API 블로킹 방지)
+// 백그라운드에서 Open-Meteo 실시간 기상 데이터 갱신 (API 블로킹 방지 및 뉴스 브리핑과 100% 일치)
 async function refreshWeatherInBackground(rawCity, korCityName) {
     if (isWeatherFetching) return;
     isWeatherFetching = true;
     try {
+        const coords = CITY_COORDS[rawCity] || CITY_COORDS['Gyeryong'] || { lat: 36.3160, lon: 127.2480 };
+        const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,cloud_cover,wind_speed_10m&timezone=Asia%2FTokyo`;
+
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3500);
-        const resp = await fetch(`https://wttr.in/${encodeURIComponent(rawCity)}?format=j1`, {
-            headers: { 'User-Agent': 'curl/7.68.0' },
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const resp = await fetch(openMeteoUrl, {
+            headers: { 'User-Agent': 'JG-Portal/1.0' },
             signal: controller.signal
         });
         clearTimeout(timeout);
 
         if (resp.ok) {
             const data = await resp.json();
-            if (data && data.current_condition && data.current_condition[0]) {
-                const cur = data.current_condition[0];
-                const tempC = cur.temp_C ? `${cur.temp_C}°C` : '-';
-                const desc = cur.weatherDesc && cur.weatherDesc[0] ? cur.weatherDesc[0].value : '';
-                const icon = getWeatherIcon(desc);
+            const curr = data && data.current ? data.current : null;
+            if (curr) {
+                const tempVal = typeof curr.temperature_2m === 'number' ? curr.temperature_2m : parseFloat(curr.temperature_2m || 0);
+                const feelsVal = typeof curr.apparent_temperature === 'number' ? curr.apparent_temperature : parseFloat(curr.apparent_temperature || 0);
+                const isDay = typeof curr.is_day === 'number' ? curr.is_day : 1;
+                const weatherCode = typeof curr.weather_code === 'number' ? curr.weather_code : 0;
+
+                const conditionKo = WMO_CODE_KO[weatherCode] || '맑음';
+                const icon = getWeatherIcon(conditionKo, isDay);
+
                 weatherCache = {
                     timestamp: Date.now(),
                     data: {
                         city: korCityName,
-                        temp: tempC,
-                        condition: desc || '맑음',
-                        icon: icon
+                        temp: `${tempVal.toFixed(1)}°C`,
+                        condition: conditionKo,
+                        icon: icon,
+                        is_day: isDay,
+                        feels_like: `${feelsVal.toFixed(1)}°C`,
+                        humidity: `${curr.relative_humidity_2m || 0}%`,
+                        wind_speed: `${curr.wind_speed_10m || 0}km/h`
                     }
                 };
                 return;
             }
         }
     } catch (e) {
-        // 네트워크 실패 시 조용히 무시 (기존 캐시 유지)
+        // 네트워크 실패 시 기존 캐시 유지
     } finally {
         isWeatherFetching = false;
     }
@@ -560,32 +633,9 @@ async function getLiveWeatherData() {
         return weatherCache.data;
     }
 
-    // 4) 최초 기동 시 캐시가 없다면 로컬 SQLite daily_weather에서 0.1ms 만에 읽어서 즉시 반환
-    let weatherObj = {
-        city: korCityName,
-        temp: '13°C',
-        condition: '맑음',
-        icon: '🌤️'
-    };
-    try {
-        const dwRow = await new Promise((res) => {
-            newsDb.get('SELECT weather_info FROM daily_weather ORDER BY date DESC LIMIT 1', (err, r) => res(r || null));
-        });
-        if (dwRow && dwRow.weather_info) {
-            const info = dwRow.weather_info;
-            const tempMatch = info.match(/(\d+)°C/);
-            if (tempMatch) weatherObj.temp = `${tempMatch[1]}°C`;
-            if (info.includes('안개')) weatherObj.icon = '🌫️';
-            else if (info.includes('비')) weatherObj.icon = '🌧️';
-            else if (info.includes('눈')) weatherObj.icon = '❄️';
-            else if (info.includes('맑')) weatherObj.icon = '☀️';
-            else if (info.includes('구름')) weatherObj.icon = '☁️';
-        }
-    } catch (e) {}
-
-    weatherCache = { timestamp: now, data: weatherObj };
+    // 4) 최초 기동 시 캐시가 없다면 백그라운드 갱신 트리거 후 기본 캐시 반환
     refreshWeatherInBackground(rawCity, korCityName);
-    return weatherObj;
+    return weatherCache.data;
 }
 
 // 실시간 증시 및 환율 캐시 (5분 유효)

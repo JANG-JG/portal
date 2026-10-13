@@ -25,9 +25,10 @@
             <div class="welcome-header-row">
                 <h2>안녕하세요, <span id="usernameDisplay">사용자</span>님 👋</h2>
                 <a href="https://news.j-jg.cc/weather" class="weather-compact-badge" id="welcomeWeatherBadge" title="실시간 날씨 브리핑 바로가기">
-                    <span id="welcomeWeatherIcon">☀️</span>
+                    <span id="welcomeWeatherIcon">🌤️</span>
                     <span id="welcomeWeatherCity">계룡</span>
-                    <span id="welcomeWeatherTemp" class="weather-compact-temp">22°C</span>
+                    <span id="welcomeWeatherTemp" class="weather-compact-temp">-</span>
+                    <span id="welcomeWeatherDesc" class="weather-compact-desc">-</span>
                 </a>
                 <button type="button" class="btn-pwa-install" id="btnPwaInstall" onclick="triggerPwaInstall()" title="스마트폰 및 PC 홈 화면에 바로가기 앱으로 설치">
                     <span>📲</span>
@@ -198,12 +199,18 @@
                     // 2-0. 인사말 옆 날씨 뱃지 바인딩
                     if (data.weather) {
                         const w = data.weather;
+                        const badgeEl = document.getElementById('welcomeWeatherBadge');
                         const iconEl = document.getElementById('welcomeWeatherIcon');
                         const cityEl = document.getElementById('welcomeWeatherCity');
                         const tempEl = document.getElementById('welcomeWeatherTemp');
+                        const descEl = document.getElementById('welcomeWeatherDesc');
                         if (iconEl && w.icon) iconEl.textContent = w.icon;
                         if (cityEl && w.city) cityEl.textContent = (w.city === 'Gyeryong' ? '계룡' : w.city);
                         if (tempEl && w.temp) tempEl.textContent = w.temp;
+                        if (descEl && w.condition) descEl.textContent = w.condition;
+                        if (badgeEl && w.condition) {
+                            badgeEl.title = `실시간 날씨: ${w.city} ${w.temp} (${w.condition}) - 클릭 시 날씨 브리핑 이동`;
+                        }
                     }
 
                     // 2-1. 혈압 현황판 (최근 혈압, 투약, 병원 진료일, 남은 약, 예약 오픈일)
@@ -1765,7 +1772,7 @@
     </script>
 
     <!-- 🌟 전 사이트 공통 TV 뉴스 티커 하단바 -->
-    <script src="/js/news-ticker.js?v=20261011_v4"></script>
+    <script src="/js/news-ticker.js?v=20261014_v1"></script>
     <!-- 🌐 공통 상단 내비게이션 바 스크립트 -->
     <script src="/js/unified-nav.js?v=20261013_v6"></script>
 </body>
