@@ -549,6 +549,7 @@ body {
 .card-blood:hover h3 { color: #e11d48; }
 .card-asset:hover h3 { color: #059669; }
 .card-news:hover h3 { color: #2563eb; }
+.card-memo:hover h3 { color: #d97706; }
 
 /* 로그인 페이지 스타일 */
 .login-body {
