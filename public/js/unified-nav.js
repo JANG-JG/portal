@@ -42,7 +42,7 @@
     async function mountUnifiedNav() {
         ensureUnifiedNavCss();
 
-        const CACHE_KEY = 'jg_unav_html_v20261013_v6';
+        const CACHE_KEY = 'jg_unav_html_v20261013_v7';
         let cachedHtml = null;
         try {
             cachedHtml = sessionStorage.getItem(CACHE_KEY);
@@ -76,7 +76,7 @@
         // 2) 최신 컴포넌트를 네트워크로 로드하여 항상 동기화 유지
         try {
             const isLocal = window.location.hostname === 'localhost';
-            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=20261013_v6';
+            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=20261013_v7';
             const res = await fetch(compUrl);
             if (res.ok) {
                 const html = await res.text();
@@ -379,6 +379,10 @@
                 setCheck('notifBreakingNewsEnabled', portalNotifSettings.breaking_news_enabled);
                 setCheck('notifWeatherMorningEnabled', portalNotifSettings.weather_morning_enabled);
                 setCheck('notifAssetReportEnabled', portalNotifSettings.asset_report_enabled);
+                const isOpenOn = portalNotifSettings.asset_open_enabled !== undefined ? portalNotifSettings.asset_open_enabled : portalNotifSettings.asset_report_enabled;
+                const isCloseOn = portalNotifSettings.asset_close_enabled !== undefined ? portalNotifSettings.asset_close_enabled : portalNotifSettings.asset_report_enabled;
+                setCheck('notifAssetOpenEnabled', isOpenOn);
+                setCheck('notifAssetCloseEnabled', isCloseOn);
                 setCheck('notifBpReminderEnabled', portalNotifSettings.bp_reminder_enabled);
                 setCheck('notifHospitalPushEnabled', portalNotifSettings.hospital_push_enabled);
                 setCheck('notifSystemAlertEnabled', portalNotifSettings.system_alert_enabled);
@@ -395,6 +399,23 @@
         } catch (e) {
             console.error('[포털 알림 설정 조회 실패]:', e);
         }
+    };
+
+    // 증시/환율 상위 토글 시 하위 개장/마감 일괄 토글
+    window.toggleAssetSubOptions = function(checked) {
+        const openEl = document.getElementById('notifAssetOpenEnabled');
+        const closeEl = document.getElementById('notifAssetCloseEnabled');
+        if (openEl) openEl.checked = checked;
+        if (closeEl) closeEl.checked = checked;
+    };
+
+    // 증시/환율 개장/마감 서브 옵션 개별 변경 시 상위 토글 동기화
+    window.handleAssetSubOptionChange = function() {
+        const openEl = document.getElementById('notifAssetOpenEnabled');
+        const closeEl = document.getElementById('notifAssetCloseEnabled');
+        const reportEl = document.getElementById('notifAssetReportEnabled');
+        const hasAny = (openEl && openEl.checked) || (closeEl && closeEl.checked);
+        if (reportEl) reportEl.checked = hasAny;
     };
 
     // 시간표 칩 렌더링
@@ -467,7 +488,11 @@
         portalNotifSettings.breaking_news_enabled = getCheck('notifBreakingNewsEnabled');
         portalNotifSettings.weather_morning_enabled = getCheck('notifWeatherMorningEnabled');
         portalNotifSettings.weather_morning_time = getVal('inputWeatherTime', '07:00');
-        portalNotifSettings.asset_report_enabled = getCheck('notifAssetReportEnabled');
+        
+        portalNotifSettings.asset_open_enabled = getCheck('notifAssetOpenEnabled');
+        portalNotifSettings.asset_close_enabled = getCheck('notifAssetCloseEnabled');
+        portalNotifSettings.asset_report_enabled = (portalNotifSettings.asset_open_enabled || portalNotifSettings.asset_close_enabled) ? 1 : getCheck('notifAssetReportEnabled');
+        
         portalNotifSettings.bp_reminder_enabled = getCheck('notifBpReminderEnabled');
         portalNotifSettings.bp_reminder_time = getVal('inputBpReminderTime', '21:00');
         portalNotifSettings.hospital_push_enabled = getCheck('notifHospitalPushEnabled');

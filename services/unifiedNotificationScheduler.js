@@ -149,11 +149,10 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                 // 1. 🌤️ 아침 기상 특보 & 우산 알림
                 // ------------------------------------------------------------------
                 const targetWeatherTime = (u.weather_morning_time || '07:00').trim();
-                if (u.weather_morning_enabled !== 0 && kstTimeStr === targetWeatherTime && lastWeatherSentDate !== kstDateStr) {
-                    const cacheKey = `${userId}:weather:${kstDateStr}_${kstTimeStr}`;
+                if (u.weather_morning_enabled !== 0 && kstTimeStr === targetWeatherTime) {
+                    const cacheKey = `${userId}:weather:${kstDateStr}_${targetWeatherTime}`;
                     if (!sentHistoryCache.has(cacheKey)) {
                         sentHistoryCache.add(cacheKey);
-                        lastWeatherSentDate = kstDateStr;
                         try {
                             const weather = await getLiveWeatherData();
                             let umbrellaTip = '오늘도 쾌청하고 상쾌한 하루 보내세요! ☀️';
@@ -179,13 +178,17 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                 }
 
                 // ------------------------------------------------------------------
-                // 2. 💰 평일 15:30 국내 증시 마감 & 환율 리포트 (휴장일 제외)
+                // 2. 💰 평일 국내 증시 개장(09:00) & 마감(15:30) 및 환율 리포트 (휴장일 제외)
                 // ------------------------------------------------------------------
-                if (u.asset_report_enabled !== 0 && dayOfWeek >= 1 && dayOfWeek <= 5 && !isHoliday && kstTimeStr === '15:30' && lastAssetSentDate !== kstDateStr) {
-                    const cacheKey = `${userId}:asset:${kstDateStr}_${kstTimeStr}`;
+                const isAssetEnabled = u.asset_report_enabled !== 0;
+                const isAssetOpenEnabled = isAssetEnabled && (u.asset_open_enabled !== 0);
+                const isAssetCloseEnabled = isAssetEnabled && (u.asset_close_enabled !== 0);
+
+                // [2-1] 개장 브리핑 (평일 09:00 KST)
+                if (isAssetOpenEnabled && dayOfWeek >= 1 && dayOfWeek <= 5 && !isHoliday && kstTimeStr === '09:00') {
+                    const cacheKey = `${userId}:asset_open:${kstDateStr}`;
                     if (!sentHistoryCache.has(cacheKey)) {
                         sentHistoryCache.add(cacheKey);
-                        lastAssetSentDate = kstDateStr;
                         try {
                             const market = await getLiveMarketData();
                             const kospi = market.kospi ? `코스피 ${market.kospi.price}(${market.kospi.ratio})` : '';
@@ -193,15 +196,40 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                             const marketSummary = [kospi, usdkrw].filter(Boolean).join(' | ');
 
                             sendBroadcastPush({
-                                title: '💰 증시/환율',
-                                body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 자산 변동 내역을 확인하세요.',
+                                title: '💰 국내 증시 개장',
+                                body: marketSummary ? `${marketSummary}. 오늘의 국내 증시가 개장했습니다. 시장 동향을 확인하세요.` : '오늘의 국내 증시가 개장했습니다. 실시간 시장 지표를 확인하세요.',
                                 url: 'https://asset.j-jg.cc/',
                                 type: 'asset',
-                                tag: 'jg-asset',
+                                tag: 'jg-asset-open',
                                 userId
                             });
                         } catch (mErr) {
-                            console.error('[UnifiedScheduler] 증시 알림 생성 실패:', mErr.message);
+                            console.error('[UnifiedScheduler] 개장 증시 알림 생성 실패:', mErr.message);
+                        }
+                    }
+                }
+
+                // [2-2] 마감 브리핑 (평일 15:30 KST)
+                if (isAssetCloseEnabled && dayOfWeek >= 1 && dayOfWeek <= 5 && !isHoliday && kstTimeStr === '15:30') {
+                    const cacheKey = `${userId}:asset_close:${kstDateStr}`;
+                    if (!sentHistoryCache.has(cacheKey)) {
+                        sentHistoryCache.add(cacheKey);
+                        try {
+                            const market = await getLiveMarketData();
+                            const kospi = market.kospi ? `코스피 ${market.kospi.price}(${market.kospi.ratio})` : '';
+                            const usdkrw = market.usdkrw ? `환율 ${market.usdkrw.price}원` : '';
+                            const marketSummary = [kospi, usdkrw].filter(Boolean).join(' | ');
+
+                            sendBroadcastPush({
+                                title: '💰 국내 증시 마감',
+                                body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 자산 변동 내역을 확인하세요.',
+                                url: 'https://asset.j-jg.cc/',
+                                type: 'asset',
+                                tag: 'jg-asset-close',
+                                userId
+                            });
+                        } catch (mErr) {
+                            console.error('[UnifiedScheduler] 마감 증시 알림 생성 실패:', mErr.message);
                         }
                     }
                 }
@@ -252,14 +280,13 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                 }
 
                 // ------------------------------------------------------------------
-                // 5. 🎯 당일 혈압 미측정 저녁 리마인드 (오늘 기록 0건일 때 21:00)
+                // 5. 🎯 당일 혈압 미측정 저녁 리마인드 (오늘 기록 0건일 때 설정 시각)
                 // ------------------------------------------------------------------
                 const targetBpTime = (u.bp_reminder_time || '21:00').trim();
-                if (u.bp_reminder_enabled !== 0 && kstTimeStr === targetBpTime && lastBpSentDate !== kstDateStr) {
-                    const cacheKey = `${userId}:bp_evening_remind:${kstDateStr}_${kstTimeStr}`;
+                if (u.bp_reminder_enabled !== 0 && kstTimeStr === targetBpTime) {
+                    const cacheKey = `${userId}:bp_evening_remind:${kstDateStr}_${targetBpTime}`;
                     if (!sentHistoryCache.has(cacheKey)) {
                         sentHistoryCache.add(cacheKey);
-                        lastBpSentDate = kstDateStr;
                         db.get(
                             "SELECT COUNT(*) as count FROM records WHERE substr(measured_at, 1, 10) = ?",
                             [kstDateStr],

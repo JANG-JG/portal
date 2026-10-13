@@ -1584,22 +1584,23 @@ body {
     margin: 0;
 }
 
-/* 4. 메모 수정 모달 */
+/* 4. 메모 수정 모달 (모바일 네비바 최상위 표시 & 내부 스크롤 보장) */
 .memo-modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(4px);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    box-sizing: border-box;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 9999999 !important; /* 상단 unav-header(99999) 및 전체 UI보다 최상위 보장 */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
     animation: memoFadeIn 0.2s ease-out;
 }
 
@@ -1613,8 +1614,14 @@ body {
     border-radius: 1rem;
     width: 100%;
     max-width: 520px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    max-height: calc(100dvh - 2rem);
+    max-height: calc(100vh - 2rem);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
     overflow: hidden;
+    position: relative;
+    z-index: 10000000;
     animation: memoSlideUp 0.25s ease-out;
 }
 
@@ -1624,6 +1631,7 @@ body {
 }
 
 .memo-modal-header {
+    flex-shrink: 0;
     padding: 1rem 1.25rem;
     border-bottom: 1px solid #f1f5f9;
     display: flex;
@@ -1655,11 +1663,17 @@ body {
 }
 
 .memo-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 1.25rem;
+    max-height: calc(100dvh - 140px);
 }
 
 .memo-modal-footer {
+    flex-shrink: 0;
     padding: 0.85rem 1.25rem;
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
     background: #f8fafc;
     border-top: 1px solid #f1f5f9;
     display: flex;
@@ -1718,6 +1732,23 @@ body {
     }
     .memo-grid {
         grid-template-columns: 1fr;
+    }
+    .memo-modal-backdrop {
+        padding: 0.5rem !important;
+        align-items: center !important;
+    }
+    .memo-modal-dialog {
+        max-height: calc(100dvh - 1rem) !important;
+        max-height: calc(100vh - 1rem) !important;
+        border-radius: 0.75rem !important;
+    }
+    .memo-modal-body {
+        padding: 0.85rem !important;
+        max-height: calc(100dvh - 120px) !important;
+    }
+    #editMemoQuill .ql-editor {
+        min-height: 120px !important;
+        max-height: 220px !important;
     }
 }
 

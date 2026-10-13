@@ -131,6 +131,8 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             created_at DATETIME DEFAULT (datetime('now', 'localtime')),
             updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
         )`);
+        db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
+        db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
     }
 });
 
@@ -2487,6 +2489,8 @@ app.get('/api/notification/settings', authenticateToken, (req, res) => {
                     weather_morning_enabled: 1,
                     weather_morning_time: '07:00',
                     asset_report_enabled: 1,
+                    asset_open_enabled: 1,
+                    asset_close_enabled: 1,
                     bp_reminder_enabled: 1,
                     bp_reminder_time: '21:00',
                     system_alert_enabled: 1,
@@ -2507,6 +2511,8 @@ app.get('/api/notification/settings', authenticateToken, (req, res) => {
                 weather_morning_enabled: row.weather_morning_enabled !== undefined ? row.weather_morning_enabled : 1,
                 weather_morning_time: row.weather_morning_time || '07:00',
                 asset_report_enabled: row.asset_report_enabled !== undefined ? row.asset_report_enabled : 1,
+                asset_open_enabled: row.asset_open_enabled !== undefined ? row.asset_open_enabled : (row.asset_report_enabled !== undefined ? row.asset_report_enabled : 1),
+                asset_close_enabled: row.asset_close_enabled !== undefined ? row.asset_close_enabled : (row.asset_report_enabled !== undefined ? row.asset_report_enabled : 1),
                 bp_reminder_enabled: row.bp_reminder_enabled !== undefined ? row.bp_reminder_enabled : 1,
                 bp_reminder_time: row.bp_reminder_time || '21:00',
                 system_alert_enabled: row.system_alert_enabled !== undefined ? row.system_alert_enabled : 1,
@@ -2525,7 +2531,8 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
     const {
         enabled, hospital_push_enabled, breaking_news_enabled,
         weather_morning_enabled, weather_morning_time,
-        asset_report_enabled, bp_reminder_enabled, bp_reminder_time,
+        asset_report_enabled, asset_open_enabled, asset_close_enabled,
+        bp_reminder_enabled, bp_reminder_time,
         system_alert_enabled,
         weekday_med_times, weekday_bp_times,
         weekend_med_times, weekend_bp_times
@@ -2533,8 +2540,8 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
 
     const query = `
         INSERT INTO notification_settings 
-        (user_id, enabled, hospital_push_enabled, breaking_news_enabled, weather_morning_enabled, weather_morning_time, asset_report_enabled, bp_reminder_enabled, bp_reminder_time, system_alert_enabled, weekday_med_times, weekday_bp_times, weekend_med_times, weekend_bp_times)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, enabled, hospital_push_enabled, breaking_news_enabled, weather_morning_enabled, weather_morning_time, asset_report_enabled, asset_open_enabled, asset_close_enabled, bp_reminder_enabled, bp_reminder_time, system_alert_enabled, weekday_med_times, weekday_bp_times, weekend_med_times, weekend_bp_times)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             enabled = excluded.enabled,
             hospital_push_enabled = excluded.hospital_push_enabled,
@@ -2542,6 +2549,8 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
             weather_morning_enabled = excluded.weather_morning_enabled,
             weather_morning_time = excluded.weather_morning_time,
             asset_report_enabled = excluded.asset_report_enabled,
+            asset_open_enabled = excluded.asset_open_enabled,
+            asset_close_enabled = excluded.asset_close_enabled,
             bp_reminder_enabled = excluded.bp_reminder_enabled,
             bp_reminder_time = excluded.bp_reminder_time,
             system_alert_enabled = excluded.system_alert_enabled,
@@ -2552,6 +2561,10 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
             updated_at = CURRENT_TIMESTAMP
     `;
 
+    const openVal = asset_open_enabled !== undefined ? (asset_open_enabled ? 1 : 0) : 1;
+    const closeVal = asset_close_enabled !== undefined ? (asset_close_enabled ? 1 : 0) : 1;
+    const reportVal = (openVal || closeVal) ? 1 : (asset_report_enabled !== undefined ? (asset_report_enabled ? 1 : 0) : 1);
+
     db.run(query, [
         userId,
         enabled !== undefined ? (enabled ? 1 : 0) : 1,
@@ -2559,7 +2572,9 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
         breaking_news_enabled !== undefined ? (breaking_news_enabled ? 1 : 0) : 1,
         weather_morning_enabled !== undefined ? (weather_morning_enabled ? 1 : 0) : 1,
         (weather_morning_time || '07:00').trim(),
-        asset_report_enabled !== undefined ? (asset_report_enabled ? 1 : 0) : 1,
+        reportVal,
+        openVal,
+        closeVal,
         bp_reminder_enabled !== undefined ? (bp_reminder_enabled ? 1 : 0) : 1,
         (bp_reminder_time || '21:00').trim(),
         system_alert_enabled !== undefined ? (system_alert_enabled ? 1 : 0) : 1,

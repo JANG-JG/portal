@@ -777,49 +777,67 @@
                         </label>
                     </div>
 
-                    <!-- 2. 🌤️ 아침 날씨 (신규 1번) -->
+                    <!-- 2. 🌤️ 아침 날씨 -->
                     <div class="notif-card-group">
-                        <label class="notif-toggle-row">
+                        <div class="notif-toggle-row">
                             <input type="checkbox" id="notifWeatherMorningEnabled" checked>
                             <div class="notif-toggle-content">
                                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
-                                    <strong>🌤️ 아침 날씨</strong>
-                                    <div class="notif-inline-time" onclick="event.preventDefault(); event.stopPropagation();">
+                                    <label for="notifWeatherMorningEnabled" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
+                                        <strong>🌤️ 아침 날씨</strong>
+                                    </label>
+                                    <div class="notif-inline-time">
                                         <span>발송 시각:</span>
                                         <input type="time" id="inputWeatherTime" value="07:00">
                                     </div>
                                 </div>
                                 <p>출근 전 당일 날씨와 기온 요약, 비/눈 예보 시 우산 챙기기 알림을 전송합니다.</p>
                             </div>
-                        </label>
+                        </div>
                     </div>
 
-                    <!-- 3. 💰 증시/환율 (신규 2번) -->
+                    <!-- 3. 💰 증시/환율 (개장/마감 선택 가능) -->
                     <div class="notif-card-group">
-                        <label class="notif-toggle-row">
-                            <input type="checkbox" id="notifAssetReportEnabled" checked>
+                        <div class="notif-toggle-row">
+                            <input type="checkbox" id="notifAssetReportEnabled" checked onchange="toggleAssetSubOptions(this.checked)">
                             <div class="notif-toggle-content">
-                                <strong>💰 증시/환율 (평일 15:30)</strong>
-                                <p>평일 장 마감 후 코스피, 코스닥 지수 변동과 실시간 원/달러 환율 브리핑을 전송합니다.</p>
+                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+                                    <label for="notifAssetReportEnabled" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
+                                        <strong>💰 증시/환율 브리핑 (평일)</strong>
+                                    </label>
+                                </div>
+                                <p>평일 코스피 지수 변동과 실시간 원/달러 환율 브리핑을 웹 푸시로 전송합니다. (휴장일 제외)</p>
+                                <div style="margin-top: 0.5rem; display: flex; gap: 0.85rem; flex-wrap: wrap; background: #f8fafc; padding: 0.45rem 0.65rem; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; color: #334155; cursor: pointer; margin: 0;">
+                                        <input type="checkbox" id="notifAssetOpenEnabled" checked onchange="handleAssetSubOptionChange()" style="margin: 0 !important; width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important;">
+                                        <span>🔔 개장 브리핑 (09:00)</span>
+                                    </label>
+                                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; color: #334155; cursor: pointer; margin: 0;">
+                                        <input type="checkbox" id="notifAssetCloseEnabled" checked onchange="handleAssetSubOptionChange()" style="margin: 0 !important; width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important;">
+                                        <span>🔔 마감 브리핑 (15:30)</span>
+                                    </label>
+                                </div>
                             </div>
-                        </label>
+                        </div>
                     </div>
 
-                    <!-- 4. 🎯 혈압 리마인드 (신규 3번) -->
+                    <!-- 4. 🎯 혈압 리마인드 -->
                     <div class="notif-card-group">
-                        <label class="notif-toggle-row">
+                        <div class="notif-toggle-row">
                             <input type="checkbox" id="notifBpReminderEnabled" checked>
                             <div class="notif-toggle-content">
                                 <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
-                                    <strong>🎯 혈압 리마인드</strong>
-                                    <div class="notif-inline-time" onclick="event.preventDefault(); event.stopPropagation();">
+                                    <label for="notifBpReminderEnabled" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
+                                        <strong>🎯 혈압 리마인드</strong>
+                                    </label>
+                                    <div class="notif-inline-time">
                                         <span>리마인드 시각:</span>
                                         <input type="time" id="inputBpReminderTime" value="21:00">
                                     </div>
                                 </div>
                                 <p>오늘 혈압 측정 기록이 없는 경우, 취침 전 편안한 상태에서 측정하도록 알림을 보냅니다.</p>
                             </div>
-                        </label>
+                        </div>
                     </div>
 
                     <!-- 5. 🏥 병원 진료 예약 오픈 알림 -->
@@ -1485,6 +1503,10 @@
                     setCheck('notifBreakingNewsEnabled', portalNotifSettings.breaking_news_enabled);
                     setCheck('notifWeatherMorningEnabled', portalNotifSettings.weather_morning_enabled);
                     setCheck('notifAssetReportEnabled', portalNotifSettings.asset_report_enabled);
+                    const isOpenOn = portalNotifSettings.asset_open_enabled !== undefined ? portalNotifSettings.asset_open_enabled : portalNotifSettings.asset_report_enabled;
+                    const isCloseOn = portalNotifSettings.asset_close_enabled !== undefined ? portalNotifSettings.asset_close_enabled : portalNotifSettings.asset_report_enabled;
+                    setCheck('notifAssetOpenEnabled', isOpenOn);
+                    setCheck('notifAssetCloseEnabled', isCloseOn);
                     setCheck('notifBpReminderEnabled', portalNotifSettings.bp_reminder_enabled);
                     setCheck('notifHospitalPushEnabled', portalNotifSettings.hospital_push_enabled);
                     setCheck('notifSystemAlertEnabled', portalNotifSettings.system_alert_enabled);
@@ -1502,6 +1524,21 @@
             } catch (e) {
                 console.error('[포털 알림 설정 조회 실패]:', e);
             }
+        }
+
+        function toggleAssetSubOptions(checked) {
+            const openEl = document.getElementById('notifAssetOpenEnabled');
+            const closeEl = document.getElementById('notifAssetCloseEnabled');
+            if (openEl) openEl.checked = checked;
+            if (closeEl) closeEl.checked = checked;
+        }
+
+        function handleAssetSubOptionChange() {
+            const openEl = document.getElementById('notifAssetOpenEnabled');
+            const closeEl = document.getElementById('notifAssetCloseEnabled');
+            const reportEl = document.getElementById('notifAssetReportEnabled');
+            const hasAny = (openEl && openEl.checked) || (closeEl && closeEl.checked);
+            if (reportEl) reportEl.checked = hasAny;
         }
 
         function renderNotifChips() {
@@ -1570,7 +1607,11 @@
             portalNotifSettings.breaking_news_enabled = getCheck('notifBreakingNewsEnabled');
             portalNotifSettings.weather_morning_enabled = getCheck('notifWeatherMorningEnabled');
             portalNotifSettings.weather_morning_time = getVal('inputWeatherTime', '07:00');
-            portalNotifSettings.asset_report_enabled = getCheck('notifAssetReportEnabled');
+            
+            portalNotifSettings.asset_open_enabled = getCheck('notifAssetOpenEnabled');
+            portalNotifSettings.asset_close_enabled = getCheck('notifAssetCloseEnabled');
+            portalNotifSettings.asset_report_enabled = (portalNotifSettings.asset_open_enabled || portalNotifSettings.asset_close_enabled) ? 1 : getCheck('notifAssetReportEnabled');
+            
             portalNotifSettings.bp_reminder_enabled = getCheck('notifBpReminderEnabled');
             portalNotifSettings.bp_reminder_time = getVal('inputBpReminderTime', '21:00');
             portalNotifSettings.hospital_push_enabled = getCheck('notifHospitalPushEnabled');
