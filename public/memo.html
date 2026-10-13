@@ -15,7 +15,7 @@
     <meta name="color-scheme" content="light">
 
     <!-- 스타일시트 -->
-    <link rel="stylesheet" href="/css/style.css?v=20261013_v6">
+    <link rel="stylesheet" href="/css/style.css?v=20261014_v1">
     <link rel="stylesheet" href="/css/unified-nav.css?v=20261013_v6">
     <link rel="stylesheet" href="/css/quill.snow.css">
 
@@ -841,11 +841,18 @@
             setMemoView(currentViewMode, false);
             loadMemos();
 
-            // 단축키 바인딩 (Ctrl + Enter 로 즉시 등록)
+            // 단축키 바인딩 (Ctrl + Enter 로 즉시 등록, ESC 로 수정 모달 닫기)
             document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('memoEditModal');
+                    if (modal && (modal.classList.contains('is-open') || modal.style.display === 'flex')) {
+                        closeEditMemoModal();
+                    }
+                    return;
+                }
                 if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                     const modal = document.getElementById('memoEditModal');
-                    if (modal && modal.style.display === 'flex') {
+                    if (modal && (modal.classList.contains('is-open') || modal.style.display === 'flex')) {
                         e.preventDefault();
                         submitEditMemo();
                     } else if (document.activeElement && (document.activeElement.closest('.memo-composer-card'))) {
@@ -1189,14 +1196,22 @@
             const colorRadio = document.querySelector(`input[name="editMemoColor"][value="${memo.color}"]`);
             if (colorRadio) colorRadio.checked = true;
 
-            document.getElementById('memoEditModal').style.display = 'flex';
+            const modal = document.getElementById('memoEditModal');
+            if (modal) {
+                modal.classList.add('is-open');
+                modal.style.display = 'flex';
+            }
             setTimeout(() => {
                 if (editMemoQuill) editMemoQuill.focus();
             }, 100);
         }
 
         function closeEditMemoModal() {
-            document.getElementById('memoEditModal').style.display = 'none';
+            const modal = document.getElementById('memoEditModal');
+            if (modal) {
+                modal.classList.remove('is-open');
+                modal.style.display = 'none';
+            }
         }
 
         // 12. 수정 완료 제출
