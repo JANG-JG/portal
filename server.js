@@ -158,6 +158,12 @@ const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
 
 // 토큰 인증 미들웨어
 function authenticateToken(req, res, next) {
+    // 🌟 PWABuilder 등 PWA 검사 봇의 매니페스트/서비스워커 정적 분석 허용 (API는 제외)
+    const userAgent = req.headers['user-agent'] || '';
+    if (userAgent.includes('PWABuilder') && (req.path === '/' || req.path === '/index.html')) {
+        return res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+
     const token = req.cookies.portal_token;
     if (!token) {
         if (req.path && req.path.startsWith('/api/')) {
