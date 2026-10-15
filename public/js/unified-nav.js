@@ -27,25 +27,36 @@
         }
     };
 
+    const UNAV_VERSION = '20261016_v1';
+    const CACHE_KEY_HTML = 'jg_unav_html';
+    const CACHE_KEY_VER = 'jg_unav_ver';
+    const CACHE_KEY_TIME = 'jg_unav_time';
+    const STALE_CHECK_INTERVAL = 30 * 60 * 1000; // 30분 동안은 재요청 없이 로컬 캐시 즉시 사용
+
     // 1. 공통 CSS 스타일시트 자동 주입 확인
     function ensureUnifiedNavCss() {
         if (!document.querySelector('link[href*="unified-nav.css"]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
             const isLocal = window.location.hostname === 'localhost';
-            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=20261013_v6';
+            link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=' + UNAV_VERSION;
             document.head.appendChild(link);
         }
     }
 
-    // 2. 상단 내비게이션 HTML 컴포넌트 비동기 로드 및 마운트 (SWR 패턴: 항상 최신 통합 컴포넌트 유지)
+    // 2. 상단 내비게이션 HTML 컴포넌트 비동기 로드 및 마운트 (localStorage SWR 캐싱)
     async function mountUnifiedNav() {
         ensureUnifiedNavCss();
 
-        const CACHE_KEY = 'jg_unav_html_v20261013_v7';
         let cachedHtml = null;
+        let cachedVer = null;
+        let cachedTime = 0;
         try {
-            cachedHtml = sessionStorage.getItem(CACHE_KEY);
+            cachedHtml = localStorage.getItem(CACHE_KEY_HTML);
+            cachedVer = localStorage.getItem(CACHE_KEY_VER);
+            cachedTime = parseInt(localStorage.getItem(CACHE_KEY_TIME) || '0', 10);
+            // 구버전 sessionStorage 키 정리
+            sessionStorage.removeItem('jg_unav_html_v20261013_v7');
         } catch (e) {}
 
         const applyHtml = (html) => {
@@ -66,31 +77,38 @@
             }
         };
 
-        // 1) 캐시가 있으면 즉시 렌더링 (0ms 레이턴시)
+        // 1) localStorage 캐시가 있으면 즉시 렌더링 (0ms 레이턴시)
+        const hasValidCache = cachedHtml && cachedVer === UNAV_VERSION;
         if (cachedHtml) {
             applyHtml(cachedHtml);
             highlightActiveMenu();
             initUnifiedNav();
         }
 
-        // 2) 최신 컴포넌트를 네트워크로 로드하여 항상 동기화 유지
-        try {
-            const isLocal = window.location.hostname === 'localhost';
-            const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=20261013_v7';
-            const res = await fetch(compUrl);
-            if (res.ok) {
-                const html = await res.text();
-                if (html !== cachedHtml || !cachedHtml) {
-                    applyHtml(html);
+        // 2) 캐시가 없거나, 버전이 변경되었거나, TTL(30분)이 만료된 경우에만 백그라운드 갱신
+        const isStale = !hasValidCache || (Date.now() - cachedTime > STALE_CHECK_INTERVAL);
+        if (isStale) {
+            try {
+                const isLocal = window.location.hostname === 'localhost';
+                const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=' + UNAV_VERSION;
+                const res = await fetch(compUrl);
+                if (res.ok) {
+                    const html = await res.text();
                     try {
-                        sessionStorage.setItem(CACHE_KEY, html);
+                        localStorage.setItem(CACHE_KEY_HTML, html);
+                        localStorage.setItem(CACHE_KEY_VER, UNAV_VERSION);
+                        localStorage.setItem(CACHE_KEY_TIME, String(Date.now()));
                     } catch (e) {}
-                    highlightActiveMenu();
-                    initUnifiedNav();
+
+                    if (html !== cachedHtml || !cachedHtml) {
+                        applyHtml(html);
+                        highlightActiveMenu();
+                        initUnifiedNav();
+                    }
                 }
+            } catch (err) {
+                console.warn('[UnifiedNav] 동적 컴포넌트 로드 실패:', err);
             }
-        } catch (err) {
-            console.warn('[UnifiedNav] 동적 컴포넌트 로드 실패:', err);
         }
 
         // 현재 서비스/경로에 따른 활성 탭 자동 하이라이트
@@ -250,19 +268,34 @@
     window.openNotificationModal = async function() {
         let modal = document.getElementById('notificationModal');
         if (!modal) {
-            console.log('[UnifiedNav] notificationModal 미발견 -> 실시간 마운트 시도...');
+            console.log('[UnifiedNav] notificationModal 미발견 -> 캐시 및 복구 시도...');
             try {
-                const isLocal = window.location.hostname === 'localhost';
-                const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=' + Date.now();
-                const res = await fetch(compUrl);
-                if (res.ok) {
-                    const html = await res.text();
+                // 1) localStorage 캐시에서 먼저 복구 시도
+                const localHtml = localStorage.getItem(CACHE_KEY_HTML);
+                if (localHtml) {
                     const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const fetchedModal = doc.getElementById('notificationModal');
-                    if (fetchedModal) {
-                        document.body.appendChild(fetchedModal);
-                        modal = fetchedModal;
+                    const doc = parser.parseFromString(localHtml, 'text/html');
+                    const cachedModal = doc.getElementById('notificationModal');
+                    if (cachedModal) {
+                        document.body.appendChild(cachedModal);
+                        modal = cachedModal;
+                    }
+                }
+
+                // 2) 캐시에도 없으면 네트워크에서 가져옴
+                if (!modal) {
+                    const isLocal = window.location.hostname === 'localhost';
+                    const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=' + UNAV_VERSION;
+                    const res = await fetch(compUrl);
+                    if (res.ok) {
+                        const html = await res.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        const fetchedModal = doc.getElementById('notificationModal');
+                        if (fetchedModal) {
+                            document.body.appendChild(fetchedModal);
+                            modal = fetchedModal;
+                        }
                     }
                 }
             } catch (err) {
