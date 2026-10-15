@@ -1,7 +1,8 @@
-const CACHE_NAME = 'jg-portal-v20261016_v2';
+const CACHE_NAME = 'jg-portal-v20261016_v3';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
+    '/offline.html',
     '/css/pretendard.css',
     '/css/unified-nav.css',
     '/js/unified-nav.js',
@@ -65,7 +66,11 @@ self.addEventListener('fetch', (event) => {
                     }
                     return res;
                 })
-                .catch(() => caches.match(req))
+                .catch(async () => {
+                    const cached = await caches.match(req);
+                    if (cached) return cached;
+                    return caches.match('/offline.html');
+                })
         );
         return;
     }
