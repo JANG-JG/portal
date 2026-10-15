@@ -27,18 +27,24 @@
         }
     };
 
-    const UNAV_VERSION = '20261016_v1';
+    const UNAV_VERSION = '20261016_v2';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
     const STALE_CHECK_INTERVAL = 30 * 60 * 1000; // 30분 동안은 재요청 없이 로컬 캐시 즉시 사용
 
-    // 1. 공통 CSS 스타일시트 자동 주입 확인
+    // 1. 공통 CSS 스타일시트 및 Pretendard 웹폰트 자동 주입 확인
     function ensureUnifiedNavCss() {
+        const isLocal = window.location.hostname === 'localhost';
+        if (!document.querySelector('link[href*="pretendard.css"]')) {
+            const fontLink = document.createElement('link');
+            fontLink.rel = 'stylesheet';
+            fontLink.href = (isLocal ? '/css/pretendard.css' : 'https://j-jg.cc/css/pretendard.css') + '?v=' + UNAV_VERSION;
+            document.head.appendChild(fontLink);
+        }
         if (!document.querySelector('link[href*="unified-nav.css"]')) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            const isLocal = window.location.hostname === 'localhost';
             link.href = (isLocal ? '/css/unified-nav.css' : 'https://j-jg.cc/css/unified-nav.css') + '?v=' + UNAV_VERSION;
             document.head.appendChild(link);
         }

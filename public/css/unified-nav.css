@@ -1,3 +1,5 @@
+@import url('pretendard.css');
+
 /* ========================================================
    🌐 JG 통합 상단 내비게이션 바 (공통 표준 디자인 시스템)
    ======================================================== */
@@ -11,7 +13,7 @@
     background-color: #ffffff;
     border-bottom: 1px solid #e2e8f0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5;
 }
 
