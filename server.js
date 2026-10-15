@@ -110,7 +110,9 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
     else {
         console.log('✅ 마스터 계정 DB 로드 완료:', BLOOD_DB_PATH);
         db.run('PRAGMA journal_mode = WAL;');
+        db.run('PRAGMA synchronous = NORMAL;');
         db.run('PRAGMA busy_timeout = 5000;');
+        db.run('PRAGMA temp_store = MEMORY;');
         db.run(`CREATE TABLE IF NOT EXISTS login_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
@@ -135,6 +137,12 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
         )`);
         db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
         db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
+        // 성능 인덱스 생성
+        db.run(`CREATE INDEX IF NOT EXISTS idx_records_measured_at ON records (measured_at DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_user_created ON notification_history (user_id, created_at DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_unread ON notification_history (user_id, is_read)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_user_memos_user ON user_memos (user_id, is_pinned DESC, updated_at DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_login_logs_attempted_at ON login_logs (attempted_at DESC)`);
     }
 });
 
@@ -144,7 +152,9 @@ const assetDb = new sqlite3.Database(ASSET_DB_PATH, (err) => {
     else {
         console.log('✅ 자산 DB 로드 완료:', ASSET_DB_PATH);
         assetDb.run('PRAGMA journal_mode = WAL;');
+        assetDb.run('PRAGMA synchronous = NORMAL;');
         assetDb.run('PRAGMA busy_timeout = 5000;');
+        assetDb.run('PRAGMA temp_store = MEMORY;');
     }
 });
 
@@ -154,7 +164,9 @@ const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
     else {
         console.log('✅ 뉴스 DB 로드 완료:', NEWS_DB_PATH);
         newsDb.run('PRAGMA journal_mode = WAL;');
+        newsDb.run('PRAGMA synchronous = NORMAL;');
         newsDb.run('PRAGMA busy_timeout = 5000;');
+        newsDb.run('PRAGMA temp_store = MEMORY;');
     }
 });
 
