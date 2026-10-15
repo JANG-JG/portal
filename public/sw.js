@@ -1,7 +1,25 @@
-const CACHE_NAME = 'jg-portal-v6';
+const CACHE_NAME = 'jg-portal-v20261016_v1';
+
+// 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
+const PRECACHE_ASSETS = [
+    '/css/unified-nav.css',
+    '/js/unified-nav.js',
+    '/js/news-ticker.js',
+    '/favicon.svg',
+    '/favicon.png',
+    '/icon-192.png',
+    '/icon-512.png',
+    '/manifest.json'
+];
 
 self.addEventListener('install', (event) => {
-    self.skipWaiting();
+    event.waitUntil(
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.addAll(PRECACHE_ASSETS).catch((err) => {
+                console.warn('[Portal SW] Precache partial error:', err);
+            });
+        }).then(() => self.skipWaiting())
+    );
 });
 
 self.addEventListener('activate', (event) => {
@@ -9,7 +27,10 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((keys) => {
             return Promise.all(
                 keys.map((key) => {
-                    if (key !== CACHE_NAME) return caches.delete(key);
+                    if (key !== CACHE_NAME) {
+                        console.log('[Portal SW] Removing old cache:', key);
+                        return caches.delete(key);
+                    }
                 })
             );
         }).then(() => self.clients.claim())
@@ -17,13 +38,62 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
-    // API 및 단기 티켓 SSO 리다이렉트는 캐시 없이 항상 네트워크로 직접 전송
-    if (url.pathname.startsWith('/api') || url.pathname.startsWith('/go')) {
+    const req = event.request;
+    const url = new URL(req.url);
+
+    // 1. GET 이외의 요청이나 API, SSO 리다이렉트, 소켓 요청은 캐싱 완전 제외
+    if (req.method !== 'GET' || 
+        url.pathname.startsWith('/api') || 
+        url.pathname.startsWith('/go') || 
+        url.pathname.startsWith('/socket.io')) {
         return;
     }
+
+    // 2. HTML 문서 탐색 요청: Network-First (항상 최신 HTML 우선, 실패 시 오프라인 캐시)
+    if (req.mode === 'navigate') {
+        event.respondWith(
+            fetch(req)
+                .then((res) => {
+                    if (res && res.status === 200) {
+                        const clone = res.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+                    }
+                    return res;
+                })
+                .catch(() => caches.match(req))
+        );
+        return;
+    }
+
+    // 3. 정적 에셋 (CSS, JS, 이미지, 폰트): Stale-While-Revalidate (0ms 응답 + 백그라운드 갱신)
+    const isStaticAsset = (
+        url.pathname.match(/\.(css|js|png|svg|jpg|jpeg|webp|woff2?|ico)$/i) ||
+        PRECACHE_ASSETS.includes(url.pathname)
+    );
+
+    if (isStaticAsset) {
+        event.respondWith(
+            caches.open(CACHE_NAME).then(async (cache) => {
+                const cachedRes = await cache.match(req);
+                const fetchPromise = fetch(req)
+                    .then((networkRes) => {
+                        if (networkRes && networkRes.status === 200) {
+                            cache.put(req, networkRes.clone());
+                        }
+                        return networkRes;
+                    })
+                    .catch(() => cachedRes);
+
+                // 캐시가 있으면 즉시 반환, 없으면 네트워크 응답 대기
+                return cachedRes || fetchPromise;
+            })
+        );
+        return;
+    }
+
+    // 4. 기타 리소스 기본 처리
     event.respondWith(
-        fetch(event.request).catch(() => caches.match(event.request))
+        fetch(req).catch(() => caches.match(req))
     );
 });
 
