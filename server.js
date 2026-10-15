@@ -11,9 +11,11 @@ const { exec, execFile } = require('child_process');
 const net = require('net');
 const webPush = require('web-push');
 const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
+const compression = require('compression');
 
 const app = express();
 app.set('trust proxy', 1);
+app.use(compression());
 const PORT = process.env.PORT || 3004;
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
