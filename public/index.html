@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="JG 포털">
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v2">
-    <link rel="stylesheet" href="/css/style.css?v=20261016_v3">
+    <link rel="stylesheet" href="/css/style.css?v=20261016_v4">
     <link rel="stylesheet" href="/css/unified-nav.css?v=20261016_v2">
 </head>
 <body>
@@ -37,6 +37,28 @@
                 </button>
             </div>
             <p>오늘의 통합 서비스 현황을 한눈에 확인하고 바로 이동하세요.</p>
+
+            <!-- ⚡ 원터치 모바일 퀵 액션 바 -->
+            <div class="quick-action-strip" role="navigation" aria-label="빠른 바로가기">
+                <a href="/go/blood" class="quick-action-btn btn-accent" title="혈압 관리 앱 바로가기">
+                    <span>🩸</span><span>혈압 측정</span>
+                </a>
+                <button type="button" class="quick-action-btn" onclick="recordQuickMedication()" title="오늘 혈압약 복용 원터치 기록">
+                    <span>💊</span><span>약 복용</span>
+                </button>
+                <a href="/go/asset" class="quick-action-btn" title="자산 관리 앱 바로가기">
+                    <span>💰</span><span>자산 분석</span>
+                </a>
+                <a href="/go/news" class="quick-action-btn" title="AI 뉴스 브리핑 바로가기">
+                    <span>📰</span><span>뉴스 브리핑</span>
+                </a>
+                <a href="/memo" class="quick-action-btn" title="아이디어 메모장 열기">
+                    <span>💡</span><span>메모 작성</span>
+                </a>
+                <button type="button" class="quick-action-btn" onclick="openQuickSearchModal()" title="통합 검색창 열기 (Ctrl+K)">
+                    <span>🔍</span><span>통합 검색</span>
+                </button>
+            </div>
 
             <!-- 🔍 통합 퀵 검색 트리거 바 (Ctrl + K) -->
             <div class="quick-search-trigger-bar" onclick="openQuickSearchModal()" role="button" tabindex="0" title="통합 검색 열기 (단축키: Ctrl+K)">
@@ -80,6 +102,60 @@
                     <div class="breaking-dropdown-items" id="breakingDropdownItems">
                         <div style="color:#94a3b8; font-size:0.82rem; padding:1rem; text-align:center;">속보 기사를 불러오는 중...</div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 📱 오늘의 라이프 & D-Day 스마트 대시보드 위젯 허브 (2026-10-16 신규) -->
+        <section class="today-summary-hub" id="todaySummaryHub" aria-label="오늘의 요약 위젯">
+            <!-- 위젯 1: 오늘 복약 상태 -->
+            <div class="today-widget-card" id="widgetTodayMed">
+                <div class="today-widget-header">
+                    <span class="today-widget-title">💊 오늘 복약</span>
+                    <span class="today-widget-badge badge-state-warn" id="widgetMedBadge">확인 중</span>
+                </div>
+                <div class="today-widget-body">
+                    <div class="today-widget-val-main" id="widgetMedStatusText">조회 중...</div>
+                    <div class="today-widget-val-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
+                </div>
+                <button type="button" class="btn-widget-quick-med" id="btnWidgetQuickMed" onclick="recordQuickMedication()" style="display:none;">
+                    💊 지금 복약 기록
+                </button>
+            </div>
+
+            <!-- 위젯 2: 최근 혈압 상태 -->
+            <div class="today-widget-card" id="widgetRecentBlood">
+                <div class="today-widget-header">
+                    <span class="today-widget-title">🩸 최근 혈압</span>
+                    <span class="today-widget-badge badge-state-ok" id="widgetBloodBadge">-</span>
+                </div>
+                <div class="today-widget-body">
+                    <div class="today-widget-val-main" id="widgetBloodValMain">- / - <small style="font-size:0.75rem; color:#64748b; font-weight:normal;">mmHg</small></div>
+                    <div class="today-widget-val-sub" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
+                </div>
+            </div>
+
+            <!-- 위젯 3: 병원 & 약 D-Day -->
+            <div class="today-widget-card" id="widgetHospitalDDay">
+                <div class="today-widget-header">
+                    <span class="today-widget-title">🏥 진료 D-Day</span>
+                    <span class="today-widget-badge badge-state-info" id="widgetHospitalBadge">-</span>
+                </div>
+                <div class="today-widget-body">
+                    <div class="today-widget-val-main" id="widgetHospitalDDayText">-</div>
+                    <div class="today-widget-val-sub" id="widgetHospitalSubText">약 잔여 -일분</div>
+                </div>
+            </div>
+
+            <!-- 위젯 4: 총자산 & 시장 요약 -->
+            <div class="today-widget-card" id="widgetAssetMarket">
+                <div class="today-widget-header">
+                    <span class="today-widget-title">💰 총자산 & 시장</span>
+                    <span class="today-widget-badge badge-state-ok" id="widgetMarketBadge">코스피</span>
+                </div>
+                <div class="today-widget-body">
+                    <div class="today-widget-val-main" id="widgetAssetTotalMain">-</div>
+                    <div class="today-widget-val-sub" id="widgetMarketSubText">시장 시세 수집 중...</div>
                 </div>
             </div>
         </section>
@@ -189,12 +265,17 @@
                 <h3>아이디어 & 메모장</h3>
                 <p class="card-desc">떠오른 영감, 할 일 체크리스트 및 서식 편집 메모</p>
                 <div class="card-summary" id="memoCardSummary">
-                    <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
-                        <div>✨ <strong>Quill 2.0 리치 에디터</strong> & 체크리스트</div>
-                        <div>🎨 카테고리별 컬러 포스트잇 & 실시간 검색</div>
+                    <div class="memo-recent-list" id="memoRecentList">
+                        <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
+                            <div>✨ <strong>Quill 2.0 리치 에디터</strong> & 체크리스트</div>
+                            <div>🎨 카테고리별 컬러 포스트잇 & 실시간 검색</div>
+                        </div>
                     </div>
                 </div>
-                <div class="card-actions">
+                <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
+                    <a href="/memo?action=new" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="새 메모 즉시 작성">
+                        ✍️ 새 메모 쓰기
+                    </a>
                     <a href="/memo" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
                         메모장 열기 →
                     </a>
@@ -238,7 +319,80 @@
                         }
                     }
 
-                    // 2-1. 혈압 현황판 (최근 혈압, 투약, 병원 진료일, 남은 약, 예약 오픈일)
+                    // 2-0-1. 📱 [신규] 상단 스마트 대시보드 위젯 4종 바인딩
+                    // 위젯 1: 오늘 복약 상태
+                    const med = data.medication;
+                    const isTaken = med && med.is_today_taken;
+                    const medBadge = document.getElementById('widgetMedBadge');
+                    const medStatusText = document.getElementById('widgetMedStatusText');
+                    const medSubText = document.getElementById('widgetMedSubText');
+                    const btnWidgetMed = document.getElementById('btnWidgetQuickMed');
+                    if (medBadge && medStatusText && medSubText) {
+                        if (isTaken) {
+                            medBadge.className = 'today-widget-badge badge-state-ok';
+                            medBadge.textContent = '복용 완료 ✅';
+                            medStatusText.textContent = '오늘 복용 완료';
+                            medSubText.textContent = med.medication_time ? (med.medication_time.replace('T', ' ').slice(5, 16) + ' 기록') : '오늘 복약 완료됨';
+                            if (btnWidgetMed) btnWidgetMed.style.display = 'none';
+                        } else {
+                            medBadge.className = 'today-widget-badge badge-state-warn';
+                            medBadge.textContent = '오늘 미복용 ⚠️';
+                            medStatusText.textContent = '아직 안 드셨어요';
+                            medSubText.textContent = (med && med.medication_time) ? ('최근: ' + med.medication_time.replace('T', ' ').slice(5, 16)) : '복약 기록 없음';
+                            if (btnWidgetMed) btnWidgetMed.style.display = 'inline-flex';
+                        }
+                    }
+
+                    // 위젯 2: 최근 혈압 상태
+                    const b = data.blood;
+                    const bloodBadge = document.getElementById('widgetBloodBadge');
+                    const bloodValMain = document.getElementById('widgetBloodValMain');
+                    const bloodSubText = document.getElementById('widgetBloodSubText');
+                    if (bloodBadge && bloodValMain && bloodSubText) {
+                        if (b) {
+                            bloodBadge.className = 'today-widget-badge ' + (b.grade ? b.grade.badgeClass : 'bp-badge-normal');
+                            bloodBadge.textContent = b.grade ? b.grade.label : '정상 🟢';
+                            bloodValMain.innerHTML = `${b.systolic} / ${b.diastolic} <small style="font-size:0.75rem; color:#64748b; font-weight:normal;">mmHg</small>`;
+                            const todayTag = b.is_today_measured ? '<span style="color:#059669; font-weight:700;">오늘 측정됨</span>' : (b.measured_at ? b.measured_at.slice(5, 10) + ' 측정' : '-');
+                            bloodSubText.innerHTML = `맥박 ${b.pulse || '-'}회 · ${todayTag}`;
+                        } else {
+                            bloodValMain.textContent = '기록 없음';
+                            bloodSubText.textContent = '혈압을 측정해 보세요';
+                        }
+                    }
+
+                    // 위젯 3: 병원 & 약 D-Day
+                    const h = data.hospital;
+                    const hospBadge = document.getElementById('widgetHospitalBadge');
+                    const hospMain = document.getElementById('widgetHospitalDDayText');
+                    const hospSub = document.getElementById('widgetHospitalSubText');
+                    if (hospBadge && hospMain && hospSub) {
+                        if (h) {
+                            hospBadge.textContent = h.nextVisitDDay || '예정';
+                            hospBadge.className = 'today-widget-badge ' + (h.remainingPills <= 7 ? 'badge-state-danger' : 'badge-state-info');
+                            hospMain.textContent = `${h.hospitalName || '진료일'} ${h.nextVisitDDay ? '(' + h.nextVisitDDay + ')' : ''}`;
+                            hospSub.textContent = `약 잔여 ${h.remainingPills}일분 · 예약오픈 ${h.reservationOpenDate || '-'}`;
+                        } else {
+                            hospMain.textContent = '등록된 진료 없음';
+                            hospSub.textContent = '병원 일정을 등록하세요';
+                        }
+                    }
+
+                    // 위젯 4: 총자산 & 시장 요약
+                    const ast = data.asset;
+                    const assetTotalMain = document.getElementById('widgetAssetTotalMain');
+                    const marketSubText = document.getElementById('widgetMarketSubText');
+                    if (assetTotalMain && ast) {
+                        assetTotalMain.textContent = ast.totalKrw || '-';
+                    }
+                    if (marketSubText && data.news && data.news.market) {
+                        const m = data.news.market;
+                        const kospi = m.kospi && m.kospi.price ? `코스피 ${m.kospi.price}` : '';
+                        const usd = (m.usd_krw || m.fx) && (m.usd_krw || m.fx).price ? `USD ${(m.usd_krw || m.fx).price}원` : '';
+                        marketSubText.textContent = [kospi, usd].filter(Boolean).join(' · ') || '시장 지표 수집 완료';
+                    }
+
+                    // 2-1. 혈압 카드 현황판 (최근 혈압, 투약, 병원 진료일, 남은 약, 예약 오픈일)
                     const bloodEl = document.getElementById('bloodSummary');
                     if (bloodEl) {
                         let html = '<div class="bp-stat-list">';
@@ -246,10 +400,11 @@
                         // 1) 최근 혈압 측정치
                         if (data.blood) {
                             const b = data.blood;
+                            const todayTag = b.is_today_measured ? ' <span class="badge-state-ok" style="font-size:0.7rem; padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.3rem;">오늘</span>' : '';
                             html += `
                                 <div class="bp-stat-row">
                                     <span class="bp-stat-label">🩸 최근 혈압</span>
-                                    <span class="bp-stat-val">${b.systolic}/${b.diastolic} <small style="font-weight:normal; color:#64748b;">mmHg</small> (${b.pulse}회)</span>
+                                    <span class="bp-stat-val">${b.systolic}/${b.diastolic} <small style="font-weight:normal; color:#64748b;">mmHg</small> (${b.pulse}회)${todayTag}</span>
                                 </div>
                             `;
                         } else {
@@ -264,10 +419,11 @@
                         // 2) 최근 복용 일시
                         if (data.medication && data.medication.medication_time) {
                             const medTime = data.medication.medication_time.replace('T', ' ');
+                            const isTodayMedTag = data.medication.is_today_taken ? ' <span class="badge-state-ok" style="font-size:0.7rem; padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.3rem;">오늘 완료</span>' : '';
                             html += `
                                 <div class="bp-stat-row">
                                     <span class="bp-stat-label">💊 최근 복용</span>
-                                    <span class="badge-med">${medTime}</span>
+                                    <span class="badge-med">${medTime}${isTodayMedTag}</span>
                                 </div>
                             `;
                         } else {
@@ -283,10 +439,11 @@
                         if (data.hospital) {
                             const h = data.hospital;
                             const pillClass = h.remainingPills <= 7 ? 'badge-pill' : 'badge-pill safe';
+                            const dDayText = h.nextVisitDDay ? ` (${h.nextVisitDDay})` : '';
                             html += `
                                 <div class="bp-stat-row">
                                     <span class="bp-stat-label">🏥 다음 진료일</span>
-                                    <span class="bp-stat-val" style="color:#2563eb;">${h.displayNextVisit || '-'}</span>
+                                    <span class="bp-stat-val" style="color:#2563eb;">${h.displayNextVisit || '-'}${dDayText}</span>
                                 </div>
                                 <div class="bp-stat-row">
                                     <span class="bp-stat-label">💊 남은 약 수량</span>
@@ -294,13 +451,20 @@
                                 </div>
                                 <div class="bp-stat-row">
                                     <span class="bp-stat-label">📅 진료 예약 오픈일</span>
-                                    <span class="bp-stat-val" style="color:#d97706; font-size:0.82rem;">${h.reservationOpenDate || '-'}</span>
+                                    <span class="bp-stat-val" style="color:#d97706; font-size:0.82rem;">${h.reservationOpenDate || '-'}${h.reservationOpenDDay ? ' (' + h.reservationOpenDDay + ')' : ''}</span>
                                 </div>
                             `;
                         }
 
                         html += '</div>';
                         bloodEl.innerHTML = html;
+                    }
+
+                    // 혈압 카드의 복약 버튼 안내문 최적화
+                    const btnQuickMed = document.getElementById('btnQuickMed');
+                    if (btnQuickMed && data.medication && data.medication.is_today_taken) {
+                        btnQuickMed.textContent = '💊 오늘 혈압약 복용 완료 (추가 기록)';
+                        btnQuickMed.style.background = '#059669';
                     }
 
                 // 2-2. 자산 현황판 (총 자산 + 친절한 한글 종목명 컴팩트 페이드 전환)
@@ -337,7 +501,24 @@
                     }
                 }
 
-                // 2-3. 뉴스 브리핑 현황판 (시장 지표 미니 칩 + 관심분야 자동 추천 기사)
+                // 2-3. 메모 카드 최근 메모 동적 렌더링
+                if (data.memo && data.memo.recent && data.memo.recent.length > 0) {
+                    const memoListEl = document.getElementById('memoRecentList');
+                    if (memoListEl) {
+                        memoListEl.innerHTML = data.memo.recent.map(m => {
+                            const title = m.title || '제목 없는 메모';
+                            const cat = m.category || '아이디어';
+                            return `
+                                <a href="/memo?id=${m.id}" class="memo-recent-item" title="${title}">
+                                    <span class="memo-item-title">${m.is_pinned ? '📌 ' : '📝 '}${title}</span>
+                                    <span class="memo-item-tag">${cat}</span>
+                                </a>
+                            `;
+                        }).join('');
+                    }
+                }
+
+                // 2-4. 뉴스 브리핑 현황판 (시장 지표 미니 칩 + 관심분야 자동 추천 기사)
                 if (data.news) {
                     const n = data.news;
                     // 1) 시장 지표 바인딩 및 순환 페이드 전환

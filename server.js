@@ -782,14 +782,61 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             return res.json(summaryCache);
         }
 
+        const todayKst = getKstDateTimeString().slice(0, 10);
+
+        function calcDDay(targetDateStr) {
+            if (!targetDateStr || targetDateStr === '-') return null;
+            try {
+                const cleanDate = targetDateStr.slice(0, 10);
+                const target = new Date(cleanDate + 'T00:00:00+09:00');
+                const today = new Date(todayKst + 'T00:00:00+09:00');
+                if (isNaN(target.getTime()) || isNaN(today.getTime())) return null;
+                const diffDays = Math.round((target - today) / (1000 * 60 * 60 * 24));
+                if (diffDays === 0) return 'D-Day';
+                if (diffDays > 0) return `D-${diffDays}`;
+                return `D+${Math.abs(diffDays)}`;
+            } catch (e) {
+                return null;
+            }
+        }
+
         // 1) 혈압 최근 측정치 Promise
         const bloodPromise = new Promise((resolve) => {
-            db.get('SELECT systolic, diastolic, pulse, measured_at FROM records WHERE systolic IS NOT NULL ORDER BY measured_at DESC LIMIT 1', (err, row) => resolve(row || null));
+            db.get('SELECT systolic, diastolic, pulse, measured_at FROM records WHERE systolic IS NOT NULL ORDER BY measured_at DESC LIMIT 1', (err, row) => {
+                if (err || !row) return resolve(null);
+                const sys = Number(row.systolic);
+                const dia = Number(row.diastolic);
+                let grade = { key: 'normal', label: '정상 혈압', color: '#10b981', badgeClass: 'bp-badge-normal' };
+                if (sys >= 140 || dia >= 90) {
+                    grade = { key: 'stage2', label: '2기 고혈압', color: '#ef4444', badgeClass: 'bp-badge-stage2' };
+                } else if ((sys >= 130 && sys <= 139) || (dia >= 80 && dia <= 89)) {
+                    grade = { key: 'stage1', label: '1기 고혈압', color: '#f97316', badgeClass: 'bp-badge-stage1' };
+                } else if (sys >= 120 && sys <= 129 && dia < 80) {
+                    grade = { key: 'elevated', label: '주의 혈압', color: '#f59e0b', badgeClass: 'bp-badge-elevated' };
+                }
+                const isToday = row.measured_at ? row.measured_at.startsWith(todayKst) : false;
+                resolve({
+                    systolic: sys,
+                    diastolic: dia,
+                    pulse: row.pulse,
+                    measured_at: row.measured_at,
+                    is_today_measured: isToday,
+                    grade: grade
+                });
+            });
         });
 
-        // 2) 최근 투약 일시 Promise
+        // 2) 최근 투약 일시 및 오늘 복약 완료 여부 Promise
         const medicationPromise = new Promise((resolve) => {
-            db.get("SELECT medication_time FROM records WHERE medication_time IS NOT NULL AND medication_time != '' ORDER BY medication_time DESC LIMIT 1", (err, row) => resolve(row || null));
+            db.get("SELECT medication_time FROM records WHERE medication_time IS NOT NULL AND medication_time != '' ORDER BY medication_time DESC LIMIT 1", (err, row) => {
+                db.get("SELECT 1 FROM records WHERE substr(medication_time, 1, 10) = ? LIMIT 1", [todayKst], (tErr, todayRow) => {
+                    const isTodayTaken = !!todayRow;
+                    resolve({
+                        medication_time: row ? row.medication_time : null,
+                        is_today_taken: isTodayTaken
+                    });
+                });
+            });
         });
 
         // 3) 병원 진료 및 남은 약 수량 Promise
@@ -837,8 +884,22 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
                             displayNextVisit: lastVisit.next_visit_date ? lastVisit.next_visit_date : `${predictedVisitStr} (예상)`,
                             remainingPills: remainingPills,
                             reservationOpenDate: reservationOpenDate,
-                            prescriptionDays: lastVisit.prescription_days || 0
+                            prescriptionDays: lastVisit.prescription_days || 0,
+                            nextVisitDDay: calcDDay(nextVisitDate),
+                            reservationOpenDDay: calcDDay(reservationOpenDate)
                         });
+                    });
+                });
+            });
+        });
+
+        // 3-1) 최근 메모 3건 및 메모 총 개수 Promise
+        const memoPromise = new Promise((resolve) => {
+            db.all("SELECT id, title, category, updated_at, is_pinned FROM user_memos ORDER BY is_pinned DESC, updated_at DESC LIMIT 3", [], (err, rows) => {
+                db.get("SELECT COUNT(*) as cnt FROM user_memos", [], (cErr, cRow) => {
+                    resolve({
+                        recent: rows || [],
+                        totalCount: cRow ? cRow.cnt : (rows ? rows.length : 0)
                     });
                 });
             });
@@ -905,10 +966,11 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
         const marketPromise = getLiveMarketData();
 
         // ⚡ 모든 데이터를 병렬(Promise.all)로 동시 조회
-        const [blood, medication, hospital, assets, weather, newsRecommendation, breakingArticles, marketData] = await Promise.all([
+        const [blood, medication, hospital, memoData, assets, weather, newsRecommendation, breakingArticles, marketData] = await Promise.all([
             bloodPromise,
             medicationPromise,
             hospitalPromise,
+            memoPromise,
             assetsPromise,
             weatherPromise,
             newsPromise,
@@ -962,6 +1024,7 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             blood: blood || null,
             medication: medication || null,
             hospital: hospital || null,
+            memo: memoData || null,
             weather: weather || null,
             asset: {
                 totalKrw: '₩' + totalKrw.toLocaleString(),
