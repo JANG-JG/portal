@@ -119,6 +119,21 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
         });
     });
 
+    // 2-1. 매일 새벽 04:00 (KST) 데이터베이스 핫 백업 및 보조 서버 전송 스케줄러
+    cron.schedule('0 4 * * *', () => {
+        console.log('⏰ [UnifiedScheduler] 매일 새벽 04:00 정기 백업 스크립트 실행 시작...');
+        const backupScript = '/home/upt0731/scripts/backup-to-secondary.sh';
+        exec(`bash ${backupScript}`, (err, stdout, stderr) => {
+            if (err) {
+                console.error('[UnifiedScheduler] ❌ 정기 백업 실행 오류:', err.message);
+                return;
+            }
+            console.log('[UnifiedScheduler] ✅ 정기 백업 스크립트 실행 성공:\n', stdout);
+        });
+    }, {
+        timezone: 'Asia/Seoul'
+    });
+
     // 3. 매 1분 감시 루프
     cron.schedule('* * * * *', () => {
         const now = new Date();
