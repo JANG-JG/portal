@@ -3,12 +3,14 @@
  * admin-monitor.js
  */
 
-// 📈 초경량 uPlot (10KB) 실시간 시계열 리소스 차트 상태
+// 📈 초경량 uPlot (10KB) 실시간 시계열 리소스 차트 상태 (듀얼 서버 CPU/RAM 4종 관제)
 let uplotChart = null;
 const uplotData = [
-    [], // UNIX 타임스탬프 (초)
-    [], // CPU (%)
-    []  // RAM (%)
+    [], // 0: UNIX 타임스탬프 (초)
+    [], // 1: 📱 주 서버 CPU (%)
+    [], // 2: 📱 주 서버 RAM (%)
+    [], // 3: 💻 보조 서버 CPU (%)
+    []  // 4: 💻 보조 서버 RAM (%)
 ];
 const MAX_CHART_POINTS = 30; // 5초 간격 * 30회 = 최근 150초 (2.5분)
 
@@ -17,19 +19,21 @@ function initUPlotChart() {
     if (!container || typeof uPlot === 'undefined') return;
     if (uplotChart) return;
 
-    // 초기 데이터 (현재 시각 기준 과거 10포인트 0% 초기화)
+    // 초기 데이터 (현재 시각 기준 과거 8포인트 0% 초기화)
     const now = Math.floor(Date.now() / 1000);
     if (uplotData[0].length === 0) {
         for (let i = 8; i >= 0; i--) {
             uplotData[0].push(now - i * 5);
             uplotData[1].push(0);
             uplotData[2].push(0);
+            uplotData[3].push(0);
+            uplotData[4].push(0);
         }
     }
 
     const opts = {
         width: container.clientWidth || 320,
-        height: 155,
+        height: 165,
         scales: {
             x: { time: true },
             y: { range: [0, 100] }
@@ -37,17 +41,31 @@ function initUPlotChart() {
         series: [
             {},
             {
-                label: "CPU (%)",
+                label: "📱 주 CPU",
                 stroke: "#38bdf8",
                 width: 2,
-                fill: "rgba(56, 189, 248, 0.12)",
+                fill: "rgba(56, 189, 248, 0.08)",
                 points: { show: false }
             },
             {
-                label: "RAM (%)",
-                stroke: "#c084fc",
+                label: "📱 주 RAM",
+                stroke: "#a78bfa",
                 width: 2,
-                fill: "rgba(192, 132, 252, 0.12)",
+                fill: "rgba(167, 139, 250, 0.08)",
+                points: { show: false }
+            },
+            {
+                label: "💻 보조 CPU",
+                stroke: "#fbbf24",
+                width: 1.8,
+                dash: [4, 4],
+                points: { show: false }
+            },
+            {
+                label: "💻 보조 RAM",
+                stroke: "#34d399",
+                width: 1.8,
+                dash: [4, 4],
                 points: { show: false }
             }
         ],
@@ -81,13 +99,13 @@ function initUPlotChart() {
         if (uplotChart && container && container.clientWidth > 0) {
             uplotChart.setSize({
                 width: container.clientWidth,
-                height: 155
+                height: 165
             });
         }
     });
 }
 
-function updateUPlotData(cpuPct, memPct) {
+function updateUPlotData(pCpu, pRam, sCpu, sRam, sOnline) {
     const container = document.getElementById('uplotResourceContainer');
     if (!container || typeof uPlot === 'undefined') return;
 
@@ -96,22 +114,33 @@ function updateUPlotData(cpuPct, memPct) {
     }
 
     const now = Math.floor(Date.now() / 1000);
-    const cpuNum = Math.min(100, Math.max(0, Math.round(cpuPct || 0)));
-    const memNum = Math.min(100, Math.max(0, Math.round(memPct || 0)));
+    const pCpuNum = Math.min(100, Math.max(0, Math.round(pCpu || 0)));
+    const pRamNum = Math.min(100, Math.max(0, Math.round(pRam || 0)));
+    const sCpuNum = sOnline ? Math.min(100, Math.max(0, Math.round(sCpu || 0))) : 0;
+    const sRamNum = sOnline ? Math.min(100, Math.max(0, Math.round(sRam || 0))) : 0;
 
-    const cpuTxt = document.getElementById('uplotCpuText');
-    const ramTxt = document.getElementById('uplotRamText');
-    if (cpuTxt) cpuTxt.textContent = `${cpuNum}%`;
-    if (ramTxt) ramTxt.textContent = `${memNum}%`;
+    // 상단 뱃지 텍스트 4종 갱신
+    const pCpuEl = document.getElementById('uplotPrimaryCpuText');
+    const pRamEl = document.getElementById('uplotPrimaryRamText');
+    const sCpuEl = document.getElementById('uplotSecCpuText');
+    const sRamEl = document.getElementById('uplotSecRamText');
+    if (pCpuEl) pCpuEl.textContent = `${pCpuNum}%`;
+    if (pRamEl) pRamEl.textContent = `${pRamNum}%`;
+    if (sCpuEl) sCpuEl.textContent = sOnline ? `${sCpuNum}%` : '대기';
+    if (sRamEl) sRamEl.textContent = sOnline ? `${sRamNum}%` : '대기';
 
     uplotData[0].push(now);
-    uplotData[1].push(cpuNum);
-    uplotData[2].push(memNum);
+    uplotData[1].push(pCpuNum);
+    uplotData[2].push(pRamNum);
+    uplotData[3].push(sCpuNum);
+    uplotData[4].push(sRamNum);
 
     if (uplotData[0].length > MAX_CHART_POINTS) {
         uplotData[0].shift();
         uplotData[1].shift();
         uplotData[2].shift();
+        uplotData[3].shift();
+        uplotData[4].shift();
     }
 
     if (uplotChart) {
@@ -133,17 +162,14 @@ async function loadOverviewData() {
         if (activeProcEl) activeProcEl.textContent = `${onlineCount} / ${data.processes.length}`;
         if (sysUptimeEl) sysUptimeEl.textContent = data.system.uptimeStr;
 
-        // 2) 리소스 게이지 바 & CPU 온도 갱신
-        // CPU
-        const cpuVal = data.system.cpu ? data.system.cpu.percent : '0%';
+        // 2) 주 서버 리소스 수치 계산
         const cpuPct = data.system.cpu ? data.system.cpu.percentNum : 0;
-        const gaugeCpuVal = document.getElementById('gaugeCpuVal');
-        const cpuBar = document.getElementById('gaugeCpuBar');
-        if (gaugeCpuVal) gaugeCpuVal.textContent = cpuVal;
-        if (cpuBar) {
-            cpuBar.style.width = Math.min(100, Math.max(0, cpuPct)) + '%';
-            cpuBar.classList.toggle('warn', cpuPct >= 80);
-        }
+        const memPct = data.system.memory ? data.system.memory.percentNum : 0;
+        const memUsed = data.system.memory ? data.system.memory.used : '-';
+        const memTotal = data.system.memory ? data.system.memory.total : '-';
+        const diskPct = data.system.disk ? data.system.disk.percentNum : 0;
+        const diskUsed = data.system.disk ? data.system.disk.used : '-';
+        const diskTotal = data.system.disk ? data.system.disk.total : '-';
 
         // CPU 온도
         const tempEl = document.getElementById('gaugeCpuTemp');
@@ -154,36 +180,47 @@ async function loadOverviewData() {
             tempEl.className = 'temp-badge temp-badge-' + tStatus;
         }
 
-        // 메모리 (RAM)
-        const memVal = data.system.memory ? data.system.memory.percent : '0%';
-        const memPct = data.system.memory ? data.system.memory.percentNum : 0;
-        const memUsed = data.system.memory ? data.system.memory.used : '-';
-        const memTotal = data.system.memory ? data.system.memory.total : '-';
-        const gaugeMemVal = document.getElementById('gaugeMemVal');
-        const memBar = document.getElementById('gaugeMemBar');
-        if (gaugeMemVal) gaugeMemVal.textContent = `${memVal} (${memUsed} / ${memTotal})`;
-        if (memBar) {
-            memBar.style.width = Math.min(100, Math.max(0, memPct)) + '%';
-            memBar.classList.toggle('warn', memPct >= 85);
+        // 3) 보조 서버 리소스 수치 계산
+        const sec = (data.dualServers && data.dualServers.secondary) || {};
+        const isSecOnline = !!sec.online;
+        const secCpuPct = sec.cpu ? (sec.cpu.percentNum !== undefined ? sec.cpu.percentNum : (parseFloat(sec.cpu.percent) || 0)) : 0;
+        const secMemPct = sec.memory ? (sec.memory.percentNum !== undefined ? sec.memory.percentNum : (parseFloat(sec.memory.percent) || 0)) : 0;
+        const secMemUsed = sec.memory ? sec.memory.used : '0 GB';
+        const secMemTotal = sec.memory ? sec.memory.total : '4.0 GB';
+        const secDiskPct = sec.disk ? (sec.disk.percentNum !== undefined ? sec.disk.percentNum : (parseFloat(sec.disk.percent) || 0)) : 0;
+        const secDiskUsed = sec.disk ? sec.disk.used : '142.5 GB';
+        const secDiskTotal = sec.disk ? sec.disk.total : '465.8 GB';
+
+        // 4) 📈 uPlot 듀얼 서버 4개 시리즈 실시간 시계열 차트 데이터 푸시
+        updateUPlotData(cpuPct, memPct, secCpuPct, secMemPct, isSecOnline);
+
+        // 5) 💾 신규 듀얼 메모리 & 저장공간 자원 현황 카드 갱신
+        // 메모리 카드
+        const dualMemPVal = document.getElementById('dualMemPrimaryVal');
+        const dualMemPBar = document.getElementById('dualMemPrimaryBar');
+        const dualMemSVal = document.getElementById('dualMemSecVal');
+        const dualMemSBar = document.getElementById('dualMemSecBar');
+        if (dualMemPVal) dualMemPVal.textContent = `${memUsed} / ${memTotal} (${memPct}%)`;
+        if (dualMemPBar) dualMemPBar.style.width = Math.min(100, Math.max(0, memPct)) + '%';
+        if (dualMemSVal) {
+            dualMemSVal.textContent = isSecOnline ? `${secMemUsed} / ${secMemTotal} (${secMemPct}%)` : '오프라인 대기';
+            dualMemSVal.style.color = isSecOnline ? '#0f172a' : '#64748b';
         }
+        if (dualMemSBar) dualMemSBar.style.width = isSecOnline ? Math.min(100, Math.max(0, secMemPct)) + '%' : '0%';
 
-        // 📈 uPlot 실시간 시계열 차트 데이터 푸시
-        updateUPlotData(cpuPct, memPct);
-
-        // 저장공간 (Disk)
-        const diskVal = data.system.disk ? data.system.disk.percent : '0%';
-        const diskPct = data.system.disk ? data.system.disk.percentNum : 0;
-        const diskUsed = data.system.disk ? data.system.disk.used : '-';
-        const diskTotal = data.system.disk ? data.system.disk.total : '-';
-        const gaugeDiskVal = document.getElementById('gaugeDiskVal');
-        const diskBar = document.getElementById('gaugeDiskBar');
-        if (gaugeDiskVal) gaugeDiskVal.textContent = `${diskVal} (${diskUsed} / ${diskTotal})`;
-        if (diskBar) {
-            diskBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
-            diskBar.classList.toggle('warn', diskPct >= 90);
+        // 저장공간 카드
+        const dualDiskPVal = document.getElementById('dualDiskPrimaryVal');
+        const dualDiskPBar = document.getElementById('dualDiskPrimaryBar');
+        const dualDiskSVal = document.getElementById('dualDiskSecVal');
+        const dualDiskSBar = document.getElementById('dualDiskSecBar');
+        if (dualDiskPVal) dualDiskPVal.textContent = `${diskUsed} / ${diskTotal} (${diskPct}%)`;
+        if (dualDiskPBar) dualDiskPBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
+        if (dualDiskSVal) {
+            dualDiskSVal.textContent = `${secDiskUsed} / ${secDiskTotal} (${secDiskPct}%)`;
         }
+        if (dualDiskSBar) dualDiskSBar.style.width = Math.min(100, Math.max(0, secDiskPct)) + '%';
 
-        // 3) DB 크기
+        // 6) DB 크기
         const dbHealth = document.getElementById('dbSizeHealth');
         const dbAsset = document.getElementById('dbSizeAsset');
         const dbNews = document.getElementById('dbSizeNews');
@@ -364,32 +401,31 @@ function updateSecondaryServerUI(s) {
         }
     }
 
-    // 3. 💾 보조 서버 RAM 게이지
+    // 3. 💾 보조 서버 RAM 게이지 & 상단 듀얼 요약 카드 갱신
     if (s.memory) {
-        const secMemVal = document.getElementById('gaugeSecMemVal');
-        const secMemBar = document.getElementById('gaugeSecMemBar');
         const memPct = s.memory.percentNum !== undefined ? s.memory.percentNum : (parseFloat(s.memory.percent) || 0);
         const memUsed = s.memory.used || '-';
         const memTotal = s.memory.total || '-';
-        if (secMemVal) secMemVal.textContent = `${s.memory.percent || memPct + '%'} (${memUsed} / ${memTotal})`;
-        if (secMemBar) {
-            secMemBar.style.width = Math.min(100, Math.max(0, memPct)) + '%';
-            secMemBar.classList.toggle('warn', memPct >= 85);
+        const dualMemSVal = document.getElementById('dualMemSecVal');
+        const dualMemSBar = document.getElementById('dualMemSecBar');
+        if (dualMemSVal) {
+            dualMemSVal.textContent = s.online ? `${memUsed} / ${memTotal} (${memPct}%)` : '오프라인 대기';
+            dualMemSVal.style.color = s.online ? '#0f172a' : '#64748b';
         }
+        if (dualMemSBar) dualMemSBar.style.width = s.online ? Math.min(100, Math.max(0, memPct)) + '%' : '0%';
     }
 
-    // 4. 𒒽 보조 서버 Disk 게이지 (500GB HDD)
+    // 4. 𒒽 보조 서버 Disk 게이지 & 상단 듀얼 요약 카드 갱신 (500GB HDD)
     if (s.disk) {
-        const secDiskVal = document.getElementById('gaugeSecDiskVal');
-        const secDiskBar = document.getElementById('gaugeSecDiskBar');
         const diskPct = s.disk.percentNum !== undefined ? s.disk.percentNum : (parseFloat(s.disk.percent) || 0);
         const diskUsed = s.disk.used || '-';
         const diskTotal = s.disk.total || '-';
-        if (secDiskVal) secDiskVal.textContent = `${s.disk.percent || diskPct + '%'} (${diskUsed} / ${diskTotal})`;
-        if (secDiskBar) {
-            secDiskBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
-            secDiskBar.classList.toggle('warn', diskPct >= 90);
+        const dualDiskSVal = document.getElementById('dualDiskSecVal');
+        const dualDiskSBar = document.getElementById('dualDiskSecBar');
+        if (dualDiskSVal) {
+            dualDiskSVal.textContent = `${diskUsed} / ${diskTotal} (${diskPct}%)`;
         }
+        if (dualDiskSBar) dualDiskSBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
     }
 
     // 5. 전체 서비스 프로세스 (백업 데몬 목록 카드 렌더링)

@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v2">
     <link rel="stylesheet" href="/css/style.css?v=20261016_v2">
     <link rel="stylesheet" href="/css/uPlot.min.css?v=20261016_v1">
-    <link rel="stylesheet" href="/css/admin.css?v=20261016_v4">
+    <link rel="stylesheet" href="/css/admin.css?v=20261016_v5">
     <link rel="stylesheet" href="/css/unified-nav.css?v=20261016_v2">
     <style>
         .server-tab-container {
@@ -277,20 +277,128 @@
             <!-- 서브 1: 실행 중인 서비스, 서버 핵심 리소스 & 상태, 서버 가동 시간, 5대 프로세스 (PM2) -->
             <div id="subpane-overview-processes" class="admin-sub-pane">
 
-                <!-- 🖥️ 듀얼 서버 탭 내비게이션 바 -->
+                <!-- 📈 1. 최상단 실시간 서버 자원 추이 (듀얼 서버 CPU / RAM uPlot 차트) -->
+                <div class="uplot-chart-card" id="uplotResourceCard" style="margin-bottom: 1.25rem;">
+                    <div class="uplot-chart-header">
+                        <div class="uplot-chart-title">
+                            <span>📈 실시간 듀얼 서버 자원 추이 (CPU / RAM 동시 관제)</span>
+                        </div>
+                        <div class="uplot-legend-badges">
+                            <span class="uplot-badge-p-cpu">📱 주 CPU <strong id="uplotPrimaryCpuText">-%</strong></span>
+                            <span class="uplot-badge-p-ram">📱 주 RAM <strong id="uplotPrimaryRamText">-%</strong></span>
+                            <span class="uplot-badge-s-cpu">💻 보조 CPU <strong id="uplotSecCpuText">-%</strong></span>
+                            <span class="uplot-badge-s-ram">💻 보조 RAM <strong id="uplotSecRamText">-%</strong></span>
+                        </div>
+                    </div>
+                    <div id="uplotResourceContainer" class="uplot-container"></div>
+                </div>
+
+                <!-- 💾 2. 메모리 & 저장 자원 현황 요약 카드 (사용량 / 총 용량 비교) -->
+                <div class="admin-grid-3" style="margin-bottom: 1.25rem;">
+                    <!-- 카드 1: 메모리(RAM) 자원 현황 -->
+                    <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div class="admin-card-header" style="margin-bottom:0.75rem; padding-bottom:0.4rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="font-size:0.9rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.4rem;">
+                                <span>💾</span> <span>메모리 (RAM) 자원 현황</span>
+                            </span>
+                            <span class="live-indicator"><span class="live-dot"></span>실시간</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                            <!-- 주 서버 RAM -->
+                            <div>
+                                <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:3px;">
+                                    <span style="color:#475569; font-weight:600;">📱 주 서버 (노트 9)</span>
+                                    <strong id="dualMemPrimaryVal" style="color:#0f172a;">- / - (-%)</strong>
+                                </div>
+                                <div class="gauge-track" style="height:6px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                                    <div id="dualMemPrimaryBar" style="width:0%; height:100%; background:#818cf8; transition:width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                            <!-- 보조 서버 RAM -->
+                            <div>
+                                <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:3px;">
+                                    <span style="color:#475569; font-weight:600;">💻 보조 서버 (HP)</span>
+                                    <strong id="dualMemSecVal" style="color:#0f172a;">- / - (-%)</strong>
+                                </div>
+                                <div class="gauge-track" style="height:6px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                                    <div id="dualMemSecBar" style="width:0%; height:100%; background:#34d399; transition:width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 카드 2: 저장 공간 (Disk) 자원 현황 -->
+                    <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div class="admin-card-header" style="margin-bottom:0.75rem; padding-bottom:0.4rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="font-size:0.9rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.4rem;">
+                                <span>𒒽</span> <span>저장 자원 (Disk) 현황</span>
+                            </span>
+                            <span style="font-size:0.72rem; color:#64748b; background:#f1f5f9; padding:1px 6px; border-radius:4px;">UFS & SATA</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                            <!-- 주 서버 Disk -->
+                            <div>
+                                <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:3px;">
+                                    <span style="color:#475569; font-weight:600;">📱 주 서버 (내부 UFS)</span>
+                                    <strong id="dualDiskPrimaryVal" style="color:#0f172a;">- / - (-%)</strong>
+                                </div>
+                                <div class="gauge-track" style="height:6px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                                    <div id="dualDiskPrimaryBar" style="width:0%; height:100%; background:#38bdf8; transition:width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                            <!-- 보조 서버 Disk -->
+                            <div>
+                                <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:3px;">
+                                    <span style="color:#475569; font-weight:600;">💻 보조 서버 (500GB HDD)</span>
+                                    <strong id="dualDiskSecVal" style="color:#0f172a;">- / - (-%)</strong>
+                                </div>
+                                <div class="gauge-track" style="height:6px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                                    <div id="dualDiskSecBar" style="width:0%; height:100%; background:#fbbf24; transition:width 0.3s ease;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 카드 3: 서버 가동 시간 & 프로세스 상태 -->
+                    <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+                        <div class="admin-card-header" style="margin-bottom:0.75rem; padding-bottom:0.4rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="font-size:0.9rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.4rem;">
+                                <span>⚡</span> <span>가동 상태 & 데몬 요약</span>
+                            </span>
+                            <span class="badge-online" style="font-size:0.7rem; padding:1px 6px;">정상 운영</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:0.45rem; font-size:0.82rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="color:#64748b;">주 서버 Uptime:</span>
+                                <strong id="systemUptime" style="color:#0f172a;">-</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="color:#64748b;">주 서버 핵심 프로세스:</span>
+                                <strong id="activeProcessCount" style="color:#2563eb;">- / 6</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span style="color:#64748b;">주 서버 CPU 온도:</span>
+                                <span id="gaugeCpuTemp" class="temp-badge temp-badge-normal">🌡️ --°C</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding-top:0.3rem; border-top:1px dashed #e2e8f0;">
+                                <span style="color:#64748b;">보조 서버 연결 상태:</span>
+                                <span id="secondaryServerBadge" class="badge-online" style="font-size:0.75rem;">조회 중</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🖥️ 3. 듀얼 서버 탭 내비게이션 바 (주 서버 / 보조 서버 상세 전환) -->
                 <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.25rem;">
                     <div class="server-tab-container">
                         <button type="button" class="server-tab-btn active" id="serverTabBtnPrimary" onclick="switchServerTab('primary')">
-                            <span>📱</span> 주 서버 (갤럭시 노트 9)
-                            <span class="badge-online" style="font-size:0.7rem; padding:1px 6px; margin-left:3px;">메인 운영</span>
+                            <span>📱</span> 주 서버 상세 제어 (노트 9)
+                            <span class="badge-online" style="font-size:0.7rem; padding:1px 6px; margin-left:3px;">PM2 / 프로세스</span>
                         </button>
                         <button type="button" class="server-tab-btn secondary-btn" id="serverTabBtnSecondary" onclick="switchServerTab('secondary')">
-                            <span>💻</span> 보조 서버 (HP 노트북)
-                            <span class="badge-online" id="secondaryTabBadge" style="font-size:0.7rem; padding:1px 6px; margin-left:3px; background:#f3e8ff; color:#7c3aed; border:1px solid #ddd6fe;">500GB 스토리지</span>
+                            <span>💻</span> 보조 서버 상세 제어 (HP 노트북)
+                            <span class="badge-online" id="secondaryTabBadge" style="font-size:0.7rem; padding:1px 6px; margin-left:3px; background:#f3e8ff; color:#7c3aed; border:1px solid #ddd6fe;">백업 / 로그</span>
                         </button>
-                    </div>
-                    <div style="font-size:0.82rem; color:#64748b; display:flex; align-items:center; gap:0.5rem;">
-                        <span class="live-indicator"><span class="live-dot"></span>실시간 모니터링</span>
                     </div>
                 </div>
 
@@ -324,86 +432,11 @@
                         </div>
                     </div>
 
-                    <!-- 주 서버 3대 리소스 게이지 카드 -->
-                    <div class="admin-grid-3" id="systemStatsGrid">
-                        <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-                            <div>
-                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">실행 중인 서비스</div>
-                                <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="activeProcessCount">-</div>
-                            </div>
-                            <div style="font-size:0.8rem; color:#10b981; font-weight:600;">모든 핵심 데몬 정상 가동</div>
-                        </div>
-                        <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="color:#64748b; font-size:0.85rem; font-weight:700;">주 서버 핵심 리소스 & 상태</span>
-                                <span class="live-indicator"><span class="live-dot"></span>5초 실시간</span>
-                            </div>
-                            <div class="resource-gauge-container">
-                                <!-- 1. CPU 게이지 & 온도 -->
-                                <div class="resource-gauge-item">
-                                    <div class="resource-gauge-header">
-                                        <span class="resource-gauge-title">⚡ CPU</span>
-                                        <span class="resource-gauge-val">
-                                            <span id="gaugeCpuVal">-%</span>
-                                            <span id="gaugeCpuTemp" class="temp-badge temp-badge-normal">🌡️ --°C</span>
-                                        </span>
-                                    </div>
-                                    <div class="gauge-track">
-                                        <div id="gaugeCpuBar" class="gauge-fill gauge-fill-cpu" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-
-                                <!-- 2. 메모리 게이지 -->
-                                <div class="resource-gauge-item">
-                                    <div class="resource-gauge-header">
-                                        <span class="resource-gauge-title">💾 RAM</span>
-                                        <span class="resource-gauge-val" id="gaugeMemVal">-% (- / -)</span>
-                                    </div>
-                                    <div class="gauge-track">
-                                        <div id="gaugeMemBar" class="gauge-fill gauge-fill-mem" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-
-                                <!-- 3. 저장공간 게이지 -->
-                                <div class="resource-gauge-item">
-                                    <div class="resource-gauge-header">
-                                        <span class="resource-gauge-title">💽 Disk (내부 UFS)</span>
-                                        <span class="resource-gauge-val" id="gaugeDiskVal">-% (- / -)</span>
-                                    </div>
-                                    <div class="gauge-track">
-                                        <div id="gaugeDiskBar" class="gauge-fill gauge-fill-disk" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-                            <div>
-                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">서버 가동 시간 (Uptime)</div>
-                                <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="systemUptime">-</div>
-                            </div>
-                            <div style="font-size:0.8rem; color:#10b981; font-weight:600;">안정적인 서비스 지속 운영 중</div>
-                        </div>
-                    </div>
-
-                    <!-- 📈 실시간 서버 리소스 시계열 차트 (uPlot 10KB) -->
-                    <div class="uplot-chart-card" id="uplotResourceCard" style="margin-top: 1.25rem;">
-                        <div class="uplot-chart-header">
-                            <div class="uplot-chart-title">
-                                <span>📈 실시간 서버 자원 추이 (CPU / RAM 시계열)</span>
-                            </div>
-                            <div class="uplot-legend-badges">
-                                <span class="uplot-badge-cpu">● CPU <strong id="uplotCpuText">-%</strong></span>
-                                <span class="uplot-badge-ram">● RAM <strong id="uplotRamText">-%</strong></span>
-                            </div>
-                        </div>
-                        <div id="uplotResourceContainer" class="uplot-container"></div>
-                    </div>
-
                     <!-- 전체 서비스 PM2 프로세스 목록 -->
-                    <div class="admin-card" style="margin-top:1.25rem;">
+                    <div class="admin-card">
                         <div class="admin-card-header">
                             <div>
-                                <h3 style="margin-bottom:0.25rem;">🚀 전체 서비스 프로세스 상태 (PM2)</h3>
+                                <h3 style="margin-bottom:0.25rem;">🚀 주 서버 서비스 프로세스 제어 (PM2)</h3>
                                 <span style="font-size:0.82rem; color:#64748b;">주 서버에서 가동 중인 6대 핵심 서비스 시작 / 중지 / 재기동 원클릭 제어</span>
                             </div>
                             <span class="live-indicator"><span class="live-dot"></span>실시간 동기화</span>
@@ -474,74 +507,26 @@
                         </div>
                     </div>
 
-                    <!-- 보조 서버 3대 리소스 게이지 카드 (주 서버와 1:1 대칭) -->
-                    <div class="admin-grid-3" id="secSystemStatsGrid">
-                        <!-- 카드 1: 실행 중인 서비스 -->
+                    <!-- 보조 서버 서비스 상태 & 백업 스케줄 요약 -->
+                    <div class="admin-grid-2" style="margin-bottom:1.25rem;">
+                        <!-- 카드 1: 실행 중인 백업 데몬 수 -->
                         <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
                             <div>
-                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">실행 중인 서비스</div>
-                                <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="secActiveProcessCount">-</div>
+                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">실행 중인 백업 데몬</div>
+                                <div style="font-size:1.8rem; font-weight:800; color:#7c3aed; margin-top:0.35rem;" id="secActiveProcessCount">-</div>
                             </div>
                             <div style="font-size:0.8rem; font-weight:600;" id="secActiveProcessStatus" class="text-success">백업 및 원격 데몬 가동 중</div>
                         </div>
 
-                        <!-- 카드 2: 보조 서버 핵심 리소스 & 상태 (CPU, 온도, RAM, 500GB HDD) -->
-                        <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="color:#64748b; font-size:0.85rem; font-weight:700;">보조 서버 핵심 리소스 & 상태</span>
-                                <span class="live-indicator"><span class="live-dot" style="background:#7c3aed;"></span><span id="secResourceSource">실시간 SSH/소켓</span></span>
-                            </div>
-                            <div class="resource-gauge-container">
-                                <!-- 1. CPU 게이지 & 하드웨어 온도 -->
-                                <div class="resource-gauge-item">
-                                    <div class="resource-gauge-header">
-                                        <span class="resource-gauge-title">⚡ CPU</span>
-                                        <span class="resource-gauge-val">
-                                            <span id="gaugeSecCpuVal">-%</span>
-                                            <span id="gaugeSecCpuTemp" class="temp-badge temp-badge-normal">대기</span>
-                                        </span>
-                                    </div>
-                                    <div class="gauge-track">
-                                        <div id="gaugeSecCpuBar" class="gauge-fill gauge-fill-cpu" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-
-                                <!-- 2. 메모리(RAM) 게이지 -->
-                                <div class="resource-gauge-item">
-                                    <div class="resource-gauge-header">
-                                        <span class="resource-gauge-title">💾 RAM</span>
-                                        <span class="resource-gauge-val" id="gaugeSecMemVal">-% (- / -)</span>
-                                    </div>
-                                    <div class="gauge-track">
-                                        <div id="gaugeSecMemBar" class="gauge-fill gauge-fill-mem" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-
-                                <!-- 3. 저장공간(Disk 500GB HDD) 게이지 -->
-                                <div class="resource-gauge-item">
-                                    <div class="resource-gauge-header">
-                                        <span class="resource-gauge-title">💽 Disk (500GB SATA HDD)</span>
-                                        <span class="resource-gauge-val" id="gaugeSecDiskVal">-% (- / -)</span>
-                                    </div>
-                                    <div class="gauge-track">
-                                        <div id="gaugeSecDiskBar" class="gauge-fill gauge-fill-disk" style="width: 0%;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 카드 3: 서버 가동 시간 & 백업 스케줄 -->
+                        <!-- 카드 2: 서버 가동 시간 & 백업 스케줄 -->
                         <div class="admin-card" style="margin-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
                             <div>
-                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">서버 가동 시간 (Uptime)</div>
+                                <div style="color:#64748b; font-size:0.85rem; font-weight:600;">보조 서버 가동 시간 (Uptime)</div>
                                 <div style="font-size:1.8rem; font-weight:800; color:#0f172a; margin-top:0.35rem;" id="secServerUptime">-</div>
                             </div>
                             <div style="font-size:0.82rem; color:#475569; margin-top:0.5rem; line-height:1.4;">
-                                <div><strong>스케줄:</strong> 매일 04:00 (cron rsync)</div>
-                                <div><strong>보존 주기:</strong> 30일 보존 후 자동 롤오버</div>
-                            </div>
-                            <div style="font-size:0.8rem; color:#10b981; font-weight:600; margin-top:0.5rem; padding-top:0.4rem; border-top:1px dashed #e2e8f0;">
-                                SQLite 핫 스냅샷 무손실 복구 대기 중
+                                <div><strong>정기 백업:</strong> 매일 04:00 (cron rsync) &bull; <strong>보존:</strong> 30일 롤오버</div>
+                                <div style="color:#10b981; font-weight:600; margin-top:2px;">SQLite 핫 스냅샷 무손실 보존 대기 중</div>
                             </div>
                         </div>
                     </div>
@@ -1380,7 +1365,7 @@
     <script src="/js/uPlot.iife.min.js?v=20261016_v1"></script>
     <!-- 📦 관리자 모듈화 스크립트 로드 (캐시 버스팅 적용) -->
     <script src="/js/admin-core.js?v=20261016_v2"></script>
-    <script src="/js/admin-monitor.js?v=20261016_v2"></script>
+    <script src="/js/admin-monitor.js?v=20261016_v3"></script>
     <script src="/js/admin-services.js?v=20261016_v2"></script>
     <!-- 📰 전 사이트 공통 TV 뉴스 티커 하단바 & 긴급 속보 위젯 -->
     <script src="/js/news-ticker.js?v=20261016_v4"></script>
