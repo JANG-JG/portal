@@ -68,3 +68,5 @@
    - 관리자 센터는 `admin-core.js`, `admin-monitor.js`, `admin-services.js` 모듈 구조를 준수하며, uPlot(10KB) 등 오픈소스 라이브러리는 외부 CDN 없이 항상 로컬 호스팅을 유지합니다.
 5. **모바일 하단 내비바 & 티커 UI 겹침 방지**:
    - 모바일 바텀 내비바(`56px`)가 존재하는 페이지에서는 공통 뉴스 티커의 `bottom: 56px !important; z-index: 999990 !important` 및 본문 `padding-bottom: 125px !important`를 항상 보장합니다.
+6. **포털 메인 홈 모바일 대시보드 위젯 & 퀵 액션 유지**:
+   - 메인 홈(`index.html`)은 스마트 라이프 & D-Day 4종 위젯(`today-summary-hub`)과 한 손 조작 퀵 액션 바(`quick-action-strip`)의 직관적인 모바일 UX를 항시 유지합니다.
