@@ -127,7 +127,10 @@
             <div class="today-widget-card" id="widgetRecentBlood">
                 <div class="today-widget-header">
                     <span class="today-widget-title">🩸 최근 혈압</span>
-                    <span class="today-widget-badge badge-state-ok" id="widgetBloodBadge">-</span>
+                    <div style="display:flex; align-items:center; gap:0.35rem;">
+                        <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">ℹ️ 기준</button>
+                        <span class="today-widget-badge badge-state-ok" id="widgetBloodBadge" style="cursor:pointer;" onclick="openBpGuideModal()" title="클릭 시 판정 기준표 보기">-</span>
+                    </div>
                 </div>
                 <div class="today-widget-body">
                     <div class="today-widget-val-main" id="widgetBloodValMain">- / - <small style="font-size:0.75rem; color:#64748b; font-weight:normal;">mmHg</small></div>
@@ -221,9 +224,14 @@
             <div class="service-card card-blood">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
                     <div class="card-icon" style="margin-bottom:0;">💖</div>
-                    <a href="https://blood.j-jg.cc/hospital.html" class="btn-hospital-sub" title="병원 진료 내역 및 예약일 관리">
-                        🏥 병원 일정
-                    </a>
+                    <div style="display:flex; gap:0.35rem; align-items:center;">
+                        <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">
+                            ℹ️ 판정 기준
+                        </button>
+                        <a href="https://blood.j-jg.cc/hospital.html" class="btn-hospital-sub" title="병원 진료 내역 및 예약일 관리">
+                            🏥 병원 일정
+                        </a>
+                    </div>
                 </div>
                 <h3>혈압 관리</h3>
                 <p class="card-desc">혈압 및 맥박 기록, 병원 일정, 투약 알림 관리</p>
@@ -352,6 +360,7 @@
                         if (b) {
                             bloodBadge.className = 'today-widget-badge ' + (b.grade ? b.grade.badgeClass : 'bp-badge-normal');
                             bloodBadge.textContent = b.grade ? b.grade.label : '정상 🟢';
+                            bloodBadge.title = b.grade ? `대한고혈압학회 기준: ${b.grade.name} (${b.grade.desc}) - 클릭 시 기준표 보기` : '클릭 시 판정 기준표 보기';
                             bloodValMain.innerHTML = `${b.systolic} / ${b.diastolic} <small style="font-size:0.75rem; color:#64748b; font-weight:normal;">mmHg</small>`;
                             const todayTag = b.is_today_measured ? '<span style="color:#059669; font-weight:700;">오늘 측정됨</span>' : (b.measured_at ? b.measured_at.slice(5, 10) + ' 측정' : '-');
                             bloodSubText.innerHTML = `맥박 ${b.pulse || '-'}회 · ${todayTag}`;
@@ -400,11 +409,12 @@
                         // 1) 최근 혈압 측정치
                         if (data.blood) {
                             const b = data.blood;
-                            const todayTag = b.is_today_measured ? ' <span class="badge-state-ok" style="font-size:0.7rem; padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.3rem;">오늘</span>' : '';
+                            const todayTag = b.is_today_measured ? ' <span class="badge-state-ok" style="font-size:0.7rem; padding:0.1rem 0.35rem; border-radius:4px; margin-left:0.2rem;">오늘</span>' : '';
+                            const gradeBadge = b.grade ? ` <span class="${b.grade.badgeClass}" style="font-size:0.72rem; padding:0.12rem 0.4rem; border-radius:4px; cursor:pointer;" onclick="openBpGuideModal()" title="${b.grade.desc} - 클릭 시 판정 기준표 보기">${b.grade.name}</span>` : '';
                             html += `
                                 <div class="bp-stat-row">
                                     <span class="bp-stat-label">🩸 최근 혈압</span>
-                                    <span class="bp-stat-val">${b.systolic}/${b.diastolic} <small style="font-weight:normal; color:#64748b;">mmHg</small> (${b.pulse}회)${todayTag}</span>
+                                    <span class="bp-stat-val">${b.systolic}/${b.diastolic} <small style="font-weight:normal; color:#64748b;">mmHg</small> (${b.pulse}회)${todayTag}${gradeBadge}</span>
                                 </div>
                             `;
                         } else {
@@ -854,7 +864,93 @@
             deferredInstallPrompt = null;
             alert('🎉 JG 통합 포털 앱이 홈 화면에 성공적으로 설치되었습니다!');
         });
+
+        // 🩸 대한고혈압학회 혈압 분류 기준 모달 제어
+        function openBpGuideModal() {
+            const modal = document.getElementById('bpGuideModal');
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+        function closeBpGuideModal() {
+            const modal = document.getElementById('bpGuideModal');
+            if (modal) {
+                modal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
     </script>
+
+    <!-- ========================================== -->
+    <!-- 🩸 대한고혈압학회 혈압 판정 기준표 모달 -->
+    <!-- ========================================== -->
+    <div class="bp-modal-backdrop" id="bpGuideModal" onclick="if(event.target === this) closeBpGuideModal()">
+        <div class="bp-modal-dialog">
+            <div class="bp-modal-header">
+                <div class="bp-modal-title">
+                    <span>🩸</span>
+                    <span>대한고혈압학회 혈압 분류 기준표</span>
+                </div>
+                <button type="button" class="bp-modal-close" onclick="closeBpGuideModal()" title="닫기">&times;</button>
+            </div>
+            <div class="bp-modal-body">
+                <table class="bp-guide-table">
+                    <thead>
+                        <tr>
+                            <th>분류</th>
+                            <th>수축기 (최고)</th>
+                            <th>구분</th>
+                            <th>이완기 (최저)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="bp-badge-normal" style="padding:2px 6px; border-radius:4px; font-weight:700;">정상 혈압</span></td>
+                            <td>&lt; 120 mmHg</td>
+                            <td style="color:#64748b; font-size:0.75rem;">그리고</td>
+                            <td>&lt; 80 mmHg</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-elevated" style="padding:2px 6px; border-radius:4px; font-weight:700;">주의 혈압</span></td>
+                            <td>120 ~ 129</td>
+                            <td style="color:#64748b; font-size:0.75rem;">그리고</td>
+                            <td>&lt; 80</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-pre" style="padding:2px 6px; border-radius:4px; font-weight:700;">고혈압 전단계</span></td>
+                            <td>130 ~ 139</td>
+                            <td style="color:#ea580c; font-size:0.75rem; font-weight:700;">또는</td>
+                            <td>80 ~ 89</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-stage1" style="padding:2px 6px; border-radius:4px; font-weight:700;">1기 고혈압</span></td>
+                            <td>140 ~ 159</td>
+                            <td style="color:#dc2626; font-size:0.75rem; font-weight:700;">또는</td>
+                            <td>90 ~ 99</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-stage2" style="padding:2px 6px; border-radius:4px; font-weight:700;">2기 고혈압</span></td>
+                            <td>&ge; 160</td>
+                            <td style="color:#991b1b; font-size:0.75rem; font-weight:700;">또는</td>
+                            <td>&ge; 100</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-low" style="padding:2px 6px; border-radius:4px; font-weight:700;">저혈압</span></td>
+                            <td>&lt; 90</td>
+                            <td style="color:#2563eb; font-size:0.75rem; font-weight:700;">또는</td>
+                            <td>&lt; 60</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="bp-guide-notice-box">
+                    <strong>💡 판정 원칙 (대한고혈압학회 2022 진료지침)</strong><br>
+                    • 수축기(최고)와 이완기(최저)의 해당 단계가 서로 다를 경우, <strong>더 높은 단계</strong>를 기준으로 최종 판정합니다.<br>
+                    • 예: <strong>120 / 87 mmHg</strong>의 경우, 수축기는 '주의'이지만 이완기가 80~89 구간이므로 <strong>'고혈압 전단계'</strong>로 판정됩니다.
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ========================================== -->
     <!-- 🔔 [신규] JG 통합 알림 센터 모달 팝업 -->

@@ -800,20 +800,93 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
             }
         }
 
+        // 대한고혈압학회(KSH) 진료지침 기준 혈압 분류 헬퍼 함수
+        function classifyBloodPressure(sys, dia) {
+            if (!sys || !dia) return null;
+            const s = Number(sys);
+            const d = Number(dia);
+            if (isNaN(s) || isNaN(d)) return null;
+
+            // 1) 저혈압: 수축기 < 90 또는 이완기 < 60
+            if (s < 90 || d < 60) {
+                return {
+                    key: 'low',
+                    label: '저혈압 ❄️',
+                    name: '저혈압',
+                    desc: '수축기 90 미만 또는 이완기 60 미만',
+                    color: '#2563eb',
+                    badgeClass: 'bp-badge-low'
+                };
+            }
+            // 2) 2기 고혈압: 수축기 >= 160 또는 이완기 >= 100
+            if (s >= 160 || d >= 100) {
+                return {
+                    key: 'stage2',
+                    label: '2기 고혈압 🚨',
+                    name: '고혈압 2기',
+                    desc: '수축기 160 이상 또는 이완기 100 이상',
+                    color: '#991b1b',
+                    badgeClass: 'bp-badge-stage2'
+                };
+            }
+            // 3) 1기 고혈압: 수축기 140~159 또는 이완기 90~99
+            if (s >= 140 || d >= 90) {
+                return {
+                    key: 'stage1',
+                    label: '1기 고혈압 🔴',
+                    name: '고혈압 1기',
+                    desc: '수축기 140~159 또는 이완기 90~99',
+                    color: '#dc2626',
+                    badgeClass: 'bp-badge-stage1'
+                };
+            }
+            // 4) 고혈압 전단계: 수축기 130~139 또는 이완기 80~89
+            if (s >= 130 || d >= 80) {
+                return {
+                    key: 'prehypertension',
+                    label: '고혈압 전단계 🟠',
+                    name: '고혈압 전단계',
+                    desc: '수축기 130~139 또는 이완기 80~89',
+                    color: '#ea580c',
+                    badgeClass: 'bp-badge-pre'
+                };
+            }
+            // 5) 주의 혈압: 수축기 120~129 그리고 이완기 < 80
+            if (s >= 120 && d < 80) {
+                return {
+                    key: 'elevated',
+                    label: '주의 혈압 🟡',
+                    name: '주의 혈압',
+                    desc: '수축기 120~129 그리고 이완기 80 미만',
+                    color: '#d97706',
+                    badgeClass: 'bp-badge-elevated'
+                };
+            }
+            // 6) 정상 혈압: 수축기 < 120 그리고 이완기 < 80
+            return {
+                key: 'normal',
+                label: '정상 혈압 🟢',
+                name: '정상 혈압',
+                desc: '수축기 120 미만 그리고 이완기 80 미만',
+                color: '#059669',
+                badgeClass: 'bp-badge-normal'
+            };
+        }
+
         // 1) 혈압 최근 측정치 Promise
         const bloodPromise = new Promise((resolve) => {
             db.get('SELECT systolic, diastolic, pulse, measured_at FROM records WHERE systolic IS NOT NULL ORDER BY measured_at DESC LIMIT 1', (err, row) => {
                 if (err || !row) return resolve(null);
                 const sys = Number(row.systolic);
                 const dia = Number(row.diastolic);
-                let grade = { key: 'normal', label: '정상 혈압', color: '#10b981', badgeClass: 'bp-badge-normal' };
-                if (sys >= 140 || dia >= 90) {
-                    grade = { key: 'stage2', label: '2기 고혈압', color: '#ef4444', badgeClass: 'bp-badge-stage2' };
-                } else if ((sys >= 130 && sys <= 139) || (dia >= 80 && dia <= 89)) {
-                    grade = { key: 'stage1', label: '1기 고혈압', color: '#f97316', badgeClass: 'bp-badge-stage1' };
-                } else if (sys >= 120 && sys <= 129 && dia < 80) {
-                    grade = { key: 'elevated', label: '주의 혈압', color: '#f59e0b', badgeClass: 'bp-badge-elevated' };
-                }
+                const grade = classifyBloodPressure(sys, dia) || {
+                    key: 'normal',
+                    label: '정상 혈압 🟢',
+                    name: '정상 혈압',
+                    desc: '수축기 120 미만 그리고 이완기 80 미만',
+                    color: '#059669',
+                    badgeClass: 'bp-badge-normal'
+                };
                 const isToday = row.measured_at ? row.measured_at.startsWith(todayKst) : false;
                 resolve({
                     systolic: sys,
