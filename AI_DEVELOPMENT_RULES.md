@@ -78,6 +78,7 @@
    - 스마트폰 화면(360px ~ 430px)에서 헤더 타이틀, 환영 인사, 날씨/증시 칩, 알림 버튼, 퀵 액션 버튼, 통계 라벨 등이 의도치 않게 2줄, 3줄로 꺾여 레이아웃을 밀어내는 것을 엄격히 금지합니다.
    - 단일 행으로 유지되어야 하는 요소에는 `white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;`를 필수 적용하고, 폰트 크기는 `clamp()`를 통해 유연하게 축소합니다.
    - 공통 하단 티커(`news-ticker.js`)의 모바일 레이아웃(시계 + 날씨/증시) 역시 `flex-wrap: nowrap !important; overflow: hidden !important;`를 준수합니다.
+   - 상단 실시간 속보 세로 슬라이드 등 롤링 티커는 자바스크립트 고정 픽셀(itemHeight) 하드코딩을 절대 금지하며, 반드시 렌더링된 뷰포트의 실제 클라이언트 높이(`viewportEl.clientHeight`)를 동적으로 측정하여 롤링 오프셋을 계산함으로써 기기별 텍스트 잘림 현상을 원천 차단합니다.
 9. **PWA Service Worker 캐시(`sw.js`) 무결성 및 자동 배포 후 실서버 검증 의무화**:
    - 정적 리소스(CSS, JS, HTML) 수정 시 `portal/public/sw.js`의 `CACHE_NAME`을 반드시 즉시 판올림하여 PWA 및 모바일 브라우저가 구버전 캐시를 즉시 파기하고 최신 버전을 다운로드하도록 보장합니다.
    - 작업 완료 후 반드시 `./deploy.sh`로 실서버(노트 9)에 즉시 배포하고, curl 및 프로세스 상태를 직접 확인한 후 사용자에게 보고합니다.
