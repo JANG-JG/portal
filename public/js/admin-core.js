@@ -378,6 +378,41 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// 16. 모바일 하단 내비게이션 & 뉴스 티커 겹침 방지 동적 보정
+function adjustTickerPosition() {
+    const isMobile = window.innerWidth <= 768;
+    const ticker = document.getElementById('jg-global-ticker-bar');
+    const breaking = document.getElementById('jg-global-breaking-bar');
+    const bottomNav = document.getElementById('adminBottomNav');
+
+    if (!bottomNav) return;
+
+    if (isMobile) {
+        if (ticker) {
+            ticker.style.setProperty('bottom', '56px', 'important');
+            ticker.style.setProperty('z-index', '999990', 'important');
+        }
+        if (breaking) {
+            breaking.style.setProperty('bottom', '114px', 'important');
+            breaking.style.setProperty('z-index', '999991', 'important');
+        }
+        bottomNav.style.setProperty('bottom', '0px', 'important');
+        bottomNav.style.setProperty('z-index', '1000000', 'important');
+        document.body.style.setProperty('padding-bottom', '125px', 'important');
+    } else {
+        if (ticker) {
+            ticker.style.setProperty('bottom', '0px', 'important');
+        }
+        if (breaking) {
+            breaking.style.setProperty('bottom', '44px', 'important');
+        }
+    }
+}
+
+window.adjustTickerPosition = adjustTickerPosition;
+window.addEventListener('resize', adjustTickerPosition);
+window.addEventListener('load', adjustTickerPosition);
+
 // 초기 로드
 document.addEventListener('DOMContentLoaded', () => {
     const switchedByHash = handleHashTab();
@@ -396,4 +431,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.startOverviewPolling === 'function') {
         window.startOverviewPolling();
     }
+
+    adjustTickerPosition();
+    setTimeout(adjustTickerPosition, 300);
+    setTimeout(adjustTickerPosition, 1000);
 });
+
+// 동적 티커 마운트 감지용 MutationObserver
+if (typeof MutationObserver !== 'undefined') {
+    const tickerObserver = new MutationObserver(() => {
+        adjustTickerPosition();
+    });
+    if (document.body) {
+        tickerObserver.observe(document.body, { childList: true });
+    }
+}
+

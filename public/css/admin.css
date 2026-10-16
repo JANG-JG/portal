@@ -1225,22 +1225,203 @@
         box-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
     }
 
-    /* 📰 전 사이트 공통 뉴스 티커 바를 관리자 페이지 모바일에서는 하단 탭바 바로 위로 배치 */
-    #jg-global-ticker-bar {
+    /* 📰 전 사이트 공통 뉴스 티커 바를 관리자 페이지 모바일에서는 하단 탭바 바로 위로 배치 (Specificity 극대화) */
+    html body #jg-global-ticker-bar {
         bottom: 56px !important;
         border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        z-index: 999990 !important;
     }
 
     /* 🚨 긴급 속보 바도 그 위로 자연스럽게 상향 조정 */
-    #jg-global-breaking-bar {
-        bottom: 110px !important;
+    html body #jg-global-breaking-bar {
+        bottom: 114px !important;
+        z-index: 999991 !important;
     }
 
-    /* 본문 하단 여백 확보 (바텀 내비 56px + 티커 54px + 여백 = 125px) */
+    /* 본문 하단 여백 확보 (바텀 내비 56px + 티커 58px + 안전 마진 = 125px) */
     body {
         padding-bottom: 125px !important;
     }
 }
+
+/* ========================================================
+   📈 uPlot 실시간 시계열 리소스 차트 스타일
+   ======================================================== */
+.uplot-chart-card {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 0.85rem;
+    padding: 1.15rem 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    color: #f8fafc;
+}
+
+.uplot-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.uplot-chart-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.uplot-legend-badges {
+    display: flex;
+    gap: 0.65rem;
+    align-items: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.uplot-badge-cpu {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.uplot-badge-ram {
+    color: #c084fc;
+    background: rgba(192, 132, 252, 0.12);
+    border: 1px solid rgba(192, 132, 252, 0.3);
+    padding: 2px 7px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.uplot-container {
+    width: 100%;
+    overflow-x: hidden;
+}
+
+/* uPlot 내부 폰트 및 라벨 최적화 */
+.u-wrap {
+    font-family: inherit !important;
+}
+.u-title {
+    display: none !important;
+}
+.u-legend {
+    display: none !important; /* 상단 자체 커스텀 뱃지로 대체 */
+}
+
+/* ========================================================
+   ⏱️ Tabler 스타일 감사 타임라인 피드 (Activity Timeline)
+   ======================================================== */
+.admin-timeline {
+    position: relative;
+    padding-left: 1.75rem;
+    margin: 0.75rem 0;
+}
+
+.admin-timeline::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 7px;
+    width: 2px;
+    background: #e2e8f0;
+}
+
+.admin-timeline-item {
+    position: relative;
+    padding-bottom: 1rem;
+}
+
+.admin-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.admin-timeline-badge {
+    position: absolute;
+    left: -1.75rem;
+    top: 4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #94a3b8;
+    box-shadow: 0 0 0 2px #ffffff;
+    z-index: 1;
+}
+
+.admin-timeline-badge.badge-success {
+    border-color: #10b981;
+    background: #d1fae5;
+}
+
+.admin-timeline-badge.badge-failed, .admin-timeline-badge.badge-danger {
+    border-color: #ef4444;
+    background: #fee2e2;
+}
+
+.admin-timeline-badge.badge-info {
+    border-color: #3b82f6;
+    background: #dbeafe;
+}
+
+.admin-timeline-content {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.65rem;
+    padding: 0.65rem 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.admin-timeline-content:hover {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.admin-timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+    flex-wrap: wrap;
+}
+
+.admin-timeline-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.admin-timeline-time {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.admin-timeline-desc {
+    font-size: 0.78rem;
+    color: #475569;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
 
 
 

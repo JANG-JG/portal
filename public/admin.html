@@ -10,7 +10,8 @@
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v2">
     <link rel="stylesheet" href="/css/style.css?v=20261016_v2">
-    <link rel="stylesheet" href="/css/admin.css?v=20261016_v3">
+    <link rel="stylesheet" href="/css/uPlot.min.css?v=20261016_v1">
+    <link rel="stylesheet" href="/css/admin.css?v=20261016_v4">
     <link rel="stylesheet" href="/css/unified-nav.css?v=20261016_v2">
     <style>
         .server-tab-container {
@@ -384,8 +385,22 @@
                         </div>
                     </div>
 
+                    <!-- 📈 실시간 서버 리소스 시계열 차트 (uPlot 10KB) -->
+                    <div class="uplot-chart-card" id="uplotResourceCard" style="margin-top: 1.25rem;">
+                        <div class="uplot-chart-header">
+                            <div class="uplot-chart-title">
+                                <span>📈 실시간 서버 자원 추이 (CPU / RAM 시계열)</span>
+                            </div>
+                            <div class="uplot-legend-badges">
+                                <span class="uplot-badge-cpu">● CPU <strong id="uplotCpuText">-%</strong></span>
+                                <span class="uplot-badge-ram">● RAM <strong id="uplotRamText">-%</strong></span>
+                            </div>
+                        </div>
+                        <div id="uplotResourceContainer" class="uplot-container"></div>
+                    </div>
+
                     <!-- 전체 서비스 PM2 프로세스 목록 -->
-                    <div class="admin-card" style="margin-top:1.5rem;">
+                    <div class="admin-card" style="margin-top:1.25rem;">
                         <div class="admin-card-header">
                             <div>
                                 <h3 style="margin-bottom:0.25rem;">🚀 전체 서비스 프로세스 상태 (PM2)</h3>
@@ -1169,7 +1184,11 @@
                             <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadSecurityLogs()">🔄 새로고침</button>
                         </div>
                     </div>
-                    <div class="admin-table-container admin-table-scroll">
+                    <!-- ⏱️ Tabler 스타일 보안 감사 타임라인 피드 -->
+                    <div id="securityTimelineFeed" class="admin-timeline">
+                        <div style="text-align:center; padding:1.5rem; color:#64748b;">감사 로그를 불러오는 중입니다...</div>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top: 1.25rem;">
                         <table class="admin-table">
                             <thead>
                                 <tr>
@@ -1357,10 +1376,12 @@
         </button>
     </nav>
 
+    <!-- 📈 초경량 uPlot (10KB) 시계열 차트 엔진 로컬 로드 -->
+    <script src="/js/uPlot.iife.min.js?v=20261016_v1"></script>
     <!-- 📦 관리자 모듈화 스크립트 로드 (캐시 버스팅 적용) -->
-    <script src="/js/admin-core.js?v=20261016_v1"></script>
-    <script src="/js/admin-monitor.js?v=20261016_v1"></script>
-    <script src="/js/admin-services.js?v=20261016_v1"></script>
+    <script src="/js/admin-core.js?v=20261016_v2"></script>
+    <script src="/js/admin-monitor.js?v=20261016_v2"></script>
+    <script src="/js/admin-services.js?v=20261016_v2"></script>
     <!-- 📰 전 사이트 공통 TV 뉴스 티커 하단바 & 긴급 속보 위젯 -->
     <script src="/js/news-ticker.js?v=20261016_v4"></script>
     <!-- 🌐 공통 상단 내비게이션 바 & 통합 알림 연동 스크립트 -->

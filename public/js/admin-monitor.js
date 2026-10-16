@@ -3,6 +3,122 @@
  * admin-monitor.js
  */
 
+// 📈 초경량 uPlot (10KB) 실시간 시계열 리소스 차트 상태
+let uplotChart = null;
+const uplotData = [
+    [], // UNIX 타임스탬프 (초)
+    [], // CPU (%)
+    []  // RAM (%)
+];
+const MAX_CHART_POINTS = 30; // 5초 간격 * 30회 = 최근 150초 (2.5분)
+
+function initUPlotChart() {
+    const container = document.getElementById('uplotResourceContainer');
+    if (!container || typeof uPlot === 'undefined') return;
+    if (uplotChart) return;
+
+    // 초기 데이터 (현재 시각 기준 과거 10포인트 0% 초기화)
+    const now = Math.floor(Date.now() / 1000);
+    if (uplotData[0].length === 0) {
+        for (let i = 8; i >= 0; i--) {
+            uplotData[0].push(now - i * 5);
+            uplotData[1].push(0);
+            uplotData[2].push(0);
+        }
+    }
+
+    const opts = {
+        width: container.clientWidth || 320,
+        height: 155,
+        scales: {
+            x: { time: true },
+            y: { range: [0, 100] }
+        },
+        series: [
+            {},
+            {
+                label: "CPU (%)",
+                stroke: "#38bdf8",
+                width: 2,
+                fill: "rgba(56, 189, 248, 0.12)",
+                points: { show: false }
+            },
+            {
+                label: "RAM (%)",
+                stroke: "#c084fc",
+                width: 2,
+                fill: "rgba(192, 132, 252, 0.12)",
+                points: { show: false }
+            }
+        ],
+        axes: [
+            {
+                stroke: "#94a3b8",
+                grid: { stroke: "rgba(148, 163, 184, 0.08)", width: 1 },
+                ticks: { stroke: "rgba(148, 163, 184, 0.2)" },
+                font: '10px Pretendard, system-ui'
+            },
+            {
+                stroke: "#94a3b8",
+                grid: { stroke: "rgba(148, 163, 184, 0.08)", width: 1 },
+                ticks: { stroke: "rgba(148, 163, 184, 0.2)" },
+                values: (u, vals) => vals.map(v => Math.round(v) + "%"),
+                font: '10px Pretendard, system-ui'
+            }
+        ],
+        cursor: {
+            drag: { setScale: false }
+        }
+    };
+
+    try {
+        uplotChart = new uPlot(opts, uplotData, container);
+    } catch (e) {
+        console.warn('uPlot 초기화 보류:', e);
+    }
+
+    window.addEventListener('resize', () => {
+        if (uplotChart && container && container.clientWidth > 0) {
+            uplotChart.setSize({
+                width: container.clientWidth,
+                height: 155
+            });
+        }
+    });
+}
+
+function updateUPlotData(cpuPct, memPct) {
+    const container = document.getElementById('uplotResourceContainer');
+    if (!container || typeof uPlot === 'undefined') return;
+
+    if (!uplotChart) {
+        initUPlotChart();
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const cpuNum = Math.min(100, Math.max(0, Math.round(cpuPct || 0)));
+    const memNum = Math.min(100, Math.max(0, Math.round(memPct || 0)));
+
+    const cpuTxt = document.getElementById('uplotCpuText');
+    const ramTxt = document.getElementById('uplotRamText');
+    if (cpuTxt) cpuTxt.textContent = `${cpuNum}%`;
+    if (ramTxt) ramTxt.textContent = `${memNum}%`;
+
+    uplotData[0].push(now);
+    uplotData[1].push(cpuNum);
+    uplotData[2].push(memNum);
+
+    if (uplotData[0].length > MAX_CHART_POINTS) {
+        uplotData[0].shift();
+        uplotData[1].shift();
+        uplotData[2].shift();
+    }
+
+    if (uplotChart) {
+        uplotChart.setData(uplotData);
+    }
+}
+
 // 1. 전체 개요 및 PM2 프로세스 로드 (실시간 모니터링)
 async function loadOverviewData() {
     try {
@@ -50,6 +166,9 @@ async function loadOverviewData() {
             memBar.style.width = Math.min(100, Math.max(0, memPct)) + '%';
             memBar.classList.toggle('warn', memPct >= 85);
         }
+
+        // 📈 uPlot 실시간 시계열 차트 데이터 푸시
+        updateUPlotData(cpuPct, memPct);
 
         // 저장공간 (Disk)
         const diskVal = data.system.disk ? data.system.disk.percent : '0%';
@@ -538,3 +657,5 @@ window.restartPm2Process = restartPm2Process;
 window.fetchPm2Logs = fetchPm2Logs;
 window.clearPm2Logs = clearPm2Logs;
 window.downloadAllDatabases = downloadAllDatabases;
+window.initUPlotChart = initUPlotChart;
+window.updateUPlotData = updateUPlotData;

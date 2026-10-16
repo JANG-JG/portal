@@ -358,33 +358,78 @@ async function triggerNewsCollection(mode) {
 
 async function loadSecurityLogs() {
     const tbody = document.getElementById('securityLogsTableBody');
-    if (!tbody) return;
+    const timeline = document.getElementById('securityTimelineFeed');
+    if (!tbody && !timeline) return;
+
     try {
         const res = await fetch('/api/admin/logs/login');
         const data = await res.json();
         if (!data.success) throw new Error(data.message);
 
-        if (!data.logs || data.logs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">기록된 로그인 이력이 없습니다.</td></tr>';
-            return;
+        const logs = data.logs || [];
+
+        // ⏱️ 1. Tabler 스타일 보안 감사 타임라인 피드 렌더링 (최근 15건)
+        if (timeline) {
+            if (logs.length === 0) {
+                timeline.innerHTML = '<div style="text-align:center; padding:1.2rem; color:#64748b;">기록된 보안 감사 로그가 없습니다.</div>';
+            } else {
+                timeline.innerHTML = logs.slice(0, 15).map(log => {
+                    const isSuccess = log.status === 'SUCCESS';
+                    const badgeClass = isSuccess ? 'badge-success' : 'badge-failed';
+                    const statusText = isSuccess ? '정상 로그인' : '인증 실패';
+                    const icon = isSuccess ? '🛡️' : '🚨';
+                    return `
+                        <div class="admin-timeline-item">
+                            <div class="admin-timeline-badge ${badgeClass}"></div>
+                            <div class="admin-timeline-content">
+                                <div class="admin-timeline-header">
+                                    <span class="admin-timeline-title">
+                                        <span>${icon}</span>
+                                        <strong>${escapeHtml(log.username || 'unknown')}</strong>
+                                        <span class="${isSuccess ? 'badge-online' : 'badge-stopped'}" style="font-size:0.7rem; padding:1px 6px;">${statusText}</span>
+                                    </span>
+                                    <span class="admin-timeline-time">${log.attempted_at || '-'}</span>
+                                </div>
+                                <div class="admin-timeline-desc">
+                                    접속 IP: <code style="font-size:0.78rem; background:#e2e8f0; padding:1px 5px; border-radius:3px; color:#0f172a;">${escapeHtml(log.ip || '-')}</code>
+                                    ${!isSuccess ? '<span style="color:#ef4444; margin-left:6px; font-weight:600;">(인증 거부됨)</span>' : '<span style="color:#10b981; margin-left:6px;">(세션 발급 완료)</span>'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
 
-        tbody.innerHTML = data.logs.map(log => {
-            const isSuccess = log.status === 'SUCCESS';
-            const badge = isSuccess 
-                ? '<span class="badge-success">성공</span>' 
-                : '<span class="badge-failed">실패</span>';
-            return `
-                <tr>
-                    <td><small>${log.attempted_at || '-'}</small></td>
-                    <td><strong>${escapeHtml(log.username || '-')}</strong></td>
-                    <td><code>${escapeHtml(log.ip || '-')}</code></td>
-                    <td>${badge}</td>
-                </tr>
-            `;
-        }).join('');
+        // 📋 2. 상세 로그인 이력 테이블 렌더링
+        if (tbody) {
+            if (logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">기록된 로그인 이력이 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = logs.map(log => {
+                const isSuccess = log.status === 'SUCCESS';
+                const badge = isSuccess 
+                    ? '<span class="badge-success">성공</span>' 
+                    : '<span class="badge-failed">실패</span>';
+                return `
+                    <tr>
+                        <td><small>${log.attempted_at || '-'}</small></td>
+                        <td><strong>${escapeHtml(log.username || '-')}</strong></td>
+                        <td><code>${escapeHtml(log.ip || '-')}</code></td>
+                        <td>${badge}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#dc2626;">로그 조회 실패: ${escapeHtml(err.message)}</td></tr>`;
+        if (timeline) {
+            timeline.innerHTML = `<div style="text-align:center; padding:1.2rem; color:#dc2626;">타임라인 로드 실패: ${escapeHtml(err.message)}</div>`;
+        }
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#dc2626;">로그 조회 실패: ${escapeHtml(err.message)}</td></tr>`;
+        }
     }
 }
 
