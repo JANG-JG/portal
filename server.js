@@ -2949,6 +2949,129 @@ app.delete('/api/memos/:id', authenticateToken, (req, res) => {
     });
 });
 
+// ==============================================================================
+// 🔍 [통합 퀵 검색 (Ctrl+K)] REST API 엔드포인트
+// 메모, 뉴스 브리핑, 병원 진료 일정, 자산/종목 통합 비동기 검색
+// ==============================================================================
+app.get('/api/search/unified', authenticateToken, async (req, res) => {
+    const rawQuery = (req.query.q || '').trim();
+    if (!rawQuery) {
+        return res.json({
+            success: true,
+            query: '',
+            total: 0,
+            results: { memos: [], news: [], hospitals: [], assets: [] }
+        });
+    }
+
+    const userId = req.user.username || 'admin';
+    const term = `%${rawQuery}%`;
+
+    // 1) 메모 검색
+    const memoPromise = new Promise((resolve) => {
+        const sql = `
+            SELECT id, title, content, category, color, is_pinned, updated_at
+            FROM user_memos
+            WHERE (user_id = ? OR user_id = 'admin')
+              AND (title LIKE ? OR content LIKE ?)
+            ORDER BY is_pinned DESC, updated_at DESC
+            LIMIT 8
+        `;
+        db.all(sql, [userId, term, term], (err, rows) => {
+            if (err) {
+                console.error('[Search memo err]:', err.message);
+                return resolve([]);
+            }
+            resolve(rows || []);
+        });
+    });
+
+    // 2) 뉴스 브리핑 검색
+    const newsPromise = new Promise((resolve) => {
+        const sql = `
+            SELECT id, date, category_name, title, link, media_name, summary, published_at
+            FROM news_articles
+            WHERE (title LIKE ? OR summary LIKE ?)
+            ORDER BY date DESC, id DESC
+            LIMIT 8
+        `;
+        newsDb.all(sql, [term, term], (err, rows) => {
+            if (err) {
+                console.error('[Search news err]:', err.message);
+                return resolve([]);
+            }
+            resolve(rows || []);
+        });
+    });
+
+    // 3) 병원 진료 일정 검색
+    const hospitalPromise = new Promise((resolve) => {
+        const sql = `
+            SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date
+            FROM hospital_visits
+            WHERE (user_id = ? OR user_id = 'admin')
+              AND (hospital_name LIKE ? OR department LIKE ? OR memo LIKE ?)
+            ORDER BY visit_date DESC
+            LIMIT 8
+        `;
+        db.all(sql, [userId, term, term, term], (err, rows) => {
+            if (err) {
+                console.error('[Search hospital err]:', err.message);
+                return resolve([]);
+            }
+            resolve(rows || []);
+        });
+    });
+
+    // 4) 자산/보유 종목 검색
+    const assetPromise = new Promise((resolve) => {
+        const sql = `
+            SELECT id, symbol, full_name, asset_type, quantity, avg_price, currency
+            FROM assets
+            WHERE (symbol LIKE ? OR full_name LIKE ?)
+            LIMIT 8
+        `;
+        assetDb.all(sql, [term, term], (err, rows) => {
+            if (err) {
+                console.error('[Search asset err]:', err.message);
+                return resolve([]);
+            }
+            resolve(rows || []);
+        });
+    });
+
+    try {
+        const [memoRes, newsRes, hospRes, assetRes] = await Promise.allSettled([
+            memoPromise,
+            newsPromise,
+            hospitalPromise,
+            assetPromise
+        ]);
+
+        const memos = memoRes.status === 'fulfilled' ? memoRes.value : [];
+        const news = newsRes.status === 'fulfilled' ? newsRes.value : [];
+        const hospitals = hospRes.status === 'fulfilled' ? hospRes.value : [];
+        const assets = assetRes.status === 'fulfilled' ? assetRes.value : [];
+
+        const total = memos.length + news.length + hospitals.length + assets.length;
+
+        res.json({
+            success: true,
+            query: rawQuery,
+            total,
+            results: {
+                memos,
+                news,
+                hospitals,
+                assets
+            }
+        });
+    } catch (e) {
+        console.error('[Unified search err]:', e);
+        res.status(500).json({ success: false, message: '통합 검색 중 오류가 발생했습니다.' });
+    }
+});
+
 // 9. 통합 포털 단일 알림 브로드캐스트 엔진 API (모든 서비스 공통 접수구)
 app.post('/api/notification/broadcast', async (req, res) => {
     // 내부 루프백(뉴스 수집기 등) 또는 인증된 사용자 요청 허용
