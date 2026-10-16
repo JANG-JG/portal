@@ -9,15 +9,21 @@
     // 중복 실행 방지
     if (document.getElementById('jg-global-ticker-bar')) return;
 
-    // 1. 하단 여백 동적 적용 (속보 여부에 따라 48px 또는 82px)
+    // 1. 하단 여백 동적 적용 (모바일 2줄 58px / 데스크톱 44px + 속보 여부)
+    let currentHasBreaking = false;
     function updateBottomPadding(hasBreaking) {
-        const pad = hasBreaking ? '82px' : '48px';
+        currentHasBreaking = !!hasBreaking;
+        const isMobile = window.innerWidth <= 768;
+        const tickerHeight = isMobile ? 58 : 44;
+        const breakingHeight = currentHasBreaking ? (isMobile ? 34 : 36) : 0;
+        const pad = (tickerHeight + breakingHeight + 4) + 'px';
         if (document.body) {
             document.body.style.paddingBottom = pad;
         } else {
             window.addEventListener('DOMContentLoaded', () => updateBottomPadding(hasBreaking));
         }
     }
+    window.addEventListener('resize', () => updateBottomPadding(currentHasBreaking));
     updateBottomPadding(false);
 
     // 2. 전용 독립 스타일 주입
@@ -134,7 +140,7 @@
             border-color: #f87171 !important;
         }
 
-        /* 📰 기본 하단 뉴스 브리핑 바 (모든 사이트 상시 노출) */
+        /* 📰 기본 하단 티커 바 컨테이너 */
         #jg-global-ticker-bar {
             position: fixed !important;
             bottom: 0 !important;
@@ -157,6 +163,33 @@
         #jg-global-ticker-bar *, #jg-global-breaking-bar * {
             box-sizing: border-box !important;
         }
+
+        /* 좌측 실시간 시계 위젯 */
+        .jg-ticker-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            font-size: 11.5px !important;
+            color: #94a3b8 !important;
+            font-weight: 600 !important;
+            white-space: nowrap !important;
+            letter-spacing: -0.2px !important;
+        }
+        .jg-clock-icon {
+            font-size: 12px !important;
+            opacity: 0.9 !important;
+        }
+        .jg-clock-date {
+            color: #cbd5e1 !important;
+        }
+        .jg-clock-time {
+            color: #38bdf8 !important;
+            font-weight: 700 !important;
+            font-variant-numeric: tabular-nums !important;
+            letter-spacing: 0.5px !important;
+        }
+
+        /* 뉴스 뱃지 및 스크롤 영역 */
         .jg-ticker-badge {
             display: inline-flex !important;
             align-items: center !important;
@@ -228,11 +261,10 @@
             font-size: 10px !important;
             font-weight: 700 !important;
         }
+
+        /* 우측 날씨/증시/환율 롤링 위젯 */
         .jg-ticker-right {
             flex-shrink: 0 !important;
-            margin-left: 10px !important;
-            padding-left: 10px !important;
-            border-left: 1px solid #1e293b !important;
             height: 30px !important;
             display: flex !important;
             align-items: center !important;
@@ -240,7 +272,7 @@
         .jg-v-box {
             position: relative !important;
             height: 30px !important;
-            width: 135px !important;
+            width: 140px !important;
             overflow: hidden !important;
         }
         .jg-v-item {
@@ -264,38 +296,106 @@
             border-color: #38bdf8 !important;
             cursor: pointer !important;
         }
-        @media (max-width: 640px) {
+
+        /* 🖥️ [데스크톱 / 넓은 화면] 좌측(시계) - 가운데(뉴스) - 우측(날씨/증시/환율) 1줄 배치 */
+        @media (min-width: 769px) {
             #jg-global-ticker-bar {
-                padding: 0 6px !important;
-                height: 42px !important;
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                height: 44px !important;
+            }
+            .jg-ticker-meta-row {
+                display: contents !important;
+            }
+            .jg-ticker-left {
+                order: 1 !important;
+                flex-shrink: 0 !important;
+                margin-right: 14px !important;
+                padding-right: 14px !important;
+                border-right: 1px solid #1e293b !important;
+                height: 28px !important;
+            }
+            .jg-ticker-news-row {
+                order: 2 !important;
+                flex: 1 !important;
+                min-width: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                height: 100% !important;
+            }
+            .jg-ticker-right {
+                order: 3 !important;
+                flex-shrink: 0 !important;
+                margin-left: 14px !important;
+                padding-left: 14px !important;
+                border-left: 1px solid #1e293b !important;
+                height: 28px !important;
+            }
+            .jg-badge-text-mobile { display: none !important; }
+            .jg-badge-text-full { display: inline !important; }
+        }
+
+        /* 📱 [모바일 화면] 위(날짜/시간, 날씨/증시/환율) + 아래(뉴스) 2줄 레이아웃 */
+        @media (max-width: 768px) {
+            #jg-global-ticker-bar {
+                height: 58px !important;
+                flex-direction: column !important;
+                padding: 4px 10px !important;
+                justify-content: center !important;
+                gap: 2px !important;
             }
             #jg-global-breaking-bar {
-                bottom: 42px !important;
+                bottom: 58px !important;
                 height: 34px !important;
-                padding: 0 6px !important;
+                padding: 0 8px !important;
                 font-size: 11px !important;
             }
-            .jg-ticker-badge {
-                padding: 2.5px 6px !important;
-                margin-right: 6px !important;
-                font-size: 10px !important;
+            /* 1행(위): 날짜/시간 (좌측) + 날씨/증시/환율 (우측) */
+            .jg-ticker-meta-row {
+                width: 100% !important;
+                height: 25px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+                padding-bottom: 2px !important;
             }
-            .jg-badge-text-full { display: none !important; }
-            .jg-badge-text-mobile { display: inline !important; }
+            .jg-ticker-left {
+                font-size: 10.5px !important;
+                gap: 4px !important;
+            }
+            .jg-year-full {
+                display: none !important; /* 모바일에서는 연도 생략하여 '10. 16. (금)'으로 컴팩트하게 노출 */
+            }
             .jg-ticker-right {
-                margin-left: 6px !important;
-                padding-left: 6px !important;
-                height: 26px !important;
+                height: 22px !important;
             }
             .jg-v-box {
-                width: 100px !important;
-                height: 26px !important;
+                width: 135px !important;
+                height: 22px !important;
             }
             .jg-v-item {
                 font-size: 10px !important;
-                gap: 2px !important;
-                padding: 0 3px !important;
+                gap: 3px !important;
+                padding: 0 4px !important;
+                border-radius: 4px !important;
             }
+
+            /* 2행(아래): 뉴스 뱃지 + 흐르는 뉴스 헤드라인 */
+            .jg-ticker-news-row {
+                width: 100% !important;
+                height: 25px !important;
+                display: flex !important;
+                align-items: center !important;
+            }
+            .jg-ticker-badge {
+                padding: 2px 6px !important;
+                margin-right: 6px !important;
+                font-size: 9.5px !important;
+                border-radius: 4px !important;
+            }
+            .jg-badge-text-full { display: none !important; }
+            .jg-badge-text-mobile { display: inline !important; }
             .jg-ticker-link {
                 font-size: 11px !important;
                 margin-right: 14px !important;
@@ -337,34 +437,67 @@
         }
     };
 
-    // 5. 기본 하단 티커 바 DOM 생성
+    // 5. 기본 하단 티커 바 DOM 생성 (데스크톱: 좌측 시계 - 가운데 뉴스 - 우측 날씨/증시 / 모바일: 2줄)
     const tickerBar = document.createElement('div');
     tickerBar.id = 'jg-global-ticker-bar';
     tickerBar.innerHTML = `
-        <div class="jg-ticker-badge">
-            <span class="jg-ticker-dot"></span>
-            <span class="jg-badge-text-full">뉴스 브리핑</span>
-            <span class="jg-badge-text-mobile" style="display:none;">뉴스</span>
-        </div>
-        <div class="jg-ticker-scroll-area">
-            <div id="jg-track" class="jg-ticker-track">
-                <span class="jg-ticker-link">최신 뉴스 브리핑 헤드라인 로드 중...</span>
+        <div class="jg-ticker-meta-row">
+            <div class="jg-ticker-left" id="jg-ticker-clock" title="현재 한국 표준시 (KST, 24시간제)">
+                <span class="jg-clock-icon">🕒</span>
+                <span class="jg-clock-date" id="jg-clock-date"><span class="jg-year-full">2026. </span>10. 16. (금)</span>
+                <span class="jg-clock-time" id="jg-clock-time">12:00:00</span>
+            </div>
+            <div class="jg-ticker-right">
+                <div class="jg-v-box" id="jg-v-box">
+                    <div class="jg-v-item" style="transform: translateY(0); opacity: 1;">
+                        <span>🌤️ 계룡</span> <span style="color:#38bdf8;">-</span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="jg-ticker-right">
-            <div class="jg-v-box" id="jg-v-box">
-                <div class="jg-v-item" style="transform: translateY(0); opacity: 1;">
-                    <span>🌤️ 계룡</span> <span style="color:#38bdf8;">-</span>
+        <div class="jg-ticker-news-row">
+            <div class="jg-ticker-badge">
+                <span class="jg-ticker-dot"></span>
+                <span class="jg-badge-text-full">뉴스 브리핑</span>
+                <span class="jg-badge-text-mobile" style="display:none;">뉴스</span>
+            </div>
+            <div class="jg-ticker-scroll-area">
+                <div id="jg-track" class="jg-ticker-track">
+                    <span class="jg-ticker-link">최신 뉴스 브리핑 헤드라인 로드 중...</span>
                 </div>
             </div>
         </div>
     `;
+
+    // 5-1. 실시간 24시간 시계 갱신 함수 (초 단위 실시간 업데이트)
+    function updateLiveClock() {
+        const now = new Date();
+        const days = ['일', '월', '화', '수', '목', '금', '토'];
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const date = String(now.getDate()).padStart(2, '0');
+        const dayStr = days[now.getDay()];
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+
+        const dateEl = document.getElementById('jg-clock-date');
+        const timeEl = document.getElementById('jg-clock-time');
+        if (dateEl) {
+            dateEl.innerHTML = `<span class="jg-year-full">${year}. </span>${month}. ${date}. (${dayStr})`;
+        }
+        if (timeEl) {
+            timeEl.textContent = `${hours}:${minutes}:${seconds}`;
+        }
+    }
 
     // 6. DOM 주입 및 데이터 조회 시작
     const injectBars = () => {
         if (document.body) {
             document.body.appendChild(breakingBar);
             document.body.appendChild(tickerBar);
+            updateLiveClock();
+            setInterval(updateLiveClock, 1000);
             fetchTickerData();
             // 45초 주기 갱신
             setInterval(fetchTickerData, 45000);
