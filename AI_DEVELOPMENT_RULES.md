@@ -64,3 +64,7 @@
    - PM2 프로세스 재기동 시 지정된 서비스만 안전하게 리로드하며, 비활성 테스트 서버(`blood-pressure-app-test` 등)는 절대 임의로 건드리지 않습니다.
 3. **작업 완료 후 형상 관리**:
    - 의미 있는 단위로 Git 커밋을 생성하고 원격 저장소(`origin main`)로 푸시합니다.
+4. **관리자 화면 모듈화 및 로컬 직접 호스팅 유지**:
+   - 관리자 센터는 `admin-core.js`, `admin-monitor.js`, `admin-services.js` 모듈 구조를 준수하며, uPlot(10KB) 등 오픈소스 라이브러리는 외부 CDN 없이 항상 로컬 호스팅을 유지합니다.
+5. **모바일 하단 내비바 & 티커 UI 겹침 방지**:
+   - 모바일 바텀 내비바(`56px`)가 존재하는 페이지에서는 공통 뉴스 티커의 `bottom: 56px !important; z-index: 999990 !important` 및 본문 `padding-bottom: 125px !important`를 항상 보장합니다.
