@@ -1371,7 +1371,7 @@ async function performSecondaryServerCheck() {
                 'echo "___SEC_DF___" && (df -m /home/upt0731 2>/dev/null || df -m /)',
                 'echo "___SEC_TEMP___" && (sensors -j 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "NA")',
                 'echo "___SEC_TOPMEM___" && ps -eo pid,user,%cpu,%mem,rss,args --sort=-%mem | head -n 11',
-                'echo "___SEC_DBS___" && (ls -lh /home/upt0731/backups/jg_server/*.db 2>/dev/null || echo "NA")',
+                'echo "___SEC_DBS___" && (cat /home/upt0731/backups/jg_server/integrity_status.json 2>/dev/null || ls -lh /home/upt0731/backups/jg_server/current_dbs/*.db 2>/dev/null || ls -lh /home/upt0731/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null || echo "NA")',
                 'echo "___SEC_LOGS___" && (tail -n 50 /var/log/syslog 2>/dev/null || journalctl -n 50 --no-pager 2>/dev/null || echo "NA")'
             ].join(' && ');
 
@@ -1520,12 +1520,30 @@ async function performSecondaryServerCheck() {
                         cpuObj.percent = `${calcSecCpu.toFixed(1)}%`;
                         cpuObj.percentNum = calcSecCpu;
 
-                        // 6. DBS 파싱
+                        // 6. DBS 파싱 (무결성 검증 json 파싱 -> fallback 파일 존재 확인)
                         if (sections.SEC_DBS) {
-                            const dbsRaw = sections.SEC_DBS.join(' ');
-                            if (dbsRaw.includes('health.db')) dbsObj.health = '백업 보관 완료';
-                            if (dbsRaw.includes('asset.db')) dbsObj.asset = '백업 보관 완료';
-                            if (dbsRaw.includes('briefing.db')) dbsObj.briefing = '백업 보관 완료';
+                            const dbsRaw = sections.SEC_DBS.join('\n');
+                            try {
+                                const integrityJson = JSON.parse(dbsRaw);
+                                if (integrityJson && integrityJson.dbs) {
+                                    if (integrityJson.dbs['health.db']) {
+                                        const st = integrityJson.dbs['health.db'].status;
+                                        dbsObj.health = st === 'ok' ? '보관 완료 (무결성 OK 🟢)' : `경고 (${st})`;
+                                    }
+                                    if (integrityJson.dbs['asset.db']) {
+                                        const st = integrityJson.dbs['asset.db'].status;
+                                        dbsObj.asset = st === 'ok' ? '보관 완료 (무결성 OK 🟢)' : `경고 (${st})`;
+                                    }
+                                    if (integrityJson.dbs['briefing.db']) {
+                                        const st = integrityJson.dbs['briefing.db'].status;
+                                        dbsObj.briefing = st === 'ok' ? '보관 완료 (무결성 OK 🟢)' : `경고 (${st})`;
+                                    }
+                                }
+                            } catch (e) {
+                                if (dbsRaw.includes('health.db') || dbsRaw.includes('jg_backup_')) dbsObj.health = '백업 보관 완료';
+                                if (dbsRaw.includes('asset.db') || dbsRaw.includes('jg_backup_')) dbsObj.asset = '백업 보관 완료';
+                                if (dbsRaw.includes('briefing.db') || dbsRaw.includes('jg_backup_')) dbsObj.briefing = '백업 보관 완료';
+                            }
                         }
 
                         // 7. LOGS 파싱

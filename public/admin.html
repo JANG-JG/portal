@@ -610,8 +610,8 @@
                                         <th style="padding:0.6rem 0.75rem; width:160px;">서비스명</th>
                                         <th style="padding:0.6rem 0.75rem; width:150px;">백업본 파일명</th>
                                         <th style="padding:0.6rem 0.75rem;">설명 및 보존 중요도</th>
-                                        <th style="padding:0.6rem 0.75rem; width:110px; text-align:center;">동기화 방식</th>
-                                        <th style="padding:0.6rem 0.75rem; width:130px; text-align:center;">백업 상태</th>
+                                        <th style="padding:0.6rem 0.75rem; width:140px; text-align:center;">동기화 방식</th>
+                                        <th style="padding:0.6rem 0.75rem; width:150px; text-align:center;">백업 & 무결성 검증</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -620,24 +620,24 @@
                                         <td style="padding:0.6rem 0.75rem; font-weight:700; color:#0f172a;">🩸 혈압 관리</td>
                                         <td style="padding:0.6rem 0.75rem;"><code>health.db</code></td>
                                         <td style="padding:0.6rem 0.75rem; color:#475569;">수축기/이완기 혈압, 맥박, 복약 일지, 병원 진료 기록 (최고 중요도)</td>
-                                        <td style="padding:0.6rem 0.75rem; text-align:center;"><span class="badge-online" style="font-size:0.75rem;">핫 스냅샷</span></td>
-                                        <td style="padding:0.6rem 0.75rem; text-align:center;" id="secDbHealth"><span class="badge-online" style="font-size:0.75rem;">보관 완료</span></td>
+                                        <td style="padding:0.6rem 0.75rem; text-align:center;"><span class="badge-online" style="font-size:0.72rem;">PRAGMA 핫스냅샷</span></td>
+                                        <td style="padding:0.6rem 0.75rem; text-align:center;" id="secDbHealth"><span class="badge-online" style="font-size:0.75rem;">보관 완료 (무결성 OK 🟢)</span></td>
                                     </tr>
                                     <tr style="border-bottom:1px solid #e2e8f0;">
                                         <td style="padding:0.6rem 0.75rem; font-weight:700; color:#64748b;">2</td>
                                         <td style="padding:0.6rem 0.75rem; font-weight:700; color:#0f172a;">💰 자산 관리</td>
                                         <td style="padding:0.6rem 0.75rem;"><code>asset.db</code></td>
                                         <td style="padding:0.6rem 0.75rem; color:#475569;">증권 계좌 잔고, 국내/미국 주식 포트폴리오, 입출금 이력 스냅샷</td>
-                                        <td style="padding:0.6rem 0.75rem; text-align:center;"><span class="badge-online" style="font-size:0.75rem;">핫 스냅샷</span></td>
-                                        <td style="padding:0.6rem 0.75rem; text-align:center;" id="secDbAsset"><span class="badge-online" style="font-size:0.75rem;">보관 완료</span></td>
+                                        <td style="padding:0.6rem 0.75rem; text-align:center;"><span class="badge-online" style="font-size:0.72rem;">PRAGMA 핫스냅샷</span></td>
+                                        <td style="padding:0.6rem 0.75rem; text-align:center;" id="secDbAsset"><span class="badge-online" style="font-size:0.75rem;">보관 완료 (무결성 OK 🟢)</span></td>
                                     </tr>
                                     <tr style="border-bottom:1px solid #e2e8f0;">
                                         <td style="padding:0.6rem 0.75rem; font-weight:700; color:#64748b;">3</td>
                                         <td style="padding:0.6rem 0.75rem; font-weight:700; color:#0f172a;">📰 AI 뉴스 브리핑</td>
                                         <td style="padding:0.6rem 0.75rem;"><code>briefing.db</code></td>
                                         <td style="padding:0.6rem 0.75rem; color:#475569;">아침 뉴스 브리핑, 실시간 속보 수집 및 텔레그램 발송 이력</td>
-                                        <td style="padding:0.6rem 0.75rem; text-align:center;"><span class="badge-online" style="font-size:0.75rem;">핫 스냅샷</span></td>
-                                        <td style="padding:0.6rem 0.75rem; text-align:center;" id="secDbBriefing"><span class="badge-online" style="font-size:0.75rem;">보관 완료</span></td>
+                                        <td style="padding:0.6rem 0.75rem; text-align:center;"><span class="badge-online" style="font-size:0.72rem;">PRAGMA 핫스냅샷</span></td>
+                                        <td style="padding:0.6rem 0.75rem; text-align:center;" id="secDbBriefing"><span class="badge-online" style="font-size:0.75rem;">보관 완료 (무결성 OK 🟢)</span></td>
                                     </tr>
                                     <tr style="border-bottom:1px solid #e2e8f0;">
                                         <td style="padding:0.6rem 0.75rem; font-weight:700; color:#64748b;">4</td>
@@ -1355,7 +1355,7 @@
     <script src="/js/uPlot.iife.min.js?v=20261016_v1"></script>
     <!-- 📦 관리자 모듈화 스크립트 로드 (캐시 버스팅 적용) -->
     <script src="/js/admin-core.js?v=20261016_v3"></script>
-    <script src="/js/admin-monitor.js?v=20261016_v6"></script>
+    <script src="/js/admin-monitor.js?v=20261016_v7"></script>
     <script src="/js/admin-services.js?v=20261016_v2"></script>
     <!-- 📰 전 사이트 공통 TV 뉴스 티커 하단바 & 긴급 속보 위젯 -->
     <script src="/js/news-ticker.js?v=20261016_v4"></script>
