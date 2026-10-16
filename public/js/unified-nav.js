@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261016_v3';
+    const UNAV_VERSION = '20261017_v1';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -490,15 +490,20 @@
             return;
         }
         const val = inputEl.value.trim();
+        if (!val || !/^\d{2}:\d{2}$/.test(val)) {
+            alert('올바른 시간(HH:MM)을 선택해 주세요.');
+            return;
+        }
         if (!portalNotifSettings.telegram_briefing_times) {
             portalNotifSettings.telegram_briefing_times = [];
         }
         if (portalNotifSettings.telegram_briefing_times.includes(val)) {
-            alert('이미 등록된 브리핑 시간입니다.');
+            alert('이미 등록된 브리핑 시간입니다: ' + val);
             return;
         }
         portalNotifSettings.telegram_briefing_times.push(val);
         portalNotifSettings.telegram_briefing_times.sort();
+        inputEl.value = '';
         window.renderNotifChips();
     };
 
@@ -1035,6 +1040,18 @@
             group.classList.add('expanded');
         }
     };
+
+    // 텔레그램 브리핑 시간 추가 버튼 이벤트 위임 (인라인 onclick 실패 대비 100% 동작 보장)
+    document.addEventListener('click', function(e) {
+        const btn = e.target && (e.target.closest('#btnAddTelegramBriefingTime') || 
+                    (e.target.tagName === 'BUTTON' && e.target.getAttribute('onclick') && e.target.getAttribute('onclick').includes('addTelegramBriefingTime')));
+        if (btn) {
+            e.preventDefault();
+            if (typeof window.addTelegramBriefingTime === 'function') {
+                window.addTelegramBriefingTime();
+            }
+        }
+    });
 
     // DOM 준비 시 마운트 실행
     if (document.readyState === 'loading') {
