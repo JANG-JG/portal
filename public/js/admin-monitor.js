@@ -1,0 +1,540 @@
+/**
+ * JG Portal 통합 관리자 센터 - 서버 관제 & PM2 모니터링 모듈
+ * admin-monitor.js
+ */
+
+// 1. 전체 개요 및 PM2 프로세스 로드 (실시간 모니터링)
+async function loadOverviewData() {
+    try {
+        const res = await fetch('/api/admin/overview');
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message);
+
+        // 1) 상단 통계 갱신
+        const onlineCount = data.processes.filter(p => p.status === 'online').length;
+        const activeProcEl = document.getElementById('activeProcessCount');
+        const sysUptimeEl = document.getElementById('systemUptime');
+        if (activeProcEl) activeProcEl.textContent = `${onlineCount} / ${data.processes.length}`;
+        if (sysUptimeEl) sysUptimeEl.textContent = data.system.uptimeStr;
+
+        // 2) 리소스 게이지 바 & CPU 온도 갱신
+        // CPU
+        const cpuVal = data.system.cpu ? data.system.cpu.percent : '0%';
+        const cpuPct = data.system.cpu ? data.system.cpu.percentNum : 0;
+        const gaugeCpuVal = document.getElementById('gaugeCpuVal');
+        const cpuBar = document.getElementById('gaugeCpuBar');
+        if (gaugeCpuVal) gaugeCpuVal.textContent = cpuVal;
+        if (cpuBar) {
+            cpuBar.style.width = Math.min(100, Math.max(0, cpuPct)) + '%';
+            cpuBar.classList.toggle('warn', cpuPct >= 80);
+        }
+
+        // CPU 온도
+        const tempEl = document.getElementById('gaugeCpuTemp');
+        if (tempEl && data.system.cpu) {
+            const tVal = data.system.cpu.temp || '측정 불가';
+            const tStatus = data.system.cpu.tempStatus || 'normal';
+            tempEl.textContent = '🌡️ ' + tVal;
+            tempEl.className = 'temp-badge temp-badge-' + tStatus;
+        }
+
+        // 메모리 (RAM)
+        const memVal = data.system.memory ? data.system.memory.percent : '0%';
+        const memPct = data.system.memory ? data.system.memory.percentNum : 0;
+        const memUsed = data.system.memory ? data.system.memory.used : '-';
+        const memTotal = data.system.memory ? data.system.memory.total : '-';
+        const gaugeMemVal = document.getElementById('gaugeMemVal');
+        const memBar = document.getElementById('gaugeMemBar');
+        if (gaugeMemVal) gaugeMemVal.textContent = `${memVal} (${memUsed} / ${memTotal})`;
+        if (memBar) {
+            memBar.style.width = Math.min(100, Math.max(0, memPct)) + '%';
+            memBar.classList.toggle('warn', memPct >= 85);
+        }
+
+        // 저장공간 (Disk)
+        const diskVal = data.system.disk ? data.system.disk.percent : '0%';
+        const diskPct = data.system.disk ? data.system.disk.percentNum : 0;
+        const diskUsed = data.system.disk ? data.system.disk.used : '-';
+        const diskTotal = data.system.disk ? data.system.disk.total : '-';
+        const gaugeDiskVal = document.getElementById('gaugeDiskVal');
+        const diskBar = document.getElementById('gaugeDiskBar');
+        if (gaugeDiskVal) gaugeDiskVal.textContent = `${diskVal} (${diskUsed} / ${diskTotal})`;
+        if (diskBar) {
+            diskBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
+            diskBar.classList.toggle('warn', diskPct >= 90);
+        }
+
+        // 3) DB 크기
+        const dbHealth = document.getElementById('dbSizeHealth');
+        const dbAsset = document.getElementById('dbSizeAsset');
+        const dbNews = document.getElementById('dbSizeNews');
+        if (dbHealth) dbHealth.textContent = data.dbs.health;
+        if (dbAsset) dbAsset.textContent = data.dbs.asset;
+        if (dbNews) dbNews.textContent = data.dbs.briefing;
+
+        // 4) 프로세스 카드 목록 렌더링 (시작 / 중지 / 재기동 3버튼 제어 및 실시간 상태 동기화)
+        const container = document.getElementById('processListContainer');
+        if (container) {
+            const existingCards = container.querySelectorAll('.process-item-card');
+            if (existingCards.length === data.processes.length) {
+                data.processes.forEach(p => {
+                    const memEl = document.getElementById(`proc-mem-${p.name}`);
+                    const cpuEl = document.getElementById(`proc-cpu-${p.name}`);
+                    const restartsEl = document.getElementById(`proc-restarts-${p.name}`);
+                    const badgeEl = document.getElementById(`proc-badge-${p.name}`);
+                    const btnStart = document.getElementById(`btn-start-${p.name}`);
+                    const btnStop = document.getElementById(`btn-stop-${p.name}`);
+                    const btnRestart = document.getElementById(`btn-restart-${p.name}`);
+
+                    if (memEl) memEl.textContent = p.memory;
+                    if (cpuEl) cpuEl.textContent = p.cpu;
+                    if (restartsEl) restartsEl.textContent = `${p.restarts}회`;
+                    if (badgeEl) {
+                        const isOnline = p.status === 'online';
+                        badgeEl.className = isOnline ? 'badge-online' : 'badge-stopped';
+                        badgeEl.textContent = isOnline ? '온라인' : p.status;
+                        if (btnStart) btnStart.disabled = isOnline;
+                        if (btnStop) btnStop.disabled = !isOnline;
+                        if (btnRestart) btnRestart.disabled = !isOnline;
+                    }
+                });
+            } else {
+                container.innerHTML = data.processes.map(p => {
+                    const isOnline = p.status === 'online';
+                    const badgeClass = isOnline ? 'badge-online' : 'badge-stopped';
+                    const badgeText = isOnline ? '온라인' : p.status;
+
+                    return `
+                        <div class="process-item-card" id="proc-card-${p.name}">
+                            <div class="process-info">
+                                <h4>
+                                    ${p.displayName || p.name}
+                                    <span id="proc-badge-${p.name}" class="${badgeClass}">${badgeText}</span>
+                                </h4>
+                                <div class="process-meta">
+                                    <span>PID: ${p.pid || '-'}</span>
+                                    <span>메모리: <strong id="proc-mem-${p.name}">${p.memory}</strong></span>
+                                    <span>CPU: <strong id="proc-cpu-${p.name}">${p.cpu}</strong></span>
+                                    <span>재기동: <span id="proc-restarts-${p.name}">${p.restarts}회</span></span>
+                                    <span>포트: ${p.port || '-'}</span>
+                                </div>
+                            </div>
+                            <div class="process-actions">
+                                <button class="btn-admin-xs btn-action-start" id="btn-start-${p.name}" ${isOnline ? 'disabled' : ''} onclick="executePm2Action('start', '${p.name}')" title="프로세스 시작">
+                                    ▶️ 시작
+                                </button>
+                                <button class="btn-admin-xs btn-action-stop" id="btn-stop-${p.name}" ${!isOnline ? 'disabled' : ''} onclick="executePm2Action('stop', '${p.name}')" title="프로세스 중지">
+                                    ⏹️ 중지
+                                </button>
+                                <button class="btn-admin-xs btn-action-restart" id="btn-restart-${p.name}" ${!isOnline ? 'disabled' : ''} onclick="executePm2Action('restart', '${p.name}')" title="프로세스 재기동">
+                                    🔄 재기동
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // 5) 듀얼 서버 인프라 상태 (주 서버 & 보조 서버) 갱신
+        if (data.dualServers) {
+            const p = data.dualServers.primary;
+            if (p) {
+                const upEl = document.getElementById('primaryServerUptime');
+                const cpuEl = document.getElementById('primaryServerCpu');
+                const memEl = document.getElementById('primaryServerMem');
+                if (upEl) upEl.textContent = p.uptime || '-';
+                if (cpuEl) cpuEl.textContent = p.cpu || '-%';
+                if (memEl) memEl.textContent = p.mem || '-%';
+            }
+            if (data.dualServers.secondary) {
+                updateSecondaryServerUI(data.dualServers.secondary);
+            }
+        }
+
+        // 6) RAM(메모리) 상위 점유 프로세스 (TOP 10) 테이블 갱신
+        const topMemBody = document.getElementById('topMemProcessTableBody');
+        if (topMemBody && data.topMemoryProcesses) {
+            if (data.topMemoryProcesses.length === 0) {
+                topMemBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">수집된 프로세스 정보가 없습니다.</td></tr>';
+            } else {
+                topMemBody.innerHTML = data.topMemoryProcesses.map((proc, idx) => `
+                    <tr style="border-bottom:1px solid #e2e8f0;">
+                        <td style="padding:0.55rem 0.75rem; font-weight:700; color:#64748b;">${idx + 1}</td>
+                        <td style="padding:0.55rem 0.75rem; font-family:monospace; color:#334155;">${proc.pid}</td>
+                        <td style="padding:0.55rem 0.75rem;">
+                            <div style="font-weight:700; color:#0f172a;">${escapeHtml(proc.name || proc.command)}</div>
+                            <div style="font-size:0.72rem; color:#64748b; font-family:monospace;" title="${escapeHtml(proc.fullCommand)}">${escapeHtml(proc.fullCommand)}</div>
+                        </td>
+                        <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:700; color:#2563eb;">${proc.rss}</td>
+                        <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:700; color:#0f172a;">${proc.mem}</td>
+                        <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:600; color:#475569;">${proc.cpu}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+    } catch (err) {
+        console.error('관리자 상태 로드 오류:', err);
+    }
+}
+
+// 2. 🌟 보조 서버 UI 및 실시간 리소스 상태바 게이지 통합 갱신
+function updateSecondaryServerUI(s) {
+    if (!s) return;
+    const badgeEl = document.getElementById('secondaryServerBadge');
+    const latEl = document.getElementById('secondaryServerLatency');
+    const cardBadge = document.getElementById('secBadgeCard');
+    const tabBadge = document.getElementById('secondaryTabBadge');
+    const upEl = document.getElementById('secServerUptime');
+    const sourceEl = document.getElementById('secResourceSource');
+    const secProcCount = document.getElementById('secActiveProcessCount');
+    const secProcStatus = document.getElementById('secActiveProcessStatus');
+
+    // 1. 온라인 / 오프라인 상태 뱃지
+    if (badgeEl) {
+        badgeEl.className = s.online ? 'badge-online' : 'badge-stopped';
+        badgeEl.textContent = s.online ? (s.sshConnected ? '🟢 온라인 (SSH 실시간 연동)' : '🟢 온라인 (소켓 헬스 정상)') : '🔴 오프라인 (대기)';
+    }
+    if (cardBadge) {
+        cardBadge.className = s.online ? 'badge-online' : 'badge-stopped';
+        cardBadge.textContent = s.online ? `SSH 22 (${s.sshConnected ? '실시간 연동' : '열림'})` : 'SSH 22 대기';
+    }
+    if (latEl) {
+        latEl.textContent = s.online ? (s.latency || '정상') : '오프라인';
+    }
+    if (tabBadge) {
+        tabBadge.textContent = s.online ? `🟢 ${s.latency || '온라인'}` : '🔴 오프라인';
+        tabBadge.style.color = s.online ? '#7c3aed' : '#dc2626';
+        tabBadge.style.background = s.online ? '#f3e8ff' : '#fee2e2';
+        tabBadge.style.borderColor = s.online ? '#ddd6fe' : '#fecaca';
+    }
+    if (upEl) {
+        upEl.textContent = s.uptimeStr || (s.online ? '정상 가동 중' : '오프라인 (대기)');
+    }
+    if (sourceEl) {
+        sourceEl.textContent = s.sshConnected ? 'SSH 실시간 OS' : (s.online ? '소켓 헬스 연동' : '오프라인 대기');
+    }
+
+    // 1-1. 실행 중인 서비스 수치
+    const procList = s.processes || [];
+    const onlineProcs = procList.filter(p => p.status === 'online').length;
+    if (secProcCount) {
+        secProcCount.textContent = s.online ? `${onlineProcs} / ${procList.length}` : `0 / ${procList.length || 3} (대기)`;
+    }
+    if (secProcStatus) {
+        secProcStatus.textContent = s.online ? '백업 및 원격 데몬 가동 중' : '보조 서버 오프라인 대기 중';
+        secProcStatus.style.color = s.online ? '#10b981' : '#64748b';
+    }
+
+    // 2. ⚡ 보조 서버 CPU 게이지 & 하드웨어 온도
+    if (s.cpu) {
+        const secCpuVal = document.getElementById('gaugeSecCpuVal');
+        const secCpuBar = document.getElementById('gaugeSecCpuBar');
+        const secCpuTemp = document.getElementById('gaugeSecCpuTemp');
+        const cpuPct = s.cpu.percentNum !== undefined ? s.cpu.percentNum : (parseFloat(s.cpu.percent) || 0);
+        if (secCpuVal) secCpuVal.textContent = s.cpu.percent || `${cpuPct}%`;
+        if (secCpuBar) {
+            secCpuBar.style.width = Math.min(100, Math.max(0, cpuPct)) + '%';
+            secCpuBar.classList.toggle('warn', cpuPct >= 80);
+        }
+        if (secCpuTemp) {
+            const tVal = s.cpu.temp || (s.online ? '측정 대기' : '대기 중');
+            const tStatus = s.cpu.tempStatus || 'normal';
+            secCpuTemp.textContent = tVal.includes('°C') ? `🌡️ ${tVal}` : `🌡️ ${tVal}`;
+            secCpuTemp.className = 'temp-badge temp-badge-' + tStatus;
+        }
+    }
+
+    // 3. 💾 보조 서버 RAM 게이지
+    if (s.memory) {
+        const secMemVal = document.getElementById('gaugeSecMemVal');
+        const secMemBar = document.getElementById('gaugeSecMemBar');
+        const memPct = s.memory.percentNum !== undefined ? s.memory.percentNum : (parseFloat(s.memory.percent) || 0);
+        const memUsed = s.memory.used || '-';
+        const memTotal = s.memory.total || '-';
+        if (secMemVal) secMemVal.textContent = `${s.memory.percent || memPct + '%'} (${memUsed} / ${memTotal})`;
+        if (secMemBar) {
+            secMemBar.style.width = Math.min(100, Math.max(0, memPct)) + '%';
+            secMemBar.classList.toggle('warn', memPct >= 85);
+        }
+    }
+
+    // 4. 𒒽 보조 서버 Disk 게이지 (500GB HDD)
+    if (s.disk) {
+        const secDiskVal = document.getElementById('gaugeSecDiskVal');
+        const secDiskBar = document.getElementById('gaugeSecDiskBar');
+        const diskPct = s.disk.percentNum !== undefined ? s.disk.percentNum : (parseFloat(s.disk.percent) || 0);
+        const diskUsed = s.disk.used || '-';
+        const diskTotal = s.disk.total || '-';
+        if (secDiskVal) secDiskVal.textContent = `${s.disk.percent || diskPct + '%'} (${diskUsed} / ${diskTotal})`;
+        if (secDiskBar) {
+            secDiskBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
+            secDiskBar.classList.toggle('warn', diskPct >= 90);
+        }
+    }
+
+    // 5. 전체 서비스 프로세스 (백업 데몬 목록 카드 렌더링)
+    const procContainer = document.getElementById('secProcessListContainer');
+    if (procContainer && procList.length > 0) {
+        procContainer.innerHTML = procList.map(p => {
+            const isOnline = p.status === 'online';
+            const badgeClass = isOnline ? 'badge-online' : 'badge-stopped';
+            const badgeText = isOnline ? '정상 가동' : '대기 (스탠바이)';
+            return `
+                <div class="process-item-card" id="sec-proc-card-${p.name}">
+                    <div class="process-info">
+                        <h4>
+                            ${p.displayName || p.name}
+                            <span class="${badgeClass}">${badgeText}</span>
+                        </h4>
+                        <div class="process-meta">
+                            <span>포트/데몬: <strong>${p.port || '-'}</strong></span>
+                            <span>메모리: <strong>${p.memory || '-'}</strong></span>
+                            <span>CPU: <strong>${p.cpu || '-'}</strong></span>
+                            <span style="color:#64748b;">${p.desc || ''}</span>
+                        </div>
+                    </div>
+                    <div class="process-actions">
+                        <span class="badge-online" style="background:#f8fafc; color:#475569; border:1px solid #cbd5e1; font-size:0.75rem;">
+                            ${isOnline ? '🟢 동기화 준비 완료' : '⚪ 스탠바이 대기'}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // 6. RAM(메모리) 상위 점유 프로세스 (TOP 10) 테이블 갱신
+    const secTopMemBody = document.getElementById('secTopMemProcessTableBody');
+    if (secTopMemBody) {
+        const topProcs = s.topMemoryProcesses || [];
+        if (topProcs.length === 0) {
+            secTopMemBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">${s.online ? '수집된 프로세스 정보가 없습니다.' : '보조 서버가 오프라인 상태입니다. (전원 연결 시 SSH 자동 연결 및 실시간 프로세스 수집)'}</td></tr>`;
+        } else {
+            secTopMemBody.innerHTML = topProcs.map((proc, idx) => `
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                    <td style="padding:0.55rem 0.75rem; font-weight:700; color:#64748b;">${idx + 1}</td>
+                    <td style="padding:0.55rem 0.75rem; font-family:monospace; color:#334155;">${proc.pid}</td>
+                    <td style="padding:0.55rem 0.75rem;">
+                        <div style="font-weight:700; color:#0f172a;">${escapeHtml(proc.name || proc.command)}</div>
+                        <div style="font-size:0.72rem; color:#64748b; font-family:monospace;" title="${escapeHtml(proc.fullCommand)}">${escapeHtml(proc.fullCommand)}</div>
+                    </td>
+                    <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:700; color:#7c3aed;">${proc.rss}</td>
+                    <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:700; color:#0f172a;">${proc.mem}</td>
+                    <td style="padding:0.55rem 0.75rem; text-align:right; font-weight:600; color:#475569;">${proc.cpu}</td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    // 7. 실시간 보조 서버 시스템 및 백업 로그 콘솔 (최근 50줄)
+    const logConsole = document.getElementById('secLogConsole');
+    if (logConsole && s.logs) {
+        logConsole.textContent = s.logs;
+    }
+
+    // 8. DB 백업본 보존 상태 업데이트
+    if (s.dbs) {
+        const elHealth = document.getElementById('secDbHealth');
+        const elAsset = document.getElementById('secDbAsset');
+        const elBriefing = document.getElementById('secDbBriefing');
+        if (elHealth && s.dbs.health) {
+            elHealth.innerHTML = `<span class="badge-online" style="font-size:0.75rem;">${s.dbs.health}</span>`;
+        }
+        if (elAsset && s.dbs.asset) {
+            elAsset.innerHTML = `<span class="badge-online" style="font-size:0.75rem;">${s.dbs.asset}</span>`;
+        }
+        if (elBriefing && s.dbs.briefing) {
+            elBriefing.innerHTML = `<span class="badge-online" style="font-size:0.75rem;">${s.dbs.briefing}</span>`;
+        }
+    }
+
+    // 9. 공개키 복사 명령어 업데이트
+    if (s.publicKey) {
+        const cmdEl = document.getElementById('secSshRegisterCmd');
+        if (cmdEl) {
+            cmdEl.textContent = `mkdir -p ~/.ssh && echo "${s.publicKey}" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`;
+        }
+    }
+}
+
+// 3. 🌟 주 서버 / 보조 서버 탭 전환 제어
+function switchServerTab(serverType) {
+    const isPrimary = serverType === 'primary';
+    const btnPrimary = document.getElementById('serverTabBtnPrimary');
+    const btnSecondary = document.getElementById('serverTabBtnSecondary');
+    const panePrimary = document.getElementById('serverPanePrimary');
+    const paneSecondary = document.getElementById('serverPaneSecondary');
+
+    if (btnPrimary) btnPrimary.classList.toggle('active', isPrimary);
+    if (btnSecondary) btnSecondary.classList.toggle('active', !isPrimary);
+    if (panePrimary) panePrimary.classList.toggle('active', isPrimary);
+    if (paneSecondary) paneSecondary.classList.toggle('active', !isPrimary);
+
+    try {
+        localStorage.setItem('admin_selected_server_tab', serverType);
+    } catch (e) {}
+}
+
+// 4. 🌟 보조 서버(HP 노트북) 즉시 핑 테스트 실행
+async function pingSecondaryServer() {
+    const btn = document.getElementById('btnSecPing');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ 핑 측정 중...';
+    }
+
+    try {
+        showToast('💻 보조 서버(192.168.50.75:22) 핑 테스트 중...');
+        const res = await fetch('/api/admin/secondary/ping');
+        const data = await res.json();
+        if (data.success && data.secondary) {
+            updateSecondaryServerUI(data.secondary);
+            showToast(data.secondary.online ? `✅ 보조 서버 연결 정상 (응답: ${data.secondary.latency})` : '⚠️ 보조 서버가 오프라인 상태입니다.', !data.secondary.online);
+        } else {
+            showToast('보조 서버 핑 응답 실패', true);
+        }
+    } catch (err) {
+        showToast('보조 서버 핑 오류: ' + err.message, true);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '🔄 지금 핑 테스트';
+        }
+    }
+}
+
+// 5. 5초 주기 실시간 자동 갱신 폴링
+let overviewPollTimer = null;
+function startOverviewPolling() {
+    if (overviewPollTimer) clearInterval(overviewPollTimer);
+    overviewPollTimer = setInterval(() => {
+        const overviewPane = document.getElementById('tab-overview');
+        if (overviewPane && overviewPane.classList.contains('active')) {
+            loadOverviewData();
+        }
+    }, 5000);
+}
+
+// 6. PM2 프로세스 개별 제어 (시작, 중지, 재기동)
+async function executePm2Action(action, procName) {
+    const actionLabels = {
+        'start': '시작',
+        'stop': '중지',
+        'restart': '재기동'
+    };
+    const label = actionLabels[action] || action;
+    if (!confirm(`[${procName}] 프로세스를 ${label}하시겠습니까?`)) return;
+
+    try {
+        showToast(`[${procName}] ${label} 요청 중...`);
+        const res = await fetch('/api/admin/pm2/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, processName: procName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message);
+            loadOverviewData();
+            setTimeout(fetchPm2Logs, 1500);
+        } else {
+            showToast(data.message, true);
+        }
+    } catch (err) {
+        showToast(`명령 전송 실패: ${err.message}`, true);
+    }
+}
+
+// 기존 restartPm2Process 호환 래퍼
+function restartPm2Process(procName) {
+    executePm2Action('restart', procName);
+}
+
+// 7. PM2 실시간 서버 콘솔 로그 조회 (최신 50줄)
+async function fetchPm2Logs() {
+    const consoleEl = document.getElementById('pm2LogConsole');
+    const selectEl = document.getElementById('pm2LogProcessSelect');
+    const proc = selectEl ? selectEl.value : 'all';
+    if (!consoleEl) return;
+
+    try {
+        const url = proc && proc !== 'all' 
+            ? `/api/admin/pm2/logs?process=${encodeURIComponent(proc)}&lines=50`
+            : `/api/admin/pm2/logs?lines=50`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.success) {
+            consoleEl.textContent = stripAnsi(data.logs) || '현재 기록된 로그가 없습니다.';
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+        } else {
+            consoleEl.textContent = '로그 로딩 실패: ' + (data.logs || '오류 발생');
+        }
+    } catch (err) {
+        consoleEl.textContent = '로그 통신 오류: ' + err.message;
+    }
+}
+
+// 8. PM2 로그 비우기 (flush)
+async function clearPm2Logs() {
+    const selectEl = document.getElementById('pm2LogProcessSelect');
+    const proc = selectEl ? selectEl.value : 'all';
+    const targetName = proc === 'all' ? '전체 PM2' : proc;
+    if (!confirm(`[${targetName}] 로그 파일을 비우시겠습니까?`)) return;
+
+    try {
+        showToast(`[${targetName}] 로그 비우는 중...`);
+        const res = await fetch('/api/admin/pm2/flush', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ processName: proc === 'all' ? '' : proc })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message);
+            fetchPm2Logs();
+        } else {
+            showToast(data.message, true);
+        }
+    } catch (err) {
+        showToast('로그 비우기 실패: ' + err.message, true);
+    }
+}
+
+// 9. 전체 DB 일괄 ZIP 다운로드
+async function downloadAllDatabases() {
+    showToast('전체 DB 백업 파일을 압축 생성 중입니다. 잠시만 기다려주세요...');
+    try {
+        const res = await fetch('/api/admin/backup/all');
+        if (!res.ok) {
+            const errJson = await res.json().catch(() => ({}));
+            throw new Error(errJson.message || `HTTP ${res.status}`);
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const nowStr = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+        a.download = `jg_all_databases_${nowStr}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showToast('✅ 전체 DB 백업 압축 파일(.zip) 다운로드가 완료되었습니다!');
+    } catch (err) {
+        console.error('[일괄 백업 다운로드 실패]', err);
+        showToast('❌ 전체 DB 백업 실패: ' + err.message, true);
+    }
+}
+
+// 전역 window 바인딩
+window.loadOverviewData = loadOverviewData;
+window.updateSecondaryServerUI = updateSecondaryServerUI;
+window.switchServerTab = switchServerTab;
+window.pingSecondaryServer = pingSecondaryServer;
+window.startOverviewPolling = startOverviewPolling;
+window.executePm2Action = executePm2Action;
+window.restartPm2Process = restartPm2Process;
+window.fetchPm2Logs = fetchPm2Logs;
+window.clearPm2Logs = clearPm2Logs;
+window.downloadAllDatabases = downloadAllDatabases;
