@@ -14,7 +14,7 @@
     <meta name="apple-mobile-web-app-title" content="JG 포털">
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v2">
-    <link rel="stylesheet" href="/css/style.css?v=20261016_v4">
+    <link rel="stylesheet" href="/css/style.css?v=20261016_v5">
     <link rel="stylesheet" href="/css/unified-nav.css?v=20261016_v2">
 </head>
 <body>
@@ -869,14 +869,14 @@
         function openBpGuideModal() {
             const modal = document.getElementById('bpGuideModal');
             if (modal) {
-                modal.classList.add('active');
+                modal.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
             }
         }
         function closeBpGuideModal() {
             const modal = document.getElementById('bpGuideModal');
             if (modal) {
-                modal.classList.remove('active');
+                modal.style.display = 'none';
                 document.body.style.overflow = '';
             }
         }
@@ -885,7 +885,23 @@
     <!-- ========================================== -->
     <!-- 🩸 대한고혈압학회 혈압 판정 기준표 모달 -->
     <!-- ========================================== -->
-    <div class="bp-modal-backdrop" id="bpGuideModal" onclick="if(event.target === this) closeBpGuideModal()">
+    <style>
+        #bpGuideModal.bp-modal-backdrop {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background: rgba(15, 23, 42, 0.6) !important;
+            backdrop-filter: blur(4px) !important;
+            z-index: 1000000 !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 1rem !important;
+            box-sizing: border-box !important;
+        }
+    </style>
+    <div class="bp-modal-backdrop" id="bpGuideModal" style="display: none;" onclick="if(event.target === this) closeBpGuideModal()">
         <div class="bp-modal-dialog">
             <div class="bp-modal-header">
                 <div class="bp-modal-title">

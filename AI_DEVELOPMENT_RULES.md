@@ -70,3 +70,7 @@
    - 모바일 바텀 내비바(`56px`)가 존재하는 페이지에서는 공통 뉴스 티커의 `bottom: 56px !important; z-index: 999990 !important` 및 본문 `padding-bottom: 125px !important`를 항상 보장합니다.
 6. **포털 메인 홈 모바일 대시보드 위젯 & 퀵 액션 유지**:
    - 메인 홈(`index.html`)은 스마트 라이프 & D-Day 4종 위젯(`today-summary-hub`)과 한 손 조작 퀵 액션 바(`quick-action-strip`)의 직관적인 모바일 UX를 항시 유지합니다.
+7. **모달/오버레이 UI 기본 은폐(`display: none;`) 및 CSS 캐시 지연 노출 원천 방지**:
+   - 모달, 팝업, 안내 레이어 등 화면에 상시 노출되지 않는 모든 오버레이 컴포넌트는 반드시 HTML 태그에 `style="display: none;"` 인라인 속성을 기본 명시합니다.
+   - 외부 CSS 파일의 브라우저 캐시 지연으로 인해 모달이 페이지 하단에 날것(Static Block)으로 노출되는 결함을 방지하기 위해, 모달 전용 백드롭 스타일(`position: fixed !important; top:0; left:0; right:0; bottom:0;`)을 안전하게 보장하고 스크립트에서 `style.display = 'flex' / 'none'`으로 확실히 제어합니다.
+   - CSS 수정 시 `<link>` 태그의 버전 쿼리 파라미터(`?v=...`)를 필히 갱신합니다.
