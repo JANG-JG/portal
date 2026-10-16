@@ -250,6 +250,11 @@ async function loadNewsData() {
                 </tr>
             `).join('');
         }
+
+        if (data.telegramBriefingTimes) {
+            currentAdminBriefingTimes = Array.isArray(data.telegramBriefingTimes) ? data.telegramBriefingTimes : ['07:30'];
+            renderAdminBriefingChips();
+        }
     } catch (err) {
         console.error('뉴스 데이터 로드 오류:', err);
     }
@@ -433,6 +438,70 @@ async function loadSecurityLogs() {
     }
 }
 
+// 3-5. 텔레그램 뉴스 브리핑 시간표 관리 로직
+let currentAdminBriefingTimes = ['07:30'];
+
+function renderAdminBriefingChips() {
+    const container = document.getElementById('adminBriefingChipsContainer');
+    if (!container) return;
+    if (!currentAdminBriefingTimes || currentAdminBriefingTimes.length === 0) {
+        container.innerHTML = '<span style="font-size:0.8rem; color:#94a3b8;">등록된 브리핑 시간이 없습니다.</span>';
+        return;
+    }
+    container.innerHTML = currentAdminBriefingTimes.map((t, idx) => `
+        <span style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.25rem 0.55rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:9999px; font-size:0.8rem; font-weight:700; color:#1d4ed8;">
+            <span>⏰ ${t}</span>
+            <button type="button" onclick="removeAdminBriefingTime(${idx})" style="background:none; border:none; color:#dc2626; font-size:0.9rem; cursor:pointer; padding:0; line-height:1; font-weight:bold;" title="삭제">✕</button>
+        </span>
+    `).join('');
+}
+
+function addAdminBriefingTime() {
+    const inputEl = document.getElementById('adminInputBriefingTime');
+    if (!inputEl || !inputEl.value) {
+        alert('추가할 브리핑 발송 시간을 먼저 선택해 주세요.');
+        return;
+    }
+    const val = inputEl.value.trim();
+    if (currentAdminBriefingTimes.includes(val)) {
+        alert('이미 등록된 브리핑 시간입니다.');
+        return;
+    }
+    currentAdminBriefingTimes.push(val);
+    currentAdminBriefingTimes.sort();
+    renderAdminBriefingChips();
+}
+
+function removeAdminBriefingTime(idx) {
+    if (currentAdminBriefingTimes && currentAdminBriefingTimes.length > idx) {
+        currentAdminBriefingTimes.splice(idx, 1);
+        renderAdminBriefingChips();
+    }
+}
+
+async function saveAdminBriefingTimes() {
+    if (!currentAdminBriefingTimes || currentAdminBriefingTimes.length === 0) {
+        if (!confirm('설정된 브리핑 시간이 없습니다. 07:30 기본값으로 저장할까요?')) return;
+        currentAdminBriefingTimes = ['07:30'];
+    }
+    try {
+        const res = await fetch('/api/admin/news/briefing-times', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ times: currentAdminBriefingTimes })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('텔레그램 브리핑 발송 시간표가 저장되었습니다.\n(스케줄러가 새 시간대에 맞춰 자동 발송합니다)');
+            loadNewsData();
+        } else {
+            alert('저장 실패: ' + (data.message || '알 수 없는 오류'));
+        }
+    } catch (e) {
+        alert('시간표 저장 중 통신 오류 발생: ' + e.message);
+    }
+}
+
 // 전역 window 바인딩
 window.loadBloodData = loadBloodData;
 window.testBloodSmtpEmail = testBloodSmtpEmail;
@@ -445,3 +514,6 @@ window.loadNewsLogs = loadNewsLogs;
 window.fetchNewsFileLogs = fetchNewsFileLogs;
 window.triggerNewsCollection = triggerNewsCollection;
 window.loadSecurityLogs = loadSecurityLogs;
+window.addAdminBriefingTime = addAdminBriefingTime;
+window.removeAdminBriefingTime = removeAdminBriefingTime;
+window.saveAdminBriefingTimes = saveAdminBriefingTimes;

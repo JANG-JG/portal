@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261016_v2';
+    const UNAV_VERSION = '20261016_v3';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -252,6 +252,7 @@
         bp_reminder_enabled: 1,
         bp_reminder_time: '21:00',
         system_alert_enabled: 1,
+        telegram_briefing_times: ['07:30'],
         weekday_med_times: ['08:00', '19:00'],
         weekday_bp_times: ['07:30', '21:30'],
         weekend_med_times: ['09:00', '19:30'],
@@ -474,10 +475,31 @@
             `).join('');
         };
 
+        renderBox('containerTelegramBriefingTimes', portalNotifSettings.telegram_briefing_times, 'telegram_briefing_times');
         renderBox('containerWeekdayMedTimes', portalNotifSettings.weekday_med_times, 'weekday_med_times');
         renderBox('containerWeekdayBpTimes', portalNotifSettings.weekday_bp_times, 'weekday_bp_times');
         renderBox('containerWeekendMedTimes', portalNotifSettings.weekend_med_times, 'weekend_med_times');
         renderBox('containerWeekendBpTimes', portalNotifSettings.weekend_bp_times, 'weekend_bp_times');
+    };
+
+    // 텔레그램 뉴스 브리핑 시각 추가
+    window.addTelegramBriefingTime = function() {
+        const inputEl = document.getElementById('inputTelegramBriefingTime');
+        if (!inputEl || !inputEl.value) {
+            alert('추가할 브리핑 발송 시간을 먼저 선택해 주세요.');
+            return;
+        }
+        const val = inputEl.value.trim();
+        if (!portalNotifSettings.telegram_briefing_times) {
+            portalNotifSettings.telegram_briefing_times = [];
+        }
+        if (portalNotifSettings.telegram_briefing_times.includes(val)) {
+            alert('이미 등록된 브리핑 시간입니다.');
+            return;
+        }
+        portalNotifSettings.telegram_briefing_times.push(val);
+        portalNotifSettings.telegram_briefing_times.sort();
+        window.renderNotifChips();
     };
 
     // 알림 시간 추가

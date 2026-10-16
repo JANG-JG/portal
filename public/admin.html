@@ -1014,13 +1014,31 @@
                         <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
                             정기 스케줄과 별개로 관리자가 직접 즉시 뉴스 크롤링 및 AI 요약을 실행합니다.
                         </p>
-                        <div style="display:flex; flex-direction:column; gap:0.6rem;">
+                        <div style="display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.5rem;">
                             <button class="btn-admin btn-admin-primary" onclick="triggerNewsCollection('briefing')">
                                 📢 뉴스 수집 + 텔레그램 브리핑 즉시 발송
                             </button>
                             <button class="btn-admin btn-admin-outline" onclick="triggerNewsCollection('collect')">
                                 📥 최신 기사만 즉시 수집 (DB 최신화 전용)
                             </button>
+                        </div>
+
+                        <!-- 텔레그램 브리핑 전송 시각 설정 영역 -->
+                        <div style="border-top:1px solid #e2e8f0; padding-top:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                <strong style="font-size:0.92rem; color:#0f172a;">⏰ 텔레그램 브리핑 전송 시간표</strong>
+                                <button type="button" class="btn-admin btn-admin-success btn-admin-sm" onclick="saveAdminBriefingTimes()">💾 시간표 저장</button>
+                            </div>
+                            <p style="font-size:0.8rem; color:#64748b; margin-bottom:0.75rem;">
+                                지정한 시각에 자동으로 최신 뉴스를 수집하고 AI 브리핑을 텔레그램으로 전송합니다.
+                            </p>
+                            <div style="display:flex; gap:0.4rem; align-items:center; margin-bottom:0.6rem;">
+                                <input type="time" id="adminInputBriefingTime" value="07:30" style="padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; font-size:0.88rem;">
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="addAdminBriefingTime()">추가 +</button>
+                            </div>
+                            <div id="adminBriefingChipsContainer" style="display:flex; flex-wrap:wrap; gap:0.4rem; min-height:36px; padding:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; align-items:center;">
+                                <span style="font-size:0.8rem; color:#94a3b8;">등록된 브리핑 시간이 없습니다.</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1356,7 +1374,7 @@
     <!-- 📦 관리자 모듈화 스크립트 로드 (캐시 버스팅 적용) -->
     <script src="/js/admin-core.js?v=20261016_v3"></script>
     <script src="/js/admin-monitor.js?v=20261016_v7"></script>
-    <script src="/js/admin-services.js?v=20261016_v2"></script>
+    <script src="/js/admin-services.js?v=20261016_v3"></script>
     <!-- 📰 전 사이트 공통 TV 뉴스 티커 하단바 & 긴급 속보 위젯 -->
     <script src="/js/news-ticker.js?v=20261016_v7"></script>
     <!-- 🌐 공통 상단 내비게이션 바 & 통합 알림 연동 스크립트 -->

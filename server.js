@@ -137,6 +137,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
         )`);
         db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
         db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
+        db.run(`ALTER TABLE notification_settings ADD COLUMN telegram_briefing_times TEXT DEFAULT '["07:30"]'`, () => {});
         // 성능 인덱스 생성
         db.run(`CREATE INDEX IF NOT EXISTS idx_records_measured_at ON records (measured_at DESC)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_user_created ON notification_history (user_id, created_at DESC)`);
@@ -2459,6 +2460,14 @@ app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
         const logsCountRow = await new Promise(r => newsDb.get('SELECT COUNT(*) as cnt FROM collection_logs', (e, row) => r(row || { cnt: 0 })));
         const recentArticles = await new Promise(r => newsDb.all('SELECT id, title, link, media_name, category_name, published_at FROM news_articles ORDER BY id DESC LIMIT 10', (e, rows) => r(rows || [])));
         const settingRow = await new Promise(r => newsDb.get("SELECT value FROM system_settings WHERE key = 'collection_enabled'", (e, row) => r(row || null)));
+        const briefingTimesRow = await new Promise(r => newsDb.get("SELECT value FROM system_settings WHERE key = 'telegram_briefing_times'", (e, row) => r(row || null)));
+        let briefingTimes = ['07:30'];
+        if (briefingTimesRow && briefingTimesRow.value) {
+            try {
+                const parsed = JSON.parse(briefingTimesRow.value);
+                if (Array.isArray(parsed) && parsed.length > 0) briefingTimes = parsed;
+            } catch (e) {}
+        }
 
         let dbSizeKb = 0;
         try {
@@ -2475,12 +2484,46 @@ app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
             totalLogs: logsCountRow.cnt,
             dbSizeKb,
             collectionEnabled: !settingRow || settingRow.value !== '0',
+            telegramBriefingTimes: briefingTimes,
             recentArticles,
             weather
         });
     } catch (e) {
         res.status(500).json({ success: false, message: '뉴스 데이터 조회 실패: ' + e.message });
     }
+});
+
+// 10-0. [신규] 뉴스 텔레그램 브리핑 시각 목록 저장 API
+app.post('/api/admin/news/briefing-times', authenticateToken, (req, res) => {
+    const { times } = req.body;
+    let cleanBriefingTimes = Array.isArray(times)
+        ? times.filter(t => typeof t === 'string' && /^\d{2}:\d{2}$/.test(t.trim())).map(t => t.trim())
+        : ['07:30'];
+    cleanBriefingTimes = Array.from(new Set(cleanBriefingTimes)).sort();
+    if (cleanBriefingTimes.length === 0) cleanBriefingTimes = ['07:30'];
+
+    const jsonStr = JSON.stringify(cleanBriefingTimes);
+
+    // 1) newsDb (briefing.db system_settings) 업데이트
+    if (newsDb) {
+        newsDb.run(`
+            INSERT INTO system_settings (key, value, updated_at)
+            VALUES ('telegram_briefing_times', ?, datetime('now', '+9 hours'))
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        `, [jsonStr], (err) => {
+            if (err) console.error('[NewsDB] telegram_briefing_times 동기화 실패:', err);
+        });
+    }
+
+    // 2) 포털 notification_settings 테이블도 동기화
+    const userId = req.user.username || 'admin';
+    db.run(`
+        UPDATE notification_settings 
+        SET telegram_briefing_times = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ? OR user_id = 'admin'
+    `, [jsonStr, userId], () => {});
+
+    res.json({ success: true, times: cleanBriefingTimes, message: '텔레그램 브리핑 전송 시각이 저장되었습니다.' });
 });
 
 // 10-1. [신규] 뉴스 수집기 및 스케줄러 로그 파일 실시간 조회 API
@@ -2803,6 +2846,7 @@ app.get('/api/notification/settings', authenticateToken, (req, res) => {
                     bp_reminder_enabled: 1,
                     bp_reminder_time: '21:00',
                     system_alert_enabled: 1,
+                    telegram_briefing_times: ['07:30'],
                     weekday_med_times: ['08:00', '19:00'],
                     weekday_bp_times: ['07:30', '21:30'],
                     weekend_med_times: ['09:00', '19:30'],
@@ -2825,6 +2869,7 @@ app.get('/api/notification/settings', authenticateToken, (req, res) => {
                 bp_reminder_enabled: row.bp_reminder_enabled !== undefined ? row.bp_reminder_enabled : 1,
                 bp_reminder_time: row.bp_reminder_time || '21:00',
                 system_alert_enabled: row.system_alert_enabled !== undefined ? row.system_alert_enabled : 1,
+                telegram_briefing_times: safeParse(row.telegram_briefing_times, ['07:30']),
                 weekday_med_times: safeParse(row.weekday_med_times, ['08:00', '19:00']),
                 weekday_bp_times: safeParse(row.weekday_bp_times, ['07:30', '21:30']),
                 weekend_med_times: safeParse(row.weekend_med_times, ['09:00', '19:30']),
@@ -2843,14 +2888,15 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
         asset_report_enabled, asset_open_enabled, asset_close_enabled,
         bp_reminder_enabled, bp_reminder_time,
         system_alert_enabled,
+        telegram_briefing_times,
         weekday_med_times, weekday_bp_times,
         weekend_med_times, weekend_bp_times
     } = req.body;
 
     const query = `
         INSERT INTO notification_settings 
-        (user_id, enabled, hospital_push_enabled, breaking_news_enabled, weather_morning_enabled, weather_morning_time, asset_report_enabled, asset_open_enabled, asset_close_enabled, bp_reminder_enabled, bp_reminder_time, system_alert_enabled, weekday_med_times, weekday_bp_times, weekend_med_times, weekend_bp_times)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, enabled, hospital_push_enabled, breaking_news_enabled, weather_morning_enabled, weather_morning_time, asset_report_enabled, asset_open_enabled, asset_close_enabled, bp_reminder_enabled, bp_reminder_time, system_alert_enabled, telegram_briefing_times, weekday_med_times, weekday_bp_times, weekend_med_times, weekend_bp_times)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             enabled = excluded.enabled,
             hospital_push_enabled = excluded.hospital_push_enabled,
@@ -2863,6 +2909,7 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
             bp_reminder_enabled = excluded.bp_reminder_enabled,
             bp_reminder_time = excluded.bp_reminder_time,
             system_alert_enabled = excluded.system_alert_enabled,
+            telegram_briefing_times = excluded.telegram_briefing_times,
             weekday_med_times = excluded.weekday_med_times,
             weekday_bp_times = excluded.weekday_bp_times,
             weekend_med_times = excluded.weekend_med_times,
@@ -2873,6 +2920,13 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
     const openVal = asset_open_enabled !== undefined ? (asset_open_enabled ? 1 : 0) : 1;
     const closeVal = asset_close_enabled !== undefined ? (asset_close_enabled ? 1 : 0) : 1;
     const reportVal = (openVal || closeVal) ? 1 : (asset_report_enabled !== undefined ? (asset_report_enabled ? 1 : 0) : 1);
+
+    // 텔레그램 브리핑 시각 정제 (중복 제거 및 정렬)
+    let cleanBriefingTimes = Array.isArray(telegram_briefing_times)
+        ? telegram_briefing_times.filter(t => typeof t === 'string' && /^\d{2}:\d{2}$/.test(t.trim())).map(t => t.trim())
+        : ['07:30'];
+    cleanBriefingTimes = Array.from(new Set(cleanBriefingTimes)).sort();
+    if (cleanBriefingTimes.length === 0) cleanBriefingTimes = ['07:30'];
 
     db.run(query, [
         userId,
@@ -2887,6 +2941,7 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
         bp_reminder_enabled !== undefined ? (bp_reminder_enabled ? 1 : 0) : 1,
         (bp_reminder_time || '21:00').trim(),
         system_alert_enabled !== undefined ? (system_alert_enabled ? 1 : 0) : 1,
+        JSON.stringify(cleanBriefingTimes),
         JSON.stringify(Array.isArray(weekday_med_times) ? weekday_med_times : ['08:00', '19:00']),
         JSON.stringify(Array.isArray(weekday_bp_times) ? weekday_bp_times : ['07:30', '21:30']),
         JSON.stringify(Array.isArray(weekend_med_times) ? weekend_med_times : ['09:00', '19:30']),
@@ -2896,7 +2951,20 @@ app.post('/api/notification/settings', authenticateToken, (req, res) => {
             console.error('[WebPush] 포털 알림 설정 저장 실패:', err);
             return res.status(500).json({ success: false, message: '알림 설정 저장 실패' });
         }
-        res.json({ success: true, message: '포털 통합 알림 설정이 저장되었습니다.' });
+
+        // 🌟 뉴스 대시보드 DB (briefing.db) system_settings 테이블에도 즉시 동기화
+        if (newsDb) {
+            newsDb.run(`
+                INSERT INTO system_settings (key, value, updated_at)
+                VALUES ('telegram_briefing_times', ?, datetime('now', '+9 hours'))
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+            `, [JSON.stringify(cleanBriefingTimes)], (nErr) => {
+                if (nErr) console.error('[NewsDB] telegram_briefing_times 동기화 실패:', nErr);
+                else console.log('✅ [NewsDB] telegram_briefing_times 동기화 완료:', cleanBriefingTimes);
+            });
+        }
+
+        res.json({ success: true, message: '포털 통합 알림 설정 및 뉴스 브리핑 시각이 저장되었습니다.' });
     });
 });
 
