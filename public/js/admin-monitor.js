@@ -220,6 +220,37 @@ async function loadOverviewData() {
         }
         if (dualDiskSBar) dualDiskSBar.style.width = Math.min(100, Math.max(0, secDiskPct)) + '%';
 
+        // 카드 3: ⚡ 가동 상태 & 데몬 요약 듀얼 반영
+        const secProcList = sec.processes || [];
+        const secOnlineProcs = secProcList.filter(p => p.status === 'online').length;
+        const secUpEl = document.getElementById('secServerUptimeSummary');
+        const secProcEl = document.getElementById('secActiveProcessCountSummary');
+        const secBadge = document.getElementById('secondaryServerBadge');
+        const overallBadge = document.getElementById('dualDaemonOverallBadge');
+
+        if (secUpEl) {
+            secUpEl.textContent = sec.uptimeStr || (isSecOnline ? '정상 가동' : '대기 중');
+        }
+        if (secProcEl) {
+            secProcEl.textContent = isSecOnline ? `${secOnlineProcs} / ${secProcList.length || 3}` : `0 / ${secProcList.length || 3}`;
+        }
+        if (secBadge) {
+            secBadge.className = isSecOnline ? 'badge-online' : 'badge-stopped';
+            secBadge.textContent = isSecOnline ? `🟢 ${sec.latency || '연결됨'}` : '🔴 대기 중';
+        }
+        if (overallBadge) {
+            if (onlineCount === data.processes.length && isSecOnline) {
+                overallBadge.className = 'badge-online';
+                overallBadge.textContent = '🟢 듀얼 정상';
+            } else if (onlineCount === data.processes.length) {
+                overallBadge.className = 'badge-online';
+                overallBadge.textContent = '🟢 주 정상 (보조 대기)';
+            } else {
+                overallBadge.className = 'badge-stopped';
+                overallBadge.textContent = `⚠️ 프로세스 점검 (${onlineCount}/${data.processes.length})`;
+            }
+        }
+
         // 6) DB 크기
         const dbHealth = document.getElementById('dbSizeHealth');
         const dbAsset = document.getElementById('dbSizeAsset');
@@ -338,18 +369,25 @@ async function loadOverviewData() {
 function updateSecondaryServerUI(s) {
     if (!s) return;
     const badgeEl = document.getElementById('secondaryServerBadge');
+    const paneBadge = document.getElementById('secPaneServerBadge');
     const latEl = document.getElementById('secondaryServerLatency');
     const cardBadge = document.getElementById('secBadgeCard');
     const tabBadge = document.getElementById('secondaryTabBadge');
     const upEl = document.getElementById('secServerUptime');
+    const upSummaryEl = document.getElementById('secServerUptimeSummary');
     const sourceEl = document.getElementById('secResourceSource');
     const secProcCount = document.getElementById('secActiveProcessCount');
+    const secProcSummaryEl = document.getElementById('secActiveProcessCountSummary');
     const secProcStatus = document.getElementById('secActiveProcessStatus');
 
     // 1. 온라인 / 오프라인 상태 뱃지
     if (badgeEl) {
         badgeEl.className = s.online ? 'badge-online' : 'badge-stopped';
-        badgeEl.textContent = s.online ? (s.sshConnected ? '🟢 온라인 (SSH 실시간 연동)' : '🟢 온라인 (소켓 헬스 정상)') : '🔴 오프라인 (대기)';
+        badgeEl.textContent = s.online ? `🟢 ${s.latency || '연결됨'}` : '🔴 대기 중';
+    }
+    if (paneBadge) {
+        paneBadge.className = s.online ? 'badge-online' : 'badge-stopped';
+        paneBadge.textContent = s.online ? (s.sshConnected ? '🟢 온라인 (SSH 실시간 연동)' : '🟢 온라인 (소켓 헬스 정상)') : '🔴 오프라인 (대기)';
     }
     if (cardBadge) {
         cardBadge.className = s.online ? 'badge-online' : 'badge-stopped';
@@ -367,6 +405,9 @@ function updateSecondaryServerUI(s) {
     if (upEl) {
         upEl.textContent = s.uptimeStr || (s.online ? '정상 가동 중' : '오프라인 (대기)');
     }
+    if (upSummaryEl) {
+        upSummaryEl.textContent = s.uptimeStr || (s.online ? '정상 가동 중' : '대기 중');
+    }
     if (sourceEl) {
         sourceEl.textContent = s.sshConnected ? 'SSH 실시간 OS' : (s.online ? '소켓 헬스 연동' : '오프라인 대기');
     }
@@ -376,6 +417,9 @@ function updateSecondaryServerUI(s) {
     const onlineProcs = procList.filter(p => p.status === 'online').length;
     if (secProcCount) {
         secProcCount.textContent = s.online ? `${onlineProcs} / ${procList.length}` : `0 / ${procList.length || 3} (대기)`;
+    }
+    if (secProcSummaryEl) {
+        secProcSummaryEl.textContent = s.online ? `${onlineProcs} / ${procList.length || 3}` : `0 / ${procList.length || 3}`;
     }
     if (secProcStatus) {
         secProcStatus.textContent = s.online ? '백업 및 원격 데몬 가동 중' : '보조 서버 오프라인 대기 중';
