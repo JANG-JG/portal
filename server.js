@@ -2972,7 +2972,7 @@ app.get('/api/search/unified', authenticateToken, async (req, res) => {
         const sql = `
             SELECT id, title, content, category, color, is_pinned, updated_at
             FROM user_memos
-            WHERE (user_id = ? OR user_id = 'admin')
+            WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731')
               AND (title LIKE ? OR content LIKE ?)
             ORDER BY is_pinned DESC, updated_at DESC
             LIMIT 8
@@ -3009,7 +3009,7 @@ app.get('/api/search/unified', authenticateToken, async (req, res) => {
         const sql = `
             SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date
             FROM hospital_visits
-            WHERE (user_id = ? OR user_id = 'admin')
+            WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731')
               AND (hospital_name LIKE ? OR department LIKE ? OR memo LIKE ?)
             ORDER BY visit_date DESC
             LIMIT 8
