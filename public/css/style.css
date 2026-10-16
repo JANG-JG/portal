@@ -2372,27 +2372,30 @@ body {
     color: #0f172a;
 }
 
-/* 혈압 판정 기준표 모달 스타일 */
-.bp-modal-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(4px);
-    z-index: 1000000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s ease, visibility 0.2s ease;
+/* 혈압 판정 기준표 모달 스타일 (기본 display: none !important 원천 보장) */
+.bp-modal-backdrop,
+#bpGuideModal {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    z-index: 10000000 !important;
+    display: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
 }
-.bp-modal-backdrop.active {
-    opacity: 1;
-    visibility: visible;
+.bp-modal-backdrop.active,
+#bpGuideModal.active {
+    display: flex !important;
 }
 .bp-modal-dialog {
     background: #ffffff;
@@ -2400,11 +2403,13 @@ body {
     width: 100%;
     max-width: 580px;
     max-height: 90vh;
+    max-height: 90dvh;
     overflow-y: auto;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
     border: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
+    box-sizing: border-box;
 }
 .bp-modal-header {
     display: flex;
@@ -2508,22 +2513,101 @@ body {
     flex-shrink: 0;
 }
 
-/* 모바일 640px 이하 반응형 */
+/* 모바일 640px 이하 반응형 및 텍스트 2~3줄 줄바꿈 원천 차단 */
 @media (max-width: 640px) {
+    .container {
+        padding: 1rem 0.75rem 5.5rem 0.75rem !important; /* 하단 티커바 겹침 방지 보장 */
+        overflow-x: hidden;
+    }
+    .welcome-header-row {
+        gap: 0.4rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 0.35rem;
+    }
+    .welcome-header-row h2 {
+        font-size: 1.25rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+    .weather-compact-badge {
+        padding: 0.25rem 0.55rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+        gap: 0.25rem;
+    }
+    .btn-pwa-install {
+        padding: 0.25rem 0.55rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
+        gap: 0.25rem;
+    }
+    .quick-action-strip {
+        gap: 0.35rem;
+        margin-bottom: 0.85rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .quick-action-strip::-webkit-scrollbar {
+        display: none;
+    }
+    .quick-action-btn {
+        padding: 0.45rem 0.4rem;
+        font-size: 0.76rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
     .today-summary-hub {
         grid-template-columns: repeat(2, 1fr);
-        gap: 0.65rem;
-        margin-bottom: 1.15rem;
+        gap: 0.55rem;
+        margin-bottom: 1rem;
     }
     .today-widget-card {
-        padding: 0.8rem 0.75rem;
-        min-height: 96px;
+        padding: 0.7rem 0.65rem;
+        min-height: 88px;
+    }
+    .today-widget-title {
+        font-size: 0.74rem;
+        white-space: nowrap;
     }
     .today-widget-val-main {
-        font-size: 1.05rem;
+        font-size: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-    .container {
-        padding-bottom: 5.5rem !important; /* 하단바 겹침 방지 보장 */
+    .today-widget-val-sub {
+        font-size: 0.72rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .bp-stat-row {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.82rem;
+    }
+    .bp-stat-val {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .service-card {
+        padding: 1rem 0.85rem;
+    }
+}
+
+/* 초소형 모바일 (380px 이하) 컴팩트 최적화 */
+@media (max-width: 380px) {
+    .today-summary-hub {
+        grid-template-columns: 1fr;
+    }
+    .welcome-header-row h2 {
+        font-size: 1.15rem;
     }
 }
 

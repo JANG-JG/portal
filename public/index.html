@@ -13,9 +13,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JG 포털">
     <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v2">
-    <link rel="stylesheet" href="/css/style.css?v=20261016_v5">
-    <link rel="stylesheet" href="/css/unified-nav.css?v=20261016_v2">
+    <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v7">
+    <link rel="stylesheet" href="/css/style.css?v=20261016_v7">
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261016_v7">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
@@ -869,14 +869,16 @@
         function openBpGuideModal() {
             const modal = document.getElementById('bpGuideModal');
             if (modal) {
-                modal.style.display = 'flex';
+                modal.classList.add('active');
+                modal.style.setProperty('display', 'flex', 'important');
                 document.body.style.overflow = 'hidden';
             }
         }
         function closeBpGuideModal() {
             const modal = document.getElementById('bpGuideModal');
             if (modal) {
-                modal.style.display = 'none';
+                modal.classList.remove('active');
+                modal.style.setProperty('display', 'none', 'important');
                 document.body.style.overflow = '';
             }
         }
@@ -886,22 +888,30 @@
     <!-- 🩸 대한고혈압학회 혈압 판정 기준표 모달 -->
     <!-- ========================================== -->
     <style>
-        #bpGuideModal.bp-modal-backdrop {
+        #bpGuideModal {
+            display: none !important;
             position: fixed !important;
             top: 0 !important;
             left: 0 !important;
             right: 0 !important;
             bottom: 0 !important;
-            background: rgba(15, 23, 42, 0.6) !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            background: rgba(15, 23, 42, 0.65) !important;
             backdrop-filter: blur(4px) !important;
-            z-index: 1000000 !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+            z-index: 10000000 !important;
             align-items: center !important;
             justify-content: center !important;
             padding: 1rem !important;
             box-sizing: border-box !important;
         }
+        #bpGuideModal.active {
+            display: flex !important;
+        }
     </style>
-    <div class="bp-modal-backdrop" id="bpGuideModal" style="display: none;" onclick="if(event.target === this) closeBpGuideModal()">
+    <div class="bp-modal-backdrop" id="bpGuideModal" style="display: none !important;" onclick="if(event.target === this) closeBpGuideModal()">
         <div class="bp-modal-dialog">
             <div class="bp-modal-header">
                 <div class="bp-modal-title">
@@ -2644,8 +2654,8 @@
     </script>
 
     <!-- 🌟 전 사이트 공통 TV 뉴스 티커 하단바 -->
-    <script src="/js/news-ticker.js?v=20261016_v4"></script>
+    <script src="/js/news-ticker.js?v=20261016_v7"></script>
     <!-- 🌐 공통 상단 내비게이션 바 스크립트 -->
-    <script src="/js/unified-nav.js?v=20261016_v2"></script>
+    <script src="/js/unified-nav.js?v=20261016_v7"></script>
 </body>
 </html>

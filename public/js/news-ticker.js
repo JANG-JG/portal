@@ -335,20 +335,23 @@
             .jg-badge-text-full { display: inline !important; }
         }
 
-        /* 📱 [모바일 화면] 위(날짜/시간, 날씨/증시/환율) + 아래(뉴스) 2줄 레이아웃 */
+        /* 📱 [모바일 화면] 위(날짜/시간, 날씨/증시/환율) + 아래(뉴스) 2줄 레이아웃 (줄바꿈 원천 차단) */
         @media (max-width: 768px) {
             #jg-global-ticker-bar {
                 height: 58px !important;
                 flex-direction: column !important;
-                padding: 4px 10px !important;
+                padding: 4px 8px !important;
                 justify-content: center !important;
                 gap: 2px !important;
+                overflow: hidden !important;
             }
             #jg-global-breaking-bar {
                 bottom: 58px !important;
                 height: 34px !important;
                 padding: 0 8px !important;
                 font-size: 11px !important;
+                flex-wrap: nowrap !important;
+                overflow: hidden !important;
             }
             /* 1행(위): 날짜/시간 (좌측) + 날씨/증시/환율 (우측) */
             .jg-ticker-meta-row {
@@ -359,26 +362,37 @@
                 justify-content: space-between !important;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
                 padding-bottom: 2px !important;
+                flex-wrap: nowrap !important;
+                overflow: hidden !important;
             }
             .jg-ticker-left {
                 font-size: 10.5px !important;
                 gap: 4px !important;
+                flex: 1 !important;
+                min-width: 0 !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }
             .jg-year-full {
                 display: none !important; /* 모바일에서는 연도 생략하여 '10. 16. (금)'으로 컴팩트하게 노출 */
             }
             .jg-ticker-right {
                 height: 22px !important;
+                flex-shrink: 0 !important;
             }
             .jg-v-box {
-                width: 135px !important;
+                width: 118px !important;
                 height: 22px !important;
             }
             .jg-v-item {
-                font-size: 10px !important;
+                font-size: 9.5px !important;
                 gap: 3px !important;
                 padding: 0 4px !important;
                 border-radius: 4px !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }
 
             /* 2행(아래): 뉴스 뱃지 + 흐르는 뉴스 헤드라인 */
@@ -387,18 +401,48 @@
                 height: 25px !important;
                 display: flex !important;
                 align-items: center !important;
+                flex-wrap: nowrap !important;
+                overflow: hidden !important;
             }
             .jg-ticker-badge {
-                padding: 2px 6px !important;
+                padding: 2px 5px !important;
                 margin-right: 6px !important;
                 font-size: 9.5px !important;
                 border-radius: 4px !important;
+                flex-shrink: 0 !important;
+                white-space: nowrap !important;
             }
             .jg-badge-text-full { display: none !important; }
             .jg-badge-text-mobile { display: inline !important; }
+            .jg-ticker-scroll-area {
+                flex: 1 !important;
+                min-width: 0 !important;
+                overflow: hidden !important;
+                white-space: nowrap !important;
+            }
+            .jg-ticker-track {
+                white-space: nowrap !important;
+            }
             .jg-ticker-link {
                 font-size: 11px !important;
                 margin-right: 14px !important;
+                white-space: nowrap !important;
+            }
+            .jg-breaking-badge {
+                font-size: 9.5px !important;
+                padding: 2px 5px !important;
+                margin-right: 6px !important;
+            }
+            .jg-breaking-actions {
+                gap: 4px !important;
+            }
+            .jg-breaking-more {
+                padding: 2px 5px !important;
+                font-size: 9.5px !important;
+            }
+            .jg-breaking-close-btn {
+                padding: 2px 5px !important;
+                font-size: 9.5px !important;
             }
         }
     `;

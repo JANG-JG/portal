@@ -70,7 +70,14 @@
    - 모바일 바텀 내비바(`56px`)가 존재하는 페이지에서는 공통 뉴스 티커의 `bottom: 56px !important; z-index: 999990 !important` 및 본문 `padding-bottom: 125px !important`를 항상 보장합니다.
 6. **포털 메인 홈 모바일 대시보드 위젯 & 퀵 액션 유지**:
    - 메인 홈(`index.html`)은 스마트 라이프 & D-Day 4종 위젯(`today-summary-hub`)과 한 손 조작 퀵 액션 바(`quick-action-strip`)의 직관적인 모바일 UX를 항시 유지합니다.
-7. **모달/오버레이 UI 기본 은폐(`display: none;`) 및 CSS 캐시 지연 노출 원천 방지**:
-   - 모달, 팝업, 안내 레이어 등 화면에 상시 노출되지 않는 모든 오버레이 컴포넌트는 반드시 HTML 태그에 `style="display: none;"` 인라인 속성을 기본 명시합니다.
-   - 외부 CSS 파일의 브라우저 캐시 지연으로 인해 모달이 페이지 하단에 날것(Static Block)으로 노출되는 결함을 방지하기 위해, 모달 전용 백드롭 스타일(`position: fixed !important; top:0; left:0; right:0; bottom:0;`)을 안전하게 보장하고 스크립트에서 `style.display = 'flex' / 'none'`으로 확실히 제어합니다.
-   - CSS 수정 시 `<link>` 태그의 버전 쿼리 파라미터(`?v=...`)를 필히 갱신합니다.
+7. **모달/오버레이 UI 기본 은폐(`display: none !important;`) 및 CSS 캐시 지연 노출 원천 방지**:
+   - 모달, 팝업, 안내 레이어 등 화면에 상시 노출되지 않는 모든 오버레이 컴포넌트는 반드시 HTML 태그에 `style="display: none !important;"` 인라인 속성을 기본 명시합니다.
+   - 외부 CSS 파일의 브라우저 캐시 지연으로 인해 모달이 페이지 하단에 날것(Static Block)으로 노출되는 결함을 방지하기 위해, 전용 CSS 파일 및 인라인 `<style>` 태그에서도 `display: none !important;`를 기본값으로 지정하고, `.active` 상태에서만 `display: flex !important;`로 2중 차단합니다.
+   - 자바스크립트 제어 시 `classList.add('active')` / `remove('active')`와 인라인 `style.setProperty('display', 'flex/none', 'important')`를 병행하여 우선순위 충돌을 차단합니다.
+8. **모바일 최소 너비(360px) 기준 텍스트 2~3줄 줄바꿈 원천 차단 (`nowrap` + `ellipsis`)**:
+   - 스마트폰 화면(360px ~ 430px)에서 헤더 타이틀, 환영 인사, 날씨/증시 칩, 알림 버튼, 퀵 액션 버튼, 통계 라벨 등이 의도치 않게 2줄, 3줄로 꺾여 레이아웃을 밀어내는 것을 엄격히 금지합니다.
+   - 단일 행으로 유지되어야 하는 요소에는 `white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important;`를 필수 적용하고, 폰트 크기는 `clamp()`를 통해 유연하게 축소합니다.
+   - 공통 하단 티커(`news-ticker.js`)의 모바일 레이아웃(시계 + 날씨/증시) 역시 `flex-wrap: nowrap !important; overflow: hidden !important;`를 준수합니다.
+9. **PWA Service Worker 캐시(`sw.js`) 무결성 및 자동 배포 후 실서버 검증 의무화**:
+   - 정적 리소스(CSS, JS, HTML) 수정 시 `portal/public/sw.js`의 `CACHE_NAME`을 반드시 즉시 판올림하여 PWA 및 모바일 브라우저가 구버전 캐시를 즉시 파기하고 최신 버전을 다운로드하도록 보장합니다.
+   - 작업 완료 후 반드시 `./deploy.sh`로 실서버(노트 9)에 즉시 배포하고, curl 및 프로세스 상태를 직접 확인한 후 사용자에게 보고합니다.

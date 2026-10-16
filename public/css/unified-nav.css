@@ -1,4 +1,4 @@
-@import url('pretendard.css');
+@import url('https://j-jg.cc/css/pretendard.css');
 
 /* ========================================================
    🌐 JG 통합 상단 내비게이션 바 (공통 표준 디자인 시스템)
@@ -25,6 +25,7 @@
     align-items: center;
     justify-content: space-between;
     box-sizing: border-box;
+    flex-wrap: nowrap;
 }
 
 .unav-brand {
@@ -389,19 +390,35 @@
 
 /* 860px 미만 모바일 반응형 전환 */
 @media (max-width: 860px) {
+    .unav-container {
+        padding: 0.5rem 0.85rem !important;
+        height: 52px !important;
+    }
+    .unav-brand {
+        font-size: 1.1rem !important;
+        gap: 0.4rem !important;
+    }
+    .unav-brand-text {
+        white-space: nowrap !important;
+    }
     .unav-menu {
         display: none !important;
     }
     .unav-actions {
         display: inline-flex !important;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
+        flex-shrink: 0;
     }
     .unav-mobile-notif-btn {
         display: inline-flex !important;
+        width: 36px !important;
+        height: 36px !important;
     }
     .unav-hamburger {
         display: flex !important;
+        width: 36px !important;
+        height: 36px !important;
     }
     .unav-drawer {
         display: block;
