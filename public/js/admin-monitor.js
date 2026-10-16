@@ -558,9 +558,8 @@ function updateSecondaryServerUI(s) {
     }
 
     // 7. 실시간 보조 서버 시스템 및 백업 로그 콘솔 (최근 50줄)
-    const logConsole = document.getElementById('secLogConsole');
-    if (logConsole && s.logs) {
-        logConsole.textContent = s.logs;
+    if (s.logs !== undefined) {
+        updateSecLogsDisplay(s.logs);
     }
 
     // 8. DB 백업본 보존 상태 업데이트
@@ -681,7 +680,110 @@ function restartPm2Process(procName) {
     executePm2Action('restart', procName);
 }
 
-// 7. PM2 실시간 서버 콘솔 로그 조회 (최신 50줄)
+// 4-1. 🌟 보조 서버(HP 노트북) 즉시 핫 백업 전송 수동 트리거
+async function triggerSecondaryBackupNow() {
+    const btn = document.getElementById('btnSecBackupNow');
+    if (!confirm('지금 즉시 주 서버(노트 9)의 3대 SQLite DB 핫 스냅샷을 생성하여 보조 서버(HP 노트북)로 rsync 백업 전송하시겠습니까?')) return;
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> 백업 생성 & rsync 전송 중...';
+        btn.style.opacity = '0.7';
+    }
+
+    try {
+        showToast('📦 보조 서버로의 핫 백업 전송 파이프라인을 실행합니다...');
+        const res = await fetch('/api/admin/secondary/backup-now', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast(data.message);
+            loadOverviewData();
+        } else {
+            showToast(data.message || '백업 실행 실패', true);
+        }
+    } catch (err) {
+        showToast('백업 요청 오류: ' + err.message, true);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>📦</span> 지금 수동 백업 전송';
+            btn.style.opacity = '1';
+        }
+    }
+}
+
+// 4-2. 🌟 보조 서버 콘솔 로그 필터링
+let rawSecLogs = '';
+function updateSecLogsDisplay(logs) {
+    if (logs !== undefined) rawSecLogs = logs;
+    filterSecConsoleLogs();
+}
+
+function filterSecConsoleLogs() {
+    const consoleEl = document.getElementById('secLogConsole');
+    const searchInput = document.getElementById('secLogSearchInput');
+    if (!consoleEl) return;
+    const keyword = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    if (!rawSecLogs) {
+        consoleEl.textContent = '기록된 보조 서버 로그가 없습니다.';
+        return;
+    }
+    const lines = rawSecLogs.split('\n');
+    const filtered = keyword ? lines.filter(l => l.toLowerCase().includes(keyword)) : lines;
+    if (filtered.length === 0) {
+        consoleEl.textContent = `[검색어 '${keyword}'에 일치하는 로그 라인이 없습니다]`;
+    } else {
+        consoleEl.textContent = filtered.join('\n');
+    }
+}
+
+// 7. PM2 실시간 서버 콘솔 로그 조회 (최신 50줄) 및 실시간 필터
+let rawPm2Logs = '';
+let currentPm2FilterLevel = 'all';
+
+function setPm2LogFilter(level) {
+    currentPm2FilterLevel = level;
+    ['btnFilterAll', 'btnFilterError', 'btnFilterWarn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        const isActive = (id === 'btnFilterAll' && level === 'all') ||
+                         (id === 'btnFilterError' && level === 'error') ||
+                         (id === 'btnFilterWarn' && level === 'warn');
+        btn.style.background = isActive ? (level === 'error' ? '#ef4444' : level === 'warn' ? '#d97706' : '#2563eb') : 'transparent';
+        btn.style.color = isActive ? '#fff' : (id === 'btnFilterError' ? '#ef4444' : id === 'btnFilterWarn' ? '#d97706' : '#64748b');
+    });
+    filterPm2ConsoleLogs();
+}
+
+function filterPm2ConsoleLogs() {
+    const consoleEl = document.getElementById('pm2LogConsole');
+    const searchInput = document.getElementById('pm2LogSearchInput');
+    if (!consoleEl) return;
+    const keyword = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    if (!rawPm2Logs) {
+        consoleEl.textContent = '현재 기록된 로그가 없습니다.';
+        return;
+    }
+    const lines = rawPm2Logs.split('\n');
+    const filtered = lines.filter(line => {
+        const lower = line.toLowerCase();
+        if (currentPm2FilterLevel === 'error' && !lower.includes('error') && !lower.includes('err') && !lower.includes('failed') && !lower.includes('fail') && !lower.includes('exception')) return false;
+        if (currentPm2FilterLevel === 'warn' && !lower.includes('warn') && !lower.includes('warning') && !lower.includes('caution')) return false;
+        if (keyword && !lower.includes(keyword)) return false;
+        return true;
+    });
+
+    if (filtered.length === 0) {
+        consoleEl.textContent = `[조건에 일치하는 로그 라인이 없습니다 (필터: ${currentPm2FilterLevel}, 검색어: '${keyword}')]`;
+    } else {
+        consoleEl.textContent = filtered.join('\n');
+        consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+}
+
 async function fetchPm2Logs() {
     const consoleEl = document.getElementById('pm2LogConsole');
     const selectEl = document.getElementById('pm2LogProcessSelect');
@@ -695,8 +797,8 @@ async function fetchPm2Logs() {
         const res = await fetch(url);
         const data = await res.json();
         if (data.success) {
-            consoleEl.textContent = stripAnsi(data.logs) || '현재 기록된 로그가 없습니다.';
-            consoleEl.scrollTop = consoleEl.scrollHeight;
+            rawPm2Logs = stripAnsi(data.logs) || '현재 기록된 로그가 없습니다.';
+            filterPm2ConsoleLogs();
         } else {
             consoleEl.textContent = '로그 로딩 실패: ' + (data.logs || '오류 발생');
         }
@@ -762,11 +864,15 @@ window.loadOverviewData = loadOverviewData;
 window.updateSecondaryServerUI = updateSecondaryServerUI;
 window.switchServerTab = switchServerTab;
 window.pingSecondaryServer = pingSecondaryServer;
+window.triggerSecondaryBackupNow = triggerSecondaryBackupNow;
+window.filterSecConsoleLogs = filterSecConsoleLogs;
 window.startOverviewPolling = startOverviewPolling;
 window.executePm2Action = executePm2Action;
 window.restartPm2Process = restartPm2Process;
 window.fetchPm2Logs = fetchPm2Logs;
 window.clearPm2Logs = clearPm2Logs;
+window.setPm2LogFilter = setPm2LogFilter;
+window.filterPm2ConsoleLogs = filterPm2ConsoleLogs;
 window.downloadAllDatabases = downloadAllDatabases;
 window.initUPlotChart = initUPlotChart;
 window.updateUPlotData = updateUPlotData;

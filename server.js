@@ -1896,6 +1896,47 @@ app.get('/api/admin/secondary/ping', authenticateToken, async (req, res) => {
     }
 });
 
+// 1-3. 보조 서버(HP 노트북) 즉시 핫 백업 전송 수동 트리거 API
+let isManualBackupRunning = false;
+app.post('/api/admin/secondary/backup-now', authenticateToken, (req, res) => {
+    if (isManualBackupRunning) {
+        return res.status(429).json({ success: false, message: '이미 백업 작업이 진행 중입니다. 잠시 후 다시 시도해주세요.' });
+    }
+
+    // 백업 스크립트 탐색 (노트 9: ~/scripts 또는 ~/workspace/scripts, PC: WORKSPACE_ROOT/scripts)
+    let scriptPath = path.resolve(WORKSPACE_ROOT, 'scripts', 'backup-to-secondary.sh');
+    if (!fs.existsSync(scriptPath)) {
+        const altPath = '/home/upt0731/scripts/backup-to-secondary.sh';
+        if (fs.existsSync(altPath)) scriptPath = altPath;
+    }
+
+    if (!fs.existsSync(scriptPath)) {
+        return res.status(404).json({ success: false, message: '백업 스크립트를 찾을 수 없습니다: ' + scriptPath });
+    }
+
+    isManualBackupRunning = true;
+    console.log('[Admin] 수동 보조 서버 백업 작업 시작:', scriptPath);
+
+    execFile('bash', [scriptPath], { timeout: 120000 }, (error, stdout, stderr) => {
+        isManualBackupRunning = false;
+        if (error) {
+            console.error('[Admin] 수동 백업 실패:', error, stderr);
+            return res.status(500).json({
+                success: false,
+                message: '백업 실행 중 오류가 발생했습니다: ' + (error.message || stderr),
+                details: stderr || stdout
+            });
+        }
+
+        console.log('[Admin] 수동 백업 완료');
+        res.json({
+            success: true,
+            message: '✅ 보조 서버(HP 노트북)로의 핫 백업 및 Rsync 전송이 성공적으로 완료되었습니다!',
+            output: (stdout || '').split('\n').filter(Boolean).slice(-6).join('\n')
+        });
+    });
+});
+
 // 2. PM2 개별 프로세스 제어 (시작, 중지, 재기동 - 동적 프로세스 허용)
 app.post('/api/admin/pm2/action', authenticateToken, (req, res) => {
     const { action, processName } = req.body;
