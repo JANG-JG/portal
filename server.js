@@ -761,13 +761,13 @@ async function getLiveMarketData() {
     if (marketCache.data && (now - marketCache.timestamp < 300000)) {
         return marketCache.data;
     }
-    // 만료되었더라도 기존 캐시가 있으면 즉시 반환하고 백그라운드 갱신 (0ms 지연)
+    // 만료되었더라도 기존 유효 캐시가 있으면 즉시 반환하고 백그라운드 갱신 (0ms 지연)
     if (marketCache.data && marketCache.timestamp > 0) {
         refreshMarketInBackground();
         return marketCache.data;
     }
-    // 최초 실행 시
-    refreshMarketInBackground();
+    // 최초 실행 시 캐시가 비어있다면 1회 await 동기 갱신
+    await refreshMarketInBackground();
     return marketCache.data;
 }
 
@@ -3105,4 +3105,7 @@ app.get('/health', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`🚀 JG 통합 포털 서버 구동 완료 (Port: ${PORT}, Cookie Domain: ${COOKIE_DOMAIN})`);
+    // 서버 기동 즉시 백그라운드 캐시 웜업 (날씨, 증시/환율)
+    getLiveWeatherData().catch(() => {});
+    getLiveMarketData().catch(() => {});
 });
