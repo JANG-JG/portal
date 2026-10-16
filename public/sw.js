@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261016_v3';
+const CACHE_NAME = 'jg-portal-v20261016_v4';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -15,6 +15,8 @@ const PRECACHE_ASSETS = [
     '/favicon.png',
     '/icon-192.png',
     '/icon-512.png',
+    '/icon-monochrome.png',
+    '/badge-monochrome.png',
     '/manifest.json'
 ];
 
@@ -166,14 +168,16 @@ self.addEventListener('push', (event) => {
 
     const defaultUrl = data.title?.includes('속보') ? 'https://news.j-jg.cc/breaking' : 'https://j-jg.cc/';
 
-    // 🌟 안드로이드 WebAPK는 SVG 아이콘을 디코딩하지 못하므로 무조건 PNG로 보정
-    let notifIcon = data.icon || 'https://j-jg.cc/icon-192.png';
-    let notifBadge = data.badge || 'https://j-jg.cc/icon-192.png';
-    if (typeof notifIcon === 'string' && notifIcon.endsWith('.svg')) {
-        notifIcon = 'https://j-jg.cc/icon-192.png';
+    // 🌟 안드로이드(갤럭시) 텔레그램 스타일 단색 알림 적용
+    // badge: 상단 상태표시줄 및 알림 헤더용 투명 배경 순수 흰색 실루엣 (안드로이드 공식 Monochrome 사양)
+    // icon: 알림 본문 우측용 다크 슬레이트 단색 원형 심볼
+    let notifBadge = 'https://j-jg.cc/badge-monochrome.png';
+    let notifIcon = 'https://j-jg.cc/icon-monochrome.png';
+    if (data.badge && !data.badge.includes('icon-192') && !data.badge.includes('icon-512')) {
+        notifBadge = data.badge;
     }
-    if (typeof notifBadge === 'string' && notifBadge.endsWith('.svg')) {
-        notifBadge = 'https://j-jg.cc/icon-192.png';
+    if (data.icon && !data.icon.includes('icon-192') && !data.icon.includes('icon-512')) {
+        notifIcon = data.icon;
     }
 
     // 🌟 안드로이드 Heads-up (상단 배너 팝업)을 유도하고 알림이 덮어써지지 않도록 옵션 구성

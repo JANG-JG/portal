@@ -2477,7 +2477,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                 type,
                 title: cleanTitle,
                 body: cleanBody,
-                icon: 'https://j-jg.cc/icon-192.png',
+                icon: 'https://j-jg.cc/icon-monochrome.png',
                 url: targetUrl
             }, (notifId) => {
                 const sep = targetUrl.includes('?') ? '&' : '?';
@@ -2491,8 +2491,8 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                 const payload = JSON.stringify({
                     title: cleanTitle,
                     body: cleanBody,
-                    icon: 'https://j-jg.cc/icon-192.png',
-                    badge: 'https://j-jg.cc/icon-192.png',
+                    icon: 'https://j-jg.cc/icon-monochrome.png',
+                    badge: 'https://j-jg.cc/badge-monochrome.png',
                     tag: uniqueTag,
                     renotify: true,
                     requireInteraction: true,
