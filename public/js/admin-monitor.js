@@ -171,13 +171,20 @@ async function loadOverviewData() {
         const diskUsed = data.system.disk ? data.system.disk.used : '-';
         const diskTotal = data.system.disk ? data.system.disk.total : '-';
 
-        // CPU 온도
+        // CPU 온도 (주 서버 요약 카드 & 배너)
         const tempEl = document.getElementById('gaugeCpuTemp');
-        if (tempEl && data.system.cpu) {
+        const primaryPaneTempEl = document.getElementById('primaryPaneCpuTemp');
+        if (data.system.cpu) {
             const tVal = data.system.cpu.temp || '측정 불가';
             const tStatus = data.system.cpu.tempStatus || 'normal';
-            tempEl.textContent = '🌡️ ' + tVal;
-            tempEl.className = 'temp-badge temp-badge-' + tStatus;
+            if (tempEl) {
+                tempEl.textContent = '🌡️ ' + tVal;
+                tempEl.className = 'temp-badge temp-badge-' + tStatus;
+            }
+            if (primaryPaneTempEl) {
+                primaryPaneTempEl.textContent = '🌡️ ' + tVal;
+                primaryPaneTempEl.className = 'temp-badge temp-badge-' + tStatus;
+            }
         }
 
         // 3) 보조 서버 리소스 수치 계산
@@ -227,6 +234,8 @@ async function loadOverviewData() {
         const secProcEl = document.getElementById('secActiveProcessCountSummary');
         const secBadge = document.getElementById('secondaryServerBadge');
         const overallBadge = document.getElementById('dualDaemonOverallBadge');
+        const secTempEl = document.getElementById('gaugeSecCpuTemp');
+        const secPaneTempEl = document.getElementById('secPaneCpuTemp');
 
         if (secUpEl) {
             secUpEl.textContent = sec.uptimeStr || (isSecOnline ? '정상 가동' : '대기 중');
@@ -238,6 +247,22 @@ async function loadOverviewData() {
             secBadge.className = isSecOnline ? 'badge-online' : 'badge-stopped';
             secBadge.textContent = isSecOnline ? `🟢 ${sec.latency || '연결됨'}` : '🔴 대기 중';
         }
+
+        // 보조 서버 CPU 온도 반영
+        if (secTempEl || secPaneTempEl) {
+            const rawTVal = sec.cpu && sec.cpu.temp ? sec.cpu.temp : (isSecOnline ? '측정 대기' : '대기 중');
+            const formattedTVal = rawTVal.includes('°C') ? `🌡️ ${rawTVal}` : `🌡️ ${rawTVal}°C`;
+            const tStatus = (sec.cpu && sec.cpu.tempStatus) || 'normal';
+            if (secTempEl) {
+                secTempEl.textContent = formattedTVal;
+                secTempEl.className = 'temp-badge temp-badge-' + (isSecOnline ? tStatus : 'normal');
+            }
+            if (secPaneTempEl) {
+                secPaneTempEl.textContent = formattedTVal;
+                secPaneTempEl.className = 'temp-badge temp-badge-' + (isSecOnline ? tStatus : 'normal');
+            }
+        }
+
         if (overallBadge) {
             if (onlineCount === data.processes.length && isSecOnline) {
                 overallBadge.className = 'badge-online';
@@ -437,11 +462,17 @@ function updateSecondaryServerUI(s) {
             secCpuBar.style.width = Math.min(100, Math.max(0, cpuPct)) + '%';
             secCpuBar.classList.toggle('warn', cpuPct >= 80);
         }
+        const secPaneTemp = document.getElementById('secPaneCpuTemp');
+        const tVal = s.cpu.temp || (s.online ? '측정 대기' : '대기 중');
+        const tStatus = s.cpu.tempStatus || 'normal';
+        const formattedTemp = tVal.includes('°C') ? `🌡️ ${tVal}` : `🌡️ ${tVal}`;
         if (secCpuTemp) {
-            const tVal = s.cpu.temp || (s.online ? '측정 대기' : '대기 중');
-            const tStatus = s.cpu.tempStatus || 'normal';
-            secCpuTemp.textContent = tVal.includes('°C') ? `🌡️ ${tVal}` : `🌡️ ${tVal}`;
+            secCpuTemp.textContent = formattedTemp;
             secCpuTemp.className = 'temp-badge temp-badge-' + tStatus;
+        }
+        if (secPaneTemp) {
+            secPaneTemp.textContent = formattedTemp;
+            secPaneTemp.className = 'temp-badge temp-badge-' + tStatus;
         }
     }
 

@@ -372,7 +372,10 @@
                             <div style="background:#f8fafc; padding:0.45rem 0.65rem; border-radius:0.45rem; border:1px solid #f1f5f9;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
                                     <span style="color:#1e293b; font-weight:700; font-size:0.82rem;">📱 주 서버 (노트 9)</span>
-                                    <span id="gaugeCpuTemp" class="temp-badge temp-badge-normal" style="font-size:0.7rem; padding:1px 5px;">🌡️ --°C</span>
+                                    <div style="display:flex; align-items:center; gap:5px;">
+                                        <span id="gaugeCpuTemp" class="temp-badge temp-badge-normal" style="font-size:0.7rem; padding:1px 5px;">🌡️ --°C</span>
+                                        <span class="badge-online" style="font-size:0.7rem; padding:1px 5px;">운영 중</span>
+                                    </div>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items:center; color:#64748b; font-size:0.78rem;">
                                     <span>가동: <strong id="systemUptime" style="color:#0f172a;">-</strong></span>
@@ -383,7 +386,10 @@
                             <div style="background:#faf5ff; padding:0.45rem 0.65rem; border-radius:0.45rem; border:1px solid #f3e8ff;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
                                     <span style="color:#6b21a8; font-weight:700; font-size:0.82rem;">💻 보조 서버 (HP)</span>
-                                    <span id="secondaryServerBadge" class="badge-online" style="font-size:0.7rem; padding:1px 5px;">연결 확인 중</span>
+                                    <div style="display:flex; align-items:center; gap:5px;">
+                                        <span id="gaugeSecCpuTemp" class="temp-badge temp-badge-normal" style="font-size:0.7rem; padding:1px 5px;">🌡️ --°C</span>
+                                        <span id="secondaryServerBadge" class="badge-online" style="font-size:0.7rem; padding:1px 5px;">연결 확인 중</span>
+                                    </div>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items:center; color:#64748b; font-size:0.78rem;">
                                     <span>가동: <strong id="secServerUptimeSummary" style="color:#0f172a;">-</strong></span>
@@ -422,8 +428,10 @@
                                         <h4 style="margin:0; font-size:0.95rem; color:#0f172a; font-weight:800;">삼성 갤럭시 노트 9 (메인 앱 서버)</h4>
                                         <span class="badge-online" id="primaryServerBadge" style="font-size:0.7rem; padding:1px 5px;">🟢 메인 운영</span>
                                     </div>
-                                    <div style="font-size:0.78rem; color:#64748b; margin-top:1px;">
-                                        IP: <code>192.168.50.111:2222</code> &bull; Exynos 9810 &bull; Ubuntu aarch64 &bull; Cloudflare 24/7 터널
+                                    <div style="font-size:0.78rem; color:#64748b; margin-top:1px; display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                                        <span>IP: <code>192.168.50.111:2222</code> &bull; Exynos 9810</span>
+                                        <span id="primaryPaneCpuTemp" class="temp-badge temp-badge-normal" style="font-size:0.68rem; padding:0 4px;">🌡️ --°C</span>
+                                        <span>&bull; Ubuntu aarch64 &bull; Cloudflare 24/7 터널</span>
                                     </div>
                                 </div>
                             </div>
@@ -491,8 +499,10 @@
                                         <h4 style="margin:0; font-size:0.95rem; color:#0f172a; font-weight:800;">HP 노트북 15-g008au (보조 백업 스토리지)</h4>
                                         <span class="badge-online" id="secPaneServerBadge" style="font-size:0.7rem; padding:1px 5px;">확인 중...</span>
                                     </div>
-                                    <div style="font-size:0.78rem; color:#64748b; margin-top:1px;">
-                                        IP: <code>192.168.50.75:22</code> &bull; AMD APU &bull; 500GB SATA HDD &bull; 매일 04:00 rsync 백업 (30일 롤오버)
+                                    <div style="font-size:0.78rem; color:#64748b; margin-top:1px; display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                                        <span>IP: <code>192.168.50.75:22</code> &bull; AMD APU</span>
+                                        <span id="secPaneCpuTemp" class="temp-badge temp-badge-normal" style="font-size:0.68rem; padding:0 4px;">🌡️ --°C</span>
+                                        <span>&bull; 500GB SATA HDD &bull; 매일 04:00 rsync 백업 (30일 롤오버)</span>
                                     </div>
                                 </div>
                             </div>
@@ -1333,7 +1343,7 @@
     <script src="/js/uPlot.iife.min.js?v=20261016_v1"></script>
     <!-- 📦 관리자 모듈화 스크립트 로드 (캐시 버스팅 적용) -->
     <script src="/js/admin-core.js?v=20261016_v3"></script>
-    <script src="/js/admin-monitor.js?v=20261016_v4"></script>
+    <script src="/js/admin-monitor.js?v=20261016_v5"></script>
     <script src="/js/admin-services.js?v=20261016_v2"></script>
     <!-- 📰 전 사이트 공통 TV 뉴스 티커 하단바 & 긴급 속보 위젯 -->
     <script src="/js/news-ticker.js?v=20261016_v4"></script>
