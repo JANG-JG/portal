@@ -135,6 +135,18 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             created_at DATETIME DEFAULT (datetime('now', 'localtime')),
             updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
         )`);
+        db.run(`CREATE TABLE IF NOT EXISTS calendar_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL DEFAULT 'admin',
+            title TEXT NOT NULL,
+            event_date TEXT NOT NULL,
+            event_time TEXT DEFAULT '',
+            category TEXT DEFAULT 'general',
+            color TEXT DEFAULT '#4f46e5',
+            memo TEXT DEFAULT '',
+            is_completed INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+        )`);
         db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
         db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
         db.run(`ALTER TABLE notification_settings ADD COLUMN telegram_briefing_times TEXT DEFAULT '["07:30"]'`, () => {});
@@ -143,6 +155,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
         db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_user_created ON notification_history (user_id, created_at DESC)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_unread ON notification_history (user_id, is_read)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_user_memos_user ON user_memos (user_id, is_pinned DESC, updated_at DESC)`);
+        db.run(`CREATE INDEX IF NOT EXISTS idx_cal_user_date ON calendar_events (user_id, event_date)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_login_logs_attempted_at ON login_logs (attempted_at DESC)`);
     }
 });
@@ -218,6 +231,11 @@ app.get(['/admin', '/admin.html'], authenticateToken, (req, res) => {
 // 1-2. 아이디어 & 메모장 전용 화면
 app.get(['/memo', '/memo.html', '/memos'], authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'memo.html'));
+});
+
+// 1-3. 스마트 라이프 캘린더 화면
+app.get(['/calendar', '/calendar.html'], authenticateToken, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'calendar.html'));
 });
 
 // 2. 로그인 페이지
@@ -3265,10 +3283,186 @@ app.delete('/api/memos/:id', authenticateToken, (req, res) => {
     });
 });
 
+// 6. 뉴스 기사 원터치 스크랩 API (외부/내부 연동)
+app.post('/api/memos/scrap', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const { title, link, mediaName, summary } = req.body;
+
+    if (!title || !link) {
+        return res.status(400).json({ success: false, message: '기사 제목과 링크가 필요합니다.' });
+    }
+
+    const scrapTitle = `[스크랩] ${title.trim()}`;
+    const scrapContent = `📰 출처: ${mediaName || '언론사'} | 원문 링크: ${link}\n\n💡 핵심 요약:\n${summary ? summary.trim() : '요약 정보 없음'}`;
+    const query = `
+        INSERT INTO user_memos (user_id, title, content, category, color, is_pinned)
+        VALUES (?, ?, ?, 'news', '#e0f2fe', 0)
+    `;
+
+    db.run(query, [userId, scrapTitle, scrapContent], function(err) {
+        if (err) {
+            console.error('[Scrap 등록 실패]:', err.message);
+            return res.status(500).json({ success: false, message: '스크랩 저장 실패: ' + err.message });
+        }
+        res.json({ success: true, id: this.lastID, message: '포털 메모장에 기사가 성공적으로 스크랩되었습니다.' });
+    });
+});
+
 // ==============================================================================
-// 🔍 [통합 퀵 검색 (Ctrl+K)] REST API 엔드포인트
-// 메모, 뉴스 브리핑, 병원 진료 일정, 자산/종목 통합 비동기 검색
+// 📅 [스마트 라이프 캘린더] REST API 엔드포인트
 // ==============================================================================
+app.get('/api/calendar/events', authenticateToken, async (req, res) => {
+    const userId = req.user.username || 'admin';
+    const events = [];
+
+    // 1) 캘린더 등록 개인 일정
+    const personalPromise = new Promise((resolve) => {
+        db.all("SELECT id, title, event_date, event_time, category, color, memo, is_completed FROM calendar_events WHERE user_id = ? OR user_id = 'admin' ORDER BY event_date ASC", [userId], (err, rows) => {
+            if (!err && rows) {
+                rows.forEach(r => {
+                    events.push({
+                        id: `cal-${r.id}`,
+                        dbId: r.id,
+                        title: r.title,
+                        date: r.event_date,
+                        time: r.event_time,
+                        type: 'personal',
+                        color: r.color || '#4f46e5',
+                        memo: r.memo,
+                        isCompleted: !!r.is_completed
+                    });
+                });
+            }
+            resolve();
+        });
+    });
+
+    // 2) 병원 진료 예약일 및 방문일 (health.db)
+    const hospitalPromise = new Promise((resolve) => {
+        db.all("SELECT id, visit_date, hospital_name, department, memo, reservation_open_date FROM hospital_visits WHERE user_id = ? OR user_id = 'admin' OR user_id = 'upt0731'", [userId], (err, rows) => {
+            if (!err && rows) {
+                rows.forEach(h => {
+                    if (h.visit_date) {
+                        events.push({
+                            id: `hosp-visit-${h.id}`,
+                            title: `🏥 ${h.hospital_name} 진료 (${h.department || '외래'})`,
+                            date: h.visit_date,
+                            type: 'hospital',
+                            color: '#059669',
+                            memo: h.memo || '병원 방문일'
+                        });
+                    }
+                    if (h.reservation_open_date) {
+                        events.push({
+                            id: `hosp-res-${h.id}`,
+                            title: `🔔 ${h.hospital_name} 예약 오픈일`,
+                            date: h.reservation_open_date,
+                            type: 'hospital-res',
+                            color: '#d97706',
+                            memo: '예약 오픈 당일 빠른 신청 필요'
+                        });
+                    }
+                });
+            }
+            resolve();
+        });
+    });
+
+    // 3) 뉴스 브리핑 텔레그램 발송 시간표 (briefing.db system_settings)
+    const briefingPromise = new Promise((resolve) => {
+        if (!newsDb) return resolve();
+        newsDb.get("SELECT value FROM system_settings WHERE key = 'telegram_briefing_times'", (err, row) => {
+            if (!err && row && row.value) {
+                try {
+                    const times = JSON.parse(row.value);
+                    if (Array.isArray(times)) {
+                        events.push({
+                            id: 'briefing-info',
+                            title: `📰 정기 브리핑 (${times.join(', ')})`,
+                            type: 'routine',
+                            color: '#8b5cf6',
+                            routineTimes: times
+                        });
+                    }
+                } catch(e) {}
+            }
+            resolve();
+        });
+    });
+
+    await Promise.allSettled([personalPromise, hospitalPromise, briefingPromise]);
+    res.json({ success: true, events });
+});
+
+app.post('/api/calendar/events', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const { title, event_date, event_time = '', category = 'general', color = '#4f46e5', memo = '' } = req.body;
+
+    if (!title || !event_date) {
+        return res.status(400).json({ success: false, message: '일정 제목과 날짜(YYYY-MM-DD)를 입력해주세요.' });
+    }
+
+    const query = `
+        INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+    db.run(query, [userId, title.trim(), event_date.trim(), (event_time || '').trim(), category, color, (memo || '').trim()], function(err) {
+        if (err) {
+            console.error('[Calendar 등록 실패]:', err.message);
+            return res.status(500).json({ success: false, message: '일정 등록 실패' });
+        }
+        res.json({ success: true, id: this.lastID, message: '새 일정이 등록되었습니다.' });
+    });
+});
+
+app.delete('/api/calendar/events/:id', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const eventId = req.params.id;
+
+    db.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR user_id = 'admin')", [eventId, userId], function(err) {
+        if (err) return res.status(500).json({ success: false, message: '일정 삭제 실패' });
+        res.json({ success: true, message: '일정이 삭제되었습니다.' });
+    });
+});
+
+app.patch('/api/calendar/events/:id/toggle', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const eventId = req.params.id;
+
+    db.run(`
+        UPDATE calendar_events 
+        SET is_completed = CASE WHEN is_completed = 1 THEN 0 ELSE 1 END
+        WHERE id = ? AND (user_id = ? OR user_id = 'admin')
+    `, [eventId, userId], function(err) {
+        if (err) return res.status(500).json({ success: false, message: '완료 토글 실패' });
+        res.json({ success: true, message: '일정 상태가 변경되었습니다.' });
+    });
+});
+
+// ==============================================================================
+// 🔍 [한글 초성 검색 및 통합 퀵 검색 (Ctrl+K)] REST API
+// ==============================================================================
+const CHOSUNG_LIST = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+
+function extractChosung(str) {
+    if (!str) return '';
+    let result = '';
+    for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+        if (code >= 0xAC00 && code <= 0xD7A3) {
+            const chosungIndex = Math.floor((code - 0xAC00) / (21 * 28));
+            result += CHOSUNG_LIST[chosungIndex];
+        } else {
+            result += str.charAt(i);
+        }
+    }
+    return result.toLowerCase();
+}
+
+function isChosungOnly(str) {
+    return /^[\u3131-\u314E\s]+$/.test(str);
+}
+
 app.get('/api/search/unified', authenticateToken, async (req, res) => {
     const rawQuery = (req.query.q || '').trim();
     if (!rawQuery) {
@@ -3281,79 +3475,89 @@ app.get('/api/search/unified', authenticateToken, async (req, res) => {
     }
 
     const userId = req.user.username || 'admin';
+    const isChosung = isChosungOnly(rawQuery);
+    const cleanChosungQuery = rawQuery.replace(/\s+/g, '').toLowerCase();
     const term = `%${rawQuery}%`;
 
-    // 1) 메모 검색
+    // 1) 메모 검색 (일반 or 초성)
     const memoPromise = new Promise((resolve) => {
-        const sql = `
-            SELECT id, title, content, category, color, is_pinned, updated_at
-            FROM user_memos
-            WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731')
-              AND (title LIKE ? OR content LIKE ?)
-            ORDER BY is_pinned DESC, updated_at DESC
-            LIMIT 8
-        `;
-        db.all(sql, [userId, term, term], (err, rows) => {
-            if (err) {
-                console.error('[Search memo err]:', err.message);
-                return resolve([]);
-            }
-            resolve(rows || []);
-        });
+        if (isChosung) {
+            db.all("SELECT id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731') ORDER BY is_pinned DESC, updated_at DESC LIMIT 50", [userId], (err, rows) => {
+                if (err || !rows) return resolve([]);
+                const filtered = rows.filter(r => extractChosung(r.title).includes(cleanChosungQuery) || extractChosung(r.content).includes(cleanChosungQuery)).slice(0, 8);
+                resolve(filtered);
+            });
+        } else {
+            const sql = `
+                SELECT id, title, content, category, color, is_pinned, updated_at
+                FROM user_memos
+                WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731')
+                  AND (title LIKE ? OR content LIKE ?)
+                ORDER BY is_pinned DESC, updated_at DESC
+                LIMIT 8
+            `;
+            db.all(sql, [userId, term, term], (err, rows) => resolve(rows || []));
+        }
     });
 
     // 2) 뉴스 브리핑 검색
     const newsPromise = new Promise((resolve) => {
-        const sql = `
-            SELECT id, date, category_name, title, link, media_name, summary, published_at
-            FROM news_articles
-            WHERE (title LIKE ? OR summary LIKE ?)
-            ORDER BY date DESC, id DESC
-            LIMIT 8
-        `;
-        newsDb.all(sql, [term, term], (err, rows) => {
-            if (err) {
-                console.error('[Search news err]:', err.message);
-                return resolve([]);
-            }
-            resolve(rows || []);
-        });
+        if (isChosung) {
+            newsDb.all("SELECT id, date, category_name, title, link, media_name, summary, published_at FROM news_articles ORDER BY id DESC LIMIT 50", (err, rows) => {
+                if (err || !rows) return resolve([]);
+                const filtered = rows.filter(r => extractChosung(r.title).includes(cleanChosungQuery) || extractChosung(r.category_name).includes(cleanChosungQuery)).slice(0, 8);
+                resolve(filtered);
+            });
+        } else {
+            const sql = `
+                SELECT id, date, category_name, title, link, media_name, summary, published_at
+                FROM news_articles
+                WHERE (title LIKE ? OR summary LIKE ?)
+                ORDER BY date DESC, id DESC
+                LIMIT 8
+            `;
+            newsDb.all(sql, [term, term], (err, rows) => resolve(rows || []));
+        }
     });
 
     // 3) 병원 진료 일정 검색
     const hospitalPromise = new Promise((resolve) => {
-        const sql = `
-            SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date
-            FROM hospital_visits
-            WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731')
-              AND (hospital_name LIKE ? OR department LIKE ? OR memo LIKE ?)
-            ORDER BY visit_date DESC
-            LIMIT 8
-        `;
-        db.all(sql, [userId, term, term, term], (err, rows) => {
-            if (err) {
-                console.error('[Search hospital err]:', err.message);
-                return resolve([]);
-            }
-            resolve(rows || []);
-        });
+        if (isChosung) {
+            db.all("SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date FROM hospital_visits WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731') ORDER BY visit_date DESC LIMIT 50", [userId], (err, rows) => {
+                if (err || !rows) return resolve([]);
+                const filtered = rows.filter(r => extractChosung(r.hospital_name).includes(cleanChosungQuery) || extractChosung(r.department).includes(cleanChosungQuery)).slice(0, 8);
+                resolve(filtered);
+            });
+        } else {
+            const sql = `
+                SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date
+                FROM hospital_visits
+                WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731')
+                  AND (hospital_name LIKE ? OR department LIKE ? OR memo LIKE ?)
+                ORDER BY visit_date DESC
+                LIMIT 8
+            `;
+            db.all(sql, [userId, term, term, term], (err, rows) => resolve(rows || []));
+        }
     });
 
     // 4) 자산/보유 종목 검색
     const assetPromise = new Promise((resolve) => {
-        const sql = `
-            SELECT id, symbol, full_name, asset_type, quantity, avg_price, currency
-            FROM assets
-            WHERE (symbol LIKE ? OR full_name LIKE ?)
-            LIMIT 8
-        `;
-        assetDb.all(sql, [term, term], (err, rows) => {
-            if (err) {
-                console.error('[Search asset err]:', err.message);
-                return resolve([]);
-            }
-            resolve(rows || []);
-        });
+        if (isChosung) {
+            assetDb.all("SELECT id, symbol, full_name, asset_type, quantity, avg_price, currency FROM assets LIMIT 50", (err, rows) => {
+                if (err || !rows) return resolve([]);
+                const filtered = rows.filter(r => extractChosung(r.symbol).includes(cleanChosungQuery) || extractChosung(r.full_name).includes(cleanChosungQuery)).slice(0, 8);
+                resolve(filtered);
+            });
+        } else {
+            const sql = `
+                SELECT id, symbol, full_name, asset_type, quantity, avg_price, currency
+                FROM assets
+                WHERE (symbol LIKE ? OR full_name LIKE ?)
+                LIMIT 8
+            `;
+            assetDb.all(sql, [term, term], (err, rows) => resolve(rows || []));
+        }
     });
 
     try {
@@ -3374,13 +3578,9 @@ app.get('/api/search/unified', authenticateToken, async (req, res) => {
         res.json({
             success: true,
             query: rawQuery,
+            isChosung,
             total,
-            results: {
-                memos,
-                news,
-                hospitals,
-                assets
-            }
+            results: { memos, news, hospitals, assets }
         });
     } catch (e) {
         console.error('[Unified search err]:', e);

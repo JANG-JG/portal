@@ -13,9 +13,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JG 포털">
     <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v8">
-    <link rel="stylesheet" href="/css/style.css?v=20261016_v8">
-    <link rel="stylesheet" href="/css/unified-nav.css?v=20261016_v8">
+    <link rel="stylesheet" href="/css/pretendard.css?v=20261017_v3">
+    <link rel="stylesheet" href="/css/style.css?v=20261017_v3">
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261017_v3">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
@@ -51,6 +51,9 @@
                 </a>
                 <a href="/go/news" class="quick-action-btn" title="AI 뉴스 브리핑 바로가기">
                     <span>📰</span><span>뉴스 브리핑</span>
+                </a>
+                <a href="/calendar" class="quick-action-btn" title="스마트 라이프 캘린더 열기">
+                    <span>📅</span><span>캘린더</span>
                 </a>
                 <a href="/memo" class="quick-action-btn" title="아이디어 메모장 열기">
                     <span>💡</span><span>메모 작성</span>
@@ -286,6 +289,24 @@
                     </a>
                     <a href="/memo" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
                         메모장 열기 →
+                    </a>
+                </div>
+            </div>
+
+            <!-- 5. 스마트 캘린더 카드 -->
+            <div class="service-card card-calendar">
+                <div class="card-icon">📅</div>
+                <h3>스마트 캘린더</h3>
+                <p class="card-desc">병원 진료일, 개인 일정 및 브리핑 통합 월간 캘린더</p>
+                <div class="card-summary" id="calendarCardSummary">
+                    <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
+                        <div>🏥 병원 진료 예약 & 복용 예측 일정 자동 연동</div>
+                        <div>🔔 개인 일정, To-Do 및 정기 브리핑 시간표 한눈에 확인</div>
+                    </div>
+                </div>
+                <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
+                    <a href="/calendar" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
+                        캘린더 열기 →
                     </a>
                 </div>
             </div>
@@ -2685,6 +2706,6 @@
     <!-- 🌟 전 사이트 공통 TV 뉴스 티커 하단바 -->
     <script src="/js/news-ticker.js?v=20261016_v7"></script>
     <!-- 🌐 공통 상단 내비게이션 바 스크립트 -->
-    <script src="/js/unified-nav.js?v=20261017_v1"></script>
+    <script src="/js/unified-nav.js?v=20261017_v3"></script>
 </body>
 </html>

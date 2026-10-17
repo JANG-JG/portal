@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 라이프 캘린더 - JG Portal</title>
+    <!-- Pretendard 로컬 웹폰트 -->
+    <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v2">
+    <!-- 공통 내비게이션 스타일 -->
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261017_v3">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .main-container {
+            max-width: 1280px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1.25rem 1rem 3rem 1rem;
+            flex: 1;
+        }
+        .card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            padding: 1.25rem;
+        }
+        .cal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .cal-title-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .cal-nav-btn {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 0.45rem 0.85rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            color: #334155;
+            transition: all 0.15s;
+        }
+        .cal-nav-btn:hover { background: #e2e8f0; color: #0f172a; }
+        .cal-nav-btn.today { background: #4f46e5; color: #ffffff; border-color: #4338ca; }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        .cal-day-name {
+            background: #f8fafc;
+            padding: 0.6rem 0.25rem;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: #64748b;
+        }
+        .cal-day-name.sun { color: #dc2626; }
+        .cal-day-name.sat { color: #2563eb; }
+        .cal-cell {
+            background: #ffffff;
+            min-height: 90px;
+            padding: 0.35rem 0.4rem;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+        .cal-cell:hover { background-color: #f8fafc; }
+        .cal-cell.other-month { background-color: #fafbfc; opacity: 0.5; }
+        .cal-cell.today {
+            background-color: #f5f3ff;
+            box-shadow: inset 0 0 0 1.5px #6366f1;
+        }
+        .cal-cell.selected {
+            background-color: #eff6ff;
+            box-shadow: inset 0 0 0 2px #2563eb;
+        }
+        .cal-date-num {
+            font-size: 0.8rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+            color: #334155;
+        }
+        .cal-cell.sun .cal-date-num { color: #dc2626; }
+        .cal-cell.sat .cal-date-num { color: #2563eb; }
+        .event-badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.15rem 0.35rem;
+            border-radius: 0.35rem;
+            margin-bottom: 0.2rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            line-height: 1.2;
+            color: #ffffff;
+        }
+        .event-badge.completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+        @media (min-width: 992px) {
+            .layout-grid {
+                grid-template-columns: 2.2fr 1fr;
+            }
+            .cal-cell { min-height: 105px; }
+        }
+        .btn-add {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-add:hover { background: #4338ca; }
+        .event-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.65rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.65rem;
+            margin-bottom: 0.5rem;
+            background: #f8fafc;
+            gap: 0.5rem;
+        }
+        .event-item.completed {
+            opacity: 0.6;
+            background: #f1f5f9;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 🌐 공통 통합 상단 내비바 -->
+    <div id="unified-nav-root"></div>
+
+    <main class="main-container">
+        
+        <div class="layout-grid">
+            
+            <!-- 1. 좌측 캘린더 본체 -->
+            <div class="card">
+                <!-- 캘린더 네비게이션 헤더 -->
+                <div class="cal-header">
+                    <div class="cal-title-group">
+                        <span style="font-size: 1.5rem;">📅</span>
+                        <h1 id="calMonthDisplay" style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">2026년 10월</h1>
+                    </div>
+                    <div style="display: flex; gap: 0.35rem; align-items: center;">
+                        <button type="button" class="cal-nav-btn" onclick="prevMonth()">‹ 이전달</button>
+                        <button type="button" class="cal-nav-btn today" onclick="goToday()">오늘</button>
+                        <button type="button" class="cal-nav-btn" onclick="nextMonth()">다음달 ›</button>
+                    </div>
+                </div>
+
+                <!-- 캘린더 요일 및 날짜 그리드 -->
+                <div class="cal-grid" id="calendarGrid">
+                    <!-- 요일 헤더 -->
+                    <div class="cal-day-name sun">일</div>
+                    <div class="cal-day-name">월</div>
+                    <div class="cal-day-name">화</div>
+                    <div class="cal-day-name">수</div>
+                    <div class="cal-day-name">목</div>
+                    <div class="cal-day-name">금</div>
+                    <div class="cal-day-name sat">토</div>
+                    <!-- 날짜 셀들이 JS로 동적 생성됨 -->
+                </div>
+
+                <!-- 범례 안내 -->
+                <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem; font-size: 0.75rem; color: #64748b; flex-wrap: wrap;">
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #059669;"></span> 병원 진료</span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #d97706;"></span> 예약 오픈일</span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #4f46e5;"></span> 개인 일정 / To-Do</span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #8b5cf6;"></span> 정기 브리핑</span>
+                </div>
+            </div>
+
+            <!-- 2. 우측 선택된 날짜 상세 일정 및 등록 -->
+            <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 1rem;">
+                        <div>
+                            <h2 id="selectedDateDisplay" style="font-size: 1.1rem; font-weight: 800; color: #0f172a;">선택한 날짜</h2>
+                            <p style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">일정을 추가하거나 완료 체크하세요.</p>
+                        </div>
+                        <button type="button" class="btn-add" onclick="toggleAddForm()">+ 일정 추가</button>
+                    </div>
+
+                    <!-- 신규 일정 추가 폼 (접이식) -->
+                    <div id="addEventFormCard" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.85rem; margin-bottom: 1rem;">
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">새 일정 등록</div>
+                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <input type="text" id="inputEventTitle" placeholder="일정 제목 (예: 정기 검진, 공과금 납부)" style="padding: 0.45rem 0.65rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.85rem; width: 100%;">
+                            <div style="display: flex; gap: 0.4rem;">
+                                <input type="time" id="inputEventTime" style="padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.85rem; flex: 1;">
+                                <select id="inputEventColor" style="padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.85rem;">
+                                    <option value="#4f46e5">🟣 인디고</option>
+                                    <option value="#059669">🟢 에메랄드</option>
+                                    <option value="#dc2626">🔴 로즈</option>
+                                    <option value="#d97706">🟠 앰버</option>
+                                </select>
+                            </div>
+                            <input type="text" id="inputEventMemo" placeholder="메모 (선택)" style="padding: 0.45rem 0.65rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.85rem; width: 100%;">
+                            <div style="display: flex; gap: 0.4rem; justify-content: flex-end; margin-top: 0.25rem;">
+                                <button type="button" onclick="toggleAddForm(false)" style="padding: 0.4rem 0.75rem; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 0.4rem; font-size: 0.8rem; cursor: pointer;">취소</button>
+                                <button type="button" class="btn-add" onclick="submitNewEvent()" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">저장</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 해당 날짜 일정 목록 -->
+                    <div id="selectedDateEventsList">
+                        <div style="text-align: center; padding: 2rem 1rem; color: #94a3b8; font-size: 0.85rem;">
+                            등록된 일정이 없습니다.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 하단 서비스 바로가기 -->
+                <div style="border-top: 1px solid #f1f5f9; padding-top: 0.75rem; margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b;">
+                    <span>🏥 <a href="https://blood.j-jg.cc/hospital" style="color: #4f46e5; font-weight: 700; text-decoration: none;">병원 예약 관리 →</a></span>
+                    <span>📝 <a href="/memo" style="color: #4f46e5; font-weight: 700; text-decoration: none;">메모장 →</a></span>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- 공통 내비바 & 티커 스크립트 -->
+    <script src="/js/unified-nav.js?v=20261017_v3"></script>
+    <script src="/js/news-ticker.js?v=20261017_v3"></script>
+
+    <script>
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth(); // 0-indexed
+        let selectedDateStr = new Date().toISOString().slice(0, 10);
+        let allEvents = [];
+
+        async function fetchEvents() {
+            try {
+                const res = await fetch('/api/calendar/events');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.events)) {
+                    allEvents = data.events;
+                }
+            } catch (e) {
+                console.error('이벤트 로드 실패:', e);
+            }
+            renderCalendar();
+            renderSelectedDateEvents();
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            const monthDisplay = document.getElementById('calMonthDisplay');
+            monthDisplay.textContent = `${currentYear}년 ${currentMonth + 1}월`;
+
+            // 기존 날짜 셀 제거 (요일 헤더 7개는 유지)
+            while (grid.children.length > 7) {
+                grid.removeChild(grid.lastChild);
+            }
+
+            const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+            const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const prevLastDate = new Date(currentYear, currentMonth, 0).getDate();
+
+            const todayStr = new Date().toISOString().slice(0, 10);
+
+            // 이전 달 날짜 채우기
+            for (let i = firstDayIndex - 1; i >= 0; i--) {
+                const d = prevLastDate - i;
+                const cell = document.createElement('div');
+                cell.className = 'cal-cell other-month';
+                cell.innerHTML = `<span class="cal-date-num">${d}</span>`;
+                grid.appendChild(cell);
+            }
+
+            // 이번 달 날짜 생성
+            for (let day = 1; day <= lastDate; day++) {
+                const cell = document.createElement('div');
+                const dayOfWeek = (firstDayIndex + day - 1) % 7;
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                let cellClass = 'cal-cell';
+                if (dayOfWeek === 0) cellClass += ' sun';
+                if (dayOfWeek === 6) cellClass += ' sat';
+                if (dateStr === todayStr) cellClass += ' today';
+                if (dateStr === selectedDateStr) cellClass += ' selected';
+
+                cell.className = cellClass;
+                cell.setAttribute('data-date', dateStr);
+                cell.onclick = () => selectDate(dateStr);
+
+                // 날짜 숫자
+                let html = `<span class="cal-date-num">${day}</span>`;
+
+                // 해당 날짜 이벤트 필터링
+                const dayEvents = allEvents.filter(ev => ev.date === dateStr);
+                dayEvents.forEach(ev => {
+                    const compClass = ev.isCompleted ? 'completed' : '';
+                    html += `<span class="event-badge ${compClass}" style="background-color: ${ev.color};" title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</span>`;
+                });
+
+                cell.innerHTML = html;
+                grid.appendChild(cell);
+            }
+
+            // 다음 달 잔여 셀 채우기 (총 7의 배수 맞춤)
+            const totalCells = firstDayIndex + lastDate;
+            const remaining = (7 - (totalCells % 7)) % 7;
+            for (let i = 1; i <= remaining; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cal-cell other-month';
+                cell.innerHTML = `<span class="cal-date-num">${i}</span>`;
+                grid.appendChild(cell);
+            }
+        }
+
+        function selectDate(dateStr) {
+            selectedDateStr = dateStr;
+            renderCalendar();
+            renderSelectedDateEvents();
+        }
+
+        function renderSelectedDateEvents() {
+            const display = document.getElementById('selectedDateDisplay');
+            const list = document.getElementById('selectedDateEventsList');
+
+            const [y, m, d] = selectedDateStr.split('-');
+            display.textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일 일정`;
+
+            const dayEvents = allEvents.filter(ev => ev.date === selectedDateStr);
+
+            if (dayEvents.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align: center; padding: 2.5rem 1rem; color: #94a3b8; font-size: 0.85rem;">
+                        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🏖️</span>
+                        등록된 일정이 없습니다. [+ 일정 추가]를 눌러 등록해보세요.
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = dayEvents.map(ev => {
+                const isPersonal = ev.type === 'personal';
+                const timeStr = ev.time ? `<span style="font-size:0.75rem; font-weight:700; color:#475569; margin-right:0.35rem;">⏰ ${ev.time}</span>` : '';
+                const memoStr = ev.memo ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;">${escapeHtml(ev.memo)}</div>` : '';
+
+                return `
+                    <div class="event-item ${ev.isCompleted ? 'completed' : ''}">
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
+                            ${isPersonal ? `
+                                <input type="checkbox" ${ev.isCompleted ? 'checked' : ''} onchange="toggleEventComplete(${ev.dbId})" style="cursor:pointer; width:16px; height:16px;">
+                            ` : `<span style="font-size:0.9rem;">📌</span>`}
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-size:0.85rem; font-weight:700; color:#0f172a; text-decoration:${ev.isCompleted ? 'line-through' : 'none'};">
+                                    ${timeStr}${escapeHtml(ev.title)}
+                                </div>
+                                ${memoStr}
+                            </div>
+                        </div>
+                        ${isPersonal ? `
+                            <button type="button" onclick="deleteEvent(${ev.dbId})" style="background:none; border:none; color:#ef4444; font-size:0.9rem; cursor:pointer; padding:0.2rem;" title="삭제">✕</button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleAddForm(forceOpen = null) {
+            const formCard = document.getElementById('addEventFormCard');
+            const isHidden = formCard.style.display === 'none';
+            const shouldOpen = forceOpen !== null ? forceOpen : isHidden;
+            formCard.style.display = shouldOpen ? 'block' : 'none';
+            if (shouldOpen) {
+                document.getElementById('inputEventTitle').focus();
+            }
+        }
+
+        async function submitNewEvent() {
+            const titleInput = document.getElementById('inputEventTitle');
+            const timeInput = document.getElementById('inputEventTime');
+            const colorInput = document.getElementById('inputEventColor');
+            const memoInput = document.getElementById('inputEventMemo');
+
+            const title = titleInput.value.trim();
+            if (!title) {
+                alert('일정 제목을 입력해 주세요.');
+                titleInput.focus();
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/calendar/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        title,
+                        event_date: selectedDateStr,
+                        event_time: timeInput.value,
+                        color: colorInput.value,
+                        memo: memoInput.value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    titleInput.value = '';
+                    timeInput.value = '';
+                    memoInput.value = '';
+                    toggleAddForm(false);
+                    await fetchEvents();
+                } else {
+                    alert('등록 실패: ' + (data.message || '오류 발생'));
+                }
+            } catch (e) {
+                alert('통신 오류: ' + e.message);
+            }
+        }
+
+        async function deleteEvent(id) {
+            if (!confirm('이 일정을 삭제할까요?')) return;
+            try {
+                const res = await fetch('/api/calendar/events/' + id, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    await fetchEvents();
+                }
+            } catch (e) {
+                alert('삭제 오류: ' + e.message);
+            }
+        }
+
+        async function toggleEventComplete(id) {
+            try {
+                await fetch('/api/calendar/events/' + id + '/toggle', { method: 'PATCH' });
+                await fetchEvents();
+            } catch (e) {
+                console.error('완료 토글 오류:', e);
+            }
+        }
+
+        function prevMonth() {
+            currentMonth--;
+            if (currentMonth < 0) {
+                currentMonth = 11;
+                currentYear--;
+            }
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentMonth++;
+            if (currentMonth > 11) {
+                currentMonth = 0;
+                currentYear++;
+            }
+            renderCalendar();
+        }
+
+        function goToday() {
+            const today = new Date();
+            currentYear = today.getFullYear();
+            currentMonth = today.getMonth();
+            selectedDateStr = today.toISOString().slice(0, 10);
+            renderCalendar();
+            renderSelectedDateEvents();
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchEvents();
+        });
+    </script>
+</body>
+</html>

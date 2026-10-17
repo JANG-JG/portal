@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261017_v1';
+    const UNAV_VERSION = '20261017_v3';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -138,6 +138,8 @@
             activeKey = 'news';
         } else if (path.includes('admin')) {
             activeKey = 'admin';
+        } else if (path.includes('calendar')) {
+            activeKey = 'calendar';
         } else if (path.includes('memo')) {
             activeKey = 'memo';
         } else if (host === 'j-jg.cc' || host === 'localhost') {

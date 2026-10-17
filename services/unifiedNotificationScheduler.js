@@ -235,8 +235,8 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                             sendBroadcastPush({
                                 title: '💰 국내 증시 개장',
                                 body: marketSummary ? `${marketSummary}. 오늘의 국내 증시가 개장했습니다. 시장 동향을 확인하세요.` : '오늘의 국내 증시가 개장했습니다. 실시간 시장 지표를 확인하세요.',
-                                url: 'https://asset.j-jg.cc/',
-                                type: 'asset',
+                                url: 'https://news.j-jg.cc/economy',
+                                type: 'economy',
                                 tag: 'jg-asset-open',
                                 userId
                             });
@@ -259,9 +259,9 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
 
                             sendBroadcastPush({
                                 title: '💰 국내 증시 마감',
-                                body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 자산 변동 내역을 확인하세요.',
-                                url: 'https://asset.j-jg.cc/',
-                                type: 'asset',
+                                body: marketSummary ? `${marketSummary}. 오늘의 시장 마감 브리핑을 확인하세요.` : '오늘의 국내 증시가 마감되었습니다. 실시간 증시 환율을 확인하세요.',
+                                url: 'https://news.j-jg.cc/economy',
+                                type: 'economy',
                                 tag: 'jg-asset-close',
                                 userId
                             });
