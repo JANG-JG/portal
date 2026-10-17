@@ -1040,6 +1040,24 @@
                                 <span style="font-size:0.8rem; color:#94a3b8;">등록된 브리핑 시간이 없습니다.</span>
                             </div>
                         </div>
+
+                        <!-- 수집 제외 키워드 필터 설정 영역 -->
+                        <div style="border-top:1px solid #e2e8f0; padding-top:1rem; margin-top:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem;">
+                                <strong style="font-size:0.92rem; color:#0f172a;">🚫 수집 제외 키워드 필터</strong>
+                                <button type="button" class="btn-admin btn-admin-success btn-admin-sm" onclick="saveAdminExcludeKeywords()">💾 제외 키워드 저장</button>
+                            </div>
+                            <p style="font-size:0.8rem; color:#64748b; margin-bottom:0.75rem;">
+                                기사 제목, 언론사, 요약문에 해당 단어가 포함된 경우 수집 단계에서 즉시 차단합니다.
+                            </p>
+                            <div style="display:flex; gap:0.4rem; align-items:center; margin-bottom:0.6rem;">
+                                <input type="text" id="adminInputExcludeKeyword" placeholder="제외할 단어 입력 후 [추가] 또는 엔터" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addAdminExcludeKeyword(); }" style="flex:1; padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; font-size:0.88rem;">
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="addAdminExcludeKeyword()">추가 +</button>
+                            </div>
+                            <div id="adminExcludeChipsContainer" style="display:flex; flex-wrap:wrap; gap:0.4rem; min-height:36px; padding:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; align-items:center;">
+                                <span style="font-size:0.8rem; color:#94a3b8;">등록된 제외 키워드가 없습니다.</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 2. 뉴스 DB 백업 및 통계 -->
@@ -1374,7 +1392,7 @@
     <!-- 📦 관리자 모듈화 스크립트 로드 (캐시 버스팅 적용) -->
     <script src="/js/admin-core.js?v=20261016_v3"></script>
     <script src="/js/admin-monitor.js?v=20261016_v7"></script>
-    <script src="/js/admin-services.js?v=20261016_v3"></script>
+    <script src="/js/admin-services.js?v=20261017_v2"></script>
     <!-- 📰 전 사이트 공통 TV 뉴스 티커 하단바 & 긴급 속보 위젯 -->
     <script src="/js/news-ticker.js?v=20261016_v7"></script>
     <!-- 🌐 공통 상단 내비게이션 바 & 통합 알림 연동 스크립트 -->

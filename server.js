@@ -2469,6 +2469,15 @@ app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
             } catch (e) {}
         }
 
+        const excludeRow = await new Promise(r => newsDb.get("SELECT value FROM system_settings WHERE key = 'exclude_keywords'", (e, row) => r(row || null)));
+        let excludeKeywords = [];
+        if (excludeRow && excludeRow.value) {
+            try {
+                const parsed = JSON.parse(excludeRow.value);
+                if (Array.isArray(parsed)) excludeKeywords = parsed;
+            } catch (e) {}
+        }
+
         let dbSizeKb = 0;
         try {
             if (fs.existsSync(NEWS_DB_PATH)) {
@@ -2485,6 +2494,7 @@ app.get('/api/admin/news/stats', authenticateToken, async (req, res) => {
             dbSizeKb,
             collectionEnabled: !settingRow || settingRow.value !== '0',
             telegramBriefingTimes: briefingTimes,
+            excludeKeywords,
             recentArticles,
             weather
         });
@@ -2524,6 +2534,49 @@ app.post('/api/admin/news/briefing-times', authenticateToken, (req, res) => {
     `, [jsonStr, userId], () => {});
 
     res.json({ success: true, times: cleanBriefingTimes, message: '텔레그램 브리핑 전송 시각이 저장되었습니다.' });
+});
+
+// 10-0-1. [신규] 뉴스 수집 제외 키워드 목록 조회 및 저장 API
+app.get('/api/admin/news/exclude-keywords', authenticateToken, async (req, res) => {
+    try {
+        if (!newsDb) return res.json({ success: true, keywords: [] });
+        const row = await new Promise(r => newsDb.get("SELECT value FROM system_settings WHERE key = 'exclude_keywords'", (e, rRow) => r(rRow || null)));
+        let keywords = [];
+        if (row && row.value) {
+            try {
+                const parsed = JSON.parse(row.value);
+                if (Array.isArray(parsed)) keywords = parsed;
+            } catch (e) {}
+        }
+        res.json({ success: true, keywords });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '제외 키워드 조회 실패: ' + e.message });
+    }
+});
+
+app.post('/api/admin/news/exclude-keywords', authenticateToken, (req, res) => {
+    const { keywords } = req.body;
+    let cleanKws = Array.isArray(keywords)
+        ? keywords.filter(k => typeof k === 'string' && k.trim().length > 0).map(k => k.trim())
+        : [];
+    cleanKws = Array.from(new Set(cleanKws));
+    const jsonStr = JSON.stringify(cleanKws);
+
+    if (newsDb) {
+        newsDb.run(`
+            INSERT INTO system_settings (key, value, updated_at)
+            VALUES ('exclude_keywords', ?, datetime('now', '+9 hours'))
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        `, [jsonStr], (err) => {
+            if (err) {
+                console.error('[NewsDB] exclude_keywords 저장 실패:', err);
+                return res.status(500).json({ success: false, message: '저장 실패: ' + err.message });
+            }
+            res.json({ success: true, keywords: cleanKws, message: '수집 제외 키워드가 저장되었습니다.' });
+        });
+    } else {
+        res.status(500).json({ success: false, message: 'newsDb가 연결되지 않았습니다.' });
+    }
 });
 
 // 10-1. [신규] 뉴스 수집기 및 스케줄러 로그 파일 실시간 조회 API

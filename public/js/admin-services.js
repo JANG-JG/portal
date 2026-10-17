@@ -1,7 +1,9 @@
 /**
  * JG Portal 통합 관리자 센터 - 서브 서비스(혈압/자산/뉴스/보안) 제어 모듈
- * admin-services.js
+ * admin-services.js (v20261017_v2)
  */
+const ADMIN_SERVICES_VERSION = '20261017_v2';
+
 
 // ========================================================
 // 1. 혈압 관리 서비스 제어
@@ -255,6 +257,11 @@ async function loadNewsData() {
             currentAdminBriefingTimes = Array.isArray(data.telegramBriefingTimes) ? data.telegramBriefingTimes : ['07:30'];
             renderAdminBriefingChips();
         }
+
+        if (data.excludeKeywords) {
+            currentAdminExcludeKeywords = Array.isArray(data.excludeKeywords) ? data.excludeKeywords : [];
+            renderAdminExcludeChips();
+        }
     } catch (err) {
         console.error('뉴스 데이터 로드 오류:', err);
     }
@@ -502,6 +509,70 @@ async function saveAdminBriefingTimes() {
     }
 }
 
+// 3-6. 뉴스 수집 제외 키워드 필터 관리 로직
+let currentAdminExcludeKeywords = [];
+
+function renderAdminExcludeChips() {
+    const container = document.getElementById('adminExcludeChipsContainer');
+    if (!container) return;
+    if (!currentAdminExcludeKeywords || currentAdminExcludeKeywords.length === 0) {
+        container.innerHTML = '<span style="font-size:0.8rem; color:#94a3b8;">등록된 제외 키워드가 없습니다.</span>';
+        return;
+    }
+    container.innerHTML = currentAdminExcludeKeywords.map((kw, idx) => `
+        <span style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.25rem 0.55rem; background:#fee2e2; border:1px solid #fecaca; border-radius:9999px; font-size:0.8rem; font-weight:700; color:#b91c1c;">
+            <span>🚫 ${escapeHtml(kw)}</span>
+            <button type="button" onclick="removeAdminExcludeKeyword(${idx})" style="background:none; border:none; color:#ef4444; font-size:0.9rem; cursor:pointer; padding:0; line-height:1; font-weight:bold;" title="삭제">✕</button>
+        </span>
+    `).join('');
+}
+
+function addAdminExcludeKeyword() {
+    const inputEl = document.getElementById('adminInputExcludeKeyword');
+    if (!inputEl || !inputEl.value) {
+        alert('추가할 제외 키워드를 먼저 입력해 주세요.');
+        return;
+    }
+    const val = inputEl.value.trim();
+    if (!val) return;
+    if (currentAdminExcludeKeywords.includes(val)) {
+        alert('이미 등록된 제외 키워드입니다: ' + val);
+        inputEl.value = '';
+        inputEl.focus();
+        return;
+    }
+    currentAdminExcludeKeywords.push(val);
+    inputEl.value = '';
+    inputEl.focus();
+    renderAdminExcludeChips();
+}
+
+function removeAdminExcludeKeyword(idx) {
+    if (currentAdminExcludeKeywords && currentAdminExcludeKeywords.length > idx) {
+        currentAdminExcludeKeywords.splice(idx, 1);
+        renderAdminExcludeChips();
+    }
+}
+
+async function saveAdminExcludeKeywords() {
+    try {
+        const res = await fetch('/api/admin/news/exclude-keywords', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ keywords: currentAdminExcludeKeywords })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('수집 제외 키워드가 저장되었습니다.\n(다음 뉴스 수집 시 해당 단어가 포함된 기사는 자동 차단됩니다)');
+            loadNewsData();
+        } else {
+            alert('저장 실패: ' + (data.message || '알 수 없는 오류'));
+        }
+    } catch (e) {
+        alert('제외 키워드 저장 중 통신 오류 발생: ' + e.message);
+    }
+}
+
 // 전역 window 바인딩
 window.loadBloodData = loadBloodData;
 window.testBloodSmtpEmail = testBloodSmtpEmail;
@@ -517,3 +588,7 @@ window.loadSecurityLogs = loadSecurityLogs;
 window.addAdminBriefingTime = addAdminBriefingTime;
 window.removeAdminBriefingTime = removeAdminBriefingTime;
 window.saveAdminBriefingTimes = saveAdminBriefingTimes;
+window.addAdminExcludeKeyword = addAdminExcludeKeyword;
+window.removeAdminExcludeKeyword = removeAdminExcludeKeyword;
+window.saveAdminExcludeKeywords = saveAdminExcludeKeywords;
+
