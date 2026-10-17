@@ -3339,29 +3339,62 @@ app.get('/api/calendar/events', authenticateToken, async (req, res) => {
         });
     });
 
-    // 2) 병원 진료 예약일 및 방문일 (health.db)
+    // 2) 병원 진료 예약일, 방문일, 다음 예정일 및 처방약 소진일 (health.db)
     const hospitalPromise = new Promise((resolve) => {
-        db.all("SELECT id, visit_date, hospital_name, department, memo, reservation_open_date FROM hospital_visits WHERE user_id = ? OR user_id = 'admin' OR user_id = 'upt0731'", [userId], (err, rows) => {
+        db.all("SELECT id, visit_date, prescription_days, next_visit_date, reservation_open_date, hospital_name, department, memo FROM hospital_visits WHERE user_id = ? OR user_id = 'admin' OR user_id = 'upt0731'", [userId], (err, rows) => {
             if (!err && rows) {
                 rows.forEach(h => {
-                    if (h.visit_date) {
+                    const hospName = h.hospital_name || '병원';
+                    // 1. 다음 진료 예정일
+                    if (h.next_visit_date) {
+                        const nextDate = String(h.next_visit_date).trim().slice(0, 10);
                         events.push({
-                            id: `hosp-visit-${h.id}`,
-                            title: `🏥 ${h.hospital_name} 진료 (${h.department || '외래'})`,
-                            date: h.visit_date,
-                            type: 'hospital',
+                            id: `hosp-next-${h.id}`,
+                            title: `🏥 ${hospName} 진료 예정`,
+                            date: nextDate,
+                            type: 'hospital-next',
                             color: '#059669',
-                            memo: h.memo || '병원 방문일'
+                            memo: `${h.department || '외래'} 진료 예정일`
                         });
                     }
+                    // 2. 예약 오픈일
                     if (h.reservation_open_date) {
+                        const resDate = String(h.reservation_open_date).trim().slice(0, 10);
                         events.push({
                             id: `hosp-res-${h.id}`,
-                            title: `🔔 ${h.hospital_name} 예약 오픈일`,
-                            date: h.reservation_open_date,
+                            title: `🔔 ${hospName} 예약 오픈일`,
+                            date: resDate,
                             type: 'hospital-res',
                             color: '#d97706',
-                            memo: '예약 오픈 당일 빠른 신청 필요'
+                            memo: '진료 예약 오픈 당일 빠른 신청 필요'
+                        });
+                    }
+                    // 3. 처방약 복용 소진 예정일 (visit_date + prescription_days)
+                    if (h.visit_date && h.prescription_days > 0) {
+                        try {
+                            const vDate = new Date(h.visit_date);
+                            vDate.setDate(vDate.getDate() + parseInt(h.prescription_days, 10));
+                            const expiryDateStr = vDate.toISOString().slice(0, 10);
+                            events.push({
+                                id: `hosp-rx-${h.id}`,
+                                title: `💊 ${h.prescription_days}일분 처방약 소진 예정`,
+                                date: expiryDateStr,
+                                type: 'hospital-rx',
+                                color: '#0284c7',
+                                memo: `${hospName} 처방약 복용 완료일 (${h.prescription_days}일분)`
+                            });
+                        } catch(e) {}
+                    }
+                    // 4. 지난 진료 방문 기록
+                    if (h.visit_date) {
+                        const vDateStr = String(h.visit_date).trim().slice(0, 10);
+                        events.push({
+                            id: `hosp-visit-${h.id}`,
+                            title: `🏥 ${hospName} 진료 완료`,
+                            date: vDateStr,
+                            type: 'hospital',
+                            color: '#64748b',
+                            memo: `${h.department || '외래'} 진료 완료 (${h.prescription_days || 0}일분 처방)`
                         });
                     }
                 });
@@ -3370,21 +3403,81 @@ app.get('/api/calendar/events', authenticateToken, async (req, res) => {
         });
     });
 
-    // 3) 뉴스 브리핑 텔레그램 발송 시간표 (briefing.db system_settings)
+    // 3) 최근 혈압 측정 & 복약 기록 (health.db records - 날짜별 대표 측정값)
+    const bloodPromise = new Promise((resolve) => {
+        db.all("SELECT id, measured_at, systolic, diastolic, pulse, medication_taken FROM records WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731') ORDER BY measured_at DESC LIMIT 60", [userId], (err, rows) => {
+            if (!err && rows) {
+                const dateMap = new Map();
+                rows.forEach(r => {
+                    const dateStr = String(r.measured_at).slice(0, 10);
+                    if (!dateMap.has(dateStr)) {
+                        dateMap.set(dateStr, r);
+                    }
+                });
+                dateMap.forEach((r, dateStr) => {
+                    let title = '❤️ 혈압 기록';
+                    if (r.systolic && r.diastolic) {
+                        title = `❤️ ${r.systolic}/${r.diastolic} (${r.pulse || '-'})`;
+                    } else if (r.medication_taken) {
+                        title = '💊 복약 기록';
+                    }
+                    events.push({
+                        id: `blood-${r.id}`,
+                        title: title,
+                        date: dateStr,
+                        type: 'health',
+                        color: '#e11d48',
+                        memo: `혈압: ${r.systolic || '-'}/${r.diastolic || '-'} mmHg, 맥박: ${r.pulse || '-'} bpm`
+                    });
+                });
+            }
+            resolve();
+        });
+    });
+
+    // 4) 대한민국 주요 공휴일 (2026년)
+    const KOREAN_HOLIDAYS_2026 = [
+        { date: '2026-01-01', title: '새해 첫날' },
+        { date: '2026-02-16', title: '설날 연휴' },
+        { date: '2026-02-17', title: '설날' },
+        { date: '2026-02-18', title: '설날 연휴' },
+        { date: '2026-03-01', title: '삼일절' },
+        { date: '2026-03-02', title: '삼일절 대체공휴일' },
+        { date: '2026-05-05', title: '어린이날' },
+        { date: '2026-05-24', title: '부처님오신날' },
+        { date: '2026-05-25', title: '대체공휴일' },
+        { date: '2026-06-06', title: '현충일' },
+        { date: '2026-08-15', title: '광복절' },
+        { date: '2026-08-17', title: '광복절 대체공휴일' },
+        { date: '2026-09-24', title: '추석 연휴' },
+        { date: '2026-09-25', title: '추석' },
+        { date: '2026-09-26', title: '추석 연휴' },
+        { date: '2026-10-03', title: '개천절' },
+        { date: '2026-10-05', title: '개천절 대체공휴일' },
+        { date: '2026-10-09', title: '한글날' },
+        { date: '2026-12-25', title: '기독탄신일(크리스마스)' }
+    ];
+    KOREAN_HOLIDAYS_2026.forEach(hol => {
+        events.push({
+            id: `hol-${hol.date}`,
+            title: `🚩 ${hol.title}`,
+            date: hol.date,
+            type: 'holiday',
+            color: '#dc2626',
+            memo: '대한민국 법정 공휴일'
+        });
+    });
+
+    // 5) 뉴스 브리핑 텔레그램 발송 시간표 (briefing.db system_settings)
+    let routineBriefingTimes = ['07:30', '20:00'];
     const briefingPromise = new Promise((resolve) => {
         if (!newsDb) return resolve();
         newsDb.get("SELECT value FROM system_settings WHERE key = 'telegram_briefing_times'", (err, row) => {
             if (!err && row && row.value) {
                 try {
                     const times = JSON.parse(row.value);
-                    if (Array.isArray(times)) {
-                        events.push({
-                            id: 'briefing-info',
-                            title: `📰 정기 브리핑 (${times.join(', ')})`,
-                            type: 'routine',
-                            color: '#8b5cf6',
-                            routineTimes: times
-                        });
+                    if (Array.isArray(times) && times.length > 0) {
+                        routineBriefingTimes = times;
                     }
                 } catch(e) {}
             }
@@ -3392,8 +3485,8 @@ app.get('/api/calendar/events', authenticateToken, async (req, res) => {
         });
     });
 
-    await Promise.allSettled([personalPromise, hospitalPromise, briefingPromise]);
-    res.json({ success: true, events });
+    await Promise.allSettled([personalPromise, hospitalPromise, bloodPromise, briefingPromise]);
+    res.json({ success: true, events, routineBriefingTimes });
 });
 
 app.post('/api/calendar/events', authenticateToken, (req, res) => {

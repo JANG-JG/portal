@@ -105,6 +105,7 @@
         }
         .cal-cell.sun .cal-date-num { color: #dc2626; }
         .cal-cell.sat .cal-date-num { color: #2563eb; }
+        .cal-cell.holiday .cal-date-num { color: #dc2626 !important; font-weight: 800; }
         .event-badge {
             font-size: 0.7rem;
             font-weight: 600;
@@ -175,9 +176,10 @@
             <div class="card">
                 <!-- 캘린더 네비게이션 헤더 -->
                 <div class="cal-header">
-                    <div class="cal-title-group">
+                    <div class="cal-title-group" style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
                         <span style="font-size: 1.5rem;">📅</span>
-                        <h1 id="calMonthDisplay" style="font-size: 1.25rem; font-weight: 800; color: #0f172a;">2026년 10월</h1>
+                        <h1 id="calMonthDisplay" style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin: 0;">2026년 10월</h1>
+                        <span id="calRoutineBadge" style="font-size: 0.75rem; font-weight: 700; background: #f3e8ff; color: #7e22ce; padding: 0.25rem 0.65rem; border-radius: 9999px; border: 1px solid #e9d5ff;">🔔 매일 브리핑 07:30</span>
                     </div>
                     <div style="display: flex; gap: 0.35rem; align-items: center;">
                         <button type="button" class="cal-nav-btn" onclick="prevMonth()">‹ 이전달</button>
@@ -200,11 +202,13 @@
                 </div>
 
                 <!-- 범례 안내 -->
-                <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1rem; font-size: 0.75rem; color: #64748b; flex-wrap: wrap;">
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #059669;"></span> 병원 진료</span>
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #d97706;"></span> 예약 오픈일</span>
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #4f46e5;"></span> 개인 일정 / To-Do</span>
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #8b5cf6;"></span> 정기 브리핑</span>
+                <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; font-size: 0.75rem; color: #64748b; flex-wrap: wrap;">
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #059669;"></span> 🏥 진료/예정</span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #d97706;"></span> 🔔 예약오픈</span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #0284c7;"></span> 💊 처방약소진</span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #e11d48;"></span> ❤️ 혈압/건강</span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626;"></span> 🚩 공휴일</span>
+                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #4f46e5;"></span> 🟣 개인일정</span>
                 </div>
             </div>
 
@@ -277,6 +281,12 @@
                 if (data.success && Array.isArray(data.events)) {
                     allEvents = data.events;
                 }
+                if (data.routineBriefingTimes && Array.isArray(data.routineBriefingTimes)) {
+                    const badge = document.getElementById('calRoutineBadge');
+                    if (badge) {
+                        badge.textContent = `🔔 매일 브리핑: ${data.routineBriefingTimes.join(', ')}`;
+                    }
+                }
             } catch (e) {
                 console.error('이벤트 로드 실패:', e);
             }
@@ -315,9 +325,14 @@
                 const dayOfWeek = (firstDayIndex + day - 1) % 7;
                 const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 
+                // 해당 날짜 이벤트 필터링
+                const dayEvents = allEvents.filter(ev => ev.date === dateStr);
+                const hasHoliday = dayEvents.some(ev => ev.type === 'holiday');
+
                 let cellClass = 'cal-cell';
                 if (dayOfWeek === 0) cellClass += ' sun';
                 if (dayOfWeek === 6) cellClass += ' sat';
+                if (hasHoliday) cellClass += ' holiday';
                 if (dateStr === todayStr) cellClass += ' today';
                 if (dateStr === selectedDateStr) cellClass += ' selected';
 
@@ -328,8 +343,6 @@
                 // 날짜 숫자
                 let html = `<span class="cal-date-num">${day}</span>`;
 
-                // 해당 날짜 이벤트 필터링
-                const dayEvents = allEvents.filter(ev => ev.date === dateStr);
                 dayEvents.forEach(ev => {
                     const compClass = ev.isCompleted ? 'completed' : '';
                     html += `<span class="event-badge ${compClass}" style="background-color: ${ev.color};" title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</span>`;
