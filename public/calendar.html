@@ -11,6 +11,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
         body {
             font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
             background-color: #f8fafc;
@@ -25,6 +29,7 @@
             margin: 0 auto;
             padding: 1.25rem 1rem 3rem 1rem;
             flex: 1;
+            box-sizing: border-box;
         }
         .card {
             background: #ffffff;
@@ -32,6 +37,9 @@
             border-radius: 1rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             padding: 1.25rem;
+            box-sizing: border-box;
+            overflow: hidden;
+            width: 100%;
         }
         .cal-header {
             display: flex;
@@ -61,31 +69,38 @@
         .cal-nav-btn.today { background: #4f46e5; color: #ffffff; border-color: #4338ca; }
         .cal-grid {
             display: grid;
-            grid-template-columns: repeat(7, 1fr);
+            grid-template-columns: repeat(7, minmax(0, 1fr));
             gap: 1px;
             background-color: #e2e8f0;
             border: 1px solid #e2e8f0;
             border-radius: 0.75rem;
             overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
         }
         .cal-day-name {
             background: #f8fafc;
-            padding: 0.6rem 0.25rem;
+            padding: 0.5rem 0.15rem;
             text-align: center;
             font-size: 0.75rem;
             font-weight: 800;
             color: #64748b;
+            min-width: 0;
+            overflow: hidden;
         }
         .cal-day-name.sun { color: #dc2626; }
         .cal-day-name.sat { color: #2563eb; }
         .cal-cell {
             background: #ffffff;
-            min-height: 90px;
-            padding: 0.35rem 0.4rem;
+            min-height: 85px;
+            min-width: 0;
+            padding: 0.3rem 0.25rem;
             display: flex;
             flex-direction: column;
             cursor: pointer;
             transition: background-color 0.1s;
+            overflow: hidden;
+            box-sizing: border-box;
         }
         .cal-cell:hover { background-color: #f8fafc; }
         .cal-cell.other-month { background-color: #fafbfc; opacity: 0.5; }
@@ -100,24 +115,29 @@
         .cal-date-num {
             font-size: 0.8rem;
             font-weight: 800;
-            margin-bottom: 0.25rem;
+            margin-bottom: 0.2rem;
             color: #334155;
+            line-height: 1;
         }
         .cal-cell.sun .cal-date-num { color: #dc2626; }
         .cal-cell.sat .cal-date-num { color: #2563eb; }
         .cal-cell.holiday .cal-date-num { color: #dc2626 !important; font-weight: 800; }
         .event-badge {
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             font-weight: 600;
-            padding: 0.15rem 0.35rem;
-            border-radius: 0.35rem;
+            padding: 0.15rem 0.25rem;
+            border-radius: 0.3rem;
             margin-bottom: 0.2rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: block;
+            white-space: normal;
+            word-break: break-all;
+            overflow-wrap: anywhere;
             line-height: 1.2;
             color: #ffffff;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            box-sizing: border-box;
         }
         .event-badge.completed {
             text-decoration: line-through;
@@ -127,12 +147,57 @@
             display: grid;
             grid-template-columns: 1fr;
             gap: 1.25rem;
+            width: 100%;
+            box-sizing: border-box;
         }
         @media (min-width: 992px) {
             .layout-grid {
                 grid-template-columns: 2.2fr 1fr;
             }
             .cal-cell { min-height: 105px; }
+        }
+        @media (max-width: 640px) {
+            .main-container {
+                padding: 0.75rem 0.4rem 3.5rem 0.4rem;
+            }
+            .card {
+                padding: 0.75rem 0.5rem;
+                border-radius: 0.75rem;
+            }
+            .cal-header {
+                margin-bottom: 0.6rem;
+                gap: 0.4rem;
+            }
+            #calMonthDisplay {
+                font-size: 1.1rem !important;
+            }
+            .cal-nav-btn {
+                padding: 0.35rem 0.55rem;
+                font-size: 0.75rem;
+            }
+            #calRoutineBadge {
+                font-size: 0.68rem !important;
+                padding: 0.15rem 0.45rem !important;
+            }
+            .cal-cell {
+                min-height: 65px;
+                padding: 0.2rem 0.15rem;
+            }
+            .cal-date-num {
+                font-size: 0.72rem;
+                margin-bottom: 0.15rem;
+            }
+            .event-badge {
+                font-size: 0.6rem;
+                padding: 0.1rem 0.15rem;
+                line-height: 1.15;
+                margin-bottom: 0.15rem;
+                border-radius: 0.2rem;
+            }
+            .cal-day-name {
+                padding: 0.4rem 0.1rem;
+                font-size: 0.7rem;
+            }
         }
         .btn-add {
             background: #4f46e5;
