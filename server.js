@@ -3403,31 +3403,56 @@ app.get('/api/calendar/events', authenticateToken, async (req, res) => {
         });
     });
 
-    // 3) 최근 혈압 측정 & 복약 기록 (health.db records - 날짜별 대표 측정값)
+    // 3) 최근 혈압 측정 & 복약 기록 (health.db records)
     const bloodPromise = new Promise((resolve) => {
-        db.all("SELECT id, measured_at, systolic, diastolic, pulse, medication_taken FROM records WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731') ORDER BY measured_at DESC LIMIT 60", [userId], (err, rows) => {
-            if (!err && rows) {
-                const dateMap = new Map();
+        db.all("SELECT id, measured_at, systolic, diastolic, pulse, medication_time FROM records ORDER BY measured_at DESC LIMIT 150", (err, rows) => {
+            if (err) {
+                console.error('[Calendar Blood Fetch Error]:', err.message);
+                return resolve();
+            }
+            if (rows) {
+                const bpByDate = new Map();
+                const medByDate = new Map();
+
                 rows.forEach(r => {
-                    const dateStr = String(r.measured_at).slice(0, 10);
-                    if (!dateMap.has(dateStr)) {
-                        dateMap.set(dateStr, r);
+                    const dateStr = (r.measured_at || r.medication_time || '').slice(0, 10);
+                    if (!dateStr || dateStr.length < 10) return;
+
+                    // 1. 혈압 측정 기록 (수축기/이완기 존재 시)
+                    if (r.systolic && r.diastolic && !bpByDate.has(dateStr)) {
+                        bpByDate.set(dateStr, r);
+                    }
+                    // 2. 복약 기록 (medication_time 존재 시)
+                    if (r.medication_time && !medByDate.has(dateStr)) {
+                        medByDate.set(dateStr, r);
                     }
                 });
-                dateMap.forEach((r, dateStr) => {
-                    let title = '❤️ 혈압 기록';
-                    if (r.systolic && r.diastolic) {
-                        title = `❤️ ${r.systolic}/${r.diastolic} (${r.pulse || '-'})`;
-                    } else if (r.medication_taken) {
-                        title = '💊 복약 기록';
-                    }
+
+                // 혈압 이벤트 추가
+                bpByDate.forEach((r, dateStr) => {
+                    const timeStr = r.measured_at && r.measured_at.length >= 16 ? r.measured_at.slice(11, 16) : '';
                     events.push({
-                        id: `blood-${r.id}`,
-                        title: title,
+                        id: `blood-bp-${r.id}`,
+                        title: `❤️ ${r.systolic}/${r.diastolic}`,
                         date: dateStr,
-                        type: 'health',
+                        time: timeStr,
+                        type: 'health-bp',
                         color: '#e11d48',
-                        memo: `혈압: ${r.systolic || '-'}/${r.diastolic || '-'} mmHg, 맥박: ${r.pulse || '-'} bpm`
+                        memo: `혈압: ${r.systolic}/${r.diastolic} mmHg (맥박 ${r.pulse || '-'} bpm)`
+                    });
+                });
+
+                // 복약 이벤트 추가
+                medByDate.forEach((r, dateStr) => {
+                    const timeStr = r.medication_time && r.medication_time.length >= 16 ? r.medication_time.slice(11, 16) : '';
+                    events.push({
+                        id: `blood-med-${r.id}`,
+                        title: timeStr ? `💊 복약 (${timeStr})` : '💊 혈압약 복용',
+                        date: dateStr,
+                        time: timeStr,
+                        type: 'health-med',
+                        color: '#0284c7',
+                        memo: `혈압약 복용 완료 (${timeStr || '시간 미기록'})`
                     });
                 });
             }

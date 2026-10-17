@@ -7,7 +7,7 @@
     <!-- Pretendard 로컬 웹폰트 -->
     <link rel="stylesheet" href="/css/pretendard.css?v=20261016_v2">
     <!-- 공통 내비게이션 스타일 -->
-    <link rel="stylesheet" href="/css/unified-nav.css?v=20261017_v3">
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261017_v9">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -142,6 +142,22 @@
         .event-badge.completed {
             text-decoration: line-through;
             opacity: 0.6;
+        }
+        .event-more-badge {
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: #64748b;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.25rem;
+            padding: 0.08rem 0.2rem;
+            text-align: center;
+            line-height: 1.1;
+            display: block;
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .layout-grid {
             display: grid;
@@ -330,8 +346,8 @@
     </main>
 
     <!-- 공통 내비바 & 티커 스크립트 -->
-    <script src="/js/unified-nav.js?v=20261017_v3"></script>
-    <script src="/js/news-ticker.js?v=20261017_v3"></script>
+    <script src="/js/unified-nav.js?v=20261017_v9"></script>
+    <script src="/js/news-ticker.js?v=20261017_v9"></script>
 
     <script>
         let currentYear = new Date().getFullYear();
@@ -408,10 +424,18 @@
                 // 날짜 숫자
                 let html = `<span class="cal-date-num">${day}</span>`;
 
-                dayEvents.forEach(ev => {
+                const MAX_VISIBLE_EVENTS = 2;
+                const visibleEvents = dayEvents.slice(0, MAX_VISIBLE_EVENTS);
+                const hiddenCount = dayEvents.length - MAX_VISIBLE_EVENTS;
+
+                visibleEvents.forEach(ev => {
                     const compClass = ev.isCompleted ? 'completed' : '';
                     html += `<span class="event-badge ${compClass}" style="background-color: ${ev.color};" title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</span>`;
                 });
+
+                if (hiddenCount > 0) {
+                    html += `<span class="event-more-badge">+${hiddenCount}개</span>`;
+                }
 
                 cell.innerHTML = html;
                 grid.appendChild(cell);
@@ -458,12 +482,29 @@
                 const timeStr = ev.time ? `<span style="font-size:0.75rem; font-weight:700; color:#475569; margin-right:0.35rem;">⏰ ${ev.time}</span>` : '';
                 const memoStr = ev.memo ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;">${escapeHtml(ev.memo)}</div>` : '';
 
+                // 서비스 바로가기 링크 생성
+                let actionBtn = '';
+                if (isPersonal) {
+                    actionBtn = `<button type="button" onclick="deleteEvent(${ev.dbId})" style="background:none; border:none; color:#ef4444; font-size:0.9rem; cursor:pointer; padding:0.2rem;" title="삭제">✕</button>`;
+                } else if (ev.type && ev.type.startsWith('hospital')) {
+                    actionBtn = `<a href="https://blood.j-jg.cc/hospital.html" target="_blank" style="font-size:0.75rem; color:#059669; font-weight:700; text-decoration:none; padding:2px 6px; background:#ecfdf5; border-radius:4px; flex-shrink:0;">병원예약 →</a>`;
+                } else if (ev.type && ev.type.startsWith('health')) {
+                    actionBtn = `<a href="https://blood.j-jg.cc/" target="_blank" style="font-size:0.75rem; color:#e11d48; font-weight:700; text-decoration:none; padding:2px 6px; background:#fff1f2; border-radius:4px; flex-shrink:0;">혈압앱 →</a>`;
+                }
+
+                // 대표 아이콘 결정
+                let icon = '📌';
+                if (ev.type === 'holiday') icon = '🚩';
+                else if (ev.type === 'health-bp') icon = '❤️';
+                else if (ev.type === 'health-med') icon = '💊';
+                else if (ev.type && ev.type.startsWith('hospital')) icon = '🏥';
+
                 return `
                     <div class="event-item ${ev.isCompleted ? 'completed' : ''}">
                         <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
                             ${isPersonal ? `
                                 <input type="checkbox" ${ev.isCompleted ? 'checked' : ''} onchange="toggleEventComplete(${ev.dbId})" style="cursor:pointer; width:16px; height:16px;">
-                            ` : `<span style="font-size:0.9rem;">📌</span>`}
+                            ` : `<span style="font-size:0.9rem;">${icon}</span>`}
                             <div style="flex:1; min-width:0;">
                                 <div style="font-size:0.85rem; font-weight:700; color:#0f172a; text-decoration:${ev.isCompleted ? 'line-through' : 'none'};">
                                     ${timeStr}${escapeHtml(ev.title)}
@@ -471,9 +512,7 @@
                                 ${memoStr}
                             </div>
                         </div>
-                        ${isPersonal ? `
-                            <button type="button" onclick="deleteEvent(${ev.dbId})" style="background:none; border:none; color:#ef4444; font-size:0.9rem; cursor:pointer; padding:0.2rem;" title="삭제">✕</button>
-                        ` : ''}
+                        ${actionBtn}
                     </div>
                 `;
             }).join('');
