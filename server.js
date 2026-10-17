@@ -109,54 +109,56 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
     if (err) console.error('❌ 혈압 DB 연결 실패:', err);
     else {
         console.log('✅ 마스터 계정 DB 로드 완료:', BLOOD_DB_PATH);
-        db.run('PRAGMA journal_mode = WAL;');
-        db.run('PRAGMA synchronous = NORMAL;');
-        db.run('PRAGMA busy_timeout = 5000;');
-        db.run('PRAGMA temp_store = MEMORY;');
-        db.run(`CREATE TABLE IF NOT EXISTS login_logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,
-            ip TEXT,
-            status TEXT,
-            attempted_at DATETIME DEFAULT (datetime('now', 'localtime'))
-        )`);
-        db.run(`CREATE TABLE IF NOT EXISTS system_configs (
-            key TEXT PRIMARY KEY,
-            value TEXT
-        )`);
-        db.run(`CREATE TABLE IF NOT EXISTS user_memos (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL DEFAULT 'admin',
-            title TEXT,
-            content TEXT NOT NULL,
-            category TEXT DEFAULT 'idea',
-            color TEXT DEFAULT '#fef3c7',
-            is_pinned INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT (datetime('now', 'localtime')),
-            updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
-        )`);
-        db.run(`CREATE TABLE IF NOT EXISTS calendar_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL DEFAULT 'admin',
-            title TEXT NOT NULL,
-            event_date TEXT NOT NULL,
-            event_time TEXT DEFAULT '',
-            category TEXT DEFAULT 'general',
-            color TEXT DEFAULT '#4f46e5',
-            memo TEXT DEFAULT '',
-            is_completed INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT (datetime('now', 'localtime'))
-        )`);
-        db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
-        db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
-        db.run(`ALTER TABLE notification_settings ADD COLUMN telegram_briefing_times TEXT DEFAULT '["07:30"]'`, () => {});
-        // 성능 인덱스 생성
-        db.run(`CREATE INDEX IF NOT EXISTS idx_records_measured_at ON records (measured_at DESC)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_user_created ON notification_history (user_id, created_at DESC)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_unread ON notification_history (user_id, is_read)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_user_memos_user ON user_memos (user_id, is_pinned DESC, updated_at DESC)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_cal_user_date ON calendar_events (user_id, event_date)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_login_logs_attempted_at ON login_logs (attempted_at DESC)`);
+        db.serialize(() => {
+            db.run('PRAGMA journal_mode = WAL;');
+            db.run('PRAGMA synchronous = NORMAL;');
+            db.run('PRAGMA busy_timeout = 5000;');
+            db.run('PRAGMA temp_store = MEMORY;');
+            db.run(`CREATE TABLE IF NOT EXISTS login_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT,
+                ip TEXT,
+                status TEXT,
+                attempted_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+            db.run(`CREATE TABLE IF NOT EXISTS system_configs (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )`);
+            db.run(`CREATE TABLE IF NOT EXISTS user_memos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT 'admin',
+                title TEXT,
+                content TEXT NOT NULL,
+                category TEXT DEFAULT 'idea',
+                color TEXT DEFAULT '#fef3c7',
+                is_pinned INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+            db.run(`CREATE TABLE IF NOT EXISTS calendar_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT 'admin',
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                event_time TEXT DEFAULT '',
+                category TEXT DEFAULT 'general',
+                color TEXT DEFAULT '#4f46e5',
+                memo TEXT DEFAULT '',
+                is_completed INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+            db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE notification_settings ADD COLUMN telegram_briefing_times TEXT DEFAULT '["07:30"]'`, () => {});
+            // 성능 인덱스 생성
+            db.run(`CREATE INDEX IF NOT EXISTS idx_records_measured_at ON records (measured_at DESC)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_user_created ON notification_history (user_id, created_at DESC)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_unread ON notification_history (user_id, is_read)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_user_memos_user ON user_memos (user_id, is_pinned DESC, updated_at DESC)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_cal_user_date ON calendar_events (user_id, event_date)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_login_logs_attempted_at ON login_logs (attempted_at DESC)`);
+        });
     }
 });
 
