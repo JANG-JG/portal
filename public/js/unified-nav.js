@@ -27,11 +27,75 @@
         }
     };
 
-    const UNAV_VERSION = '20261018_v5';
+    const UNAV_VERSION = '20261018_v6';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
     const STALE_CHECK_INTERVAL = 30 * 60 * 1000; // 30분 동안은 재요청 없이 로컬 캐시 즉시 사용
+
+    // ========================================================
+    // 🛡️ [Android WebAPK / App Links 가로채기 방지 가드]
+    // 모바일/데스크톱 브라우저 환경에서 링크 클릭 시 OS Intent로 WebAPK가 강제 실행되어
+    // 브라우저 주소창 URL이 변경되지 않고 외부 웹앱으로 튕기는 현상 원천 차단
+    // ========================================================
+    (function initBrowserLinkIntentGuard() {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                             window.navigator.standalone === true || 
+                             document.referrer.includes('android-app://');
+
+        // PWA 독립 실행형 앱 창 안에서 실행 중이면 OS 기본 동작 유지
+        if (isStandalone) return;
+
+        // 일반 브라우저 탭(모바일/데스크톱 모드)에서 실행 중일 때 패밀리 사이트 링크 클릭 가로채기
+        document.addEventListener('click', function(e) {
+            const link = e.target && e.target.closest('a[href]');
+            if (!link) return;
+
+            // 다운로드, 새 탭(_blank) 열기 링크는 브라우저 기본 동작 유지
+            if (link.target === '_blank' || link.hasAttribute('download')) return;
+
+            const rawHref = link.getAttribute('href');
+            if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:')) return;
+
+            let targetUrl;
+            try {
+                targetUrl = new URL(link.href, window.location.href);
+            } catch (err) {
+                return;
+            }
+
+            // JG 패밀리 사이트 도메인들
+            const isFamilySite = targetUrl.hostname === 'j-jg.cc' || 
+                                 targetUrl.hostname.endsWith('.j-jg.cc') || 
+                                 targetUrl.hostname === 'localhost';
+
+            if (!isFamilySite) return;
+
+            // 동일 페이지 내 해시 이동(#)인 경우는 기본 앵커 스크롤 허용
+            if (targetUrl.origin === window.location.origin && 
+                targetUrl.pathname === window.location.pathname && 
+                targetUrl.search === window.location.search && 
+                targetUrl.hash) {
+                return;
+            }
+
+            // 1) 안드로이드 OS에 ACTION_VIEW Intent를 전달하는 브라우저 기본 a태그 동작 취소
+            e.preventDefault();
+
+            // 2) 모바일 드로어가 열려있다면 닫기
+            if (typeof window.closeUnavDrawer === 'function') {
+                window.closeUnavDrawer();
+            }
+
+            // 3) 비동기 마크로태스크(setTimeout)로 User Gesture 컨텍스트를 분리하여 브라우저 내부 탐색 강제
+            // Chrome 및 Android WebKit은 비동기 스크립트 실행 컨텍스트에서의 location 이동을
+            // 사용자 제스처 기반 External App Launch로 취급하지 않고 안전하게 브라우저 탭 내에서 직접 로딩합니다.
+            const dest = targetUrl.href;
+            setTimeout(function() {
+                window.location.href = dest;
+            }, 10);
+        }, true); // useCapture: true로 최상위에서 선점
+    })();
 
     // 1. 공통 CSS 스타일시트 및 Pretendard 웹폰트 자동 주입 확인
     function ensureUnifiedNavCss() {
@@ -61,7 +125,14 @@
             cachedHtml = localStorage.getItem(CACHE_KEY_HTML);
             cachedVer = localStorage.getItem(CACHE_KEY_VER);
             cachedTime = parseInt(localStorage.getItem(CACHE_KEY_TIME) || '0', 10);
-            // 구버전 sessionStorage 키 정리
+            // 구버전 캐시 정리
+            if (cachedVer !== UNAV_VERSION) {
+                localStorage.removeItem(CACHE_KEY_HTML);
+                localStorage.removeItem(CACHE_KEY_VER);
+                localStorage.removeItem(CACHE_KEY_TIME);
+                cachedHtml = null;
+                cachedVer = null;
+            }
             sessionStorage.removeItem('jg_unav_html_v20261013_v7');
         } catch (e) {}
 
@@ -83,9 +154,9 @@
             }
         };
 
-        // 1) localStorage 캐시가 있으면 즉시 렌더링 (0ms 레이턴시)
+        // 1) localStorage 캐시가 일치하면 즉시 렌더링 (0ms 레이턴시)
         const hasValidCache = cachedHtml && cachedVer === UNAV_VERSION;
-        if (cachedHtml) {
+        if (hasValidCache) {
             applyHtml(cachedHtml);
             highlightActiveMenu();
             initUnifiedNav();
