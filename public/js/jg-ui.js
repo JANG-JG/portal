@@ -12,7 +12,7 @@
     window.__JG_UI_LOADER_INITIALIZED__ = true;
 
     // 🎯 중앙 집중 단일 버전 상수 (여기서 버전만 올리면 전 사이트 자동 갱신!)
-    const JG_UI_VERSION = '20261018_v14';
+    const JG_UI_VERSION = '20261018_v15';
 
     // 1. 현재 스크립트 엘리먼트 및 호스트 오리진 감지
     const currentScript = document.currentScript || (function() {
@@ -74,5 +74,20 @@
     // 4. 하단 뉴스/속보 티커 위젯 주입
     if (enableTicker) {
         injectScript(`${origin}/js/news-ticker.js?v=${JG_UI_VERSION}`);
+    }
+
+    // 5. 🛡️ 사이트 접속 시 최상단(Top: 0) 시작 가드
+    // 브라우저 앵커/포커스로 인해 페이지 첫 진입 시 임의로 아래로 튕기는 현상 원천 차단
+    if (!window.location.hash || window.location.hash === '#' || window.location.hash === '#tab-home') {
+        if ('scrollRestoration' in history) {
+            try { history.scrollRestoration = 'manual'; } catch (e) {}
+        }
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                if (window.scrollY > 0 && (!window.location.hash || window.location.hash === '#tab-home')) {
+                    window.scrollTo(0, 0);
+                }
+            }, 60);
+        });
     }
 })();
