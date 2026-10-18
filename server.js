@@ -97,6 +97,9 @@ app.use(express.static(path.join(__dirname, 'public'), {
         if (filePath.endsWith('.html')) {
             // HTML 문서는 최신 상태 즉각 반영을 위해 no-cache (ETag 304 활용)
             res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+        } else if (filePath.endsWith('jg-ui.js')) {
+            // 통합 UI 런처는 항상 최신 버전 반영을 위해 no-cache (ETag 304 활용)
+            res.setHeader('Cache-Control', 'no-cache, must-revalidate');
         } else if (filePath.endsWith('news-ticker.js')) {
             // 전 사이트 공통 하단바 스크립트는 업데이트 즉각 반영을 위해 60초 캐시 및 ETag 강제 검증
             res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');

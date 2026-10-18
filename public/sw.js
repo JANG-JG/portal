@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261018_v8';
+const CACHE_NAME = 'jg-portal-v20261018_v9';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -7,6 +7,7 @@ const PRECACHE_ASSETS = [
     '/css/unified-nav.css',
     '/js/unified-nav.js',
     '/js/news-ticker.js',
+    '/js/jg-ui.js',
     '/fonts/Pretendard-Regular.subset.woff2',
     '/fonts/Pretendard-Medium.subset.woff2',
     '/fonts/Pretendard-SemiBold.subset.woff2',
@@ -57,8 +58,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 2. HTML 문서 탐색 요청: Network-First (항상 최신 HTML 우선, 실패 시 오프라인 캐시)
-    if (req.mode === 'navigate') {
+    // 2. HTML 문서 탐색 및 중앙 UI 런처(jg-ui.js) 요청: Network-First (항상 최신 버전 우선, 실패 시 오프라인 캐시)
+    if (req.mode === 'navigate' || url.pathname.endsWith('/js/jg-ui.js')) {
         event.respondWith(
             fetch(req)
                 .then((res) => {
@@ -71,7 +72,8 @@ self.addEventListener('fetch', (event) => {
                 .catch(async () => {
                     const cached = await caches.match(req);
                     if (cached) return cached;
-                    return caches.match('/offline.html');
+                    if (req.mode === 'navigate') return caches.match('/offline.html');
+                    return new Response('', { status: 408 });
                 })
         );
         return;
