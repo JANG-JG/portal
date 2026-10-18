@@ -44,10 +44,5 @@
       "purpose": "any"
     }
   ],
-  "categories": ["productivity", "utilities", "finance", "medical"],
-  "scope_extensions": [
-    { "origin": "https://news.j-jg.cc" },
-    { "origin": "https://asset.j-jg.cc" },
-    { "origin": "https://blood.j-jg.cc" }
-  ]
+  "categories": ["productivity", "utilities", "finance", "medical"]
 }
