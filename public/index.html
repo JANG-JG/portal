@@ -860,7 +860,7 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 checkPwaInstalled();
-                navigator.serviceWorker.register('/sw.js?v=3')
+                navigator.serviceWorker.register('/sw.js?v=4')
                     .then(reg => {
                         console.log('[PWA] Service Worker registered with scope:', reg.scope);
                     })
@@ -2711,7 +2711,7 @@
     </script>
 
     <!-- 🌟 전 사이트 공통 TV 뉴스 티커 하단바 -->
-    <script src="/js/news-ticker.js?v=20261018_v12"></script>
+    <script src="/js/news-ticker.js?v=20261018_v13"></script>
     <!-- 🌐 공통 상단 내비게이션 바 스크립트 -->
     <script src="/js/unified-nav.js?v=20261018_v6"></script>
 </body>

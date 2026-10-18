@@ -1273,9 +1273,18 @@ app.post('/api/blood/quick-med', authenticateToken, (req, res) => {
     }
 });
 
-// 🌟 [전 사이트 공통 TV 뉴스 티커 API]
+// 🌟 [전 사이트 공통 TV 뉴스 티커 API - 15초 고속 인메모리 캐싱]
+let tickerMemoryCache = {
+    timestamp: 0,
+    payload: null
+};
+
 app.get('/api/ticker', (req, res) => {
-    res.setHeader('Cache-Control', 'public, max-age=30');
+    res.setHeader('Cache-Control', 'public, max-age=15');
+    const now = Date.now();
+    if (tickerMemoryCache.payload && (now - tickerMemoryCache.timestamp < 15000)) {
+        return res.json(tickerMemoryCache.payload);
+    }
 
     // 1. 일반 기사 (속보는 제외)
     newsDb.all(
@@ -1303,14 +1312,21 @@ app.get('/api/ticker', (req, res) => {
                         getLiveMarketData()
                     ]);
 
-                    res.json({
+                    const responseData = {
                         success: true,
                         articles: articles || [],
                         breakingArticles: breakingRows || [],
                         breakingCount: breakingRows ? breakingRows.length : 0,
                         weather,
                         market
-                    });
+                    };
+
+                    tickerMemoryCache = {
+                        timestamp: Date.now(),
+                        payload: responseData
+                    };
+
+                    res.json(responseData);
                 }
             );
         }

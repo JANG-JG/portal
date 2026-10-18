@@ -1,6 +1,6 @@
 /**
  * news-ticker.js - JG 통합 포털 및 모든 서브 서비스(뉴스, 자산, 혈압) 공통 하단바 & 긴급 속보 위젯
- * 모든 사이트에서 <script src="https://j-jg.cc/js/news-ticker.js?v=20261018_v12"></script> 한 줄로 구동됩니다.
+ * 모든 사이트에서 <script src="https://j-jg.cc/js/news-ticker.js?v=20261018_v13"></script> 한 줄로 구동됩니다.
  * - 기본 하단바: 최신 뉴스 브리핑 헤드라인 및 우측 날씨/증시 실시간 롤링 (모든 사이트 상시 노출)
  * - 긴급 속보 바: 실시간 속보 발생 시 기본 하단바 바로 '위에' 빨간색 긴급 속보 띠가 새로 나타남
  * - 속보 닫기: 사용자가 속보를 확인한 후 [✕ 닫기]를 누르면 속보 바가 닫히고 기존 뉴스만 깔끔하게 표시됨
@@ -9,14 +9,24 @@
     // 중복 실행 방지
     if (document.getElementById('jg-global-ticker-bar')) return;
 
-    // 1. 하단 여백 동적 적용 (모바일 2줄 58px / 데스크톱 44px + 속보 여부)
+    // 1. 하단 여백 및 .bottom-nav 동적 적용 (모바일 2줄 58px / 데스크톱 44px + 속보 여부)
     let currentHasBreaking = false;
     function updateBottomPadding(hasBreaking) {
         currentHasBreaking = !!hasBreaking;
         const isMobile = window.innerWidth <= 768;
         const tickerHeight = isMobile ? 58 : 44;
         const breakingHeight = currentHasBreaking ? (isMobile ? 34 : 36) : 0;
-        const pad = (tickerHeight + breakingHeight + 4) + 'px';
+        const totalBarHeight = tickerHeight + breakingHeight;
+
+        // 자산관리 등 하단 네비게이션(.bottom-nav)이 존재하는 경우, 티커와 속보바 바로 위로 부드럽게 배치
+        const bottomNav = document.querySelector('.bottom-nav');
+        if (bottomNav) {
+            bottomNav.style.setProperty('bottom', totalBarHeight + 'px', 'important');
+            bottomNav.style.setProperty('transition', 'bottom 0.25s ease', 'important');
+        }
+
+        const navExtraHeight = bottomNav ? 52 : 0;
+        const pad = (totalBarHeight + navExtraHeight + 4) + 'px';
         if (document.body) {
             document.body.style.paddingBottom = pad;
         } else {
@@ -40,7 +50,7 @@
             border-top: 1px solid #ef4444 !important;
             border-bottom: 1px solid #450a0a !important;
             color: #ffffff !important;
-            z-index: 999998 !important;
+            z-index: 1000002 !important;
             display: none;
             align-items: center !important;
             padding: 0 12px !important;
@@ -472,13 +482,14 @@
         </div>
     `;
 
-    // 4. 속보 닫기 전역 핸들러
+    // 4. 속보 닫기 전역 핸들러 (20분간 임시 닫기 유지)
     window.jgDismissBreaking = function() {
         breakingBar.style.display = 'none';
         updateBottomPadding(false);
         if (currentBreakingSignature) {
             try {
                 sessionStorage.setItem('jg_dismissed_breaking_sig', currentBreakingSignature);
+                sessionStorage.setItem('jg_dismissed_breaking_time', String(Date.now()));
             } catch (e) {}
         }
     };
@@ -509,7 +520,7 @@
             </div>
             <div class="jg-ticker-scroll-area">
                 <div id="jg-track" class="jg-ticker-track">
-                    <span class="jg-ticker-link">최신 뉴스 브리핑 헤드라인 로드 중...</span>
+                    <span class="jg-ticker-link">최신 뉴스 브리핑을 준비 중입니다...</span>
                 </div>
             </div>
         </div>
@@ -544,8 +555,21 @@
             document.body.appendChild(tickerBar);
             updateLiveClock();
             setInterval(updateLiveClock, 1000);
+
+            // ⚡ [Instant SWR Render] 로컬 캐시가 있으면 0ms 즉각 렌더링 (체감 로딩 지연 원천 박멸)
+            try {
+                const cachedStr = localStorage.getItem('jg_cached_ticker');
+                if (cachedStr) {
+                    const cachedData = JSON.parse(cachedStr);
+                    if (cachedData && cachedData.success) {
+                        applyTickerData(cachedData);
+                    }
+                }
+            } catch (e) {}
+
+            // 백그라운드 최신 데이터 갱신
             fetchTickerData();
-            // 45초 주기 갱신
+            // 45초 주기 자동 갱신
             setInterval(fetchTickerData, 45000);
         } else {
             window.addEventListener('DOMContentLoaded', injectBars);
@@ -553,188 +577,197 @@
     };
     injectBars();
 
-    // 7. 데이터 바인딩
+    // 7. 데이터 렌더링 코어 함수 (캐시 즉시 렌더링 & 백그라운드 갱신 공용)
+    function applyTickerData(data) {
+        if (!data || !data.success) return;
+
+        // 7-1. 긴급 속보 처리 (자산관리, 캘린더 등 전 사이트 완전 지원)
+        const breakingList = data.breakingArticles || [];
+        const hasBreaking = breakingList.length > 0;
+        const breakingTrack = document.getElementById('jg-breaking-track');
+
+        if (hasBreaking && breakingTrack) {
+            const newSig = breakingList.map(a => a.id).join(',');
+            currentBreakingSignature = newSig;
+
+            // 사용자가 닫은 속보인지 확인 (20분간만 임시 유지)
+            let isDismissed = false;
+            try {
+                const dismissedSig = sessionStorage.getItem('jg_dismissed_breaking_sig') || '';
+                const dismissedTime = parseInt(sessionStorage.getItem('jg_dismissed_breaking_time') || '0', 10);
+                if (dismissedSig === newSig && (Date.now() - dismissedTime < 20 * 60 * 1000)) {
+                    isDismissed = true;
+                }
+            } catch (e) {}
+
+            if (isDismissed) {
+                breakingBar.style.display = 'none';
+                updateBottomPadding(false);
+            } else {
+                breakingBar.style.display = 'flex';
+                updateBottomPadding(true);
+
+                const makeBreakingItems = () => breakingList.map(a => `
+                    <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="jg-breaking-link">
+                        <span style="background:#fee2e2; color:#991b1b; padding:1px 5px; border-radius:3px; font-weight:800; font-size:10px;">속보</span>
+                        <span>${escapeHtml(a.title)}</span>
+                        ${a.media_name ? `<span style="opacity:0.8; font-size:10px;">(${a.media_name})</span>` : ''}
+                        <span style="opacity:0.5; margin: 0 4px;">•</span>
+                    </a>
+                `).join('');
+
+                breakingTrack.innerHTML = makeBreakingItems() + makeBreakingItems();
+            }
+        } else {
+            breakingBar.style.display = 'none';
+            updateBottomPadding(false);
+        }
+
+        // 7-2. 기본 뉴스 브리핑 헤드라인 처리
+        const track = document.getElementById('jg-track');
+        const articles = data.articles || [];
+
+        if (track && articles.length > 0) {
+            const makeItems = () => articles.map(a => `
+                <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="jg-ticker-link">
+                    <span class="jg-ticker-cat">${escapeHtml(a.category_name || '뉴스')}</span>
+                    <span>${escapeHtml(a.title)}</span>
+                    ${a.media_name ? `<span style="color:#64748b; font-size:10px;">(${a.media_name})</span>` : ''}
+                    <span style="color:#475569; margin: 0 4px;">•</span>
+                </a>
+            `).join('');
+
+            track.innerHTML = makeItems() + makeItems();
+        }
+
+        // 7-3. 우측 날씨/증시 롤링 위젯 구성
+        const vBox = document.getElementById('jg-v-box');
+        if (vBox) {
+            const weather = data.weather || { city: '계룡', temp: '-', condition: '맑음', icon: '🌤️' };
+            const market = data.market || {};
+            const kospi = market.kospi || { price: '2,600.0', direction: 'down' };
+            const kosdaq = market.kosdaq || { price: '850.0', direction: 'down' };
+            const usd = market.usd_krw || { price: '1,350.0', direction: 'up' };
+
+            const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
+            const usdPriceText = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
+
+            const getBasmiliusSlug = (condition, isDay = 1) => {
+                if (!condition) return isDay === 1 ? 'clear-day' : 'clear-night';
+                const c = String(condition).trim();
+                if (/뇌우|우박|천둥/.test(c)) return 'thunderstorms-rain';
+                if (/진눈깨비/.test(c)) return 'sleet';
+                if (/눈|싸락눈/.test(c)) return 'snow';
+                if (/소나기/.test(c)) return isDay === 1 ? 'partly-cloudy-day-rain' : 'partly-cloudy-night-rain';
+                if (/폭우|강한\s*비|비/.test(c)) return 'rain';
+                if (/이슬비|약한\s*비/.test(c)) return 'drizzle';
+                if (/안개/.test(c)) return 'fog';
+                if (c === '흐림') return 'overcast';
+                if (/구름\s*많음|구름\s*조금|대체로\s*흐림/.test(c)) return isDay === 1 ? 'partly-cloudy-day' : 'partly-cloudy-night';
+                if (/맑음|대체로\s*맑음/.test(c)) return isDay === 1 ? 'clear-day' : 'clear-night';
+                return isDay === 1 ? 'clear-day' : 'clear-night';
+            };
+
+            const weatherIsDay = weather.is_day !== undefined ? weather.is_day : 1;
+            const weatherSlug = weather.icon_slug || getBasmiliusSlug(weather.condition, weatherIsDay);
+            const weatherIconSvg = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:16px; height:16px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
+
+            const weatherTitle = `실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''}) - 클릭 시 날씨 브리핑 이동`;
+            const conditionBadge = weather.condition ? `<span style="color:#cbd5e1; font-size:10.5px; margin-left:3px; font-weight:500;">${weather.condition}</span>` : '';
+
+            const kospiRatio = kospi.ratio && kospi.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kospi.ratio}</span>` : '';
+            const kosdaqRatio = kosdaq.ratio && kosdaq.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kosdaq.ratio}</span>` : '';
+            const usdRatio = usd.ratio && usd.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${usd.ratio}</span>` : '';
+
+            const slides = [];
+
+            // 1. 날씨 슬라이드
+            if (weather && weather.temp && weather.temp !== '-') {
+                slides.push(
+                    `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="${weatherTitle}">
+                        <span style="display:inline-flex; align-items:center; gap:4px;">${weatherIconSvg}<span>${cityName}</span></span>
+                        <span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>
+                        ${conditionBadge}
+                    </a>`
+                );
+            }
+
+            // 2. 코스피 슬라이드
+            if (kospi && kospi.price && kospi.price !== '-') {
+                slides.push(
+                    `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 코스피 증시 브리핑 바로가기">
+                        <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스피</span>
+                        <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kospi.price}</span>
+                        <span style="color:${kospi.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kospi.direction === 'up' ? '▲' : '▼'}${kospiRatio}</span>
+                    </a>`
+                );
+            }
+
+            // 3. 코스닥 슬라이드
+            if (kosdaq && kosdaq.price && kosdaq.price !== '-') {
+                slides.push(
+                    `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 코스닥 증시 브리핑 바로가기">
+                        <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스닥</span>
+                        <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kosdaq.price}</span>
+                        <span style="color:${kosdaq.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kosdaq.direction === 'up' ? '▲' : '▼'}${kosdaqRatio}</span>
+                    </a>`
+                );
+            }
+
+            // 4. 달러 슬라이드
+            if (usd && usd.price && usd.price !== '-' && !usdPriceText.includes('-')) {
+                slides.push(
+                    `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 달러 환율 브리핑 바로가기 (USD/KRW)">
+                        <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">달러</span>
+                        <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${usdPriceText}</span>
+                        <span style="color:${usd.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${usd.direction === 'up' ? '▲' : '▼'}${usdRatio}</span>
+                    </a>`
+                );
+            }
+
+            // 5. 엔화 슬라이드
+            if (market.jpy_krw && market.jpy_krw.price && market.jpy_krw.price !== '-') {
+                const jpy = market.jpy_krw;
+                const jpyRatio = jpy.ratio && jpy.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${jpy.ratio}</span>` : '';
+                slides.push(
+                    `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 엔화 환율 브리핑 바로가기 (JPY/KRW)">
+                        <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">100엔</span>
+                        <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${jpy.price}</span>
+                        <span style="color:${jpy.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${jpy.direction === 'up' ? '▲' : '▼'}${jpyRatio}</span>
+                    </a>`
+                );
+            }
+
+            if (slides.length > 0) {
+                vBox.innerHTML = slides.join('');
+                startVerticalRolling(vBox);
+            }
+        }
+    }
+
+    // 8. 데이터 백그라운드 비동기 페칭 함수
     async function fetchTickerData() {
         try {
             const isLocal = window.location.hostname === 'localhost';
-            const cacheBucket = Math.floor(Date.now() / 60000);
+            const cacheBucket = Math.floor(Date.now() / 15000);
             const apiUrl = (isLocal ? '/api/ticker' : 'https://j-jg.cc/api/ticker') + '?_t=' + cacheBucket;
             const res = await fetch(apiUrl);
             if (!res.ok) throw new Error('API 응답 에러');
             const data = await res.json();
             if (!data.success) return;
 
-            // 7-1. 긴급 속보 처리
-            const breakingList = data.breakingArticles || [];
-            const hasBreaking = breakingList.length > 0;
-            const breakingTrack = document.getElementById('jg-breaking-track');
+            // 로컬 스토리지에 캐시 보관 (다음 방문/새로고침 시 0ms 즉시 표시)
+            try {
+                localStorage.setItem('jg_cached_ticker', JSON.stringify(data));
+            } catch (e) {}
 
-            if (hasBreaking && breakingTrack) {
-                // 속보 고유 식별값 (기사 id 목록)
-                const newSig = breakingList.map(a => a.id).join(',');
-                currentBreakingSignature = newSig;
-
-                // 사용자가 닫은 속보인지 확인
-                let dismissedSig = '';
-                try {
-                    dismissedSig = sessionStorage.getItem('jg_dismissed_breaking_sig') || '';
-                } catch (e) {}
-
-                if (dismissedSig === newSig) {
-                    // 사용자가 이미 닫은 속보이므로 숨김 유지
-                    breakingBar.style.display = 'none';
-                    updateBottomPadding(false);
-                } else {
-                    // 새 속보이거나 닫지 않은 상태이면 노출
-                    breakingBar.style.display = 'flex';
-                    updateBottomPadding(true);
-
-                    const makeBreakingItems = () => breakingList.map(a => `
-                        <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="jg-breaking-link">
-                            <span style="background:#fee2e2; color:#991b1b; padding:1px 5px; border-radius:3px; font-weight:800; font-size:10px;">속보</span>
-                            <span>${escapeHtml(a.title)}</span>
-                            ${a.media_name ? `<span style="opacity:0.8; font-size:10px;">(${a.media_name})</span>` : ''}
-                            <span style="opacity:0.5; margin: 0 4px;">•</span>
-                        </a>
-                    `).join('');
-
-                    breakingTrack.innerHTML = makeBreakingItems() + makeBreakingItems();
-                }
-            } else {
-                breakingBar.style.display = 'none';
-                updateBottomPadding(false);
-            }
-
-            // 7-2. 기본 뉴스 브리핑 헤드라인 처리 (모든 사이트 공통 상시 노출)
-            const track = document.getElementById('jg-track');
-            const articles = data.articles || [];
-
-            if (track) {
-                if (articles.length > 0) {
-                    const makeItems = () => articles.map(a => `
-                        <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="jg-ticker-link">
-                            <span class="jg-ticker-cat">${escapeHtml(a.category_name || '뉴스')}</span>
-                            <span>${escapeHtml(a.title)}</span>
-                            ${a.media_name ? `<span style="color:#64748b; font-size:10px;">(${a.media_name})</span>` : ''}
-                            <span style="color:#475569; margin: 0 4px;">•</span>
-                        </a>
-                    `).join('');
-
-                    track.innerHTML = makeItems() + makeItems();
-                } else {
-                    track.innerHTML = '<span class="jg-ticker-link" style="color:#94a3b8;">최신 뉴스 브리핑을 준비 중입니다.</span>';
-                }
-            }
-
-            // 7-3. 우측 날씨/증시 롤링 위젯 구성
-            const vBox = document.getElementById('jg-v-box');
-            if (vBox) {
-                const weather = data.weather || { city: '계룡', temp: '-', condition: '맑음', icon: '🌤️' };
-                const market = data.market || {};
-                const kospi = market.kospi || { price: '2,600.0', direction: 'down' };
-                const kosdaq = market.kosdaq || { price: '850.0', direction: 'down' };
-                const usd = market.usd_krw || { price: '1,350.0', direction: 'up' };
-
-                const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
-                const usdPriceText = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
-
-                // Basmilius Weather Icons slug 변환 헬퍼 (날씨 브리핑과 100% 동일)
-                const getBasmiliusSlug = (condition, isDay = 1) => {
-                    if (!condition) return isDay === 1 ? 'clear-day' : 'clear-night';
-                    const c = String(condition).trim();
-                    if (/뇌우|우박|천둥/.test(c)) return 'thunderstorms-rain';
-                    if (/진눈깨비/.test(c)) return 'sleet';
-                    if (/눈|싸락눈/.test(c)) return 'snow';
-                    if (/소나기/.test(c)) return isDay === 1 ? 'partly-cloudy-day-rain' : 'partly-cloudy-night-rain';
-                    if (/폭우|강한\s*비|비/.test(c)) return 'rain';
-                    if (/이슬비|약한\s*비/.test(c)) return 'drizzle';
-                    if (/안개/.test(c)) return 'fog';
-                    if (c === '흐림') return 'overcast';
-                    if (/구름\s*많음|구름\s*조금|대체로\s*흐림/.test(c)) return isDay === 1 ? 'partly-cloudy-day' : 'partly-cloudy-night';
-                    if (/맑음|대체로\s*맑음/.test(c)) return isDay === 1 ? 'clear-day' : 'clear-night';
-                    return isDay === 1 ? 'clear-day' : 'clear-night';
-                };
-
-                const weatherIsDay = weather.is_day !== undefined ? weather.is_day : 1;
-                const weatherSlug = weather.icon_slug || getBasmiliusSlug(weather.condition, weatherIsDay);
-                const weatherIconSvg = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:16px; height:16px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
-
-                const weatherTitle = `실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''}) - 클릭 시 날씨 브리핑 이동`;
-                const conditionBadge = weather.condition ? `<span style="color:#cbd5e1; font-size:10.5px; margin-left:3px; font-weight:500;">${weather.condition}</span>` : '';
-
-                const kospiRatio = kospi.ratio && kospi.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kospi.ratio}</span>` : '';
-                const kosdaqRatio = kosdaq.ratio && kosdaq.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kosdaq.ratio}</span>` : '';
-                const usdRatio = usd.ratio && usd.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${usd.ratio}</span>` : '';
-
-                const slides = [];
-
-                // 1. 날씨 슬라이드 (날씨 브리핑과 동일한 Basmilius SVG 아이콘 적용)
-                if (weather && weather.temp && weather.temp !== '-') {
-                    slides.push(
-                        `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="${weatherTitle}">
-                            <span style="display:inline-flex; align-items:center; gap:4px;">${weatherIconSvg}<span>${cityName}</span></span>
-                            <span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>
-                            ${conditionBadge}
-                        </a>`
-                    );
-                }
-
-                // 2. 코스피 슬라이드 (너비 확장 및 가독성 개선)
-                if (kospi && kospi.price && kospi.price !== '-') {
-                    slides.push(
-                        `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 코스피 증시 브리핑 바로가기">
-                            <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스피</span>
-                            <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kospi.price}</span>
-                            <span style="color:${kospi.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kospi.direction === 'up' ? '▲' : '▼'}${kospiRatio}</span>
-                        </a>`
-                    );
-                }
-
-                // 3. 코스닥 슬라이드 (너비 확장 및 가독성 개선)
-                if (kosdaq && kosdaq.price && kosdaq.price !== '-') {
-                    slides.push(
-                        `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 코스닥 증시 브리핑 바로가기">
-                            <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스닥</span>
-                            <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kosdaq.price}</span>
-                            <span style="color:${kosdaq.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kosdaq.direction === 'up' ? '▲' : '▼'}${kosdaqRatio}</span>
-                        </a>`
-                    );
-                }
-
-                // 4. 달러 슬라이드 (가격이 유효할 때만)
-                if (usd && usd.price && usd.price !== '-' && !usdPriceText.includes('-')) {
-                    slides.push(
-                        `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 달러 환율 브리핑 바로가기 (USD/KRW)">
-                            <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">달러</span>
-                            <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${usdPriceText}</span>
-                            <span style="color:${usd.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${usd.direction === 'up' ? '▲' : '▼'}${usdRatio}</span>
-                        </a>`
-                    );
-                }
-
-                // 5. 엔화 슬라이드
-                if (market.jpy_krw && market.jpy_krw.price && market.jpy_krw.price !== '-') {
-                    const jpy = market.jpy_krw;
-                    const jpyRatio = jpy.ratio && jpy.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${jpy.ratio}</span>` : '';
-                    slides.push(
-                        `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 엔화 환율 브리핑 바로가기 (JPY/KRW)">
-                            <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">100엔</span>
-                            <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${jpy.price}</span>
-                            <span style="color:${jpy.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${jpy.direction === 'up' ? '▲' : '▼'}${jpyRatio}</span>
-                        </a>`
-                    );
-                }
-
-                if (slides.length > 0) {
-                    vBox.innerHTML = slides.join('');
-                    startVerticalRolling(vBox);
-                }
-            }
+            applyTickerData(data);
         } catch (e) {
-            console.warn('[Ticker] 데이터 로드 실패:', e);
+            console.warn('[Ticker] 데이터 페치 경고:', e);
+            // 만약 캐시도 없고 첫 로드 실패인 경우에만 안내 표시
             const track = document.getElementById('jg-track');
-            if (track && track.textContent.includes('로드 중')) {
-                track.innerHTML = '<span class="jg-ticker-link" style="color:#94a3b8;">실시간 뉴스 브리핑을 불러오는 중입니다...</span>';
+            if (track && track.textContent.includes('준비 중')) {
+                track.innerHTML = '<span class="jg-ticker-link" style="color:#94a3b8;">최신 뉴스 브리핑을 불러오는 중입니다...</span>';
             }
         }
     }
