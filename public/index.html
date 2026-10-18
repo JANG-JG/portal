@@ -432,8 +432,8 @@
                     <!-- 관심 분야별 자동 추천 기사 목록 -->
                     <div class="card-summary news-summary-box" id="newsSummary">
                         <div class="news-rec-header">
-                            <span class="news-rec-title">🎯 관심 분야 실시간 주요 기사</span>
-                            <a href="https://news.j-jg.cc/" style="font-size:0.75rem; color:#2563eb; text-decoration:none;">전체보기</a>
+                            <span class="news-rec-title">🎯 실시간 주요 기사 (관심 분야)</span>
+                            <a href="https://news.j-jg.cc/" style="font-size:0.75rem; color:#2563eb; text-decoration:none; font-weight:600;">전체보기 ↗</a>
                         </div>
                         <div class="news-rec-list" id="newsRecommendedList">
                             <div class="news-rec-loading">주요 기사 불러오는 중...</div>
@@ -599,6 +599,30 @@
             }
         }
 
+        // 🌟 상단 탭 네비게이션 가로 스크롤 및 활성 스타일 완벽 동기화 (클릭 & 스와이프 공통)
+        function updatePortalTabNavUI(tabName) {
+            const nav = document.getElementById('portal-tab-nav');
+            const tabBtns = document.querySelectorAll('.portal-tab-btn');
+            let activeBtn = null;
+
+            tabBtns.forEach(btn => {
+                const bTab = btn.getAttribute('data-tab');
+                if (bTab === tabName) {
+                    btn.classList.add('active');
+                    activeBtn = btn;
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            if (nav && activeBtn) {
+                const navRect = nav.getBoundingClientRect();
+                const btnRect = activeBtn.getBoundingClientRect();
+                const scrollLeft = nav.scrollLeft + (btnRect.left - navRect.left) - (navRect.width / 2) + (btnRect.width / 2);
+                nav.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+            }
+        }
+
         // 🌟 탭 스위칭 함수 (클릭 & 스와이프 공통)
         function switchPortalTab(tabName, smooth = true, scrollToTab = true) {
             const isChanged = (currentPortalTab !== tabName);
@@ -615,23 +639,8 @@
                 });
             }
 
-            // 탭 버튼 스타일 갱신
-            const tabBtns = document.querySelectorAll('.portal-tab-btn');
-            tabBtns.forEach(btn => {
-                const bTab = btn.getAttribute('data-tab');
-                if (bTab === tabName) {
-                    btn.classList.add('active');
-                    const nav = document.getElementById('portal-tab-nav');
-                    if (nav) {
-                        const navRect = nav.getBoundingClientRect();
-                        const btnRect = btn.getBoundingClientRect();
-                        const scrollLeft = nav.scrollLeft + (btnRect.left - navRect.left) - (navRect.width / 2) + (btnRect.width / 2);
-                        nav.scrollTo({ left: scrollLeft, behavior: 'smooth' });
-                    }
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
+            // 탭 버튼 스타일 및 가로 스크롤 동기화
+            updatePortalTabNavUI(tabName);
 
             // URL 해시 동기화
             if (history.replaceState) {
@@ -675,15 +684,8 @@
                         if (tName && tName !== currentPortalTab) {
                             currentPortalTab = tName;
 
-                            // 탭 버튼 스타일 갱신
-                            const tabBtns = document.querySelectorAll('.portal-tab-btn');
-                            tabBtns.forEach(btn => {
-                                if (btn.getAttribute('data-tab') === tName) {
-                                    btn.classList.add('active');
-                                } else {
-                                    btn.classList.remove('active');
-                                }
-                            });
+                            // 탭 버튼 스타일 및 상단 가로 스크롤 동기화
+                            updatePortalTabNavUI(tName);
 
                             if (history.replaceState) {
                                 const cleanUrl = window.location.pathname + window.location.search + (tName === 'home' ? '' : '#' + tName);
@@ -994,21 +996,54 @@
                         startMarketFading(n.market);
                     }
 
-                    // 2) 관심분야 추천 기사 바인딩
+                    // 2) 관심분야 추천 기사 바인딩 (네이버 뉴스 / 뉴스 브리핑 2단 카드 스타일)
                     const recListEl = document.getElementById('newsRecommendedList');
                     if (recListEl) {
                         if (n.recommendedArticles && n.recommendedArticles.length > 0) {
                             recListEl.innerHTML = n.recommendedArticles.map(a => {
                                 const cat = a.category_name || '주요';
-                                const media = a.media_name ? `<span class="news-rec-media">${a.media_name}</span>` : '';
+                                const media = a.media_name ? `<span class="news-feed-media">${a.media_name}</span>` : '';
+                                const timeAgo = formatNewsTimeAgo(a.published_at);
+                                const timeHtml = timeAgo ? `<span class="news-feed-dot">·</span><span class="news-feed-time">${timeAgo}</span>` : '';
+                                const thumbHtml = (a.image_url && a.image_url.trim() !== '') ? `
+                                    <div class="news-feed-thumb">
+                                        <img src="${a.image_url}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'">
+                                    </div>
+                                ` : '';
+
                                 return `
-                                    <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="news-rec-item" title="${a.title}">
-                                        <span class="news-cat-badge">${cat}</span>
-                                        <span class="news-rec-text">${a.title}</span>
-                                        ${media}
-                                    </a>
+                                    <article class="news-feed-card">
+                                        <div class="news-feed-main">
+                                            <div class="news-feed-text">
+                                                <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="news-feed-title" title="${a.title}">
+                                                    ${a.title}
+                                                </a>
+                                            </div>
+                                            ${thumbHtml}
+                                        </div>
+                                        <div class="news-feed-meta">
+                                            <div class="news-feed-meta-left">
+                                                <span class="news-cat-badge">${cat}</span>
+                                                ${media}
+                                                ${timeHtml}
+                                            </div>
+                                            <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="news-feed-link" title="원문 보기">
+                                                원문 읽기 ↗
+                                            </a>
+                                        </div>
+                                    </article>
                                 `;
                             }).join('');
+
+                            // 이미지 로딩 완료 시 패널 높이 동적 재계산
+                            recListEl.querySelectorAll('img').forEach(img => {
+                                if (img.complete) {
+                                    updatePortalTrackHeight();
+                                } else {
+                                    img.addEventListener('load', () => updatePortalTrackHeight(), { once: true });
+                                    img.addEventListener('error', () => updatePortalTrackHeight(), { once: true });
+                                }
+                            });
                         } else {
                             recListEl.innerHTML = '<div style="color:#94a3b8; font-size:0.8rem; padding:0.4rem 0;">수집된 추천 뉴스가 없습니다.</div>';
                         }
@@ -1022,6 +1057,33 @@
                 }
             })
             .catch(() => {});
+        }
+
+        // 🕒 실시간 뉴스 상대 시간 계산 헬퍼 (예: 방금 전, 15분 전, 2시간 전, 어제)
+        function formatNewsTimeAgo(dateStr) {
+            if (!dateStr) return '';
+            try {
+                const s = dateStr.includes('T') ? dateStr : dateStr.replace(' ', 'T');
+                const published = new Date(s);
+                if (isNaN(published.getTime())) {
+                    return dateStr.length >= 16 ? dateStr.slice(5, 16) : dateStr;
+                }
+                const now = new Date();
+                const diffMs = now - published;
+                if (diffMs < 0) return '방금 전';
+                const diffSec = Math.floor(diffMs / 1000);
+                if (diffSec < 60) return '방금 전';
+                const diffMin = Math.floor(diffSec / 60);
+                if (diffMin < 60) return `${diffMin}분 전`;
+                const diffHour = Math.floor(diffMin / 60);
+                if (diffHour < 24) return `${diffHour}시간 전`;
+                const diffDay = Math.floor(diffHour / 24);
+                if (diffDay === 1) return '어제';
+                if (diffDay < 7) return `${diffDay}일 전`;
+                return dateStr.length >= 10 ? dateStr.slice(5, 10) : dateStr;
+            } catch (e) {
+                return '';
+            }
         }
 
         // 🚨 실시간 속보 세로 롤링 및 호버 전체목록 제어 (동적 높이 기반 완벽 정렬)

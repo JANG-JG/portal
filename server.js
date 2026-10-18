@@ -1102,7 +1102,7 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
         const newsPromise = new Promise((resolve) => {
             newsDb.all("SELECT id, name FROM categories WHERE is_active = 1 AND name != '속보' ORDER BY id ASC", [], async (cErr, categories) => {
                 if (cErr || !categories || categories.length === 0) {
-                    newsDb.all("SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' ORDER BY id DESC LIMIT 5", [], (aErr, fallbackRows) => {
+                    newsDb.all("SELECT id, title, link, media_name, category_name, published_at, image_url FROM news_articles WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' ORDER BY id DESC LIMIT 5", [], (aErr, fallbackRows) => {
                         resolve(fallbackRows || []);
                     });
                     return;
@@ -1112,7 +1112,7 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
                     const articlePromises = categories.map(cat => {
                         return new Promise(innerResolve => {
                             newsDb.get(
-                                'SELECT id, title, link, media_name, category_name, published_at FROM news_articles WHERE category_name = ? AND title NOT LIKE "%[속보]%" AND title NOT LIKE "%(속보)%" ORDER BY id DESC LIMIT 1',
+                                'SELECT id, title, link, media_name, category_name, published_at, image_url FROM news_articles WHERE category_name = ? AND title NOT LIKE "%[속보]%" AND title NOT LIKE "%(속보)%" ORDER BY id DESC LIMIT 1',
                                 [cat.name],
                                 (err, row) => innerResolve(row || null)
                             );
@@ -1131,7 +1131,7 @@ app.get('/api/summary', authenticateToken, async (req, res) => {
         const breakingThreshold = getKstDateTimeString(-60).slice(0, 16);
         const breakingPromise = new Promise((resolve) => {
             newsDb.all(
-                `SELECT id, title, link, media_name, published_at 
+                `SELECT id, title, link, media_name, published_at, image_url 
                  FROM news_articles 
                  WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%') 
                    AND (
