@@ -13,8 +13,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JG 포털">
     <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="/css/pretendard.css?v=20261018_v6">
-    <link rel="stylesheet" href="/css/style.css?v=20261018_v6">
+    <link rel="stylesheet" href="/css/pretendard.css?v=20261019_v1">
+    <link rel="stylesheet" href="/css/style.css?v=20261019_v1">
     <style>
         /* 🌟 포털 메인 스와이프 슬라이더 & 카테고리 탭 */
         .portal-tab-bar {
@@ -151,6 +151,123 @@
             font-size: 1.1rem;
             color: var(--primary);
             font-weight: 700;
+        }
+
+        /* 📰 뉴스 브리핑 / 네이버 뉴스 스타일 실시간 주요 기사 카드 (헤드 즉시 주입) */
+        .news-feed-card {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 0.85rem !important;
+            padding: 0.75rem 0.85rem !important;
+            margin-bottom: 0.6rem !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+            transition: all 0.2s ease;
+            display: flex !important;
+            flex-direction: column !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .news-feed-card:last-child {
+            margin-bottom: 0 !important;
+        }
+        .news-feed-main {
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: space-between !important;
+            gap: 0.75rem !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .news-feed-text {
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
+        }
+        .news-feed-title {
+            font-size: 0.95rem !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+            line-height: 1.4 !important;
+            display: -webkit-box !important;
+            -webkit-line-clamp: 2 !important;
+            -webkit-box-orient: vertical !important;
+            overflow: hidden !important;
+            word-break: keep-all !important;
+            text-decoration: none !important;
+            margin: 0 !important;
+        }
+        .news-feed-title:hover {
+            color: #2563eb !important;
+        }
+        .news-feed-thumb {
+            flex-shrink: 0 !important;
+            width: 80px !important;
+            height: 64px !important;
+            border-radius: 0.75rem !important;
+            overflow: hidden !important;
+            background-color: #f1f5f9 !important;
+            border: 1px solid rgba(226, 232, 240, 0.8) !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+            display: block !important;
+        }
+        .news-feed-thumb img {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+        }
+        .news-feed-meta {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding-top: 0.5rem !important;
+            margin-top: 0.5rem !important;
+            border-top: 1px solid #f1f5f9 !important;
+            font-size: 0.76rem !important;
+            color: #64748b !important;
+            min-width: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+        .news-feed-meta-left {
+            display: flex !important;
+            align-items: center !important;
+            gap: 0.35rem !important;
+            min-width: 0 !important;
+            overflow: hidden !important;
+        }
+        .news-cat-badge {
+            background: #eff6ff !important;
+            color: #2563eb !important;
+            font-weight: 700 !important;
+            padding: 2px 7px !important;
+            border-radius: 6px !important;
+            font-size: 0.72rem !important;
+            flex-shrink: 0 !important;
+        }
+        .news-feed-media {
+            font-weight: 600 !important;
+            color: #475569 !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            white-space: nowrap !important;
+        }
+        .news-feed-dot {
+            color: #cbd5e1 !important;
+            margin: 0 1px !important;
+        }
+        .news-feed-time {
+            color: #94a3b8 !important;
+            white-space: nowrap !important;
+        }
+        .news-feed-link {
+            color: #2563eb !important;
+            font-weight: 600 !important;
+            text-decoration: none !important;
+            font-size: 0.75rem !important;
+            flex-shrink: 0 !important;
         }
     </style>
 </head>
@@ -1013,32 +1130,32 @@
                         if (n.recommendedArticles && n.recommendedArticles.length > 0) {
                             recListEl.innerHTML = n.recommendedArticles.map(a => {
                                 const cat = a.category_name || '주요';
-                                const media = a.media_name ? `<span class="news-feed-media">${a.media_name}</span>` : '';
+                                const media = a.media_name ? `<span class="news-feed-media" style="font-weight:600; color:#475569; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${a.media_name}</span>` : '';
                                 const timeAgo = formatNewsTimeAgo(a.published_at);
-                                const timeHtml = timeAgo ? `<span class="news-feed-dot">·</span><span class="news-feed-time">${timeAgo}</span>` : '';
+                                const timeHtml = timeAgo ? `<span class="news-feed-dot" style="color:#cbd5e1; margin:0 2px;">·</span><span class="news-feed-time" style="color:#94a3b8; white-space:nowrap;">${timeAgo}</span>` : '';
                                 const thumbHtml = (a.image_url && a.image_url.trim() !== '') ? `
-                                    <div class="news-feed-thumb">
-                                        <img src="${a.image_url}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'">
+                                    <div class="news-feed-thumb" style="flex-shrink:0; width:80px; height:64px; border-radius:0.75rem; overflow:hidden; background-color:#f1f5f9; border:1px solid rgba(226,232,240,0.8); box-shadow:0 1px 2px rgba(0,0,0,0.04); display:block;">
+                                        <img src="${a.image_url}" alt="" loading="lazy" style="width:100%; height:100%; max-width:100%; object-fit:cover; display:block;" onerror="this.parentElement.style.display='none'">
                                     </div>
                                 ` : '';
 
                                 return `
-                                    <article class="news-feed-card">
-                                        <div class="news-feed-main">
-                                            <div class="news-feed-text">
-                                                <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="news-feed-title" title="${a.title}">
+                                    <article class="news-feed-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:0.85rem; padding:0.75rem 0.85rem; margin-bottom:0.6rem; box-shadow:0 1px 3px rgba(0,0,0,0.03); display:flex; flex-direction:column; width:100%; box-sizing:border-box;">
+                                        <div class="news-feed-main" style="display:flex; align-items:flex-start; justify-content:space-between; gap:0.75rem; width:100%; min-width:0; box-sizing:border-box;">
+                                            <div class="news-feed-text" style="flex:1 1 0%; min-width:0;">
+                                                <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="news-feed-title" title="${a.title}" style="font-size:0.95rem; font-weight:700; color:#0f172a; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; word-break:keep-all; text-decoration:none; margin:0; display:block;">
                                                     ${a.title}
                                                 </a>
                                             </div>
                                             ${thumbHtml}
                                         </div>
-                                        <div class="news-feed-meta">
-                                            <div class="news-feed-meta-left">
-                                                <span class="news-cat-badge">${cat}</span>
+                                        <div class="news-feed-meta" style="display:flex; align-items:center; justify-content:space-between; padding-top:0.5rem; margin-top:0.5rem; border-top:1px solid #f1f5f9; font-size:0.76rem; color:#64748b; width:100%; min-width:0; box-sizing:border-box;">
+                                            <div class="news-feed-meta-left" style="display:flex; align-items:center; gap:0.35rem; min-width:0; overflow:hidden;">
+                                                <span class="news-cat-badge" style="background:#eff6ff; color:#2563eb; font-weight:700; padding:2px 7px; border-radius:6px; font-size:0.72rem; flex-shrink:0;">${cat}</span>
                                                 ${media}
                                                 ${timeHtml}
                                             </div>
-                                            <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="news-feed-link" title="원문 보기">
+                                            <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="news-feed-link" title="원문 보기" style="color:#2563eb; font-weight:600; text-decoration:none; font-size:0.75rem; flex-shrink:0;">
                                                 원문 읽기 ↗
                                             </a>
                                         </div>
