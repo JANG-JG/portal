@@ -246,8 +246,16 @@ function authenticateToken(req, res, next) {
 }
 
 // 🛡️ [보안 강화] 관리자 권한(RBAC) 검증 미들웨어
+// 마스터 관리자 계정 목록 (기본 관리자: upt0731, admin 및 환경변수 등록 계정)
+const ADMIN_USERS = new Set([
+    'admin',
+    'upt0731',
+    process.env.ADMIN_USER,
+    ...(process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(s => s.trim()) : [])
+].filter(Boolean));
+
 function requireAdmin(req, res, next) {
-    if (!req.user || req.user.username !== 'admin') {
+    if (!req.user || !req.user.username || !ADMIN_USERS.has(req.user.username)) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(403).json({ success: false, message: '관리자 전용 기능입니다. 접근 권한이 없습니다.' });
         }
@@ -634,6 +642,23 @@ function getWeatherIcon(condition, is_day = 1) {
     return is_day === 0 ? '🌙' : '🌤️';
 }
 
+// Basmilius Weather Icons (SVG) slug 매핑 (news-dashboard와 100% 동일)
+function getWeatherIconSlug(condition, is_day = 1) {
+    if (!condition) return is_day === 1 ? 'clear-day' : 'clear-night';
+    const cond = String(condition).trim();
+    if (/뇌우|우박|천둥/.test(cond)) return 'thunderstorms-rain';
+    if (/진눈깨비/.test(cond)) return 'sleet';
+    if (/눈|싸락눈/.test(cond)) return 'snow';
+    if (/소나기/.test(cond)) return is_day === 1 ? 'partly-cloudy-day-rain' : 'partly-cloudy-night-rain';
+    if (/폭우|강한\s*비|비/.test(cond)) return 'rain';
+    if (/이슬비|약한\s*비/.test(cond)) return 'drizzle';
+    if (/안개/.test(cond)) return 'fog';
+    if (cond === '흐림') return 'overcast';
+    if (/구름\s*많음|구름\s*조금|대체로\s*흐림/.test(cond)) return is_day === 1 ? 'partly-cloudy-day' : 'partly-cloudy-night';
+    if (/맑음|대체로\s*맑음/.test(cond)) return is_day === 1 ? 'clear-day' : 'clear-night';
+    return is_day === 1 ? 'clear-day' : 'clear-night';
+}
+
 // 실시간 날씨 캐시 (10분 유효)
 let weatherCache = {
     timestamp: 0,
@@ -642,6 +667,8 @@ let weatherCache = {
         temp: '13.0°C',
         condition: '맑음',
         icon: '🌤️',
+        icon_slug: 'clear-day',
+        icon_url: 'https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/clear-day.svg',
         is_day: 1
     }
 };
@@ -674,6 +701,7 @@ async function refreshWeatherInBackground(rawCity, korCityName) {
 
                 const conditionKo = WMO_CODE_KO[weatherCode] || '맑음';
                 const icon = getWeatherIcon(conditionKo, isDay);
+                const iconSlug = getWeatherIconSlug(conditionKo, isDay);
 
                 weatherCache = {
                     timestamp: Date.now(),
@@ -682,6 +710,8 @@ async function refreshWeatherInBackground(rawCity, korCityName) {
                         temp: `${tempVal.toFixed(1)}°C`,
                         condition: conditionKo,
                         icon: icon,
+                        icon_slug: iconSlug,
+                        icon_url: `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconSlug}.svg`,
                         is_day: isDay,
                         feels_like: `${feelsVal.toFixed(1)}°C`,
                         humidity: `${curr.relative_humidity_2m || 0}%`,

@@ -339,7 +339,14 @@
                         const cityEl = document.getElementById('welcomeWeatherCity');
                         const tempEl = document.getElementById('welcomeWeatherTemp');
                         const descEl = document.getElementById('welcomeWeatherDesc');
-                        if (iconEl && w.icon) iconEl.textContent = w.icon;
+                        if (iconEl) {
+                            const slug = w.icon_slug || (w.icon_url ? w.icon_url.split('/').pop().replace('.svg', '') : '');
+                            if (slug) {
+                                iconEl.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${slug}.svg" alt="${w.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block;" onerror="this.onerror=null; this.outerHTML='${w.icon || '🌤️'}';">`;
+                            } else if (w.icon) {
+                                iconEl.textContent = w.icon;
+                            }
+                        }
                         if (cityEl && w.city) cityEl.textContent = (w.city === 'Gyeryong' ? '계룡' : w.city);
                         if (tempEl && w.temp) tempEl.textContent = w.temp;
                         if (descEl && w.condition) descEl.textContent = w.condition;

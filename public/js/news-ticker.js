@@ -272,7 +272,7 @@
         .jg-v-box {
             position: relative !important;
             height: 30px !important;
-            width: 140px !important;
+            width: 175px !important;
             overflow: hidden !important;
         }
         .jg-v-item {
@@ -281,13 +281,15 @@
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            gap: 5px !important;
+            gap: 6px !important;
+            padding: 0 8px !important;
             background: #0f172a !important;
             border: 1px solid #1e293b !important;
             border-radius: 6px !important;
             color: #cbd5e1 !important;
-            font-size: 11px !important;
+            font-size: 11.5px !important;
             font-weight: 600 !important;
+            white-space: nowrap !important;
             transition: transform 0.4s ease-in-out, opacity 0.4s ease-in-out, background 0.15s, border-color 0.15s !important;
             text-decoration: none !important;
         }
@@ -382,13 +384,13 @@
                 flex-shrink: 0 !important;
             }
             .jg-v-box {
-                width: 118px !important;
+                width: 142px !important;
                 height: 22px !important;
             }
             .jg-v-item {
-                font-size: 9.5px !important;
-                gap: 3px !important;
-                padding: 0 4px !important;
+                font-size: 10px !important;
+                gap: 4px !important;
+                padding: 0 5px !important;
                 border-radius: 4px !important;
                 white-space: nowrap !important;
                 overflow: hidden !important;
@@ -636,44 +638,65 @@
                 const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
                 const usdPriceText = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
 
-                const weatherTitle = `실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''}) - 클릭 시 날씨 브리핑 이동`;
-                const conditionBadge = weather.condition ? `<span style="color:#cbd5e1; font-size:10px; margin-left:3px; font-weight:500;">${weather.condition}</span>` : '';
+                // Basmilius Weather Icons slug 변환 헬퍼 (날씨 브리핑과 100% 동일)
+                const getBasmiliusSlug = (condition, isDay = 1) => {
+                    if (!condition) return isDay === 1 ? 'clear-day' : 'clear-night';
+                    const c = String(condition).trim();
+                    if (/뇌우|우박|천둥/.test(c)) return 'thunderstorms-rain';
+                    if (/진눈깨비/.test(c)) return 'sleet';
+                    if (/눈|싸락눈/.test(c)) return 'snow';
+                    if (/소나기/.test(c)) return isDay === 1 ? 'partly-cloudy-day-rain' : 'partly-cloudy-night-rain';
+                    if (/폭우|강한\s*비|비/.test(c)) return 'rain';
+                    if (/이슬비|약한\s*비/.test(c)) return 'drizzle';
+                    if (/안개/.test(c)) return 'fog';
+                    if (c === '흐림') return 'overcast';
+                    if (/구름\s*많음|구름\s*조금|대체로\s*흐림/.test(c)) return isDay === 1 ? 'partly-cloudy-day' : 'partly-cloudy-night';
+                    if (/맑음|대체로\s*맑음/.test(c)) return isDay === 1 ? 'clear-day' : 'clear-night';
+                    return isDay === 1 ? 'clear-day' : 'clear-night';
+                };
 
-                const kospiRatio = kospi.ratio && kospi.ratio !== '-' ? `<span style="font-size:10px; margin-left:2px;">${kospi.ratio}</span>` : '';
-                const kosdaqRatio = kosdaq.ratio && kosdaq.ratio !== '-' ? `<span style="font-size:10px; margin-left:2px;">${kosdaq.ratio}</span>` : '';
-                const usdRatio = usd.ratio && usd.ratio !== '-' ? `<span style="font-size:10px; margin-left:2px;">${usd.ratio}</span>` : '';
+                const weatherIsDay = weather.is_day !== undefined ? weather.is_day : 1;
+                const weatherSlug = weather.icon_slug || getBasmiliusSlug(weather.condition, weatherIsDay);
+                const weatherIconSvg = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:16px; height:16px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
+
+                const weatherTitle = `실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''}) - 클릭 시 날씨 브리핑 이동`;
+                const conditionBadge = weather.condition ? `<span style="color:#cbd5e1; font-size:10.5px; margin-left:3px; font-weight:500;">${weather.condition}</span>` : '';
+
+                const kospiRatio = kospi.ratio && kospi.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kospi.ratio}</span>` : '';
+                const kosdaqRatio = kosdaq.ratio && kosdaq.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kosdaq.ratio}</span>` : '';
+                const usdRatio = usd.ratio && usd.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${usd.ratio}</span>` : '';
 
                 const slides = [];
 
-                // 1. 날씨 슬라이드 (온도 정보가 유효할 때)
+                // 1. 날씨 슬라이드 (날씨 브리핑과 동일한 Basmilius SVG 아이콘 적용)
                 if (weather && weather.temp && weather.temp !== '-') {
                     slides.push(
                         `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="${weatherTitle}">
-                            <span>${weather.icon || '🌤️'} ${cityName}</span>
+                            <span style="display:inline-flex; align-items:center; gap:4px;">${weatherIconSvg}<span>${cityName}</span></span>
                             <span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>
                             ${conditionBadge}
                         </a>`
                     );
                 }
 
-                // 2. 코스피 슬라이드 (가격이 유효할 때만)
+                // 2. 코스피 슬라이드 (너비 확장 및 가독성 개선)
                 if (kospi && kospi.price && kospi.price !== '-') {
                     slides.push(
                         `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 코스피 증시 브리핑 바로가기">
-                            <span style="color:#94a3b8; font-size:10px;">코스피</span>
-                            <span style="color:#ffffff;">${kospi.price}</span>
-                            <span style="color:${kospi.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10px;">${kospi.direction === 'up' ? '▲' : '▼'}${kospiRatio}</span>
+                            <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스피</span>
+                            <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kospi.price}</span>
+                            <span style="color:${kospi.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kospi.direction === 'up' ? '▲' : '▼'}${kospiRatio}</span>
                         </a>`
                     );
                 }
 
-                // 3. 코스닥 슬라이드 (가격이 유효할 때만)
+                // 3. 코스닥 슬라이드 (너비 확장 및 가독성 개선)
                 if (kosdaq && kosdaq.price && kosdaq.price !== '-') {
                     slides.push(
                         `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 코스닥 증시 브리핑 바로가기">
-                            <span style="color:#94a3b8; font-size:10px;">코스닥</span>
-                            <span style="color:#ffffff;">${kosdaq.price}</span>
-                            <span style="color:${kosdaq.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10px;">${kosdaq.direction === 'up' ? '▲' : '▼'}${kosdaqRatio}</span>
+                            <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스닥</span>
+                            <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kosdaq.price}</span>
+                            <span style="color:${kosdaq.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kosdaq.direction === 'up' ? '▲' : '▼'}${kosdaqRatio}</span>
                         </a>`
                     );
                 }
@@ -682,9 +705,9 @@
                 if (usd && usd.price && usd.price !== '-' && !usdPriceText.includes('-')) {
                     slides.push(
                         `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 달러 환율 브리핑 바로가기 (USD/KRW)">
-                            <span style="color:#94a3b8; font-size:10px;">달러</span>
-                            <span style="color:#ffffff;">${usdPriceText}</span>
-                            <span style="color:${usd.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10px;">${usd.direction === 'up' ? '▲' : '▼'}${usdRatio}</span>
+                            <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">달러</span>
+                            <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${usdPriceText}</span>
+                            <span style="color:${usd.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${usd.direction === 'up' ? '▲' : '▼'}${usdRatio}</span>
                         </a>`
                     );
                 }
@@ -692,12 +715,12 @@
                 // 5. 엔화 슬라이드
                 if (market.jpy_krw && market.jpy_krw.price && market.jpy_krw.price !== '-') {
                     const jpy = market.jpy_krw;
-                    const jpyRatio = jpy.ratio && jpy.ratio !== '-' ? `<span style="font-size:10px; margin-left:2px;">${jpy.ratio}</span>` : '';
+                    const jpyRatio = jpy.ratio && jpy.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${jpy.ratio}</span>` : '';
                     slides.push(
                         `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 엔화 환율 브리핑 바로가기 (JPY/KRW)">
-                            <span style="color:#94a3b8; font-size:10px;">100엔</span>
-                            <span style="color:#ffffff;">${jpy.price}</span>
-                            <span style="color:${jpy.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10px;">${jpy.direction === 'up' ? '▲' : '▼'}${jpyRatio}</span>
+                            <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">100엔</span>
+                            <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${jpy.price}</span>
+                            <span style="color:${jpy.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${jpy.direction === 'up' ? '▲' : '▼'}${jpyRatio}</span>
                         </a>`
                     );
                 }
