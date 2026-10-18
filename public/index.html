@@ -15,13 +15,151 @@
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="/css/pretendard.css?v=20261018_v6">
     <link rel="stylesheet" href="/css/style.css?v=20261018_v6">
+    <style>
+        /* 🌟 포털 메인 스와이프 슬라이더 & 카테고리 탭 */
+        .portal-tab-bar {
+            position: sticky;
+            top: 54px;
+            z-index: 40;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            padding: 0.35rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+        .portal-tab-nav {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            overflow-x: auto;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            scroll-behavior: smooth;
+            padding: 0.1rem;
+        }
+        .portal-tab-nav::-webkit-scrollbar {
+            display: none;
+        }
+        .portal-tab-btn {
+            flex-shrink: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.55rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.92rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+        .portal-tab-btn:hover {
+            color: var(--text-main);
+            background: #f1f5f9;
+        }
+        .portal-tab-btn.active {
+            color: #ffffff;
+            background: var(--primary);
+            box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.35);
+            font-weight: 700;
+        }
+
+        /* 🌟 스와이프 트랙 & 패널 (높이 동적 피팅) */
+        .swipe-track {
+            display: flex;
+            align-items: flex-start;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            transition: height 0.25s ease-out;
+            width: 100%;
+        }
+        .swipe-track::-webkit-scrollbar {
+            display: none;
+        }
+        .swipe-panel {
+            flex: 0 0 100%;
+            width: 100%;
+            min-width: 100%;
+            max-width: 100%;
+            align-self: flex-start;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            box-sizing: border-box;
+        }
+        .swipe-track.is-dragging {
+            scroll-behavior: auto;
+            cursor: grabbing;
+            user-select: none;
+        }
+
+        /* 🌟 홈 패널 서비스 바로가기 미니 카드 그리드 */
+        .home-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-top: 1.25rem;
+        }
+        .home-mini-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.2rem;
+            box-shadow: var(--shadow);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+            color: inherit;
+        }
+        .home-mini-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-hover);
+            border-color: #cbd5e1;
+        }
+        .home-mini-card-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .home-mini-card-icon {
+            font-size: 1.75rem;
+        }
+        .home-mini-card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .home-mini-card-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
+        }
+        .home-mini-card-arrow {
+            font-size: 1.1rem;
+            color: var(--primary);
+            font-weight: 700;
+        }
+    </style>
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
     <div id="unified-nav-root" style="min-height: 54px;"></div>
 
     <main class="container">
-        <section class="welcome-section">
+        <section class="welcome-section" style="margin-bottom: 0.85rem;">
             <div class="welcome-header-row">
                 <h2>안녕하세요, <span id="usernameDisplay">사용자</span>님 👋</h2>
                 <a href="https://news.j-jg.cc/weather" class="weather-compact-badge" id="welcomeWeatherBadge" title="실시간 날씨 브리핑 바로가기">
@@ -35,35 +173,9 @@
                     <span>앱 설치</span>
                 </button>
             </div>
-            <p>오늘의 통합 서비스 현황을 한눈에 확인하고 바로 이동하세요.</p>
-
-            <!-- ⚡ 원터치 모바일 퀵 액션 바 -->
-            <div class="quick-action-strip" role="navigation" aria-label="빠른 바로가기">
-                <a href="/go/blood" class="quick-action-btn btn-accent" title="혈압 관리 앱 바로가기">
-                    <span>🩸</span><span>혈압 측정</span>
-                </a>
-                <button type="button" class="quick-action-btn" onclick="recordQuickMedication()" title="오늘 혈압약 복용 원터치 기록">
-                    <span>💊</span><span>약 복용</span>
-                </button>
-                <a href="/go/asset" class="quick-action-btn" title="자산 관리 앱 바로가기">
-                    <span>💰</span><span>자산 분석</span>
-                </a>
-                <a href="/go/news" class="quick-action-btn" title="AI 뉴스 브리핑 바로가기">
-                    <span>📰</span><span>뉴스 브리핑</span>
-                </a>
-                <a href="/calendar" class="quick-action-btn" title="스마트 라이프 캘린더 열기">
-                    <span>📅</span><span>캘린더</span>
-                </a>
-                <a href="/memo" class="quick-action-btn" title="아이디어 메모장 열기">
-                    <span>💡</span><span>메모 작성</span>
-                </a>
-                <button type="button" class="quick-action-btn" onclick="openQuickSearchModal()" title="통합 검색창 열기 (Ctrl+K)">
-                    <span>🔍</span><span>통합 검색</span>
-                </button>
-            </div>
 
             <!-- 🔍 통합 퀵 검색 트리거 바 (Ctrl + K) -->
-            <div class="quick-search-trigger-bar" onclick="openQuickSearchModal()" role="button" tabindex="0" title="통합 검색 열기 (단축키: Ctrl+K)">
+            <div class="quick-search-trigger-bar" onclick="openQuickSearchModal()" role="button" tabindex="0" title="통합 검색 열기 (단축키: Ctrl+K)" style="margin-top: 0.65rem; margin-bottom: 0;">
                 <div class="quick-search-left">
                     <span class="quick-search-icon">🔍</span>
                     <span class="quick-search-placeholder">메모, 뉴스 기사, 병원 일정, 보유 자산 검색...</span>
@@ -74,245 +186,564 @@
                     <kbd class="quick-search-kbd">K</kbd>
                 </div>
             </div>
-
-            <!-- 🚨 실시간 속보 한줄 롤링 티커 & 호버 전체목록 드롭다운 (속보가 있을 때만 노출) -->
-            <div class="breaking-banner-bar" id="breakingBannerBar" style="display: none;">
-                <div class="breaking-badge">
-                    <span class="breaking-pulse-dot"></span>
-                    <span class="breaking-badge-text-full">🚨 실시간 속보</span>
-                    <span class="breaking-badge-text-mobile" style="display:none;">🚨 속보</span>
-                </div>
-                <div class="breaking-ticker-viewport" id="breakingTickerViewport">
-                    <div class="breaking-ticker-track" id="breakingTickerTrack">
-                        <div class="breaking-ticker-item">
-                            <span class="breaking-item-title">실시간 최신 속보를 불러오는 중입니다...</span>
-                        </div>
-                    </div>
-                </div>
-                <a href="https://news.j-jg.cc/breaking" class="breaking-more-btn" title="속보 브리핑 바로가기">
-                    <span class="breaking-more-text-full">속보 브리핑</span>
-                    <span class="breaking-more-text-mobile" style="display:none;">브리핑</span>
-                    <span class="breaking-arrow">›</span>
-                </a>
-
-                <!-- 마우스 오버 시 전체 목록 드롭다운 레이어 -->
-                <div class="breaking-dropdown-panel" id="breakingDropdownPanel">
-                    <div class="breaking-dropdown-top">
-                        <span class="breaking-dropdown-title">🚨 실시간 주요 속보 브리핑</span>
-                        <a href="https://news.j-jg.cc/breaking" class="breaking-dropdown-link">속보 페이지 열기 ↗</a>
-                    </div>
-                    <div class="breaking-dropdown-items" id="breakingDropdownItems">
-                        <div style="color:#94a3b8; font-size:0.82rem; padding:1rem; text-align:center;">속보 기사를 불러오는 중...</div>
-                    </div>
-                </div>
-            </div>
         </section>
 
-        <!-- 📱 오늘의 라이프 & D-Day 스마트 대시보드 위젯 허브 (2026-10-16 신규) -->
-        <section class="today-summary-hub" id="todaySummaryHub" aria-label="오늘의 요약 위젯">
-            <!-- 위젯 1: 오늘 복약 상태 -->
-            <div class="today-widget-card" id="widgetTodayMed">
-                <div class="today-widget-header">
-                    <span class="today-widget-title">💊 오늘 복약</span>
-                    <span class="today-widget-badge badge-state-warn" id="widgetMedBadge">확인 중</span>
-                </div>
-                <div class="today-widget-body">
-                    <div class="today-widget-val-main" id="widgetMedStatusText">조회 중...</div>
-                    <div class="today-widget-val-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
-                </div>
-                <button type="button" class="btn-widget-quick-med" id="btnWidgetQuickMed" onclick="recordQuickMedication()" style="display:none;">
-                    💊 지금 복약 기록
+        <!-- ===================================================================== -->
+        <!-- 🌟 포털 메인 스티키 탭 네비게이션 바 -->
+        <!-- ===================================================================== -->
+        <div id="portal-tab-bar" class="portal-tab-bar">
+            <nav class="portal-tab-nav" id="portal-tab-nav" aria-label="포털 메인 탭">
+                <button type="button" class="portal-tab-btn active" data-tab="home" onclick="switchPortalTab('home')">
+                    <span>🏠</span><span>종합 홈</span>
                 </button>
-            </div>
+                <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
+                    <span>📰</span><span>뉴스·속보</span>
+                </button>
+                <button type="button" class="portal-tab-btn" data-tab="blood" onclick="switchPortalTab('blood')">
+                    <span>🩸</span><span>건강·혈압</span>
+                </button>
+                <button type="button" class="portal-tab-btn" data-tab="asset" onclick="switchPortalTab('asset')">
+                    <span>💰</span><span>자산·금융</span>
+                </button>
+                <button type="button" class="portal-tab-btn" data-tab="life" onclick="switchPortalTab('life')">
+                    <span>📅</span><span>일정·메모</span>
+                </button>
+            </nav>
+        </div>
 
-            <!-- 위젯 2: 최근 혈압 상태 -->
-            <div class="today-widget-card" id="widgetRecentBlood">
-                <div class="today-widget-header">
-                    <span class="today-widget-title">🩸 최근 혈압</span>
-                    <div style="display:flex; align-items:center; gap:0.35rem;">
-                        <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">ℹ️ 기준</button>
-                        <span class="today-widget-badge badge-state-ok" id="widgetBloodBadge" style="cursor:pointer;" onclick="openBpGuideModal()" title="클릭 시 판정 기준표 보기">-</span>
-                    </div>
-                </div>
-                <div class="today-widget-body">
-                    <div class="today-widget-val-main" id="widgetBloodValMain">- / - <small style="font-size:0.75rem; color:#64748b; font-weight:normal;">mmHg</small></div>
-                    <div class="today-widget-val-sub" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
-                </div>
-            </div>
+        <!-- ===================================================================== -->
+        <!-- 🌟 메인 스와이프 트랙 (가로 스와이프 제스처 & 탭 전환 연동) -->
+        <!-- ===================================================================== -->
+        <div id="portal-swipe-track" class="swipe-track">
 
-            <!-- 위젯 3: 병원 & 약 D-Day -->
-            <div class="today-widget-card" id="widgetHospitalDDay">
-                <div class="today-widget-header">
-                    <span class="today-widget-title">🏥 진료 D-Day</span>
-                    <span class="today-widget-badge badge-state-info" id="widgetHospitalBadge">-</span>
-                </div>
-                <div class="today-widget-body">
-                    <div class="today-widget-val-main" id="widgetHospitalDDayText">-</div>
-                    <div class="today-widget-val-sub" id="widgetHospitalSubText">약 잔여 -일분</div>
-                </div>
-            </div>
-
-            <!-- 위젯 4: 총자산 & 시장 요약 -->
-            <div class="today-widget-card" id="widgetAssetMarket">
-                <div class="today-widget-header">
-                    <span class="today-widget-title">💰 총자산 & 시장</span>
-                    <span class="today-widget-badge badge-state-ok" id="widgetMarketBadge">코스피</span>
-                </div>
-                <div class="today-widget-body">
-                    <div class="today-widget-val-main" id="widgetAssetTotalMain">-</div>
-                    <div class="today-widget-val-sub" id="widgetMarketSubText">시장 시세 수집 중...</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 서비스 바로가기 카드 그리드 (뉴스 브리핑 -> 혈압 관리 -> 자산 관리) -->
-        <div class="card-grid">
-            <!-- 1. 뉴스 브리핑 카드 -->
-            <div class="service-card card-news">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem;">
-                    <div class="card-icon" style="margin-bottom:0;">📰</div>
-                    <div style="display:flex; gap:0.35rem; align-items:center;">
-                        <a href="/go/economy" class="btn-news-sub" title="실시간 증시 및 환율 브리핑 바로가기">
-                            📈 증시·환율
-                        </a>
-                        <a href="https://news.j-jg.cc/categories" class="btn-news-sub" title="관심 뉴스 분야 관리">
-                            🏷️ 관심 분야
-                        </a>
-                    </div>
-                </div>
-                <h3>뉴스 브리핑</h3>
-                <p class="card-desc">실시간 AI 뉴스 수집 및 모닝 텔레그램 브리핑</p>
+            <!-- ----------------------------------------------------------------- -->
+            <!-- [패널 0]: 🏠 종합 홈 (한눈에 보는 스마트 라이프 대시보드) -->
+            <!-- ----------------------------------------------------------------- -->
+            <div id="panel-portal-home" class="swipe-panel" data-tab-name="home">
                 
-                <!-- 상단 실시간 시장 지표 미니 칩 바 (클릭 시 증시/환율 브리핑 이동) -->
-                <div class="news-market-bar" id="newsMarketBar">
-                    <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 브리핑 바로가기 (코스피 / 코스닥)">
-                        <div class="market-name" id="marketIndexName">코스피</div>
-                        <div class="market-val-row" id="marketIndexBox">
-                            <span class="market-price" id="kospiPrice">-</span>
-                            <span class="market-diff" id="kospiDiff">-</span>
-                        </div>
+                <!-- ⚡ 원터치 모바일 퀵 액션 바 -->
+                <div class="quick-action-strip" role="navigation" aria-label="빠른 바로가기" style="margin-bottom: 0.85rem;">
+                    <a href="/go/blood" class="quick-action-btn btn-accent" title="혈압 관리 앱 바로가기">
+                        <span>🩸</span><span>혈압 측정</span>
                     </a>
-                    <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 브리핑 바로가기 (USD / JPY / EUR)">
-                        <div class="market-name" id="marketFxName">USD/KRW</div>
-                        <div class="market-val-row" id="marketFxBox">
-                            <span class="market-price" id="fxPrice">-</span>
-                            <span class="market-diff" id="fxDiff">-</span>
-                        </div>
-                    </a>
-                </div>
-
-                <!-- 관심 분야별 자동 추천 기사 목록 -->
-                <div class="card-summary news-summary-box" id="newsSummary">
-                    <div class="news-rec-header">
-                        <span class="news-rec-title">🎯 관심 분야 실시간 주요 기사</span>
-                        <a href="https://news.j-jg.cc/" style="font-size:0.75rem; color:#2563eb; text-decoration:none;">전체보기</a>
-                    </div>
-                    <div class="news-rec-list" id="newsRecommendedList">
-                        <div class="news-rec-loading">주요 기사 불러오는 중...</div>
-                    </div>
-                </div>
-
-                <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
-                    <a href="/go/economy" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="실시간 증시 브리핑 열기">
-                        📈 증시 브리핑 ↗
-                    </a>
-                    <a href="/go/news" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                        뉴스 브리핑 열기 →
-                    </a>
-                </div>
-            </div>
-
-            <!-- 2. 혈압 관리 카드 -->
-            <div class="service-card card-blood">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
-                    <div class="card-icon" style="margin-bottom:0;">💖</div>
-                    <div style="display:flex; gap:0.35rem; align-items:center;">
-                        <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">
-                            ℹ️ 판정 기준
-                        </button>
-                        <a href="https://blood.j-jg.cc/hospital.html" class="btn-hospital-sub" title="병원 진료 내역 및 예약일 관리">
-                            🏥 병원 일정
-                        </a>
-                    </div>
-                </div>
-                <h3>혈압 관리</h3>
-                <p class="card-desc">혈압 및 맥박 기록, 병원 일정, 투약 알림 관리</p>
-                <div class="card-summary" id="bloodSummary">
-                    <span>최근 건강 기록 조회 중...</span>
-                </div>
-                
-                <div class="card-actions">
-                    <button type="button" class="btn-quick-med" id="btnQuickMed" onclick="recordQuickMedication()">
-                        💊 지금 혈압약 복용 (원터치)
+                    <button type="button" class="quick-action-btn" onclick="recordQuickMedication()" title="오늘 혈압약 복용 원터치 기록">
+                        <span>💊</span><span>약 복용</span>
                     </button>
-                    <a href="/go/blood" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                        혈압 관리 열기 →
+                    <a href="/go/asset" class="quick-action-btn" title="자산 관리 앱 바로가기">
+                        <span>💰</span><span>자산 분석</span>
+                    </a>
+                    <a href="/go/news" class="quick-action-btn" title="AI 뉴스 브리핑 바로가기">
+                        <span>📰</span><span>뉴스 브리핑</span>
+                    </a>
+                    <a href="/calendar" class="quick-action-btn" title="스마트 라이프 캘린더 열기">
+                        <span>📅</span><span>캘린더</span>
+                    </a>
+                    <a href="/memo" class="quick-action-btn" title="아이디어 메모장 열기">
+                        <span>💡</span><span>메모 작성</span>
                     </a>
                 </div>
-            </div>
 
-            <!-- 3. 자산 관리 카드 -->
-            <div class="service-card card-asset">
-                <div class="card-icon">💰</div>
-                <h3>자산 관리</h3>
-                <p class="card-desc">월별 자산 추이 및 금융 포트폴리오 분석</p>
-                <div class="card-summary" id="assetSummary">
-                    <span>보유 자산 현황 조회 중...</span>
-                </div>
-                <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
-                    <a href="/go/economy" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="실시간 국내외 증시 및 환율 시세 확인">
-                        📈 증시·환율 브리핑 ↗
+                <!-- 🚨 실시간 속보 한줄 롤링 티커 & 호버 전체목록 드롭다운 -->
+                <div class="breaking-banner-bar" id="breakingBannerBar" style="display: none; margin-bottom: 1rem;">
+                    <div class="breaking-badge">
+                        <span class="breaking-pulse-dot"></span>
+                        <span class="breaking-badge-text-full">🚨 실시간 속보</span>
+                        <span class="breaking-badge-text-mobile" style="display:none;">🚨 속보</span>
+                    </div>
+                    <div class="breaking-ticker-viewport" id="breakingTickerViewport">
+                        <div class="breaking-ticker-track" id="breakingTickerTrack">
+                            <div class="breaking-ticker-item">
+                                <span class="breaking-item-title">실시간 최신 속보를 불러오는 중입니다...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="https://news.j-jg.cc/breaking" class="breaking-more-btn" title="속보 브리핑 바로가기">
+                        <span class="breaking-more-text-full">속보 브리핑</span>
+                        <span class="breaking-more-text-mobile" style="display:none;">브리핑</span>
+                        <span class="breaking-arrow">›</span>
                     </a>
-                    <a href="/go/asset" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                        자산 관리 열기 →
-                    </a>
-                </div>
-            </div>
 
-            <!-- 4. 아이디어 & 메모장 카드 -->
-            <div class="service-card card-memo">
-                <div class="card-icon">💡</div>
-                <h3>아이디어 & 메모장</h3>
-                <p class="card-desc">떠오른 영감, 할 일 체크리스트 및 서식 편집 메모</p>
-                <div class="card-summary" id="memoCardSummary">
-                    <div class="memo-recent-list" id="memoRecentList">
-                        <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
-                            <div>✨ <strong>Quill 2.0 리치 에디터</strong> & 체크리스트</div>
-                            <div>🎨 카테고리별 컬러 포스트잇 & 실시간 검색</div>
+                    <!-- 마우스 오버 시 전체 목록 드롭다운 레이어 -->
+                    <div class="breaking-dropdown-panel" id="breakingDropdownPanel">
+                        <div class="breaking-dropdown-top">
+                            <span class="breaking-dropdown-title">🚨 실시간 주요 속보 브리핑</span>
+                            <a href="https://news.j-jg.cc/breaking" class="breaking-dropdown-link">속보 페이지 열기 ↗</a>
+                        </div>
+                        <div class="breaking-dropdown-items" id="breakingDropdownItems">
+                            <div style="color:#94a3b8; font-size:0.82rem; padding:1rem; text-align:center;">속보 기사를 불러오는 중...</div>
                         </div>
                     </div>
                 </div>
-                <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
-                    <a href="/memo?action=new" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="새 메모 즉시 작성">
-                        ✍️ 새 메모 쓰기
-                    </a>
-                    <a href="/memo" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                        메모장 열기 →
-                    </a>
+
+                <!-- 📱 오늘의 라이프 & D-Day 스마트 대시보드 위젯 허브 -->
+                <section class="today-summary-hub" id="todaySummaryHub" aria-label="오늘의 요약 위젯">
+                    <!-- 위젯 1: 오늘 복약 상태 -->
+                    <div class="today-widget-card" id="widgetTodayMed">
+                        <div class="today-widget-header">
+                            <span class="today-widget-title">💊 오늘 복약</span>
+                            <span class="today-widget-badge badge-state-warn" id="widgetMedBadge">확인 중</span>
+                        </div>
+                        <div class="today-widget-body">
+                            <div class="today-widget-val-main" id="widgetMedStatusText">조회 중...</div>
+                            <div class="today-widget-val-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
+                        </div>
+                        <button type="button" class="btn-widget-quick-med" id="btnWidgetQuickMed" onclick="recordQuickMedication()" style="display:none;">
+                            💊 지금 복약 기록
+                        </button>
+                    </div>
+
+                    <!-- 위젯 2: 최근 혈압 상태 -->
+                    <div class="today-widget-card" id="widgetRecentBlood">
+                        <div class="today-widget-header">
+                            <span class="today-widget-title">🩸 최근 혈압</span>
+                            <div style="display:flex; align-items:center; gap:0.35rem;">
+                                <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">ℹ️ 기준</button>
+                                <span class="today-widget-badge badge-state-ok" id="widgetBloodBadge" style="cursor:pointer;" onclick="openBpGuideModal()" title="클릭 시 판정 기준표 보기">-</span>
+                            </div>
+                        </div>
+                        <div class="today-widget-body">
+                            <div class="today-widget-val-main" id="widgetBloodValMain">- / - <small style="font-size:0.75rem; color:#64748b; font-weight:normal;">mmHg</small></div>
+                            <div class="today-widget-val-sub" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
+                        </div>
+                    </div>
+
+                    <!-- 위젯 3: 병원 & 약 D-Day -->
+                    <div class="today-widget-card" id="widgetHospitalDDay">
+                        <div class="today-widget-header">
+                            <span class="today-widget-title">🏥 진료 D-Day</span>
+                            <span class="today-widget-badge badge-state-info" id="widgetHospitalBadge">-</span>
+                        </div>
+                        <div class="today-widget-body">
+                            <div class="today-widget-val-main" id="widgetHospitalDDayText">-</div>
+                            <div class="today-widget-val-sub" id="widgetHospitalSubText">약 잔여 -일분</div>
+                        </div>
+                    </div>
+
+                    <!-- 위젯 4: 총자산 & 시장 요약 -->
+                    <div class="today-widget-card" id="widgetAssetMarket">
+                        <div class="today-widget-header">
+                            <span class="today-widget-title">💰 총자산 & 시장</span>
+                            <span class="today-widget-badge badge-state-ok" id="widgetMarketBadge">코스피</span>
+                        </div>
+                        <div class="today-widget-body">
+                            <div class="today-widget-val-main" id="widgetAssetTotalMain">-</div>
+                            <div class="today-widget-val-sub" id="widgetMarketSubText">시장 시세 수집 중...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 🌟 5대 핵심 서비스 빠른 둘러보기 미니 카드 그리드 -->
+                <div class="home-mini-grid">
+                    <div class="home-mini-card" onclick="switchPortalTab('news')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">📰</span>
+                            <div>
+                                <div class="home-mini-card-title">뉴스·속보 브리핑</div>
+                                <div class="home-mini-card-desc">실시간 AI 뉴스 & 증시 마켓 지표</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+
+                    <div class="home-mini-card" onclick="switchPortalTab('blood')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">💖</span>
+                            <div>
+                                <div class="home-mini-card-title">건강·혈압 관리</div>
+                                <div class="home-mini-card-desc">혈압 기록, 병원 일정, 복약 알림</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+
+                    <div class="home-mini-card" onclick="switchPortalTab('asset')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">💰</span>
+                            <div>
+                                <div class="home-mini-card-title">자산·금융 포트폴리오</div>
+                                <div class="home-mini-card-desc">월별 자산 추이 및 금융 자산 분석</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+
+                    <div class="home-mini-card" onclick="switchPortalTab('life')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">📅</span>
+                            <div>
+                                <div class="home-mini-card-title">스마트 라이프 캘린더</div>
+                                <div class="home-mini-card-desc">병원 진료 및 개인 통합 일정표</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+
+                    <div class="home-mini-card" onclick="switchPortalTab('life')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">💡</span>
+                            <div>
+                                <div class="home-mini-card-title">아이디어 & 메모장</div>
+                                <div class="home-mini-card-desc">체크리스트 & 카테고리별 메모</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ----------------------------------------------------------------- -->
+            <!-- [패널 1]: 📰 뉴스·속보 뷰 -->
+            <!-- ----------------------------------------------------------------- -->
+            <div id="panel-portal-news" class="swipe-panel" data-tab-name="news">
+                <div class="service-card card-news" style="width: 100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem;">
+                        <div class="card-icon" style="margin-bottom:0;">📰</div>
+                        <div style="display:flex; gap:0.35rem; align-items:center;">
+                            <a href="/go/economy" class="btn-news-sub" title="실시간 증시 및 환율 브리핑 바로가기">
+                                📈 증시·환율
+                            </a>
+                            <a href="https://news.j-jg.cc/categories" class="btn-news-sub" title="관심 뉴스 분야 관리">
+                                🏷️ 관심 분야
+                            </a>
+                        </div>
+                    </div>
+                    <h3>실시간 뉴스 브리핑</h3>
+                    <p class="card-desc">실시간 AI 뉴스 자동 수집 및 모닝 텔레그램 브리핑 피드</p>
+                    
+                    <!-- 상단 실시간 시장 지표 미니 칩 바 (클릭 시 증시/환율 브리핑 이동) -->
+                    <div class="news-market-bar" id="newsMarketBar">
+                        <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 브리핑 바로가기 (코스피 / 코스닥)">
+                            <div class="market-name" id="marketIndexName">코스피</div>
+                            <div class="market-val-row" id="marketIndexBox">
+                                <span class="market-price" id="kospiPrice">-</span>
+                                <span class="market-diff" id="kospiDiff">-</span>
+                            </div>
+                        </a>
+                        <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 브리핑 바로가기 (USD / JPY / EUR)">
+                            <div class="market-name" id="marketFxName">USD/KRW</div>
+                            <div class="market-val-row" id="marketFxBox">
+                                <span class="market-price" id="fxPrice">-</span>
+                                <span class="market-diff" id="fxDiff">-</span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <!-- 관심 분야별 자동 추천 기사 목록 -->
+                    <div class="card-summary news-summary-box" id="newsSummary">
+                        <div class="news-rec-header">
+                            <span class="news-rec-title">🎯 관심 분야 실시간 주요 기사</span>
+                            <a href="https://news.j-jg.cc/" style="font-size:0.75rem; color:#2563eb; text-decoration:none;">전체보기</a>
+                        </div>
+                        <div class="news-rec-list" id="newsRecommendedList">
+                            <div class="news-rec-loading">주요 기사 불러오는 중...</div>
+                        </div>
+                    </div>
+
+                    <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
+                        <a href="/go/economy" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="실시간 증시 브리핑 열기">
+                            📈 증시 브리핑 ↗
+                        </a>
+                        <a href="/go/news" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
+                            뉴스 브리핑 앱 열기 →
+                        </a>
+                    </div>
                 </div>
             </div>
 
-            <!-- 5. 스마트 캘린더 카드 -->
-            <div class="service-card card-calendar">
-                <div class="card-icon">📅</div>
-                <h3>스마트 캘린더</h3>
-                <p class="card-desc">병원 진료일, 개인 일정 및 브리핑 통합 월간 캘린더</p>
-                <div class="card-summary" id="calendarCardSummary">
-                    <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
-                        <div>🏥 병원 진료 예약 & 복용 예측 일정 자동 연동</div>
-                        <div>🔔 개인 일정, To-Do 및 정기 브리핑 시간표 한눈에 확인</div>
+            <!-- ----------------------------------------------------------------- -->
+            <!-- [패널 2]: 🩸 건강·혈압 뷰 -->
+            <!-- ----------------------------------------------------------------- -->
+            <div id="panel-portal-blood" class="swipe-panel" data-tab-name="blood">
+                <div class="service-card card-blood" style="width: 100%;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+                        <div class="card-icon" style="margin-bottom:0;">💖</div>
+                        <div style="display:flex; gap:0.35rem; align-items:center;">
+                            <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">
+                                ℹ️ 판정 기준
+                            </button>
+                            <a href="https://blood.j-jg.cc/hospital.html" class="btn-hospital-sub" title="병원 진료 내역 및 예약일 관리">
+                                🏥 병원 일정
+                            </a>
+                        </div>
+                    </div>
+                    <h3>스마트 혈압 & 복약 관리</h3>
+                    <p class="card-desc">혈압 및 맥박 기록, 병원 진료 일정, 투약 알림 관리</p>
+                    <div class="card-summary" id="bloodSummary">
+                        <span>최근 건강 기록 조회 중...</span>
+                    </div>
+                    
+                    <div class="card-actions">
+                        <button type="button" class="btn-quick-med" id="btnQuickMed" onclick="recordQuickMedication()">
+                            💊 지금 혈압약 복용 (원터치)
+                        </button>
+                        <a href="/go/blood" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
+                            혈압 관리 앱 열기 →
+                        </a>
                     </div>
                 </div>
-                <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
-                    <a href="/calendar" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                        캘린더 열기 →
-                    </a>
+            </div>
+
+            <!-- ----------------------------------------------------------------- -->
+            <!-- [패널 3]: 💰 자산·금융 뷰 -->
+            <!-- ----------------------------------------------------------------- -->
+            <div id="panel-portal-asset" class="swipe-panel" data-tab-name="asset">
+                <div class="service-card card-asset" style="width: 100%;">
+                    <div class="card-icon">💰</div>
+                    <h3>자산 포트폴리오 관리</h3>
+                    <p class="card-desc">월별 자산 추이 및 금융 포트폴리오 분석</p>
+                    <div class="card-summary" id="assetSummary">
+                        <span>보유 자산 현황 조회 중...</span>
+                    </div>
+                    <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
+                        <a href="/go/economy" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="실시간 국내외 증시 및 환율 시세 확인">
+                            📈 증시·환율 브리핑 ↗
+                        </a>
+                        <a href="/go/asset" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
+                            자산 관리 앱 열기 →
+                        </a>
+                    </div>
                 </div>
             </div>
+
+            <!-- ----------------------------------------------------------------- -->
+            <!-- [패널 4]: 📅 일정 & 💡 메모 뷰 -->
+            <!-- ----------------------------------------------------------------- -->
+            <div id="panel-portal-life" class="swipe-panel" data-tab-name="life">
+                <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                    <!-- 스마트 캘린더 카드 -->
+                    <div class="service-card card-calendar">
+                        <div class="card-icon">📅</div>
+                        <h3>스마트 캘린더</h3>
+                        <p class="card-desc">병원 진료일, 개인 일정 및 브리핑 통합 월간 캘린더</p>
+                        <div class="card-summary" id="calendarCardSummary">
+                            <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
+                                <div>🏥 병원 진료 예약 & 복용 예측 일정 자동 연동</div>
+                                <div>🔔 개인 일정, To-Do 및 정기 브리핑 시간표 한눈에 확인</div>
+                            </div>
+                        </div>
+                        <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
+                            <a href="/calendar" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
+                                캘린더 열기 →
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 아이디어 & 메모장 카드 -->
+                    <div class="service-card card-memo">
+                        <div class="card-icon">💡</div>
+                        <h3>아이디어 & 메모장</h3>
+                        <p class="card-desc">떠오른 영감, 할 일 체크리스트 및 서식 편집 메모</p>
+                        <div class="card-summary" id="memoCardSummary">
+                            <div class="memo-recent-list" id="memoRecentList">
+                                <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
+                                    <div>✨ <strong>Quill 2.0 리치 에디터</strong> & 체크리스트</div>
+                                    <div>🎨 카테고리별 컬러 포스트잇 & 실시간 검색</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
+                            <a href="/memo?action=new" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="새 메모 즉시 작성">
+                                ✍️ 새 메모 쓰기
+                            </a>
+                            <a href="/memo" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
+                                메모장 열기 →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </main>
 
     <script>
+        // =====================================================================
+        // 🌐 포털 메인 스와이프 슬라이더 & 카테고리 탭 연동 엔진
+        // =====================================================================
+        let currentPortalTab = 'home';
+
+        // 🌟 스티키 탭 위치로 부드럽게 스크롤 정렬
+        function scrollToPortalTab(force = false, smooth = true) {
+            const tabEl = document.getElementById('portal-tab-bar');
+            if (!tabEl) return;
+            const navHeader = document.querySelector('.unav-header') || document.getElementById('unified-nav-root');
+            const navHeight = navHeader ? navHeader.getBoundingClientRect().height : 54;
+            const tabTop = tabEl.getBoundingClientRect().top + window.scrollY;
+            const targetY = Math.max(0, Math.round(tabTop - navHeight));
+
+            if (window.scrollY > targetY || (force && Math.abs(window.scrollY - targetY) > 8)) {
+                window.scrollTo({
+                    top: targetY,
+                    behavior: smooth ? 'smooth' : 'auto'
+                });
+            }
+        }
+
+        // 🌟 활성 패널 높이에 맞추어 트랙 높이 실시간 동적 피팅 (빈 스크롤 방지)
+        function updatePortalTrackHeight(targetPanel) {
+            const track = document.getElementById('portal-swipe-track');
+            if (!track) return;
+            let panel = null;
+            if (targetPanel) {
+                panel = (typeof targetPanel === 'string') ? document.getElementById(targetPanel) : targetPanel;
+            }
+            if (!panel) {
+                panel = document.getElementById('panel-portal-' + currentPortalTab);
+            }
+            if (panel) {
+                const h = Math.max(panel.scrollHeight, panel.offsetHeight);
+                if (h > 50) {
+                    track.style.height = h + 'px';
+                }
+            }
+        }
+
+        // 🌟 탭 스위칭 함수 (클릭 & 스와이프 공통)
+        function switchPortalTab(tabName, smooth = true, scrollToTab = true) {
+            const isChanged = (currentPortalTab !== tabName);
+            currentPortalTab = tabName;
+
+            const track = document.getElementById('portal-swipe-track');
+            const panel = document.getElementById('panel-portal-' + tabName);
+
+            if (panel && track) {
+                updatePortalTrackHeight(panel);
+                track.scrollTo({
+                    left: panel.offsetLeft,
+                    behavior: smooth ? 'smooth' : 'auto'
+                });
+            }
+
+            // 탭 버튼 스타일 갱신
+            const tabBtns = document.querySelectorAll('.portal-tab-btn');
+            tabBtns.forEach(btn => {
+                const bTab = btn.getAttribute('data-tab');
+                if (bTab === tabName) {
+                    btn.classList.add('active');
+                    const nav = document.getElementById('portal-tab-nav');
+                    if (nav) {
+                        const navRect = nav.getBoundingClientRect();
+                        const btnRect = btn.getBoundingClientRect();
+                        const scrollLeft = nav.scrollLeft + (btnRect.left - navRect.left) - (navRect.width / 2) + (btnRect.width / 2);
+                        nav.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+                    }
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // URL 해시 동기화
+            if (history.replaceState) {
+                const cleanUrl = window.location.pathname + window.location.search + (tabName === 'home' ? '' : '#' + tabName);
+                history.replaceState(null, null, cleanUrl);
+            }
+
+            // 탭 전환 시 카테고리 탭 위치로 스크롤 이동
+            if (scrollToTab && isChanged) {
+                requestAnimationFrame(() => {
+                    scrollToPortalTab(true, smooth);
+                });
+            }
+        }
+
+        // 🌟 모바일 터치 스와이프 및 PC 드래그 리스너
+        function initPortalSwipeListeners() {
+            const track = document.getElementById('portal-swipe-track');
+            if (!track) return;
+
+            let timer = null;
+            track.addEventListener('scroll', function() {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    const panels = track.querySelectorAll('.swipe-panel');
+                    const scrollLeft = track.scrollLeft;
+                    let closest = null;
+                    let minDist = Infinity;
+
+                    panels.forEach(p => {
+                        const dist = Math.abs(p.offsetLeft - scrollLeft);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closest = p;
+                        }
+                    });
+
+                    if (closest) {
+                        updatePortalTrackHeight(closest);
+                        const tName = closest.getAttribute('data-tab-name');
+                        if (tName && tName !== currentPortalTab) {
+                            currentPortalTab = tName;
+
+                            // 탭 버튼 스타일 갱신
+                            const tabBtns = document.querySelectorAll('.portal-tab-btn');
+                            tabBtns.forEach(btn => {
+                                if (btn.getAttribute('data-tab') === tName) {
+                                    btn.classList.add('active');
+                                } else {
+                                    btn.classList.remove('active');
+                                }
+                            });
+
+                            if (history.replaceState) {
+                                const cleanUrl = window.location.pathname + window.location.search + (tName === 'home' ? '' : '#' + tName);
+                                history.replaceState(null, null, cleanUrl);
+                            }
+
+                            scrollToPortalTab(false, true);
+                        }
+                    }
+                }, 50);
+            }, { passive: true });
+
+            // PC 마우스 드래그 지원
+            let isDown = false;
+            let startX = 0;
+            let scrollStart = 0;
+
+            track.addEventListener('mousedown', (e) => {
+                if (e.target.closest('a, button, input, textarea, [role="button"]')) return;
+                isDown = true;
+                track.classList.add('is-dragging');
+                startX = e.pageX - track.offsetLeft;
+                scrollStart = track.scrollLeft;
+            });
+
+            window.addEventListener('mouseup', () => {
+                if (!isDown) return;
+                isDown = false;
+                track.classList.remove('is-dragging');
+            });
+
+            track.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - track.offsetLeft;
+                const walk = (x - startX) * 1.5;
+                track.scrollLeft = scrollStart - walk;
+            });
+        }
+
+        // 페이지 진입 시 해시 확인 및 스와이프 초기화
+        document.addEventListener("DOMContentLoaded", function() {
+            initPortalSwipeListeners();
+            const hash = window.location.hash.replace('#', '');
+            if (hash && ['home', 'news', 'blood', 'asset', 'life'].includes(hash)) {
+                switchPortalTab(hash, false, false);
+            } else {
+                updatePortalTrackHeight();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            updatePortalTrackHeight();
+        });
+        window.addEventListener('load', () => {
+            updatePortalTrackHeight();
+        });
+        setTimeout(updatePortalTrackHeight, 300);
+        setTimeout(updatePortalTrackHeight, 1000);
+
         // 1. 사용자 정보 로드
         fetch('/api/me')
             .then(res => res.json())
@@ -585,6 +1016,9 @@
 
                     // 3) 실시간 속보 한줄 티커 & 호버 전체목록 바인딩
                     bindBreakingTicker(n.breakingArticles || []);
+
+                    // 데이터 로드 완료 후 현재 활성 패널 높이 자동 피팅
+                    setTimeout(updatePortalTrackHeight, 100);
                 }
             })
             .catch(() => {});
