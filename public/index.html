@@ -191,6 +191,7 @@
         <!-- ===================================================================== -->
         <!-- 🌟 포털 메인 스티키 탭 네비게이션 바 -->
         <!-- ===================================================================== -->
+        <div id="portal-tab-anchor" style="position: relative; top: 0; height: 0; margin: 0; padding: 0; visibility: hidden; pointer-events: none;"></div>
         <div id="portal-tab-bar" class="portal-tab-bar">
             <nav class="portal-tab-nav" id="portal-tab-nav" aria-label="포털 메인 탭">
                 <button type="button" class="portal-tab-btn active" data-tab="home" onclick="switchPortalTab('home')">
@@ -565,12 +566,22 @@
 
         // 🌟 스티키 탭 위치로 부드럽게 스크롤 정렬
         function scrollToPortalTab(force = false, smooth = true) {
+            const anchor = document.getElementById('portal-tab-anchor');
             const tabEl = document.getElementById('portal-tab-bar');
-            if (!tabEl) return;
+            if (!anchor && !tabEl) return;
+
             const navHeader = document.querySelector('.unav-header') || document.getElementById('unified-nav-root');
             const navHeight = navHeader ? navHeader.getBoundingClientRect().height : 54;
-            const tabTop = tabEl.getBoundingClientRect().top + window.scrollY;
-            const targetY = Math.max(0, Math.round(tabTop - navHeight));
+
+            let baseTop = 0;
+            if (anchor) {
+                baseTop = anchor.getBoundingClientRect().top + window.scrollY;
+            } else if (tabEl) {
+                const prev = tabEl.previousElementSibling;
+                baseTop = prev ? (prev.getBoundingClientRect().bottom + window.scrollY + 16) : (tabEl.offsetTop || 0);
+            }
+
+            const targetY = Math.max(0, Math.round(baseTop - navHeight));
 
             if (window.scrollY > targetY || (force && Math.abs(window.scrollY - targetY) > 8)) {
                 window.scrollTo({
