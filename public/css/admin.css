@@ -1114,6 +1114,41 @@
         padding: 0.65rem 0.75rem;
         font-size: 0.8rem;
     }
+
+    /* 모바일 버튼 텍스트 넘침 방지 및 편안한 터치 타겟 */
+    .btn-admin {
+        white-space: normal;
+        text-align: center;
+        line-height: 1.35;
+        min-height: 40px;
+    }
+    .btn-admin-sm {
+        min-height: 32px;
+        padding: 0.4rem 0.75rem;
+        white-space: nowrap;
+    }
+    
+    /* 뉴스 통계 카드 2x2 모바일 그리드 */
+    .news-stat-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    /* 테이블 가로 스크롤 매끄러운 터치 지원 */
+    .admin-table-container.admin-table-scroll {
+        -webkit-overflow-scrolling: touch;
+        overflow-x: auto;
+        border-radius: 0.5rem;
+    }
+    .admin-table {
+        min-width: 580px;
+    }
+    
+    /* 터미널 콘솔 모바일 폰트 최적화 */
+    .pm2-console {
+        font-size: 0.75rem !important;
+        padding: 0.75rem !important;
+        max-height: 320px !important;
+    }
 }
 
 /* ========================================================
