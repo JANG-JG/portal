@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261018_v6';
+    const UNAV_VERSION = '20261019_v1';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -100,6 +100,20 @@
     // 1. 공통 CSS 스타일시트 및 Pretendard 웹폰트 자동 주입 확인
     function ensureUnifiedNavCss() {
         const isLocal = window.location.hostname === 'localhost';
+        if (!document.getElementById('jg-ui-critical-css')) {
+            const style = document.createElement('style');
+            style.id = 'jg-ui-critical-css';
+            style.textContent = `
+                #unified-nav-root, .unav-header { display: block !important; min-height: 54px !important; background-color: #ffffff !important; position: sticky !important; top: 0 !important; width: 100% !important; z-index: 99999 !important; box-sizing: border-box !important; }
+                .unav-container { max-width: 1280px !important; margin: 0 auto !important; padding: 0.65rem 1.25rem !important; display: flex !important; align-items: center !important; justify-content: space-between !important; box-sizing: border-box !important; height: 54px !important; }
+                .unav-brand { display: inline-flex !important; align-items: center !important; gap: 0.5rem !important; text-decoration: none !important; font-size: 1.2rem !important; font-weight: 800 !important; color: #0f172a !important; line-height: 1 !important; white-space: nowrap !important; }
+                .unav-brand-icon-img { width: 24px !important; height: 24px !important; max-width: 24px !important; max-height: 24px !important; border-radius: 6px !important; display: inline-block !important; vertical-align: middle !important; object-fit: contain !important; flex-shrink: 0 !important; margin: 0 !important; padding: 0 !important; }
+                .unav-dropdown { position: absolute !important; top: 100% !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+                .unav-drawer:not(.open) { display: none !important; }
+                @media (max-width: 860px) { #unified-nav-root, .unav-header { min-height: 52px !important; } .unav-container { padding: 0.5rem 0.85rem !important; height: 52px !important; } .unav-menu { display: none !important; } }
+            `;
+            (document.head || document.documentElement).appendChild(style);
+        }
         if (!document.querySelector('link[href*="pretendard.css"]')) {
             const fontLink = document.createElement('link');
             fontLink.rel = 'stylesheet';

@@ -3,12 +3,18 @@
 /* ========================================================
    🌐 JG 통합 상단 내비게이션 바 (공통 표준 디자인 시스템)
    ======================================================== */
+#unified-nav-root {
+    display: block;
+    min-height: 54px;
+    background: #ffffff;
+}
 .unav-header {
     position: sticky;
     top: 0;
     left: 0;
     right: 0;
     width: 100%;
+    min-height: 54px;
     z-index: 99999;
     background-color: #ffffff;
     border-bottom: 1px solid #e2e8f0;
@@ -53,6 +59,8 @@
 .unav-brand-icon-img {
     width: 24px;
     height: 24px;
+    max-width: 24px;
+    max-height: 24px;
     border-radius: 6px;
     display: block;
     object-fit: contain;
