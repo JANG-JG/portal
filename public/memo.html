@@ -15,9 +15,9 @@
     <meta name="color-scheme" content="light">
 
     <!-- 스타일시트 -->
-    <link rel="stylesheet" href="/css/pretendard.css?v=20261017_v9">
-    <link rel="stylesheet" href="/css/style.css?v=20261017_v9">
-    <link rel="stylesheet" href="/css/unified-nav.css?v=20261017_v9">
+    <link rel="stylesheet" href="/css/pretendard.css?v=20261018_v1">
+    <link rel="stylesheet" href="/css/style.css?v=20261018_v1">
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261018_v1">
     <link rel="stylesheet" href="/css/quill.snow.css">
 
     <style>
@@ -635,6 +635,7 @@
                 <span class="memo-stat-chip">전체 <strong id="statTotalCount">0</strong></span>
                 <span class="memo-stat-chip">📌 고정 <strong id="statPinnedCount">0</strong></span>
                 <span class="memo-stat-chip">✅ 할 일 <strong id="statTodoCount">0</strong></span>
+                <span class="memo-stat-chip">📰 뉴스스크랩 <strong id="statScrapCount">0</strong></span>
             </div>
         </header>
 
@@ -662,7 +663,7 @@
                         <label for="catImportant" class="memo-chip-label">⭐ 중요</label>
 
                         <input type="radio" name="memoCategory" id="catScrap" value="scrap" class="memo-chip-input">
-                        <label for="catScrap" class="memo-chip-label">📰 스크랩</label>
+                        <label for="catScrap" class="memo-chip-label">📰 뉴스스크랩</label>
                     </div>
 
                     <!-- 포스트잇 색상 선택 -->
@@ -725,7 +726,7 @@
                     <span class="memo-tab-count" id="countImportant">0</span>
                 </button>
                 <button type="button" class="memo-tab-btn" onclick="filterMemos('scrap', this)">
-                    <span>📰 스크랩</span>
+                    <span>📰 뉴스스크랩</span>
                     <span class="memo-tab-count" id="countScrap">0</span>
                 </button>
             </div>
@@ -792,7 +793,7 @@
                         <label for="editCatImportant" class="memo-chip-label">⭐ 중요</label>
 
                         <input type="radio" name="editMemoCategory" id="editCatScrap" value="scrap" class="memo-chip-input">
-                        <label for="editCatScrap" class="memo-chip-label">📰 스크랩</label>
+                        <label for="editCatScrap" class="memo-chip-label">📰 뉴스스크랩</label>
                     </div>
 
                     <!-- 색상 -->
@@ -841,6 +842,7 @@
         // 전역 상태 관리
         let memoQuill = null;
         let editMemoQuill = null;
+        let allMemosFullList = [];
         let allMemosCache = [];
         let currentMemoCategory = 'all';
         let currentMemoSearch = '';
@@ -948,20 +950,15 @@
             }
         }
 
-        // 4. 메모 목록 로드
+        // 4. 메모 목록 로드 (전체 메모를 로드하여 통계 보존 & 클라이언트 고속 필터링)
         async function loadMemos() {
             try {
-                let url = `/api/memos?category=${encodeURIComponent(currentMemoCategory)}`;
-                if (currentMemoSearch) {
-                    url += `&search=${encodeURIComponent(currentMemoSearch)}`;
-                }
-
-                const res = await fetch(url);
+                const res = await fetch('/api/memos?category=all');
                 const data = await res.json();
                 if (data.success) {
-                    allMemosCache = data.memos || [];
-                    updateStats(allMemosCache);
-                    renderMemos(allMemosCache);
+                    allMemosFullList = data.memos || [];
+                    updateStats(allMemosFullList);
+                    applyFilterAndRender();
                 } else {
                     console.error('메모 목록 로드 실패:', data.message);
                 }
@@ -970,19 +967,26 @@
             }
         }
 
-        // 통계 뱃지 업데이트
+        // 통계 뱃지 업데이트 (전체 메모 기준 항구 집계)
         function updateStats(memos) {
-            const total = memos.length;
-            const pinned = memos.filter(m => m.is_pinned).length;
-            const idea = memos.filter(m => m.category === 'idea').length;
-            const todo = memos.filter(m => m.category === 'todo').length;
-            const general = memos.filter(m => m.category === 'memo').length;
-            const important = memos.filter(m => m.category === 'important').length;
-            const scrap = memos.filter(m => m.category === 'scrap').length;
+            const list = memos || allMemosFullList || [];
+            const total = list.length;
+            const pinned = list.filter(m => m.is_pinned).length;
+            const idea = list.filter(m => m.category === 'idea').length;
+            const todo = list.filter(m => m.category === 'todo').length;
+            const general = list.filter(m => m.category === 'memo').length;
+            const important = list.filter(m => m.category === 'important').length;
+            const scrap = list.filter(m => m.category === 'scrap' || m.category === 'news').length;
 
-            document.getElementById('statTotalCount').textContent = total;
-            document.getElementById('statPinnedCount').textContent = pinned;
-            document.getElementById('statTodoCount').textContent = todo;
+            const elStatTotal = document.getElementById('statTotalCount');
+            const elStatPinned = document.getElementById('statPinnedCount');
+            const elStatTodo = document.getElementById('statTodoCount');
+            const elStatScrap = document.getElementById('statScrapCount');
+
+            if (elStatTotal) elStatTotal.textContent = total;
+            if (elStatPinned) elStatPinned.textContent = pinned;
+            if (elStatTodo) elStatTodo.textContent = todo;
+            if (elStatScrap) elStatScrap.textContent = scrap;
 
             const elCountAll = document.getElementById('countAll');
             const elCountPinned = document.getElementById('countPinned');
@@ -999,6 +1003,34 @@
             if (elCountMemo) elCountMemo.textContent = general;
             if (elCountImportant) elCountImportant.textContent = important;
             if (elCountScrap) elCountScrap.textContent = scrap;
+        }
+
+        // 실시간 필터 & 렌더링
+        function applyFilterAndRender() {
+            let filtered = [...allMemosFullList];
+
+            // 카테고리 필터
+            if (currentMemoCategory !== 'all') {
+                if (currentMemoCategory === 'pinned') {
+                    filtered = filtered.filter(m => m.is_pinned);
+                } else if (currentMemoCategory === 'scrap') {
+                    filtered = filtered.filter(m => m.category === 'scrap' || m.category === 'news');
+                } else {
+                    filtered = filtered.filter(m => m.category === currentMemoCategory);
+                }
+            }
+
+            // 검색어 필터
+            if (currentMemoSearch) {
+                const term = currentMemoSearch.toLowerCase();
+                filtered = filtered.filter(m => 
+                    (m.title && m.title.toLowerCase().includes(term)) ||
+                    (m.content && m.content.toLowerCase().includes(term))
+                );
+            }
+
+            allMemosCache = filtered;
+            renderMemos(filtered);
         }
 
         // 5. 메모 카드 렌더링
@@ -1308,20 +1340,20 @@
             }
         }
 
-        // 13. 필터 & 검색
+        // 13. 필터 & 검색 (클라이언트 즉시 반응 & 카운트 불변 보장)
         function filterMemos(cat, btn) {
             currentMemoCategory = cat;
             document.querySelectorAll('.memo-tab-btn').forEach(b => b.classList.remove('active'));
             if (btn) btn.classList.add('active');
-            loadMemos();
+            applyFilterAndRender();
         }
 
         function handleMemoSearch(val) {
             currentMemoSearch = val.trim();
             clearTimeout(memoSearchTimeout);
             memoSearchTimeout = setTimeout(() => {
-                loadMemos();
-            }, 250);
+                applyFilterAndRender();
+            }, 80);
         }
 
         // 유틸 함수
@@ -1356,6 +1388,6 @@
     </script>
 
     <!-- 🌐 공통 상단 내비게이션 바 로더 -->
-    <script src="/js/unified-nav.js?v=20261017_v9"></script>
+    <script src="/js/unified-nav.js?v=20261018_v1"></script>
 </body>
 </html>

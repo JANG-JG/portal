@@ -3161,6 +3161,8 @@ app.get('/api/memos', authenticateToken, (req, res) => {
     if (category && category !== 'all') {
         if (category === 'pinned') {
             query += " AND is_pinned = 1";
+        } else if (category === 'scrap' || category === 'news') {
+            query += " AND (category = 'scrap' OR category = 'news')";
         } else {
             query += " AND category = ?";
             params.push(category);
@@ -3195,7 +3197,7 @@ app.post('/api/memos', authenticateToken, (req, res) => {
 
     const cleanTitle = (title || '').trim();
     const cleanContent = content.trim();
-    const validCategory = ['idea', 'todo', 'memo', 'important'].includes(category) ? category : 'idea';
+    const validCategory = ['idea', 'todo', 'memo', 'important', 'scrap', 'news'].includes(category) ? category : 'idea';
     const validColors = ['#fef3c7', '#e0f2fe', '#dcfce7', '#f3e8ff', '#fee2e2'];
     const validColor = validColors.includes(color) ? color : '#fef3c7';
 
@@ -3225,7 +3227,7 @@ app.put('/api/memos/:id', authenticateToken, (req, res) => {
 
     const cleanTitle = (title || '').trim();
     const cleanContent = content.trim();
-    const validCategory = ['idea', 'todo', 'memo', 'important'].includes(category) ? category : 'idea';
+    const validCategory = ['idea', 'todo', 'memo', 'important', 'scrap', 'news'].includes(category) ? category : 'idea';
     const validColors = ['#fef3c7', '#e0f2fe', '#dcfce7', '#f3e8ff', '#fee2e2'];
     const validColor = validColors.includes(color) ? color : '#fef3c7';
 
