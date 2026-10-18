@@ -837,8 +837,44 @@
     </div>
 
     <!-- 스크립트 로드 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     <script src="/js/quill.js"></script>
     <script>
+        // 🛡️ XSS 방어 살균 함수 (DOMPurify + Fallback Parser)
+        function sanitizeMemoHtml(dirty) {
+            if (!dirty) return '';
+            if (window.DOMPurify) {
+                return DOMPurify.sanitize(dirty, {
+                    ALLOWED_TAGS: ['p', 'div', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'span', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'blockquote', 'code', 'pre'],
+                    ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'data-list', 'style']
+                });
+            }
+            try {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(dirty, 'text/html');
+                const forbidden = ['script', 'object', 'embed', 'link', 'iframe', 'form', 'input', 'button', 'svg', 'math'];
+                forbidden.forEach(tag => {
+                    doc.querySelectorAll(tag).forEach(el => el.remove());
+                });
+                const allElements = doc.querySelectorAll('*');
+                allElements.forEach(el => {
+                    for (let i = el.attributes.length - 1; i >= 0; i--) {
+                        const attr = el.attributes[i];
+                        if (attr.name.toLowerCase().startsWith('on')) {
+                            el.removeAttribute(attr.name);
+                        } else if (attr.name.toLowerCase() === 'href' || attr.name.toLowerCase() === 'src') {
+                            if (/^\s*javascript:/i.test(attr.value) || /^\s*data:/i.test(attr.value)) {
+                                el.removeAttribute(attr.name);
+                            }
+                        }
+                    }
+                });
+                return doc.body.innerHTML;
+            } catch (e) {
+                return escapeHtml(dirty).replace(/\n/g, '<br>');
+            }
+        }
+
         // 전역 상태 관리
         let memoQuill = null;
         let editMemoQuill = null;
@@ -1066,6 +1102,9 @@
                 if (!hasHtmlTags) {
                     // 순수 텍스트 메모만 안전하게 escape 후 줄바꿈 변환
                     bodyHtml = escapeHtml(bodyHtml).replace(/\n/g, '<br>');
+                } else {
+                    // 🛡️ Stored XSS 완벽 방어 살균
+                    bodyHtml = sanitizeMemoHtml(bodyHtml);
                 }
 
                 // 마크다운 체크리스트 호환 (- [ ] 할일 / - [x] 완료)

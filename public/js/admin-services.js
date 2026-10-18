@@ -240,7 +240,11 @@ async function loadNewsData() {
 
         const tbody = document.getElementById('newsArticlesTableBody');
         if (tbody) {
-            tbody.innerHTML = (data.recentArticles || []).map(a => `
+            tbody.innerHTML = (data.recentArticles || []).map(a => {
+                const rawLink = (a.link || '').trim();
+                const isSafeUrl = /^https?:\/\//i.test(rawLink);
+                const safeLink = isSafeUrl ? encodeURI(rawLink) : '#';
+                return `
                 <tr>
                     <td><span style="background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; font-size:0.75rem; font-weight:700;">${escapeHtml(a.category_name)}</span></td>
                     <td style="font-weight:600; color:#475569;">${escapeHtml(a.media_name)}</td>
@@ -248,9 +252,10 @@ async function loadNewsData() {
                         ${escapeHtml(a.title)}
                     </td>
                     <td style="font-size:0.8rem; color:#64748b;">${(a.published_at || '').substring(0, 16)}</td>
-                    <td><a href="${a.link}" target="_blank" rel="noopener noreferrer" class="btn-admin btn-admin-outline btn-admin-sm">원문 ↗</a></td>
+                    <td><a href="${safeLink}" ${isSafeUrl ? 'target="_blank" rel="noopener noreferrer"' : ''} class="btn-admin btn-admin-outline btn-admin-sm">원문 ↗</a></td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
         }
 
         if (data.telegramBriefingTimes) {

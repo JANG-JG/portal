@@ -72,6 +72,15 @@ app.use((req, res, next) => {
     next();
 });
 
+// 🛡️ [보안 강화] 필수 보안 헤더 및 CSP 미들웨어
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Content-Security-Policy', "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval';");
+    next();
+});
+
 // 기본 미들웨어 설정
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -186,18 +195,34 @@ const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
     }
 });
 
+// 🛡️ [보안 강화] 로그아웃된 JWT 무효화(Blacklist) 인메모리 관리
+const revokedTokens = new Map(); // token -> expiresAt (timestamp)
+
+// 30분마다 만료된 블랙리스트 토큰 정리
+setInterval(() => {
+    const now = Date.now();
+    for (const [t, exp] of revokedTokens.entries()) {
+        if (exp <= now) {
+            revokedTokens.delete(t);
+        }
+    }
+}, 30 * 60 * 1000);
+
 // 토큰 인증 미들웨어
 function authenticateToken(req, res, next) {
-    // 🌟 PWABuilder 등 PWA 검사 봇의 매니페스트/서비스워커 정적 분석 허용 (API는 제외)
-    const userAgent = req.headers['user-agent'] || '';
-    if (userAgent.includes('PWABuilder') && (req.path === '/' || req.path === '/index.html')) {
-        return res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    }
-
     const token = req.cookies.portal_token;
     if (!token) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(401).json({ success: false, message: '인증이 필요합니다.' });
+        }
+        return res.redirect('/login');
+    }
+
+    // 🛡️ 로그아웃된 무효화 토큰(블랙리스트) 검증
+    if (revokedTokens.has(token)) {
+        res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
+        if (req.path && req.path.startsWith('/api/')) {
+            return res.status(401).json({ success: false, message: '로그아웃된 토큰입니다. 다시 로그인해 주세요.' });
         }
         return res.redirect('/login');
     }
@@ -220,13 +245,27 @@ function authenticateToken(req, res, next) {
     next();
 }
 
+// 🛡️ [보안 강화] 관리자 권한(RBAC) 검증 미들웨어
+function requireAdmin(req, res, next) {
+    if (!req.user || req.user.username !== 'admin') {
+        if (req.path && req.path.startsWith('/api/')) {
+            return res.status(403).json({ success: false, message: '관리자 전용 기능입니다. 접근 권한이 없습니다.' });
+        }
+        return res.status(403).send('접근 권한이 없습니다. (403 Forbidden)');
+    }
+    next();
+}
+
+// 🛡️ /api/admin 하위 모든 라우트에 관리자 인증 강제 적용
+app.use('/api/admin', authenticateToken, requireAdmin);
+
 // 1. 메인 포털 홈 화면
 app.get(['/', '/index.html'], authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 1-1. 통합 관리자 센터 화면
-app.get(['/admin', '/admin.html'], authenticateToken, (req, res) => {
+// 1-1. 통합 관리자 센터 화면 (관리자 전용 접근 제어)
+app.get(['/admin', '/admin.html'], authenticateToken, requireAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
@@ -244,16 +283,21 @@ app.get(['/calendar', '/calendar.html'], authenticateToken, (req, res) => {
 app.get(['/login', '/login.html'], (req, res) => {
     const token = req.cookies.portal_token;
     if (token) {
-        return jwt.verify(token, JWT_SECRET, (err) => {
-            if (!err) return res.redirect('/');
-            res.sendFile(path.join(__dirname, 'public', 'login.html'));
-        });
+        if (!revokedTokens.has(token)) {
+            return jwt.verify(token, JWT_SECRET, (err) => {
+                if (!err) return res.redirect('/');
+                res.sendFile(path.join(__dirname, 'public', 'login.html'));
+            });
+        }
     }
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// 클라이언트 실제 접속 IP 추출 유틸리티 (Nginx 프록시 대응)
+// 클라이언트 실제 접속 IP 추출 유틸리티 (Cloudflare cf-connecting-ip 최우선)
 function getClientIp(req) {
+    if (req.headers['cf-connecting-ip']) {
+        return req.headers['cf-connecting-ip'].toString().trim();
+    }
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
         return forwarded.split(',')[0].trim();
@@ -387,8 +431,19 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// 4. 로그아웃 API (확실한 3중 파기 패치)
+// 4. 로그아웃 API (확실한 3중 파기 및 서버 블랙리스트 등록 패치)
 app.get('/logout', (req, res) => {
+    const token = req.cookies.portal_token;
+    if (token) {
+        try {
+            const decoded = jwt.decode(token);
+            const expTime = (decoded && decoded.exp) ? decoded.exp * 1000 : Date.now() + 7 * 24 * 60 * 60 * 1000;
+            revokedTokens.set(token, expTime);
+        } catch (e) {
+            revokedTokens.set(token, Date.now() + 7 * 24 * 60 * 60 * 1000);
+        }
+    }
+
     res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
     res.clearCookie('portal_token', { path: '/' });
     res.clearCookie('portal_token', { path: '/', domain: 'j-jg.cc' });
