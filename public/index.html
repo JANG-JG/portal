@@ -2573,6 +2573,9 @@
         }
 
         async function registerWebPushSubscription() {
+            if (typeof window.registerWebPushSubscription === 'function' && window.registerWebPushSubscription !== registerWebPushSubscription) {
+                return window.registerWebPushSubscription();
+            }
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
             if (Notification.permission !== 'granted') return;
 
@@ -2592,12 +2595,30 @@
                     });
                 }
 
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                                     window.navigator.standalone === true ||
+                                     document.referrer.includes('android-app://');
+                const clientType = isStandalone ? 'pwa' : 'browser';
+                const ua = navigator.userAgent.toLowerCase();
+                const deviceType = (/ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk/i.test(ua)) ? 'tablet' : (/mobi|iphone|ipod|android/i.test(ua) ? 'mobile' : 'desktop');
+                let deviceId = '';
+                try {
+                    deviceId = localStorage.getItem('jg_device_id') || ('dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9));
+                    localStorage.setItem('jg_device_id', deviceId);
+                } catch(e) { deviceId = 'unknown'; }
+
                 await fetch('/api/notification/subscribe', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ subscription: sub })
+                    body: JSON.stringify({
+                        subscription: sub,
+                        clientType,
+                        deviceType,
+                        deviceId,
+                        userAgent: navigator.userAgent
+                    })
                 });
-                console.log('✅ 포털 웹 푸시 구독 토큰 등록 완료');
+                console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${deviceType} / ${clientType.toUpperCase()})`);
             } catch (e) {
                 console.error('[푸시 구독 등록 실패]:', e);
             }

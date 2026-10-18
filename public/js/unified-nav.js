@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261019_v1';
+    const UNAV_VERSION = '20261019_v2';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -673,6 +673,40 @@
         }
     };
 
+    // 📱 [알림 중복 방지] 디바이스 및 실행 환경 메타데이터 수집 헬퍼
+    function getDevicePushMetadata() {
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                             window.navigator.standalone === true ||
+                             document.referrer.includes('android-app://');
+        const clientType = isStandalone ? 'pwa' : 'browser';
+
+        const ua = navigator.userAgent.toLowerCase();
+        let deviceType = 'desktop';
+        if (/ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk/i.test(ua)) {
+            deviceType = 'tablet';
+        } else if (/mobi|iphone|ipod|android/i.test(ua)) {
+            deviceType = 'mobile';
+        }
+
+        let deviceId = '';
+        try {
+            deviceId = localStorage.getItem('jg_device_id');
+            if (!deviceId) {
+                deviceId = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+                localStorage.setItem('jg_device_id', deviceId);
+            }
+        } catch (e) {
+            deviceId = 'unknown';
+        }
+
+        return {
+            clientType,
+            deviceType,
+            deviceId,
+            userAgent: navigator.userAgent
+        };
+    }
+
     // VAPID 키 및 푸시 매니저 구독 등록 (API)
     window.registerWebPushSubscription = async function() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -719,13 +753,20 @@
                 });
             }
 
+            const meta = getDevicePushMetadata();
             await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subscription: sub })
+                body: JSON.stringify({
+                    subscription: sub,
+                    clientType: meta.clientType,
+                    deviceType: meta.deviceType,
+                    deviceId: meta.deviceId,
+                    userAgent: meta.userAgent
+                })
             });
-            console.log('✅ 포털 웹 푸시 구독 토큰 등록 완료');
+            console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
         } catch (e) {
             console.error('[푸시 구독 등록 실패]:', e);
         }
