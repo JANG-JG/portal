@@ -10,7 +10,7 @@ const fs = require('fs');
 const { exec, execFile } = require('child_process');
 const net = require('net');
 const webPush = require('web-push');
-const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
+const { initUnifiedNotificationScheduler, sendServerTelegram } = require('./services/unifiedNotificationScheduler');
 const compression = require('compression');
 
 const app = express();
@@ -2167,10 +2167,10 @@ function cleanPm2Logs(raw, procName) {
         if (!t) return false;
         if (t.startsWith('[TAILING]')) return false;
         if (t.includes('/.pm2/logs/') && t.endsWith('lines:')) return false;
-        if (t.startsWith('--- [') && t.endsWith('] ---')) return false;
         if (t.includes('connect.session() MemoryStore is not')) return false;
         if (t.includes('designed for a production environment, as it will leak')) return false;
         if (t.includes('memory, and will not scale past a single process.')) return false;
+        if (t.startsWith('◇ injected env')) return false; // dotenv 주입 팁 메시지 숨김
         return true;
     });
 
@@ -2192,9 +2192,9 @@ app.get('/api/admin/pm2/logs', authenticateToken, (req, res) => {
     const target = (proc && validNameRegex.test(proc)) ? proc : '';
     const cmd = target ? `pm2 logs ${target} --lines ${lines} --raw --nostream` : `pm2 logs --lines ${lines} --raw --nostream`;
 
-    exec(cmd, { timeout: 6000 }, (err, stdout, stderr) => {
+    exec(cmd, { timeout: 10000 }, (err, stdout, stderr) => {
         if (err && !stdout && !stderr) {
-            return res.json({ success: false, logs: '로그를 불러오는 중 오류가 발생했거나 PM2가 준비되지 않았습니다.' });
+            return res.json({ success: false, logs: '로그를 불러오는 중 오류가 발생했거나 PM2가 준비되지 않았습니다. (' + err.message + ')' });
         }
         const outText = (stdout || '').trim();
         const errText = (stderr || '').trim();
@@ -2222,6 +2222,22 @@ app.post('/api/admin/pm2/flush', authenticateToken, (req, res) => {
         if (err) return res.status(500).json({ success: false, message: '로그 비우기 실패: ' + err.message });
         res.json({ success: true, message: target ? `[${target}] 로그를 깨끗이 비웠습니다.` : '전체 PM2 로그를 깨끗이 비웠습니다.' });
     });
+});
+
+// 2-1-2. 서버 오류 텔레그램 연동 테스트 발송 API
+app.post('/api/admin/system/test-telegram', authenticateToken, async (req, res) => {
+    try {
+        const nowKst = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+        const testMsg = `🔔 *[JG Server 텔레그램 경보 연동 테스트]*\n\n• *상태*: IPv4 통신 정상 및 메시지 수신 확인 완료 ✅\n• *발송 시각*: ${nowKst}\n• *발송 모듈*: JG Portal Monitor Daemon\n\n이 메시지가 도착했다면 PM2 프로세스 다운(장애 발생) 및 디스크 용량 경보(90% 초과) 시 관리자 텔레그램으로 즉시 알림이 발송됩니다.`;
+        const result = await sendServerTelegram(testMsg);
+        if (result.success) {
+            res.json({ success: true, message: '서버 알림 텔레그램 봇으로 테스트 메시지가 성공적으로 발송되었습니다.' });
+        } else {
+            res.status(500).json({ success: false, message: '텔레그램 발송 실패: ' + (result.error || '알 수 없는 오류') });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false, message: '발송 요청 중 예외 발생: ' + err.message });
+    }
 });
 
 

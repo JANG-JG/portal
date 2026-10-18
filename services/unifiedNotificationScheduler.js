@@ -1,9 +1,17 @@
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 const cron = require('node-cron');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
 const { exec } = require('child_process');
+
+// 🌐 Node.js 18+ IPv6 바인딩 지연/타임아웃(ETIMEDOUT / ENETUNREACH) 방지 전용 IPv4 HTTPS 에이전트
+const ipv4HttpsAgent = new https.Agent({
+    family: 4,
+    keepAlive: true,
+    timeout: 8000
+});
 
 // ==============================================================================
 // 🌟 JG 통합 포털 단일 알림 스케줄러 (Unified Notification Scheduler)
@@ -22,20 +30,36 @@ let lastBpSentDate = '';
 const pm2DownAlertState = {};
 let lastDiskAlertDate = '';
 
-// 서버 전용 텔레그램 알림 발송 헬퍼 함수
+// 서버 전용 텔레그램 알림 발송 헬퍼 함수 (IPv4 강제 적용 및 반환값 제공)
 async function sendServerTelegram(text) {
     const token = process.env.SERVER_TELEGRAM_BOT_TOKEN;
     const chatId = process.env.SERVER_TELEGRAM_CHAT_ID;
-    if (!token || !chatId) return;
+    if (!token || !chatId) {
+        console.warn('[UnifiedScheduler] 텔레그램 설정 누락: SERVER_TELEGRAM_BOT_TOKEN 또는 SERVER_TELEGRAM_CHAT_ID 미설정');
+        return { success: false, error: 'SERVER_TELEGRAM_BOT_TOKEN 또는 SERVER_TELEGRAM_CHAT_ID 환경변수가 설정되지 않았습니다.' };
+    }
 
     try {
-        await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
+        const res = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
             chat_id: chatId,
             text,
             parse_mode: 'Markdown'
-        }, { timeout: 5000 });
+        }, {
+            httpsAgent: ipv4HttpsAgent,
+            timeout: 8000
+        });
+
+        if (res.data && res.data.ok) {
+            console.log('✅ [UnifiedScheduler] 텔레그램 서버 경보 발송 성공:', res.data.result?.message_id);
+            return { success: true, messageId: res.data.result?.message_id };
+        } else {
+            console.error('[UnifiedScheduler] 텔레그램 응답 오류:', res.data);
+            return { success: false, error: res.data?.description || '응답 오류' };
+        }
     } catch (tgErr) {
-        console.error('[UnifiedScheduler] 텔레그램 서버 경보 발송 실패:', tgErr.response?.data?.description || tgErr.message);
+        const errMsg = tgErr.response?.data?.description || tgErr.message;
+        console.error('[UnifiedScheduler] 텔레그램 서버 경보 발송 실패:', errMsg);
+        return { success: false, error: errMsg };
     }
 }
 
@@ -68,7 +92,9 @@ async function fetchGoogleHolidays() {
                 timeMin,
                 timeMax,
                 singleEvents: true
-            }
+            },
+            httpsAgent: ipv4HttpsAgent,
+            timeout: 8000
         });
 
         if (response.data && response.data.items) {
@@ -554,5 +580,5 @@ function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBr
     });
 }
 
-module.exports = { initUnifiedNotificationScheduler };
+module.exports = { initUnifiedNotificationScheduler, sendServerTelegram };
 

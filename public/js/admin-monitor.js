@@ -770,8 +770,20 @@ function filterPm2ConsoleLogs() {
     const lines = rawPm2Logs.split('\n');
     const filtered = lines.filter(line => {
         const lower = line.toLowerCase();
-        if (currentPm2FilterLevel === 'error' && !lower.includes('error') && !lower.includes('err') && !lower.includes('failed') && !lower.includes('fail') && !lower.includes('exception')) return false;
-        if (currentPm2FilterLevel === 'warn' && !lower.includes('warn') && !lower.includes('warning') && !lower.includes('caution')) return false;
+        if (currentPm2FilterLevel === 'error') {
+            const isError = lower.includes('error') || lower.includes('err') || 
+                            lower.includes('failed') || lower.includes('fail') || 
+                            lower.includes('exception') || lower.includes('alert') || 
+                            line.includes('🚨') || line.includes('❌') || 
+                            line.includes('오류') || line.includes('경보') || line.includes('실패');
+            if (!isError) return false;
+        }
+        if (currentPm2FilterLevel === 'warn') {
+            const isWarn = lower.includes('warn') || lower.includes('warning') || 
+                           lower.includes('caution') || line.includes('⚠️') || 
+                           line.includes('주의') || line.includes('경고');
+            if (!isWarn) return false;
+        }
         if (keyword && !lower.includes(keyword)) return false;
         return true;
     });
@@ -830,6 +842,26 @@ async function clearPm2Logs() {
         }
     } catch (err) {
         showToast('로그 비우기 실패: ' + err.message, true);
+    }
+}
+
+// 8-1. 서버 장애 텔레그램 알림 연동 테스트 발송
+async function testTelegramAlert() {
+    if (!confirm('서버 장애 경보 텔레그램 봇으로 테스트 메시지를 발송하시겠습니까?')) return;
+    try {
+        showToast('텔레그램 테스트 메시지 전송 중...');
+        const res = await fetch('/api/admin/system/test-telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('✅ ' + data.message);
+        } else {
+            showToast('❌ ' + data.message, true);
+        }
+    } catch (err) {
+        showToast('텔레그램 테스트 실패: ' + err.message, true);
     }
 }
 
