@@ -112,25 +112,31 @@
     color: #2563eb;
 }
 
-/* 1025px ~ 1240px 중형 데스크톱 화면 최적화 */
-@media (max-width: 1240px) and (min-width: 1025px) {
+/* 861px ~ 1240px 중소형 데스크톱 화면 가로 넘침 방지 콤팩트 최적화 */
+@media (max-width: 1240px) and (min-width: 861px) {
     .unav-container {
-        padding: 0.5rem 0.65rem !important;
+        padding: 0.4rem 0.5rem !important;
     }
     .unav-brand {
-        font-size: 1.1rem !important;
-        gap: 0.35rem !important;
+        font-size: 1.05rem !important;
+        gap: 0.25rem !important;
     }
     .unav-menu {
-        gap: 0.1rem !important;
+        gap: 0.08rem !important;
     }
     .unav-link {
-        padding: 0.35rem 0.42rem !important;
-        font-size: 0.8rem !important;
-        gap: 0.2rem !important;
+        padding: 0.3rem 0.38rem !important;
+        font-size: 0.78rem !important;
+        gap: 0.18rem !important;
     }
     .unav-item-icon {
-        font-size: 0.88rem !important;
+        font-size: 0.85rem !important;
+    }
+    .unav-arrow {
+        display: none !important; /* 가로 공간 절약을 위해 작은 데스크톱에서 화살표 숨김(호버 드롭다운은 정상 작동) */
+    }
+    .unav-actions {
+        gap: 0.25rem !important;
     }
 }
 
@@ -411,8 +417,8 @@
     background-color: #fee2e2;
 }
 
-/* 1024px 이하 모바일/태블릿 햄버거 메뉴 반응형 전환 */
-@media (max-width: 1024px) {
+/* 860px 이하 스마트폰 모바일 햄버거 메뉴 반응형 전환 */
+@media (max-width: 860px) {
     .unav-container {
         padding: 0.5rem 0.85rem !important;
         height: 52px !important;

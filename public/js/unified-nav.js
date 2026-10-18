@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261017_v3';
+    const UNAV_VERSION = '20261018_v4';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
