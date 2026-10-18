@@ -852,7 +852,8 @@
             'todo': { label: '✅ 할 일', bg: '#e0f2fe', color: '#0369a1' },
             'memo': { label: '📝 일반', bg: '#f1f5f9', color: '#475569' },
             'important': { label: '⭐ 중요', bg: '#fee2e2', color: '#b91c1c' },
-            'scrap': { label: '📰 뉴스스크랩', bg: '#fef9c3', color: '#854d0e' }
+            'scrap': { label: '📰 뉴스스크랩', bg: '#fef9c3', color: '#854d0e' },
+            'news': { label: '📰 뉴스스크랩', bg: '#fef9c3', color: '#854d0e' }
         };
 
         // Quill 경량 툴바 구성 (모바일 & 데스크톱 최적화)
@@ -1043,6 +1044,11 @@
                     if (bodyHtml.includes('<li data-list=') && !bodyHtml.includes('<ol>') && !bodyHtml.includes('<ul>')) {
                         bodyHtml = `<ol>${bodyHtml}</ol>`;
                     }
+                }
+
+                // 과거 스크랩 메모 호환: "원문 링크: https://..." 텍스트를 "원문 이동 ↗" 하이퍼링크로 자동 치환
+                if (bodyHtml.includes('원문 링크:')) {
+                    bodyHtml = bodyHtml.replace(/원문 링크:\s*(https?:\/\/[^\s<"']+)/gi, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#2563eb; font-weight:700; text-decoration:underline;">원문 이동 ↗</a>');
                 }
 
                 return `

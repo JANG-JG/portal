@@ -3294,11 +3294,16 @@ app.post('/api/memos/scrap', authenticateToken, (req, res) => {
         return res.status(400).json({ success: false, message: '기사 제목과 링크가 필요합니다.' });
     }
 
-    const scrapTitle = `[스크랩] ${title.trim()}`;
-    const scrapContent = `📰 출처: ${mediaName || '언론사'} | 원문 링크: ${link}\n\n💡 핵심 요약:\n${summary ? summary.trim() : '요약 정보 없음'}`;
+    const cleanTitle = title.trim();
+    const cleanMedia = (mediaName || '언론사').trim();
+    const cleanLink = link.trim();
+    const cleanSummary = (summary || '요약 정보 없음').trim().replace(/\n/g, '<br>');
+
+    const scrapTitle = `[스크랩] ${cleanTitle}`;
+    const scrapContent = `<p>📰 <strong>출처:</strong> ${cleanMedia} | <a href="${cleanLink}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-weight: 700; text-decoration: underline;">원문 이동 ↗</a></p><p><br></p><p>💡 <strong>핵심 요약:</strong></p><p>${cleanSummary}</p>`;
     const query = `
         INSERT INTO user_memos (user_id, title, content, category, color, is_pinned)
-        VALUES (?, ?, ?, 'news', '#e0f2fe', 0)
+        VALUES (?, ?, ?, 'scrap', '#fef9c3', 0)
     `;
 
     db.run(query, [userId, scrapTitle, scrapContent], function(err) {
