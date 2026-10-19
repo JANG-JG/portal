@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261019_v3';
+    const UNAV_VERSION = '20261019_v4';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -865,6 +865,9 @@
                 'breaking': '🚨',
                 'weather': '🌤️',
                 'asset': '💰',
+                'economy': '💰',
+                'finance': '💰',
+                'stock': '💰',
                 'blood_pressure': '🩸',
                 'medication': '💊',
                 'hospital': '🏥',
@@ -873,7 +876,18 @@
             };
 
             listEl.innerHTML = notifHistoryListItems.map(item => {
-                const icon = typeIconMap[item.type] || item.icon || '🔔';
+                let icon = typeIconMap[item.type];
+                if (!icon) {
+                    if (item.icon && (item.icon.startsWith('http://') || item.icon.startsWith('https://') || item.icon.startsWith('/'))) {
+                        if (item.icon.includes('monochrome') || item.icon.includes('icon-192') || item.icon.includes('icon-512')) {
+                            icon = '🔔';
+                        } else {
+                            icon = `<img src="${item.icon}" alt="" style="width:22px; height:22px; object-fit:contain; border-radius:4px; vertical-align:middle;">`;
+                        }
+                    } else {
+                        icon = item.icon || '🔔';
+                    }
+                }
                 const timeStr = item.created_at ? item.created_at.replace('T', ' ').slice(5, 16) : '';
                 const linkUrl = item.url || '#';
                 const isUnread = item.is_read === 0;
