@@ -2831,13 +2831,28 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     console.warn('⚠️ [VAPID] VAPID keys not configured in process.env!');
 }
 
-// 알림 수신 내역 DB 보관 헬퍼 함수
-function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon = 'https://j-jg.cc/icon-192.png', url = 'https://j-jg.cc/' }, callback) {
+// 알림 수신 내역 DB 보관 헬퍼 함수 (모달 UI에서 깔끔하게 보이도록 URL 대신 이모지 아이콘 저장)
+function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon, url = 'https://j-jg.cc/' }, callback) {
+    const typeIconMap = {
+        'breaking': '🚨',
+        'weather': '🌤️',
+        'asset': '💰',
+        'economy': '💰',
+        'finance': '💰',
+        'stock': '💰',
+        'blood_pressure': '🩸',
+        'medication': '💊',
+        'hospital': '🏥',
+        'system': '🖥️',
+        'test': '🔔'
+    };
+    const finalIcon = (!icon || icon.startsWith('http') || icon.startsWith('/')) ? (typeIconMap[type] || '🔔') : icon;
+
     const query = `
         INSERT INTO notification_history (user_id, type, title, body, icon, url, created_at)
         VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
     `;
-    db.run(query, [userId, type, title, body, icon, url], function(err) {
+    db.run(query, [userId, type, title, body, finalIcon, url], function(err) {
         if (err) console.error('[알림 내역 DB 저장 실패]:', err.message);
         const insertedId = this ? this.lastID : null;
         if (callback && typeof callback === 'function') {

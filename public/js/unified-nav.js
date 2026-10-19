@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261019_v4';
+    const UNAV_VERSION = '20261019_v5';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -879,14 +879,14 @@
                 let icon = typeIconMap[item.type];
                 if (!icon) {
                     if (item.icon && (item.icon.startsWith('http://') || item.icon.startsWith('https://') || item.icon.startsWith('/'))) {
-                        if (item.icon.includes('monochrome') || item.icon.includes('icon-192') || item.icon.includes('icon-512')) {
-                            icon = '🔔';
-                        } else {
-                            icon = `<img src="${item.icon}" alt="" style="width:22px; height:22px; object-fit:contain; border-radius:4px; vertical-align:middle;">`;
-                        }
+                        icon = '🔔';
                     } else {
                         icon = item.icon || '🔔';
                     }
+                }
+                // URL 문자열이 포함되어 있다면 무조건 안전한 이모지로 치환 (주소 텍스트 노출 원천 봉쇄)
+                if (typeof icon === 'string' && (icon.includes('http://') || icon.includes('https://') || icon.includes('.png') || icon.includes('.svg'))) {
+                    icon = typeIconMap[item.type] || '🔔';
                 }
                 const timeStr = item.created_at ? item.created_at.replace('T', ' ').slice(5, 16) : '';
                 const linkUrl = item.url || '#';
