@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261019_v2';
+    const UNAV_VERSION = '20261019_v3';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -267,8 +267,17 @@
             window.__unavBadgeTimer = setInterval(fetchUnreadNotificationBadge, 60000);
         }
 
-        // URL에 ?notif_id=...가 포함되어 있으면 즉시 읽음 처리 및 쿼리 파라미터 정리
+        // URL에 ?notif_id=...가 포함되어 있으면 즉시 읽음 처리 및 쿼리 파라미터 주소창 노출 방지 정리
         handleNotifIdFromUrl();
+
+        // 🌟 [자동 동기화] 알림 권한이 허용된 환경(모바일 PWA / 브라우저)이면 백그라운드에서 최신 디바이스 메타데이터 자동 동기화
+        if ('Notification' in window && Notification.permission === 'granted') {
+            setTimeout(function() {
+                if (typeof window.registerWebPushSubscription === 'function') {
+                    window.registerWebPushSubscription();
+                }
+            }, 1000);
+        }
 
         if (!btn || !drawer) return;
 
@@ -315,12 +324,17 @@
             }
         });
 
-        // URL 쿼리 또는 해시(?open=notification, #notification)로 유입 시 모달 자동 열기
+        // URL 쿼리 또는 해시(?open=notification, #notification)로 유입 시 모달 자동 열기 및 주소창 즉시 정리
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('open') === 'notification' || window.location.hash === '#notification') {
             setTimeout(function() {
                 window.openNotificationModal();
-            }, 300);
+            }, 200);
+            urlParams.delete('open');
+            const cleanQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+            const cleanHash = window.location.hash === '#notification' ? '' : window.location.hash;
+            const cleanUrl = window.location.pathname + cleanQuery + cleanHash;
+            window.history.replaceState({}, document.title, cleanUrl);
         }
     }
 
@@ -1122,17 +1136,18 @@
         const urlParams = new URLSearchParams(window.location.search);
         const notifId = urlParams.get('notif_id');
         if (notifId) {
-            const apiUrl = `${NOTIF_BASE_URL}/api/notification/history/${notifId}/read`;
+            // 🌟 주소창에 알림 ID 파라미터가 노출되지 않도록 동기적으로 즉시 제거
+            urlParams.delete('notif_id');
+            const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+            const newUrl = window.location.pathname + newQuery + window.location.hash;
+            window.history.replaceState({}, document.title, newUrl);
 
+            const apiUrl = `${NOTIF_BASE_URL}/api/notification/history/${notifId}/read`;
             fetch(apiUrl, {
                 method: 'POST',
                 credentials: 'include',
                 keepalive: true
             }).then(() => {
-                urlParams.delete('notif_id');
-                const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
-                const newUrl = window.location.pathname + newQuery + window.location.hash;
-                window.history.replaceState({}, document.title, newUrl);
                 fetchUnreadNotificationBadge();
             }).catch(() => {});
         }

@@ -2863,12 +2863,16 @@
             fetchNotificationHistory();
             setTimeout(registerWebPushSubscription, 1500);
 
-            // 🔔 외부 링크(?open=notification 또는 #notification)로부터 유입 시 알림 모달 즉시 오픈
+            // 🔔 외부 링크(?open=notification 또는 #notification)로부터 유입 시 알림 모달 즉시 오픈 및 주소창 정리
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('open') === 'notification' || window.location.hash === '#notification') {
                 setTimeout(() => {
                     openNotificationModal();
-                }, 300);
+                }, 200);
+                urlParams.delete('open');
+                const cleanQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
+                const cleanHash = window.location.hash === '#notification' ? '' : window.location.hash;
+                window.history.replaceState({}, document.title, window.location.pathname + cleanQuery + cleanHash);
             }
         });
     </script>
