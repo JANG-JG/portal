@@ -3,3 +3,5 @@ node_modules/
 *.log
 *.db
 *.sqlite
+public/downloads/*.zip
+public/downloads/unzipped/

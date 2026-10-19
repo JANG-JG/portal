@@ -89,6 +89,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
     index: false,
     etag: true,
     lastModified: true,
+    dotfiles: 'allow',
     setHeaders: (res, filePath) => {
         // 모든 정적 에셋(CSS, JS, 폰트, HTML 컴포넌트)에 Cross-Origin 허용
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -112,6 +113,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
         }
     }
 }));
+
+// 📱 안드로이드 TWA Digital Asset Links 인증 라우트
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.sendFile(path.join(__dirname, 'public/.well-known/assetlinks.json'));
+});
+
 app.use((req, res, next) => {
     if (!req.url.startsWith('/css') && !req.url.startsWith('/favicon') && !req.url.startsWith('/js') && !req.url.startsWith('/components')) {
         console.log(`[PORTAL] ${req.method} ${req.url}`);
