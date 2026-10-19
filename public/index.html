@@ -2605,28 +2605,17 @@
                     });
                 }
 
-                const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                const isApk = document.referrer.includes('cc.jjg.portal') ||
+                              document.referrer.includes('android-app://cc.jjg.portal') ||
+                              navigator.userAgent.includes('cc.jjg.portal');
+                const isStandalone = isApk ||
+                                     window.matchMedia('(display-mode: standalone)').matches ||
                                      window.matchMedia('(display-mode: fullscreen)').matches ||
                                      window.matchMedia('(display-mode: minimal-ui)').matches ||
                                      window.navigator.standalone === true;
-                const clientType = isStandalone ? 'pwa' : 'browser';
+                const clientType = isApk ? 'apk' : (isStandalone ? 'pwa' : 'browser');
                 const ua = navigator.userAgent.toLowerCase();
                 const deviceType = (/ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk/i.test(ua)) ? 'tablet' : (/mobi|iphone|ipod|android/i.test(ua) ? 'mobile' : 'desktop');
-
-                if (deviceType === 'mobile' && clientType === 'browser') {
-                    if (sub) {
-                        try {
-                            const oldEp = sub.endpoint;
-                            await sub.unsubscribe();
-                            await fetch('/api/notification/unsubscribe', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ endpoint: oldEp })
-                            }).catch(() => {});
-                        } catch(e) {}
-                    }
-                    return;
-                }
 
                 let deviceId = '';
                 try {

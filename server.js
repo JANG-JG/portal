@@ -3005,8 +3005,8 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                     sendRows.push(tokens.mobile[0]);
                 } else if (tokens.mobile.length > 1) {
                     tokens.mobile.sort((a, b) => {
-                        const aPwa = a.client_type === 'pwa' ? 1 : 0;
-                        const bPwa = b.client_type === 'pwa' ? 1 : 0;
+                        const aPwa = (a.client_type === 'pwa' || a.client_type === 'apk') ? 1 : 0;
+                        const bPwa = (b.client_type === 'pwa' || b.client_type === 'apk') ? 1 : 0;
                         if (aPwa !== bPwa) return bPwa - aPwa;
                         const aTime = new Date(a.updated_at || 0).getTime();
                         const bTime = new Date(b.updated_at || 0).getTime();
@@ -3146,8 +3146,8 @@ app.post('/api/notification/subscribe', authenticateToken, (req, res) => {
         }
 
         // 🌟 [중복 방지 스마트 정리]
-        // 1) 모바일 PWA 환경으로 등록된 경우: 동일 사용자의 모든 이전 모바일 토큰(브라우저 및 구형 PWA) 완전 자동 정리
-        if (deviceType === 'mobile' && clientType === 'pwa') {
+        // 1) 모바일 PWA 또는 APK 전용 앱으로 등록된 경우: 동일 사용자의 모든 이전 모바일 토큰(브라우저 및 구형 토큰) 완전 자동 정리
+        if (deviceType === 'mobile' && (clientType === 'pwa' || clientType === 'apk')) {
             db.run(
                 `DELETE FROM push_subscriptions 
                  WHERE user_id = ? AND endpoint != ? AND (
@@ -3155,27 +3155,28 @@ app.post('/api/notification/subscribe', authenticateToken, (req, res) => {
                      OR user_agent LIKE '%Mobile%' 
                      OR user_agent LIKE '%Android%'
                      OR client_type = 'pwa'
+                     OR client_type = 'apk'
                      OR client_type = 'browser'
                      OR (device_id = '' OR device_id IS NULL)
                  )`,
                 [userId, endpoint],
                 function(delErr) {
                     if (!delErr && this.changes > 0) {
-                        console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 PWA 등록에 따라 다른 이전 모바일 토큰 ${this.changes}개 자동 정리 완료`);
+                        console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 전용 앱(${clientType.toUpperCase()}) 등록에 따라 다른 이전 모바일 토큰 ${this.changes}개 자동 정리 완료`);
                     }
                 }
             );
         }
 
-        // 2) 모바일 일반 브라우저에서 등록 시도한 경우: 해당 유저에게 이미 PWA 토큰이 있다면 브라우저 토큰 즉시 무효화/삭제
+        // 2) 모바일 일반 브라우저에서 등록 시도한 경우: 해당 유저에게 이미 PWA/APK 전용 앱 토큰이 있다면 브라우저 토큰 자동 차단 및 삭제
         if (deviceType === 'mobile' && clientType === 'browser') {
             db.get(
-                `SELECT endpoint FROM push_subscriptions WHERE user_id = ? AND client_type = 'pwa' AND (device_type = 'mobile' OR user_agent LIKE '%Mobile%') LIMIT 1`,
+                `SELECT endpoint FROM push_subscriptions WHERE user_id = ? AND (client_type = 'pwa' OR client_type = 'apk') AND (device_type = 'mobile' OR user_agent LIKE '%Mobile%') LIMIT 1`,
                 [userId],
-                (chkErr, pwaRow) => {
-                    if (pwaRow) {
+                (chkErr, appRow) => {
+                    if (appRow) {
                         db.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [endpoint], () => {
-                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 모바일 PWA 존재하므로 일반 브라우저 토큰 자동 차단 및 삭제`);
+                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 모바일 전용 앱 존재하므로 일반 브라우저 토큰 자동 차단 및 삭제`);
                         });
                     }
                 }

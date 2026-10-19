@@ -270,13 +270,18 @@
         // URL에 ?notif_id=...가 포함되어 있으면 즉시 읽음 처리 및 쿼리 파라미터 주소창 노출 방지 정리
         handleNotifIdFromUrl();
 
-        // 🌟 [자동 동기화] 알림 권한이 허용된 환경(모바일 PWA / 브라우저)이면 백그라운드에서 최신 디바이스 메타데이터 자동 동기화
-        if ('Notification' in window && Notification.permission === 'granted') {
-            setTimeout(function() {
-                if (typeof window.registerWebPushSubscription === 'function') {
-                    window.registerWebPushSubscription();
-                }
-            }, 1000);
+        // 🌟 [자동 동기화] APK 앱, PWA(기본 웹앱), 데스크톱 PC 환경에서만 페이지 로드 시 백그라운드 자동 동기화
+        // (모바일 일반 브라우저에서는 백그라운드 자동 구독을 수행하지 않아 중복 원천 방지)
+        if ('Notification' in window) {
+            const meta = getDevicePushMetadata();
+            const isInstalledApp = meta.deviceType !== 'mobile' || meta.clientType === 'pwa' || meta.clientType === 'apk';
+            if (isInstalledApp) {
+                setTimeout(function() {
+                    if (typeof window.registerWebPushSubscription === 'function') {
+                        window.registerWebPushSubscription();
+                    }
+                }, 1000);
+            }
         }
 
         if (!btn || !drawer) return;
@@ -689,11 +694,15 @@
 
     // 📱 [알림 중복 방지] 디바이스 및 실행 환경 메타데이터 수집 헬퍼
     function getDevicePushMetadata() {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+        const isApk = document.referrer.includes('cc.jjg.portal') ||
+                      document.referrer.includes('android-app://cc.jjg.portal') ||
+                      navigator.userAgent.includes('cc.jjg.portal');
+        const isStandalone = isApk ||
+                             window.matchMedia('(display-mode: standalone)').matches ||
                              window.matchMedia('(display-mode: fullscreen)').matches ||
                              window.matchMedia('(display-mode: minimal-ui)').matches ||
                              window.navigator.standalone === true;
-        const clientType = isStandalone ? 'pwa' : 'browser';
+        const clientType = isApk ? 'apk' : (isStandalone ? 'pwa' : 'browser');
 
         const ua = navigator.userAgent.toLowerCase();
         let deviceType = 'desktop';
@@ -725,34 +734,18 @@
     // VAPID 키 및 푸시 매니저 구독 등록 (API)
     window.registerWebPushSubscription = async function() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-        if (Notification.permission !== 'granted') return;
 
         try {
             const meta = getDevicePushMetadata();
 
-            // 🌟 [중복 방지 핵심: 모바일 일반 브라우저(삼성인터넷 등) 푸시 차단 및 자동 해제]
-            // 모바일 기기에서는 기본 웹앱(PWA)으로만 알림을 수신해야 합니다.
-            // 삼성인터넷/크롬 등 모바일 일반 브라우저 탭에서 접속한 경우, 알림 중복을 원천 차단하기 위해
-            // 신규 구독을 등록하지 않고, 브라우저에 남아있는 과거 구독이 있다면 즉시 자동 해제(unsubscribe)합니다.
-            if (meta.deviceType === 'mobile' && meta.clientType === 'browser') {
-                try {
-                    const reg = await navigator.serviceWorker.ready;
-                    const existingSub = await reg.pushManager.getSubscription();
-                    if (existingSub) {
-                        console.log('🧹 [PWA 단일화] 모바일 일반 브라우저(삼성인터넷 등) 중복 수신 방지를 위해 브라우저 구독 자동 해제 중...');
-                        const oldEndpoint = existingSub.endpoint;
-                        await existingSub.unsubscribe();
-                        await fetch(`${NOTIF_BASE_URL}/api/notification/unsubscribe`, {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ endpoint: oldEndpoint })
-                        }).catch(() => {});
-                        console.log('✅ [PWA 단일화] 모바일 브라우저 중복 푸시 구독 해제 완료');
-                    }
-                } catch (unsubErr) {
-                    console.warn('[모바일 브라우저 중복 구독 정리 오류]:', unsubErr);
+            // 알림 권한 확인 및 요청 (default 상태면 사용자에게 요청)
+            if (Notification.permission === 'default') {
+                const requested = await Notification.requestPermission();
+                if (requested !== 'granted') {
+                    console.log('[WebPush] 알림 권한 미허용');
+                    return;
                 }
+            } else if (Notification.permission !== 'granted') {
                 return;
             }
 
