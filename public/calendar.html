@@ -240,6 +240,61 @@
             opacity: 0.6;
             background: #f1f5f9;
         }
+        /* 🎨 커스텀 범례 모달 스타일 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.55);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 1rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-card {
+            background: #ffffff;
+            border-radius: 1rem;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid #e2e8f0;
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        .modal-overlay.active .modal-card {
+            transform: scale(1);
+        }
+        .color-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+        .color-preset-circle {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.15s;
+        }
+        .color-preset-circle:hover {
+            transform: scale(1.15);
+        }
+        .color-preset-circle.selected {
+            border-color: #0f172a;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+        }
     </style>
 </head>
 <body>
@@ -281,13 +336,20 @@
                 </div>
 
                 <!-- 범례 안내 -->
-                <div style="display: flex; gap: 0.75rem; align-items: center; margin-top: 1rem; font-size: 0.75rem; color: #64748b; flex-wrap: wrap;">
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #059669;"></span> 🏥 진료/예정</span>
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #d97706;"></span> 🔔 예약오픈</span>
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #0284c7;"></span> 💊 처방약소진</span>
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #e11d48;"></span> ❤️ 혈압/건강</span>
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626;"></span> 🚩 공휴일</span>
-                    <span style="display: flex; align-items: center; gap: 0.3rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #4f46e5;"></span> 🟣 개인일정</span>
+                <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px dashed #e2e8f0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <span style="font-size: 0.75rem; font-weight: 700; color: #475569;">🎨 일정 범례 안내</span>
+                        <button type="button" onclick="openCategoryModal()" style="background: none; border: none; color: #4f46e5; font-size: 0.72rem; font-weight: 700; cursor: pointer; text-decoration: underline;">⚙️ 범례 커스텀 설정</button>
+                    </div>
+                    <div id="legendContainer" style="display: flex; gap: 0.6rem; align-items: center; font-size: 0.72rem; color: #64748b; flex-wrap: wrap;">
+                        <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #059669;"></span> 🏥 진료/예정</span>
+                        <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #d97706;"></span> 🔔 예약오픈</span>
+                        <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #0284c7;"></span> 💊 처방약소진</span>
+                        <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #e11d48;"></span> ❤️ 혈압/건강</span>
+                        <span style="display: flex; align-items: center; gap: 0.25rem;"><span style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626;"></span> 🚩 공휴일</span>
+                        <!-- 사용자 커스텀 범례가 동적으로 추가됨 -->
+                        <div id="customLegendsContainer" style="display: inline-flex; gap: 0.6rem; flex-wrap: wrap;"></div>
+                    </div>
                 </div>
             </div>
 
@@ -302,24 +364,68 @@
                         <button type="button" class="btn-add" onclick="toggleAddForm()">+ 일정 추가</button>
                     </div>
 
-                    <!-- 신규 일정 추가 폼 (접이식) -->
-                    <div id="addEventFormCard" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 0.85rem; margin-bottom: 1rem;">
-                        <div style="font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">새 일정 등록</div>
-                        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                            <input type="text" id="inputEventTitle" placeholder="일정 제목 (예: 정기 검진, 공과금 납부)" style="padding: 0.45rem 0.65rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.85rem; width: 100%;">
-                            <div style="display: flex; gap: 0.4rem;">
-                                <input type="time" id="inputEventTime" style="padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.85rem; flex: 1;">
-                                <select id="inputEventColor" style="padding: 0.4rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.85rem;">
-                                    <option value="#4f46e5">🟣 인디고</option>
-                                    <option value="#059669">🟢 에메랄드</option>
-                                    <option value="#dc2626">🔴 로즈</option>
-                                    <option value="#d97706">🟠 앰버</option>
+                    <!-- 신규 일정 추가 폼 (접이식 고도화) -->
+                    <div id="addEventFormCard" style="display: none; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 0.75rem; padding: 0.85rem; margin-bottom: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                            <span style="font-size: 0.82rem; font-weight: 800; color: #1e293b;">📅 새 일정 등록</span>
+                            <span id="formDateBadge" style="font-size: 0.72rem; font-weight: 700; color: #4f46e5; background: #eef2ff; padding: 2px 6px; border-radius: 4px;">2026-10-19</span>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.55rem;">
+                            <!-- 제목 입력 -->
+                            <input type="text" id="inputEventTitle" placeholder="일정 제목 (예: 정기 검진, 은행 업무, 세미나)" style="padding: 0.5rem 0.65rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; font-size: 0.85rem; width: 100%;">
+
+                            <!-- 종일 여부 & 시간 입력 -->
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: #ffffff; padding: 0.45rem 0.6rem; border-radius: 0.45rem; border: 1px solid #e2e8f0;">
+                                <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 700; color: #334155; cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="inputEventAllDay" onchange="toggleAllDayMode()" style="width: 16px; height: 16px; accent-color: #4f46e5; cursor: pointer;">
+                                    ☀️ 하루 종일
+                                </label>
+                                <div id="timeInputWrapper" style="display: flex; align-items: center; gap: 0.35rem;">
+                                    <span style="font-size: 0.78rem; color: #64748b; font-weight: 600;">⏰ 시각</span>
+                                    <input type="time" id="inputEventTime" style="padding: 0.3rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.82rem;">
+                                </div>
+                            </div>
+
+                            <!-- 커스텀 범례/카테고리 선택 & 범례 관리 링크 -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                                    <label style="font-size: 0.72rem; color: #64748b; font-weight: 700;">🎨 범례(카테고리)</label>
+                                    <button type="button" onclick="openCategoryModal()" style="background: none; border: none; color: #4f46e5; font-size: 0.7rem; font-weight: 700; cursor: pointer;">+ 범례 관리</button>
+                                </div>
+                                <select id="inputEventCategorySelect" onchange="onCategorySelectChange()" style="width: 100%; padding: 0.45rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; font-size: 0.82rem; background: #ffffff;">
+                                    <!-- JS로 범례 목록 채움 -->
                                 </select>
                             </div>
-                            <input type="text" id="inputEventMemo" placeholder="메모 (선택)" style="padding: 0.45rem 0.65rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.85rem; width: 100%;">
-                            <div style="display: flex; gap: 0.4rem; justify-content: flex-end; margin-top: 0.25rem;">
-                                <button type="button" onclick="toggleAddForm(false)" style="padding: 0.4rem 0.75rem; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 0.4rem; font-size: 0.8rem; cursor: pointer;">취소</button>
-                                <button type="button" class="btn-add" onclick="submitNewEvent()" style="padding: 0.4rem 0.85rem; font-size: 0.8rem;">저장</button>
+
+                            <!-- 알림 시점 및 발송 횟수 설정 -->
+                            <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 0.45rem;">
+                                <div>
+                                    <label style="display: block; font-size: 0.72rem; color: #64748b; font-weight: 700; margin-bottom: 2px;">🔔 알림 시점</label>
+                                    <select id="inputEventNotifyTiming" style="width: 100%; padding: 0.45rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; font-size: 0.8rem; background: #ffffff;">
+                                        <option value="exact">정시 (시작 시각)</option>
+                                        <option value="10m">10분 전</option>
+                                        <option value="30m">30분 전</option>
+                                        <option value="1h">1시간 전</option>
+                                        <option value="1d">1일 전</option>
+                                        <option value="none">🔕 알림 안 받음</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.72rem; color: #64748b; font-weight: 700; margin-bottom: 2px;">🔁 발송 횟수</label>
+                                    <select id="inputEventNotifyRepeat" style="width: 100%; padding: 0.45rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; font-size: 0.8rem; background: #ffffff;">
+                                        <option value="1">1회 발송</option>
+                                        <option value="2">2회 (사전 + 정시)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- 메모 입력 -->
+                            <input type="text" id="inputEventMemo" placeholder="메모 (장소, 준비물 등 선택 입력)" style="padding: 0.45rem 0.65rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; font-size: 0.82rem; width: 100%;">
+
+                            <!-- 버튼 영역 -->
+                            <div style="display: flex; gap: 0.4rem; justify-content: flex-end; margin-top: 0.35rem;">
+                                <button type="button" onclick="toggleAddForm(false)" style="padding: 0.45rem 0.8rem; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 0.45rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #475569;">취소</button>
+                                <button type="button" class="btn-add" onclick="submitNewEvent()" style="padding: 0.45rem 1rem; font-size: 0.8rem;">일정 저장</button>
                             </div>
                         </div>
                     </div>
@@ -343,15 +449,254 @@
 
     </main>
 
+    <!-- 🎨 커스텀 범례/카테고리 관리 모달 -->
+    <div class="modal-overlay" id="categoryModal" onclick="handleModalOverlayClick(event)">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                    <span style="font-size: 1.1rem;">🎨</span>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; color: #0f172a; margin: 0;">캘린더 범례(카테고리) 설정</h3>
+                </div>
+                <button type="button" onclick="closeCategoryModal()" style="background: none; border: none; font-size: 1.25rem; color: #94a3b8; cursor: pointer; line-height: 1;">✕</button>
+            </div>
+            
+            <div style="padding: 1.25rem; max-height: 75vh; overflow-y: auto;">
+                <!-- 1. 새 범례 추가 섹션 -->
+                <div style="background: #f1f5f9; padding: 0.85rem; border-radius: 0.75rem; margin-bottom: 1.25rem;">
+                    <div style="font-size: 0.8rem; font-weight: 800; color: #334155; margin-bottom: 0.5rem;">새 범례 추가</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <input type="text" id="newCategoryName" placeholder="범례 이름 (예: 업무, 운동, 가족, 공부)" style="padding: 0.45rem 0.65rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.82rem; width: 100%;">
+                        
+                        <div>
+                            <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; margin-bottom: 0.35rem;">색상 선택</div>
+                            <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                                <div class="color-preset-circle selected" data-color="#6366f1" style="background: #6366f1;" onclick="selectCategoryColor('#6366f1', this)"></div>
+                                <div class="color-preset-circle" data-color="#10b981" style="background: #10b981;" onclick="selectCategoryColor('#10b981', this)"></div>
+                                <div class="color-preset-circle" data-color="#f43f5e" style="background: #f43f5e;" onclick="selectCategoryColor('#f43f5e', this)"></div>
+                                <div class="color-preset-circle" data-color="#f59e0b" style="background: #f59e0b;" onclick="selectCategoryColor('#f59e0b', this)"></div>
+                                <div class="color-preset-circle" data-color="#0ea5e9" style="background: #0ea5e9;" onclick="selectCategoryColor('#0ea5e9', this)"></div>
+                                <div class="color-preset-circle" data-color="#8b5cf6" style="background: #8b5cf6;" onclick="selectCategoryColor('#8b5cf6', this)"></div>
+                                <div class="color-preset-circle" data-color="#ec4899" style="background: #ec4899;" onclick="selectCategoryColor('#ec4899', this)"></div>
+                                <div class="color-preset-circle" data-color="#14b8a6" style="background: #14b8a6;" onclick="selectCategoryColor('#14b8a6', this)"></div>
+                                <div class="color-preset-circle" data-color="#64748b" style="background: #64748b;" onclick="selectCategoryColor('#64748b', this)"></div>
+                                <input type="color" id="newCategoryCustomColor" value="#6366f1" onchange="onCustomColorPickerChange(this.value)" style="width: 28px; height: 28px; padding: 0; border: none; border-radius: 4px; cursor: pointer; background: none;" title="직접 색상 지정">
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="submitNewCategory()" style="padding: 0.45rem 0.85rem; background: #4f46e5; color: #ffffff; border: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; margin-top: 0.25rem;">+ 범례 저장</button>
+                    </div>
+                </div>
+
+                <!-- 2. 등록된 범례 목록 -->
+                <div>
+                    <div style="font-size: 0.8rem; font-weight: 800; color: #334155; margin-bottom: 0.5rem;">현재 범례 목록</div>
+                    <div id="modalCategoryList" style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <!-- JS로 채워짐 -->
+                    </div>
+                </div>
+            </div>
+
+            <div style="padding: 0.75rem 1.25rem; border-top: 1px solid #e2e8f0; background: #f8fafc; text-align: right;">
+                <button type="button" onclick="closeCategoryModal()" style="padding: 0.45rem 1rem; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 700; color: #475569; cursor: pointer;">닫기</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 + 하단 뉴스/속보 티커 자동 로드) -->
-    <script src="/js/jg-ui.js?v=20261019_v3" defer></script>
+    <script src="/js/jg-ui.js?v=20261019_v4" defer></script>
 
     <script>
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth(); // 0-indexed
         let selectedDateStr = new Date().toISOString().slice(0, 10);
         let allEvents = [];
+        let categories = [];
+        let selectedCategoryColor = '#6366f1';
 
+        // 1. 범례(카테고리) 목록 가져오기
+        async function fetchCategories() {
+            try {
+                const res = await fetch('/api/calendar/categories');
+                const data = await res.json();
+                if (data.success && Array.isArray(data.categories)) {
+                    categories = data.categories;
+                } else {
+                    categories = [
+                        { id: 1, name: '업무', color: '#6366f1' },
+                        { id: 2, name: '개인', color: '#10b981' },
+                        { id: 3, name: '중요', color: '#f43f5e' },
+                        { id: 4, name: '모임', color: '#f59e0b' },
+                        { id: 5, name: '기타', color: '#0ea5e9' }
+                    ];
+                }
+            } catch (e) {
+                console.error('범례 로드 실패:', e);
+            }
+            renderCategorySelect();
+            renderCustomLegendsBottom();
+            renderModalCategories();
+        }
+
+        // 일정 등록 폼의 범례 드롭다운 렌더링
+        function renderCategorySelect() {
+            const select = document.getElementById('inputEventCategorySelect');
+            if (!select) return;
+            select.innerHTML = categories.map((cat, idx) => `
+                <option value="${cat.name}" data-color="${cat.color}" ${idx === 0 ? 'selected' : ''}>
+                    ● ${cat.name}
+                </option>
+            `).join('');
+            // 기본 선택 색상 반영
+            if (categories.length > 0) {
+                select.style.borderLeft = `5px solid ${categories[0].color}`;
+            }
+        }
+
+        function onCategorySelectChange() {
+            const select = document.getElementById('inputEventCategorySelect');
+            const selectedOpt = select.options[select.selectedIndex];
+            if (selectedOpt) {
+                const color = selectedOpt.getAttribute('data-color') || '#6366f1';
+                select.style.borderLeft = `5px solid ${color}`;
+            }
+        }
+
+        // 캘린더 하단 커스텀 범례 렌더링
+        function renderCustomLegendsBottom() {
+            const container = document.getElementById('customLegendsContainer');
+            if (!container) return;
+            container.innerHTML = categories.map(cat => `
+                <span style="display: flex; align-items: center; gap: 0.25rem;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: ${cat.color};"></span>
+                    ${escapeHtml(cat.name)}
+                </span>
+            `).join('');
+        }
+
+        // 모달 내 범례 리스트 렌더링
+        function renderModalCategories() {
+            const list = document.getElementById('modalCategoryList');
+            if (!list) return;
+
+            if (categories.length === 0) {
+                list.innerHTML = `<div style="text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 1rem;">등록된 범례가 없습니다. 위에서 새 범례를 추가해보세요.</div>`;
+                return;
+            }
+
+            list.innerHTML = categories.map(cat => `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0.75rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <span class="color-dot" style="background: ${cat.color};"></span>
+                        <span style="font-size: 0.82rem; font-weight: 700; color: #1e293b;">${escapeHtml(cat.name)}</span>
+                        <span style="font-size: 0.7rem; color: #94a3b8; font-family: monospace;">${cat.color}</span>
+                    </div>
+                    <button type="button" onclick="deleteCategory(${cat.id}, '${escapeHtml(cat.name)}')" style="background: none; border: none; color: #ef4444; font-size: 0.8rem; cursor: pointer; padding: 2px 6px;" title="삭제">
+                        ✕
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 모달 열기/닫기
+        function openCategoryModal() {
+            document.getElementById('categoryModal').classList.add('active');
+            renderModalCategories();
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('active');
+        }
+
+        function handleModalOverlayClick(e) {
+            if (e.target.id === 'categoryModal') {
+                closeCategoryModal();
+            }
+        }
+
+        // 모달 색상 선택기
+        function selectCategoryColor(color, el) {
+            selectedCategoryColor = color;
+            document.querySelectorAll('.color-preset-circle').forEach(c => c.classList.remove('selected'));
+            if (el) el.classList.add('selected');
+            document.getElementById('newCategoryCustomColor').value = color;
+        }
+
+        function onCustomColorPickerChange(val) {
+            selectedCategoryColor = val;
+            document.querySelectorAll('.color-preset-circle').forEach(c => c.classList.remove('selected'));
+        }
+
+        // 새 범례 저장
+        async function submitNewCategory() {
+            const nameInput = document.getElementById('newCategoryName');
+            const name = nameInput.value.trim();
+            if (!name) {
+                alert('범례 이름을 입력해주세요.');
+                nameInput.focus();
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/calendar/categories', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, color: selectedCategoryColor })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    nameInput.value = '';
+                    await fetchCategories();
+                } else {
+                    alert('범례 추가 실패: ' + (data.message || '오류 발생'));
+                }
+            } catch (e) {
+                alert('통신 오류: ' + e.message);
+            }
+        }
+
+        // 범례 삭제
+        async function deleteCategory(id, name) {
+            if (!confirm(`'${name}' 범례를 삭제할까요?`)) return;
+            try {
+                const res = await fetch(`/api/calendar/categories/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    await fetchCategories();
+                } else {
+                    alert('삭제 실패: ' + (data.message || '오류 발생'));
+                }
+            } catch (e) {
+                alert('삭제 통신 오류: ' + e.message);
+            }
+        }
+
+        // 2. 종일 모드 토글
+        function toggleAllDayMode() {
+            const isAllDay = document.getElementById('inputEventAllDay').checked;
+            const timeWrapper = document.getElementById('timeInputWrapper');
+            const timingSelect = document.getElementById('inputEventNotifyTiming');
+
+            if (isAllDay) {
+                timeWrapper.style.display = 'none';
+                timingSelect.innerHTML = `
+                    <option value="exact">당일 오전 09:00</option>
+                    <option value="1d">1일 전 오전 09:00</option>
+                    <option value="none">🔕 알림 안 받음</option>
+                `;
+            } else {
+                timeWrapper.style.display = 'flex';
+                timingSelect.innerHTML = `
+                    <option value="exact">정시 (시작 시각)</option>
+                    <option value="10m">10분 전</option>
+                    <option value="30m">30분 전</option>
+                    <option value="1h">1시간 전</option>
+                    <option value="1d">1일 전</option>
+                    <option value="none">🔕 알림 안 받음</option>
+                `;
+            }
+        }
+
+        // 3. 전체 일정 가져오기
         async function fetchEvents() {
             try {
                 const res = await fetch('/api/calendar/events');
@@ -377,7 +722,6 @@
             const monthDisplay = document.getElementById('calMonthDisplay');
             monthDisplay.textContent = `${currentYear}년 ${currentMonth + 1}월`;
 
-            // 기존 날짜 셀 제거 (요일 헤더 7개는 유지)
             while (grid.children.length > 7) {
                 grid.removeChild(grid.lastChild);
             }
@@ -403,7 +747,6 @@
                 const dayOfWeek = (firstDayIndex + day - 1) % 7;
                 const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 
-                // 해당 날짜 이벤트 필터링
                 const dayEvents = allEvents.filter(ev => ev.date === dateStr);
                 const hasHoliday = dayEvents.some(ev => ev.type === 'holiday');
 
@@ -418,7 +761,6 @@
                 cell.setAttribute('data-date', dateStr);
                 cell.onclick = () => selectDate(dateStr);
 
-                // 날짜 숫자
                 let html = `<span class="cal-date-num">${day}</span>`;
 
                 const MAX_VISIBLE_EVENTS = 2;
@@ -427,7 +769,9 @@
 
                 visibleEvents.forEach(ev => {
                     const compClass = ev.isCompleted ? 'completed' : '';
-                    html += `<span class="event-badge ${compClass}" style="background-color: ${ev.color};" title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</span>`;
+                    const allDayPrefix = ev.isAllDay ? '☀️ ' : (ev.time ? `${ev.time} ` : '');
+                    const badgeText = `${allDayPrefix}${ev.title}`;
+                    html += `<span class="event-badge ${compClass}" style="background-color: ${ev.color};" title="${escapeHtml(badgeText)}">${escapeHtml(badgeText)}</span>`;
                 });
 
                 if (hiddenCount > 0) {
@@ -438,7 +782,7 @@
                 grid.appendChild(cell);
             }
 
-            // 다음 달 잔여 셀 채우기 (총 7의 배수 맞춤)
+            // 다음 달 잔여 셀 채우기
             const totalCells = firstDayIndex + lastDate;
             const remaining = (7 - (totalCells % 7)) % 7;
             for (let i = 1; i <= remaining; i++) {
@@ -458,9 +802,13 @@
         function renderSelectedDateEvents() {
             const display = document.getElementById('selectedDateDisplay');
             const list = document.getElementById('selectedDateEventsList');
+            const formDateBadge = document.getElementById('formDateBadge');
 
             const [y, m, d] = selectedDateStr.split('-');
             display.textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일 일정`;
+            if (formDateBadge) {
+                formDateBadge.textContent = selectedDateStr;
+            }
 
             const dayEvents = allEvents.filter(ev => ev.date === selectedDateStr);
 
@@ -476,8 +824,37 @@
 
             list.innerHTML = dayEvents.map(ev => {
                 const isPersonal = ev.type === 'personal';
-                const timeStr = ev.time ? `<span style="font-size:0.75rem; font-weight:700; color:#475569; margin-right:0.35rem;">⏰ ${ev.time}</span>` : '';
-                const memoStr = ev.memo ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;">${escapeHtml(ev.memo)}</div>` : '';
+
+                // 시간 및 종일 태그
+                let timeBadge = '';
+                if (ev.isAllDay) {
+                    timeBadge = `<span style="font-size:0.72rem; font-weight:800; background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; margin-right:0.35rem;">☀️ 종일</span>`;
+                } else if (ev.time) {
+                    timeBadge = `<span style="font-size:0.75rem; font-weight:700; color:#475569; margin-right:0.35rem;">⏰ ${ev.time}</span>`;
+                }
+
+                // 카테고리 태그
+                const categoryBadge = ev.category ? `
+                    <span style="font-size:0.68rem; font-weight:700; background:${ev.color}15; color:${ev.color}; border:1px solid ${ev.color}40; padding:1px 5px; border-radius:3px; margin-right:0.35rem;">
+                        ${escapeHtml(ev.category)}
+                    </span>
+                ` : '';
+
+                // 알림 태그
+                let notifyBadge = '';
+                if (isPersonal && ev.notifyTiming && ev.notifyTiming !== 'none') {
+                    const timingMap = {
+                        'exact': ev.isAllDay ? '오전9시' : '정시',
+                        '10m': '10분전',
+                        '30m': '30분전',
+                        '1h': '1시간전',
+                        '1d': '1일전'
+                    };
+                    const tText = timingMap[ev.notifyTiming] || ev.notifyTiming;
+                    notifyBadge = `<span style="font-size:0.68rem; color:#64748b; background:#f1f5f9; padding:1px 5px; border-radius:3px; margin-left:0.25rem;">🔔 ${tText} (${ev.notifyRepeat || 1}회)</span>`;
+                }
+
+                const memoStr = ev.memo ? `<div style="font-size:0.75rem; color:#64748b; margin-top:3px;">${escapeHtml(ev.memo)}</div>` : '';
 
                 // 서비스 바로가기 링크 생성
                 let actionBtn = '';
@@ -498,13 +875,18 @@
 
                 return `
                     <div class="event-item ${ev.isCompleted ? 'completed' : ''}">
-                        <div style="display:flex; align-items:center; gap:0.5rem; flex:1; min-width:0;">
+                        <div style="display:flex; align-items:flex-start; gap:0.5rem; flex:1; min-width:0;">
                             ${isPersonal ? `
-                                <input type="checkbox" ${ev.isCompleted ? 'checked' : ''} onchange="toggleEventComplete(${ev.dbId})" style="cursor:pointer; width:16px; height:16px;">
-                            ` : `<span style="font-size:0.9rem;">${icon}</span>`}
+                                <input type="checkbox" ${ev.isCompleted ? 'checked' : ''} onchange="toggleEventComplete(${ev.dbId})" style="cursor:pointer; width:16px; height:16px; margin-top:2px;">
+                            ` : `<span style="font-size:0.9rem; margin-top:2px;">${icon}</span>`}
                             <div style="flex:1; min-width:0;">
-                                <div style="font-size:0.85rem; font-weight:700; color:#0f172a; text-decoration:${ev.isCompleted ? 'line-through' : 'none'};">
-                                    ${timeStr}${escapeHtml(ev.title)}
+                                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:2px; margin-bottom:2px;">
+                                    ${timeBadge}
+                                    ${categoryBadge}
+                                    ${notifyBadge}
+                                </div>
+                                <div style="font-size:0.85rem; font-weight:700; color:#0f172a; text-decoration:${ev.isCompleted ? 'line-through' : 'none'}; word-break:break-all;">
+                                    ${escapeHtml(ev.title)}
                                 </div>
                                 ${memoStr}
                             </div>
@@ -527,8 +909,11 @@
 
         async function submitNewEvent() {
             const titleInput = document.getElementById('inputEventTitle');
+            const isAllDay = document.getElementById('inputEventAllDay').checked;
             const timeInput = document.getElementById('inputEventTime');
-            const colorInput = document.getElementById('inputEventColor');
+            const categorySelect = document.getElementById('inputEventCategorySelect');
+            const notifyTimingSelect = document.getElementById('inputEventNotifyTiming');
+            const notifyRepeatSelect = document.getElementById('inputEventNotifyRepeat');
             const memoInput = document.getElementById('inputEventMemo');
 
             const title = titleInput.value.trim();
@@ -538,23 +923,35 @@
                 return;
             }
 
+            const selectedOpt = categorySelect.options[categorySelect.selectedIndex];
+            const categoryName = selectedOpt ? selectedOpt.value : '일반';
+            const categoryColor = selectedOpt ? selectedOpt.getAttribute('data-color') : '#6366f1';
+
+            const payload = {
+                title,
+                event_date: selectedDateStr,
+                event_time: isAllDay ? '' : timeInput.value,
+                category: categoryName,
+                color: categoryColor,
+                memo: memoInput.value,
+                is_all_day: isAllDay ? 1 : 0,
+                notify_timing: notifyTimingSelect.value,
+                notify_repeat: parseInt(notifyRepeatSelect.value, 10) || 1
+            };
+
             try {
                 const res = await fetch('/api/calendar/events', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        title,
-                        event_date: selectedDateStr,
-                        event_time: timeInput.value,
-                        color: colorInput.value,
-                        memo: memoInput.value
-                    })
+                    body: JSON.stringify(payload)
                 });
                 const data = await res.json();
                 if (data.success) {
                     titleInput.value = '';
                     timeInput.value = '';
                     memoInput.value = '';
+                    document.getElementById('inputEventAllDay').checked = false;
+                    toggleAllDayMode();
                     toggleAddForm(false);
                     await fetchEvents();
                 } else {
@@ -622,6 +1019,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            fetchCategories();
             fetchEvents();
         });
     </script>

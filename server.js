@@ -161,8 +161,43 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
                 color TEXT DEFAULT '#4f46e5',
                 memo TEXT DEFAULT '',
                 is_completed INTEGER DEFAULT 0,
+                is_all_day INTEGER DEFAULT 0,
+                notify_timing TEXT DEFAULT 'exact',
+                notify_repeat INTEGER DEFAULT 1,
+                notify_sent_count INTEGER DEFAULT 0,
+                last_notified_at DATETIME,
                 created_at DATETIME DEFAULT (datetime('now', 'localtime'))
             )`);
+            db.run(`ALTER TABLE calendar_events ADD COLUMN is_all_day INTEGER DEFAULT 0`, () => {});
+            db.run(`ALTER TABLE calendar_events ADD COLUMN notify_timing TEXT DEFAULT 'exact'`, () => {});
+            db.run(`ALTER TABLE calendar_events ADD COLUMN notify_repeat INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE calendar_events ADD COLUMN notify_sent_count INTEGER DEFAULT 0`, () => {});
+            db.run(`ALTER TABLE calendar_events ADD COLUMN last_notified_at DATETIME`, () => {});
+
+            // 📅 캘린더 커스텀 범례/카테고리 관리 테이블
+            db.run(`CREATE TABLE IF NOT EXISTS calendar_categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT 'admin',
+                name TEXT NOT NULL,
+                color TEXT NOT NULL,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`, () => {
+                // 초기 기본 범례가 없으면 기본값 삽입
+                db.get("SELECT COUNT(*) as count FROM calendar_categories", (cErr, cRow) => {
+                    if (!cErr && cRow && cRow.count === 0) {
+                        const defaultCats = [
+                            ['admin', '업무', '#6366f1'],
+                            ['admin', '개인', '#10b981'],
+                            ['admin', '중요', '#f43f5e'],
+                            ['admin', '모임', '#f59e0b'],
+                            ['admin', '기타', '#0ea5e9']
+                        ];
+                        const stmt = db.prepare("INSERT INTO calendar_categories (user_id, name, color) VALUES (?, ?, ?)");
+                        defaultCats.forEach(c => stmt.run(c));
+                        stmt.finalize();
+                    }
+                });
+            });
             db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE notification_settings ADD COLUMN telegram_briefing_times TEXT DEFAULT '["07:30"]'`, () => {});
@@ -3534,7 +3569,7 @@ app.get('/api/calendar/events', authenticateToken, async (req, res) => {
 
     // 1) 캘린더 등록 개인 일정
     const personalPromise = new Promise((resolve) => {
-        db.all("SELECT id, title, event_date, event_time, category, color, memo, is_completed FROM calendar_events WHERE user_id = ? OR user_id = 'admin' ORDER BY event_date ASC", [userId], (err, rows) => {
+        db.all("SELECT id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, notify_timing, notify_repeat FROM calendar_events WHERE user_id = ? OR user_id = 'admin' ORDER BY event_date ASC", [userId], (err, rows) => {
             if (!err && rows) {
                 rows.forEach(r => {
                     events.push({
@@ -3544,9 +3579,13 @@ app.get('/api/calendar/events', authenticateToken, async (req, res) => {
                         date: r.event_date,
                         time: r.event_time,
                         type: 'personal',
-                        color: r.color || '#4f46e5',
+                        category: r.category || '일반',
+                        color: r.color || '#6366f1',
                         memo: r.memo,
-                        isCompleted: !!r.is_completed
+                        isCompleted: !!r.is_completed,
+                        isAllDay: !!r.is_all_day,
+                        notifyTiming: r.notify_timing || 'exact',
+                        notifyRepeat: r.notify_repeat !== undefined ? r.notify_repeat : 1
                     });
                 });
             }
@@ -3729,19 +3768,86 @@ app.get('/api/calendar/events', authenticateToken, async (req, res) => {
     res.json({ success: true, events, routineBriefingTimes });
 });
 
+// 커스텀 범례/카테고리 목록 조회
+app.get('/api/calendar/categories', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    db.all("SELECT id, name, color FROM calendar_categories WHERE user_id = ? OR user_id = 'admin' ORDER BY id ASC", [userId], (err, rows) => {
+        if (err) {
+            console.error('[Calendar 범례 조회 실패]:', err.message);
+            return res.status(500).json({ success: false, message: '범례 조회 실패' });
+        }
+        res.json({ success: true, categories: rows || [] });
+    });
+});
+
+// 커스텀 범례 추가
+app.post('/api/calendar/categories', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const { name, color = '#6366f1' } = req.body;
+    if (!name || !name.trim()) {
+        return res.status(400).json({ success: false, message: '범례 이름을 입력해주세요.' });
+    }
+    const cleanName = name.trim();
+    const cleanColor = (color || '#6366f1').trim();
+
+    db.run("INSERT INTO calendar_categories (user_id, name, color) VALUES (?, ?, ?)", [userId, cleanName, cleanColor], function(err) {
+        if (err) {
+            console.error('[Calendar 범례 추가 실패]:', err.message);
+            return res.status(500).json({ success: false, message: '범례 추가 실패' });
+        }
+        res.json({ success: true, id: this.lastID, name: cleanName, color: cleanColor, message: '새 범례가 추가되었습니다.' });
+    });
+});
+
+// 커스텀 범례 삭제
+app.delete('/api/calendar/categories/:id', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const catId = req.params.id;
+    db.run("DELETE FROM calendar_categories WHERE id = ? AND (user_id = ? OR user_id = 'admin')", [catId, userId], function(err) {
+        if (err) {
+            return res.status(500).json({ success: false, message: '범례 삭제 실패' });
+        }
+        res.json({ success: true, message: '범례가 삭제되었습니다.' });
+    });
+});
+
 app.post('/api/calendar/events', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
-    const { title, event_date, event_time = '', category = 'general', color = '#4f46e5', memo = '' } = req.body;
+    const {
+        title,
+        event_date,
+        event_time = '',
+        category = '일반',
+        color = '#6366f1',
+        memo = '',
+        is_all_day = 0,
+        notify_timing = 'exact',
+        notify_repeat = 1
+    } = req.body;
 
     if (!title || !event_date) {
         return res.status(400).json({ success: false, message: '일정 제목과 날짜(YYYY-MM-DD)를 입력해주세요.' });
     }
 
+    const isAllDayVal = is_all_day ? 1 : 0;
+    const timeVal = isAllDayVal ? '' : (event_time || '').trim();
+
     const query = `
-        INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, notify_timing, notify_repeat)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.run(query, [userId, title.trim(), event_date.trim(), (event_time || '').trim(), category, color, (memo || '').trim()], function(err) {
+    db.run(query, [
+        userId,
+        title.trim(),
+        event_date.trim(),
+        timeVal,
+        category.trim(),
+        color.trim(),
+        (memo || '').trim(),
+        isAllDayVal,
+        notify_timing || 'exact',
+        parseInt(notify_repeat, 10) || 1
+    ], function(err) {
         if (err) {
             console.error('[Calendar 등록 실패]:', err.message);
             return res.status(500).json({ success: false, message: '일정 등록 실패' });
