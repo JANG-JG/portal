@@ -169,15 +169,33 @@ function renderSubTabs(tabId, activeSubId = 'all') {
         }
         const isActive = (sub.id === activeSubId);
         return `
-            <button type="button" class="admin-subtab-btn ${isActive ? 'active' : ''}" data-sub="${sub.id}" onclick="switchAdminSubTab('${sub.id}', this)">
+            <button type="button" class="admin-subtab-btn ${isActive ? 'active' : ''}" data-sub="${sub.id}" onclick="switchAdminSubTab('${sub.id}', this, true)">
                 <span>${sub.icon}</span> <span>${sub.label}</span>
             </button>
         `;
     }).join('');
 }
 
+// 9-1. 관리자 페이지 상단 스크롤 헬퍼 (모바일/PC 지원)
+function scrollAdminToTop(smooth = true) {
+    try {
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: smooth ? 'smooth' : 'auto'
+        });
+    } catch (e) {
+        window.scrollTo(0, 0);
+    }
+    if (document.documentElement) document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+}
+
 // 10. 서브 창(카드 패널) 전환 핸들러
-function switchAdminSubTab(subId, btn) {
+function switchAdminSubTab(subId, btn, shouldScroll = false) {
+    if (shouldScroll) {
+        scrollAdminToTop(true);
+    }
     currentAdminSub = subId;
     const currentPane = document.getElementById(currentAdminTab);
     if (!currentPane) return;
@@ -224,13 +242,15 @@ function switchAdminSubTab(subId, btn) {
 
 // 사이드바에서 대메뉴 & 서브메뉴 동시 전환
 function switchAdminTabAndSub(tabId, subId) {
-    switchAdminTab(tabId, null, subId);
+    switchAdminTab(tabId, null, subId, true);
     toggleAdminSidebar(false);
+    scrollAdminToTop(true);
 }
 
 function switchAdminTabAndClose(tabId) {
-    switchAdminTab(tabId, null, 'all');
+    switchAdminTab(tabId, null, 'all', true);
     toggleAdminSidebar(false);
+    scrollAdminToTop(true);
 }
 
 // 11. 모바일 하단 내비게이션 바 활성 탭 동기화
@@ -245,9 +265,13 @@ function updateBottomNavActive(tabId) {
 }
 
 // 12. 대메뉴 탭 전환 핸들러
-function switchAdminTab(tabId, btn, targetSubId = 'all') {
+function switchAdminTab(tabId, btn, targetSubId = 'all', shouldScroll = true) {
     const pane = document.getElementById(tabId);
     if (!pane) return;
+
+    if (shouldScroll) {
+        scrollAdminToTop(true);
+    }
 
     currentAdminTab = tabId;
     currentAdminSub = targetSubId;
@@ -338,7 +362,7 @@ function handleHashTab() {
 
     const [targetTab, targetSub] = rawHash.split(':');
     if (targetTab && document.getElementById(targetTab)) {
-        switchAdminTab(targetTab, null, targetSub || 'all');
+        switchAdminTab(targetTab, null, targetSub || 'all', false);
         return true;
     }
     return false;
@@ -356,6 +380,7 @@ window.openAdminPasswordModal = openAdminPasswordModal;
 window.closeAdminPasswordModal = closeAdminPasswordModal;
 window.handlePasswordModalBackdropClick = handlePasswordModalBackdropClick;
 window.renderSubTabs = renderSubTabs;
+window.scrollAdminToTop = scrollAdminToTop;
 window.switchAdminSubTab = switchAdminSubTab;
 window.switchAdminTabAndSub = switchAdminTabAndSub;
 window.switchAdminTabAndClose = switchAdminTabAndClose;
@@ -417,7 +442,7 @@ window.addEventListener('load', adjustTickerPosition);
 document.addEventListener('DOMContentLoaded', () => {
     const switchedByHash = handleHashTab();
     if (!switchedByHash) {
-        switchAdminTab('tab-overview', null, 'all');
+        switchAdminTab('tab-overview', null, 'all', false);
     }
 
     // 이전에 선택했던 서버 탭(주 서버 / 보조 서버) 복원
