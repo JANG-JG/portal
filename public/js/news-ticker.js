@@ -1,6 +1,6 @@
 /**
  * news-ticker.js - JG 통합 포털 및 모든 서브 서비스(뉴스, 자산, 혈압) 공통 하단바 & 긴급 속보 위젯
- * 모든 사이트에서 <script src="https://j-jg.cc/js/news-ticker.js?v=20261018_v13"></script> 한 줄로 구동됩니다.
+ * 모든 사이트에서 <script src="https://j-jg.cc/js/news-ticker.js?v=20261019_v14"></script> 한 줄로 구동됩니다.
  * - 기본 하단바: 최신 뉴스 브리핑 헤드라인 및 우측 날씨/증시 실시간 롤링 (모든 사이트 상시 노출)
  * - 긴급 속보 바: 실시간 속보 발생 시 기본 하단바 바로 '위에' 빨간색 긴급 속보 띠가 새로 나타남
  * - 속보 닫기: 사용자가 속보를 확인한 후 [✕ 닫기]를 누르면 속보 바가 닫히고 기존 뉴스만 깔끔하게 표시됨
@@ -76,6 +76,9 @@
             user-select: none !important;
             box-sizing: border-box !important;
             transition: transform 0.3s ease, opacity 0.3s ease !important;
+        }
+        #jg-global-breaking-bar.jg-breaking-active {
+            display: flex !important;
         }
         .jg-breaking-badge {
             display: inline-flex !important;
@@ -500,7 +503,8 @@
 
     // 4. 속보 닫기 전역 핸들러 (20분간 임시 닫기 유지)
     window.jgDismissBreaking = function() {
-        breakingBar.style.display = 'none';
+        breakingBar.classList.remove('jg-breaking-active');
+        breakingBar.style.setProperty('display', 'none', 'important');
         updateBottomPadding(false);
         if (currentBreakingSignature) {
             try {
@@ -618,10 +622,12 @@
             } catch (e) {}
 
             if (isDismissed) {
-                breakingBar.style.display = 'none';
+                breakingBar.classList.remove('jg-breaking-active');
+                breakingBar.style.setProperty('display', 'none', 'important');
                 updateBottomPadding(false);
             } else {
-                breakingBar.style.display = 'flex';
+                breakingBar.classList.add('jg-breaking-active');
+                breakingBar.style.setProperty('display', 'flex', 'important');
                 updateBottomPadding(true);
 
                 const makeBreakingItems = () => breakingList.map(a => `
@@ -636,7 +642,8 @@
                 breakingTrack.innerHTML = makeBreakingItems() + makeBreakingItems();
             }
         } else {
-            breakingBar.style.display = 'none';
+            breakingBar.classList.remove('jg-breaking-active');
+            breakingBar.style.setProperty('display', 'none', 'important');
             updateBottomPadding(false);
         }
 
