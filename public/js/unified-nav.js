@@ -694,15 +694,11 @@
 
     // 📱 [알림 중복 방지] 디바이스 및 실행 환경 메타데이터 수집 헬퍼
     function getDevicePushMetadata() {
-        const isApk = document.referrer.includes('cc.jjg.portal') ||
-                      document.referrer.includes('android-app://cc.jjg.portal') ||
-                      navigator.userAgent.includes('cc.jjg.portal');
-        const isStandalone = isApk ||
-                             window.matchMedia('(display-mode: standalone)').matches ||
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                              window.matchMedia('(display-mode: fullscreen)').matches ||
                              window.matchMedia('(display-mode: minimal-ui)').matches ||
                              window.navigator.standalone === true;
-        const clientType = isApk ? 'apk' : (isStandalone ? 'pwa' : 'browser');
+        const clientType = isStandalone ? 'pwa' : 'browser';
 
         const ua = navigator.userAgent.toLowerCase();
         let deviceType = 'desktop';

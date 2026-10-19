@@ -2605,15 +2605,11 @@
                     });
                 }
 
-                const isApk = document.referrer.includes('cc.jjg.portal') ||
-                              document.referrer.includes('android-app://cc.jjg.portal') ||
-                              navigator.userAgent.includes('cc.jjg.portal');
-                const isStandalone = isApk ||
-                                     window.matchMedia('(display-mode: standalone)').matches ||
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                                      window.matchMedia('(display-mode: fullscreen)').matches ||
                                      window.matchMedia('(display-mode: minimal-ui)').matches ||
                                      window.navigator.standalone === true;
-                const clientType = isApk ? 'apk' : (isStandalone ? 'pwa' : 'browser');
+                const clientType = isStandalone ? 'pwa' : 'browser';
                 const ua = navigator.userAgent.toLowerCase();
                 const deviceType = (/ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk/i.test(ua)) ? 'tablet' : (/mobi|iphone|ipod|android/i.test(ua) ? 'mobile' : 'desktop');
 

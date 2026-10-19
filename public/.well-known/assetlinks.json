@@ -1,8 +1,0 @@
-[{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "cc.jjg.portal",
-        "sha256_cert_fingerprints": ["88:80:49:D6:08:3D:62:AF:08:FB:C4:4A:D6:66:64:75:3C:2E:E5:69:BD:42:D3:7C:A6:30:ED:F1:98:08:EA:F5"]
-      }
-    }]
