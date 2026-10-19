@@ -9,7 +9,7 @@
     // 중복 실행 방지
     if (document.getElementById('jg-global-ticker-bar')) return;
 
-    // 1. 하단 여백 및 .bottom-nav 동적 적용 (모바일 2줄 58px / 데스크톱 44px + 속보 여부)
+    // 1. 하단 여백 및 .bottom-nav 동적 적용 (하단 메뉴를 화면 최하단에 배치하고 뉴스 티커를 그 위에 위치)
     let currentHasBreaking = false;
     function updateBottomPadding(hasBreaking) {
         currentHasBreaking = !!hasBreaking;
@@ -18,15 +18,31 @@
         const breakingHeight = currentHasBreaking ? (isMobile ? 34 : 36) : 0;
         const totalBarHeight = tickerHeight + breakingHeight;
 
-        // 자산관리 등 하단 네비게이션(.bottom-nav)이 존재하는 경우, 티커와 속보바 바로 위로 부드럽게 배치
-        const bottomNav = document.querySelector('.bottom-nav');
+        // 자산관리(.bottom-nav) 및 관리자 페이지(.admin-bottom-nav) 하단 내비게이션 바 탐색
+        const bottomNav = document.querySelector('.bottom-nav, .admin-bottom-nav');
+        let navHeight = 0;
         if (bottomNav) {
-            bottomNav.style.setProperty('bottom', totalBarHeight + 'px', 'important');
-            bottomNav.style.setProperty('transition', 'bottom 0.25s ease', 'important');
+            // 하단 메뉴는 화면 최하단(바닥)에 완전히 밀착 고정
+            bottomNav.style.setProperty('bottom', '0px', 'important');
+            bottomNav.style.setProperty('z-index', '1000000', 'important');
+            navHeight = bottomNav.offsetHeight || (isMobile ? 56 : 52);
         }
 
-        const navExtraHeight = bottomNav ? 52 : 0;
-        const pad = (totalBarHeight + navExtraHeight + 4) + 'px';
+        // 뉴스 티커 바는 하단 내비게이션 바로 위에 배치
+        const tickerBar = document.getElementById('jg-global-ticker-bar');
+        if (tickerBar) {
+            tickerBar.style.setProperty('bottom', navHeight + 'px', 'important');
+            tickerBar.style.setProperty('transition', 'bottom 0.25s ease', 'important');
+        }
+
+        // 긴급 속보 바는 뉴스 티커 바 바로 위에 배치
+        const breakingBar = document.getElementById('jg-global-breaking-bar');
+        if (breakingBar) {
+            breakingBar.style.setProperty('bottom', (navHeight + tickerHeight) + 'px', 'important');
+            breakingBar.style.setProperty('transition', 'bottom 0.25s ease', 'important');
+        }
+
+        const pad = (totalBarHeight + navHeight + 8) + 'px';
         if (document.body) {
             document.body.style.paddingBottom = pad;
         } else {
@@ -553,6 +569,7 @@
         if (document.body) {
             document.body.appendChild(breakingBar);
             document.body.appendChild(tickerBar);
+            updateBottomPadding(currentHasBreaking);
             updateLiveClock();
             setInterval(updateLiveClock, 1000);
 

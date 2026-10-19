@@ -12,7 +12,7 @@
     window.__JG_UI_LOADER_INITIALIZED__ = true;
 
     // 🎯 중앙 집중 단일 버전 상수 (여기서 버전만 올리면 전 사이트 자동 갱신!)
-    const JG_UI_VERSION = '20261019_v1';
+    const JG_UI_VERSION = '20261019_v2';
 
     // 0. 🛡️ [FOUC & 거대 로고 방지 동기 크리티컬 인라인 CSS 즉시 주입 (0ms 무지연 가드)]
     // CSS 번들이 로드되기 전 HTML이 먼저 파싱/주입되더라도 거대 로고 팝업, 레이아웃 덜컥거림을 100% 원천 차단합니다.
@@ -160,11 +160,15 @@
                 background: #020617 !important;
                 border-top: 1px solid #1e293b !important;
                 color: #f8fafc !important;
-                z-index: 999999 !important;
+                z-index: 999990 !important;
                 display: flex !important;
                 align-items: center !important;
                 padding: 0 12px !important;
                 box-sizing: border-box !important;
+            }
+            body:has(.bottom-nav) #jg-global-ticker-bar,
+            body:has(.admin-bottom-nav) #jg-global-ticker-bar {
+                bottom: 56px !important;
             }
             @media (max-width: 768px) {
                 #jg-global-ticker-bar {
@@ -181,13 +185,21 @@
                 left: 0 !important;
                 right: 0 !important;
                 height: 36px !important;
-                z-index: 1000002 !important;
+                z-index: 999995 !important;
                 display: none !important;
+            }
+            body:has(.bottom-nav) #jg-global-breaking-bar,
+            body:has(.admin-bottom-nav) #jg-global-breaking-bar {
+                bottom: 100px !important;
             }
             @media (max-width: 768px) {
                 #jg-global-breaking-bar {
                     bottom: 58px !important;
                     height: 34px !important;
+                }
+                body:has(.bottom-nav) #jg-global-breaking-bar,
+                body:has(.admin-bottom-nav) #jg-global-breaking-bar {
+                    bottom: 114px !important;
                 }
             }
         `;
