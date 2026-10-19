@@ -2965,29 +2965,66 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                 return resolve({ success: true, count: 0, targetCount: 0 });
             }
 
-            // 🌟 [2중 방어막: 모바일 중복 수신 원천 차단]
-            // 동일 사용자의 모바일 기기에서 PWA 토큰이 등록되어 있는 경우,
-            // 모바일 일반 브라우저(browser) 토큰 및 메타데이터 누락 구형 토큰은 발송 대상에서 무조건 제외 (PWA 우선 단독 발송)
-            const pwaMobileUsers = new Set();
+            // 🌟 [3중 방어막: 모바일 중복 수신 원천 차단 알고리즘]
+            // 사용자별로 기기를 그룹화하여 모바일 기기는 사용자당 무조건 '단 1개'의 유효 토큰으로 단일화!
+            // 1) PWA(기본 웹앱) 토큰이 존재하면 일반 브라우저 토큰은 무조건 100% 배제
+            // 2) 모바일 토큰이 복수 개(재등록, 구버전, 브라우저 등) 존재할 경우:
+            //    - PWA 우선 > updated_at 최신순 > id 최신순으로 정렬하여 정확히 '1개'만 선정
+            // 3) 선정에서 탈락한 모든 중복/잉여 모바일 토큰은 발송 대상에서 제외하고 DB에서도 즉시 비동기 정리
+            const userTokensMap = new Map();
             rows.forEach(r => {
-                const isPwa = r.client_type === 'pwa';
+                const uid = r.user_id || 'admin';
+                if (!userTokensMap.has(uid)) {
+                    userTokensMap.set(uid, { mobile: [], desktop: [] });
+                }
                 const isMobile = r.device_type === 'mobile' || (r.user_agent && (r.user_agent.includes('Mobile') || r.user_agent.includes('Android')));
-                if (isPwa && isMobile) {
-                    pwaMobileUsers.add(r.user_id);
+                if (isMobile) {
+                    userTokensMap.get(uid).mobile.push(r);
+                } else {
+                    userTokensMap.get(uid).desktop.push(r);
                 }
             });
 
-            const sendRows = rows.filter(r => {
-                if (pwaMobileUsers.has(r.user_id)) {
-                    const isBrowserOrLegacy = r.client_type === 'browser' || !r.device_id || !r.client_type;
-                    const isMobileOrUnknown = r.device_type === 'mobile' || !r.device_type || !r.user_agent || (r.user_agent && (r.user_agent.includes('Mobile') || r.user_agent.includes('Android')));
-                    if (isBrowserOrLegacy && isMobileOrUnknown) {
-                        console.log(`[UnifiedPush] 모바일 PWA 기기 우선 적용으로 브라우저/레거시 토큰 제외 (User: ${r.user_id}, id: ${r.id}, endpoint: ${r.endpoint.slice(0, 40)}...)`);
-                        return false;
+            const sendRows = [];
+            const obsoleteEndpoints = [];
+
+            userTokensMap.forEach((tokens, uid) => {
+                // 데스크톱 토큰은 정상 추가
+                tokens.desktop.forEach(dt => sendRows.push(dt));
+
+                // 모바일 기기는 사용자당 무조건 단 1개의 최적 토큰만 허용!
+                if (tokens.mobile.length === 1) {
+                    sendRows.push(tokens.mobile[0]);
+                } else if (tokens.mobile.length > 1) {
+                    tokens.mobile.sort((a, b) => {
+                        const aPwa = a.client_type === 'pwa' ? 1 : 0;
+                        const bPwa = b.client_type === 'pwa' ? 1 : 0;
+                        if (aPwa !== bPwa) return bPwa - aPwa;
+                        const aTime = new Date(a.updated_at || 0).getTime();
+                        const bTime = new Date(b.updated_at || 0).getTime();
+                        if (aTime !== bTime) return bTime - aTime;
+                        return (b.id || 0) - (a.id || 0);
+                    });
+
+                    const winner = tokens.mobile[0];
+                    sendRows.push(winner);
+                    console.log(`[UnifiedPush] 유저(${uid}) 모바일 다중 토큰(${tokens.mobile.length}개) 중 최적 토큰(ID: ${winner.id}, type: ${winner.client_type}) 1개만 단일 발송`);
+
+                    for (let i = 1; i < tokens.mobile.length; i++) {
+                        obsoleteEndpoints.push(tokens.mobile[i].endpoint);
                     }
                 }
-                return true;
             });
+
+            // 탈락된 중복 모바일 토큰 DB 자동 정리
+            if (obsoleteEndpoints.length > 0) {
+                const placeholders = obsoleteEndpoints.map(() => '?').join(',');
+                db.run(`DELETE FROM push_subscriptions WHERE endpoint IN (${placeholders})`, obsoleteEndpoints, function(delErr) {
+                    if (!delErr && this.changes > 0) {
+                        console.log(`🧹 [UnifiedPush Cleanup] 중복 모바일 토큰 ${this.changes}개 DB 자동 정리 완료`);
+                    }
+                });
+            }
 
             saveNotificationHistory({
                 userId: userId || (adminOnly ? 'admin' : (sendRows[0] ? sendRows[0].user_id : 'admin')),
@@ -3101,24 +3138,43 @@ app.post('/api/notification/subscribe', authenticateToken, (req, res) => {
         }
 
         // 🌟 [중복 방지 스마트 정리]
-        // 1) 모바일 PWA 환경으로 등록된 경우: 동일 사용자의 모바일 일반 브라우저(browser) 토큰 및 메타데이터 없는 구형 토큰 자동 정리
+        // 1) 모바일 PWA 환경으로 등록된 경우: 동일 사용자의 모든 이전 모바일 토큰(브라우저 및 구형 PWA) 완전 자동 정리
         if (deviceType === 'mobile' && clientType === 'pwa') {
             db.run(
                 `DELETE FROM push_subscriptions 
                  WHERE user_id = ? AND endpoint != ? AND (
-                     (client_type = 'browser' AND (device_type = 'mobile' OR user_agent LIKE '%Mobile%' OR user_agent LIKE '%Android%'))
+                     device_type = 'mobile' 
+                     OR user_agent LIKE '%Mobile%' 
+                     OR user_agent LIKE '%Android%'
+                     OR client_type = 'pwa'
+                     OR client_type = 'browser'
                      OR (device_id = '' OR device_id IS NULL)
                  )`,
                 [userId, endpoint],
                 function(delErr) {
                     if (!delErr && this.changes > 0) {
-                        console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 모바일 PWA 등록에 따라 중복 브라우저/구형 토큰 ${this.changes}개 자동 정리 완료`);
+                        console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 PWA 등록에 따라 다른 이전 모바일 토큰 ${this.changes}개 자동 정리 완료`);
                     }
                 }
             );
         }
 
-        // 2) 동일 device_id를 가진 다른 엔드포인트(브라우저 캐시 재설치 등으로 변경된 이전 토큰) 자동 정리
+        // 2) 모바일 일반 브라우저에서 등록 시도한 경우: 해당 유저에게 이미 PWA 토큰이 있다면 브라우저 토큰 즉시 무효화/삭제
+        if (deviceType === 'mobile' && clientType === 'browser') {
+            db.get(
+                `SELECT endpoint FROM push_subscriptions WHERE user_id = ? AND client_type = 'pwa' AND (device_type = 'mobile' OR user_agent LIKE '%Mobile%') LIMIT 1`,
+                [userId],
+                (chkErr, pwaRow) => {
+                    if (pwaRow) {
+                        db.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [endpoint], () => {
+                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 모바일 PWA 존재하므로 일반 브라우저 토큰 자동 차단 및 삭제`);
+                        });
+                    }
+                }
+            );
+        }
+
+        // 3) 동일 device_id를 가진 다른 엔드포인트(브라우저 캐시 재설치 등으로 변경된 이전 토큰) 자동 정리
         if (deviceId && deviceId !== 'unknown') {
             db.run(
                 `DELETE FROM push_subscriptions 
@@ -3134,6 +3190,21 @@ app.post('/api/notification/subscribe', authenticateToken, (req, res) => {
 
         res.json({ success: true, message: '푸시 알림 구독이 등록되었습니다.' });
     });
+});
+
+// 2-1. 푸시 구독 해제 API
+app.post('/api/notification/unsubscribe', (req, res) => {
+    const { endpoint } = req.body;
+    if (endpoint) {
+        db.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [endpoint], function(delErr) {
+            if (!delErr && this.changes > 0) {
+                console.log(`🧹 [WebPush Unsubscribe] 푸시 구독 해제 완료 (${endpoint.slice(0, 40)}...)`);
+            }
+            res.json({ success: true, message: '푸시 구독이 해제되었습니다.' });
+        });
+    } else {
+        res.json({ success: true });
+    }
 });
 
 // 3. 알림 맞춤 설정 조회 API

@@ -690,8 +690,9 @@
     // 📱 [알림 중복 방지] 디바이스 및 실행 환경 메타데이터 수집 헬퍼
     function getDevicePushMetadata() {
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                             window.navigator.standalone === true ||
-                             document.referrer.includes('android-app://');
+                             window.matchMedia('(display-mode: fullscreen)').matches ||
+                             window.matchMedia('(display-mode: minimal-ui)').matches ||
+                             window.navigator.standalone === true;
         const clientType = isStandalone ? 'pwa' : 'browser';
 
         const ua = navigator.userAgent.toLowerCase();
@@ -727,6 +728,34 @@
         if (Notification.permission !== 'granted') return;
 
         try {
+            const meta = getDevicePushMetadata();
+
+            // 🌟 [중복 방지 핵심: 모바일 일반 브라우저(삼성인터넷 등) 푸시 차단 및 자동 해제]
+            // 모바일 기기에서는 기본 웹앱(PWA)으로만 알림을 수신해야 합니다.
+            // 삼성인터넷/크롬 등 모바일 일반 브라우저 탭에서 접속한 경우, 알림 중복을 원천 차단하기 위해
+            // 신규 구독을 등록하지 않고, 브라우저에 남아있는 과거 구독이 있다면 즉시 자동 해제(unsubscribe)합니다.
+            if (meta.deviceType === 'mobile' && meta.clientType === 'browser') {
+                try {
+                    const reg = await navigator.serviceWorker.ready;
+                    const existingSub = await reg.pushManager.getSubscription();
+                    if (existingSub) {
+                        console.log('🧹 [PWA 단일화] 모바일 일반 브라우저(삼성인터넷 등) 중복 수신 방지를 위해 브라우저 구독 자동 해제 중...');
+                        const oldEndpoint = existingSub.endpoint;
+                        await existingSub.unsubscribe();
+                        await fetch(`${NOTIF_BASE_URL}/api/notification/unsubscribe`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ endpoint: oldEndpoint })
+                        }).catch(() => {});
+                        console.log('✅ [PWA 단일화] 모바일 브라우저 중복 푸시 구독 해제 완료');
+                    }
+                } catch (unsubErr) {
+                    console.warn('[모바일 브라우저 중복 구독 정리 오류]:', unsubErr);
+                }
+                return;
+            }
+
             const keyRes = await fetch(`${NOTIF_BASE_URL}/api/notification/vapid-key`, {
                 credentials: 'include'
             });
@@ -767,7 +796,6 @@
                 });
             }
 
-            const meta = getDevicePushMetadata();
             await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
                 method: 'POST',
                 credentials: 'include',
@@ -783,6 +811,28 @@
             console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
         } catch (e) {
             console.error('[푸시 구독 등록 실패]:', e);
+        }
+    };
+
+    // 푸시 구독 해제 함수 (API)
+    window.unsubscribeWebPushSubscription = async function() {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        try {
+            const reg = await navigator.serviceWorker.ready;
+            const sub = await reg.pushManager.getSubscription();
+            if (sub) {
+                const ep = sub.endpoint;
+                await sub.unsubscribe();
+                await fetch(`${NOTIF_BASE_URL}/api/notification/unsubscribe`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ endpoint: ep })
+                }).catch(() => {});
+                console.log('✅ 포털 웹 푸시 구독 해제 완료');
+            }
+        } catch (e) {
+            console.warn('[푸시 구독 해제 실패]:', e);
         }
     };
 

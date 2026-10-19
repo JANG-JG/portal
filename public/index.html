@@ -2606,11 +2606,28 @@
                 }
 
                 const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                                     window.navigator.standalone === true ||
-                                     document.referrer.includes('android-app://');
+                                     window.matchMedia('(display-mode: fullscreen)').matches ||
+                                     window.matchMedia('(display-mode: minimal-ui)').matches ||
+                                     window.navigator.standalone === true;
                 const clientType = isStandalone ? 'pwa' : 'browser';
                 const ua = navigator.userAgent.toLowerCase();
                 const deviceType = (/ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk/i.test(ua)) ? 'tablet' : (/mobi|iphone|ipod|android/i.test(ua) ? 'mobile' : 'desktop');
+
+                if (deviceType === 'mobile' && clientType === 'browser') {
+                    if (sub) {
+                        try {
+                            const oldEp = sub.endpoint;
+                            await sub.unsubscribe();
+                            await fetch('/api/notification/unsubscribe', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ endpoint: oldEp })
+                            }).catch(() => {});
+                        } catch(e) {}
+                    }
+                    return;
+                }
+
                 let deviceId = '';
                 try {
                     deviceId = localStorage.getItem('jg_device_id') || ('dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9));
