@@ -1041,16 +1041,16 @@
     white-space: nowrap !important;
 }
 
-/* ℹ️ 단순하고 선명한 검정 원에 흰색 i 아이콘 (우측 배치) */
+/* ℹ️ 글씨와 테두리만 검정, 투명 배경의 미니멀 원형 i 아이콘 (맨 우측 배치) */
 .notif-info-btn {
     width: 18px !important;
     height: 18px !important;
     min-width: 18px !important;
     min-height: 18px !important;
     border-radius: 50% !important;
-    background: #000000 !important;
-    border: none !important;
-    color: #ffffff !important;
+    background: transparent !important;
+    border: 1.5px solid #000000 !important;
+    color: #000000 !important;
     font-size: 0.72rem !important;
     font-weight: 800 !important;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
@@ -1061,15 +1061,16 @@
     justify-content: center !important;
     padding: 0 !important;
     line-height: 1 !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+    box-shadow: none !important;
     transition: all 0.15s ease !important;
     outline: none !important;
     user-select: none !important;
+    box-sizing: border-box !important;
 }
 .notif-info-btn:hover,
 .notif-info-btn:active,
 .notif-info-tooltip-wrapper.active .notif-info-btn {
-    background: #334155 !important;
+    background: rgba(0, 0, 0, 0.08) !important;
     transform: scale(1.1) !important;
 }
 .notif-info-tooltip-wrapper {

@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261019_v5';
+    const UNAV_VERSION = '20261020_v10';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -139,8 +139,8 @@
             cachedHtml = localStorage.getItem(CACHE_KEY_HTML);
             cachedVer = localStorage.getItem(CACHE_KEY_VER);
             cachedTime = parseInt(localStorage.getItem(CACHE_KEY_TIME) || '0', 10);
-            // 구버전 캐시 정리
-            if (cachedVer !== UNAV_VERSION) {
+            // 구버전 캐시 또는 카테고리 바가 없는 구형 모달 캐시 정리
+            if (cachedVer !== UNAV_VERSION || (cachedHtml && !cachedHtml.includes('notif-category-bar'))) {
                 localStorage.removeItem(CACHE_KEY_HTML);
                 localStorage.removeItem(CACHE_KEY_VER);
                 localStorage.removeItem(CACHE_KEY_TIME);
@@ -158,12 +158,13 @@
             if (target) {
                 const oldDrawer = document.getElementById('unavDrawer');
                 if (oldDrawer && oldDrawer.parentNode !== target) oldDrawer.remove();
-                const oldModal = document.getElementById('notificationModal');
-                if (oldModal && oldModal.parentNode !== target) oldModal.remove();
+                // 🛡️ 페이지 내 잔존하는 구버전 알림 모달 완전 정리
+                document.querySelectorAll('#notificationModal').forEach(m => {
+                    if (m.parentNode !== target) m.remove();
+                });
                 target.outerHTML = html;
             } else if (document.body) {
-                const oldModal = document.getElementById('notificationModal');
-                if (oldModal) oldModal.remove();
+                document.querySelectorAll('#notificationModal').forEach(m => m.remove());
                 document.body.insertAdjacentHTML('afterbegin', html);
             }
         };
@@ -406,15 +407,21 @@
         window.openNotificationModal();
     };
 
-    // 알림 모달 열기 (미발견 시 자동 마운트 Self-Healing 보장)
+    // 알림 모달 열기 (미발견 또는 구버전 시 자동 마운트 Self-Healing 보장)
     window.openNotificationModal = async function() {
         let modal = document.getElementById('notificationModal');
+        // 🛡️ 카테고리 바가 없는 구버전 모달이면 즉시 제거하고 최신 컴포넌트로 재마운트
+        if (modal && !modal.querySelector('.notif-category-bar')) {
+            modal.remove();
+            modal = null;
+        }
+
         if (!modal) {
-            console.log('[UnifiedNav] notificationModal 미발견 -> 캐시 및 복구 시도...');
+            console.log('[UnifiedNav] notificationModal 미발견 또는 구버전 교체 -> 최신 컴포넌트 마운트 시도...');
             try {
-                // 1) localStorage 캐시에서 먼저 복구 시도
+                // 1) localStorage 캐시에서 먼저 복구 시도 (카테고리 바가 있는 최신 캐시인 경우만)
                 const localHtml = localStorage.getItem(CACHE_KEY_HTML);
-                if (localHtml) {
+                if (localHtml && localHtml.includes('notif-category-bar')) {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(localHtml, 'text/html');
                     const cachedModal = doc.getElementById('notificationModal');
@@ -424,13 +431,18 @@
                     }
                 }
 
-                // 2) 캐시에도 없으면 네트워크에서 가져옴
+                // 2) 최신 캐시가 없으면 네트워크에서 강제 로드
                 if (!modal) {
                     const isLocal = window.location.hostname === 'localhost';
                     const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=' + UNAV_VERSION;
                     const res = await fetch(compUrl);
                     if (res.ok) {
                         const html = await res.text();
+                        try {
+                            localStorage.setItem(CACHE_KEY_HTML, html);
+                            localStorage.setItem(CACHE_KEY_VER, UNAV_VERSION);
+                            localStorage.setItem(CACHE_KEY_TIME, String(Date.now()));
+                        } catch (e) {}
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(html, 'text/html');
                         const fetchedModal = doc.getElementById('notificationModal');
