@@ -167,3 +167,33 @@ function toggleNotifInfoTooltip(e) {
         window.toggleNotifInfoTooltip(e);
     }
 }
+
+function toggleNotifCardMenu(id, e) {
+    if (typeof window.toggleNotifCardMenu === 'function') {
+        window.toggleNotifCardMenu(id, e);
+    }
+}
+
+function closeAllNotifMenus() {
+    if (typeof window.closeAllNotifMenus === 'function') {
+        window.closeAllNotifMenus();
+    }
+}
+
+function handleCardDelete(id, e) {
+    if (typeof window.handleCardDelete === 'function') {
+        window.handleCardDelete(id, e);
+    }
+}
+
+function handleCardMute(catKey, catLabel, e) {
+    if (typeof window.handleCardMute === 'function') {
+        window.handleCardMute(catKey, catLabel, e);
+    }
+}
+
+function toggleNotifMaster(checked) {
+    if (typeof window.toggleNotifMaster === 'function') {
+        window.toggleNotifMaster(checked);
+    }
+}

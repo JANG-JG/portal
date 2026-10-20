@@ -351,6 +351,11 @@
             if (wrapper && !wrapper.contains(e.target)) {
                 wrapper.classList.remove('active');
             }
+            if (!e.target.closest('.notif-more-menu-wrapper')) {
+                if (typeof window.closeAllNotifMenus === 'function') {
+                    window.closeAllNotifMenus();
+                }
+            }
         });
 
         // URL 쿼리 또는 해시(?open=notification, #notification)로 유입 시 모달 자동 열기 및 주소창 즉시 정리
@@ -1093,12 +1098,23 @@
                         </div>
                     </div>
                     <div class="notif-card-content">
-                        <h4 class="notif-card-title">${escapeHtml(item.title || '알림')}</h4>
+                        <div class="notif-card-title-row">
+                            <h4 class="notif-card-title">${escapeHtml(item.title || '알림')}</h4>
+                            <div class="notif-more-menu-wrapper" onclick="event.stopPropagation()">
+                                <button type="button" class="btn-notif-more" aria-label="메뉴 더보기" onclick="toggleNotifCardMenu(${item.id}, event)" title="더보기">⋮</button>
+                                <div class="notif-dropdown-menu" id="notifDropdown-${item.id}">
+                                    <button type="button" class="notif-dropdown-btn btn-action-delete" onclick="handleCardDelete(${item.id}, event)">
+                                        <span>🗑️</span>
+                                        <span>알림 삭제</span>
+                                    </button>
+                                    <button type="button" class="notif-dropdown-btn btn-action-mute" onclick="handleCardMute('${cat.key}', '${cat.label}', event)">
+                                        <span>🔕</span>
+                                        <span>${cat.label} 알림 끄기</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                         <p class="notif-card-body">${escapeHtml(item.body || '')}</p>
-                    </div>
-                    <div class="notif-card-actions-center" onclick="event.stopPropagation()">
-                        ${isUnread ? `<button type="button" class="btn-card-action btn-card-read" onclick="markSingleAsRead(${item.id})">✓ 읽음</button>` : ''}
-                        <button type="button" class="btn-card-action btn-card-delete" onclick="deleteNotificationItem(${item.id})">🗑️ 삭제</button>
                     </div>
                 </div>
             `;
@@ -1309,6 +1325,102 @@
             }
         } catch (e) {
             alert('전체 삭제 중 오류: ' + e.message);
+        }
+    };
+
+    // ⋮ 카드 메뉴 열기/닫기 토글
+    window.toggleNotifCardMenu = function(id, e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        const targetMenu = document.getElementById(`notifDropdown-${id}`);
+        const isAlreadyOpen = targetMenu && targetMenu.classList.contains('show');
+        window.closeAllNotifMenus();
+        if (targetMenu && !isAlreadyOpen) {
+            targetMenu.classList.add('show');
+        }
+    };
+
+    // 모든 열린 카드 메뉴 닫기
+    window.closeAllNotifMenus = function() {
+        document.querySelectorAll('.notif-dropdown-menu.show').forEach(el => el.classList.remove('show'));
+    };
+
+    // 카드 메뉴에서 알림 삭제 클릭
+    window.handleCardDelete = function(id, e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        window.closeAllNotifMenus();
+        window.deleteNotificationItem(id);
+    };
+
+    // 카드 메뉴에서 카테고리 알림 끄기 클릭
+    window.handleCardMute = async function(catKey, catLabel, e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        window.closeAllNotifMenus();
+
+        const label = catLabel || '해당';
+        if (!confirm(`'${label}' 관련 알림을 끄시겠습니까?\n('알림 맞춤 설정' 탭에서 언제든지 다시 켤 수 있습니다.)`)) {
+            return;
+        }
+
+        const setCheck = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.checked = val;
+        };
+
+        if (catKey === 'breaking') {
+            portalNotifSettings.breaking_news_enabled = 0;
+            setCheck('notifBreakingNewsEnabled', false);
+        } else if (catKey === 'calendar') {
+            portalNotifSettings.hospital_push_enabled = 0;
+            setCheck('notifHospitalPushEnabled', false);
+        } else if (catKey === 'weather') {
+            portalNotifSettings.weather_morning_enabled = 0;
+            setCheck('notifWeatherMorningEnabled', false);
+        } else if (catKey === 'finance') {
+            portalNotifSettings.asset_open_enabled = 0;
+            portalNotifSettings.asset_close_enabled = 0;
+            portalNotifSettings.asset_report_enabled = 0;
+            setCheck('notifAssetOpenEnabled', false);
+            setCheck('notifAssetCloseEnabled', false);
+            setCheck('notifAssetReportEnabled', false);
+        } else if (catKey === 'health') {
+            portalNotifSettings.bp_reminder_enabled = 0;
+            setCheck('notifBpReminderEnabled', false);
+        } else if (catKey === 'system') {
+            portalNotifSettings.system_alert_enabled = 0;
+            setCheck('notifSystemAlertEnabled', false);
+        }
+
+        try {
+            await fetch(`${NOTIF_BASE_URL}/api/notification/settings`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(portalNotifSettings)
+            });
+            alert(`🔕 '${label}' 알림을 껐습니다.\n'알림 맞춤 설정' 탭에서 언제든지 다시 켤 수 있습니다.`);
+        } catch (err) {
+            console.error('[알림 음소거 저장 실패]:', err);
+            alert('설정 저장 중 오류가 발생했습니다: ' + err.message);
+        }
+    };
+
+    // 상단 마스터 전체 켜기/끄기 스위치
+    window.toggleNotifMaster = async function(checked) {
+        portalNotifSettings.enabled = checked ? 1 : 0;
+        try {
+            await fetch(`${NOTIF_BASE_URL}/api/notification/settings`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(portalNotifSettings)
+            });
+            if (checked) {
+                await window.registerWebPushSubscription();
+            } else {
+                await window.unsubscribeWebPushSubscription();
+            }
+        } catch (err) {
+            console.error('[마스터 알림 스위치 저장 실패]:', err);
         }
     };
 

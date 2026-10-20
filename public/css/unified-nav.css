@@ -528,29 +528,38 @@
     height: 100vh !important;
     height: 100dvh !important;
     border-radius: 0 !important;
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.35) !important;
+    box-shadow: none !important;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
     animation: notifModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
     box-sizing: border-box !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
-@media (min-width: 961px) {
-    #notificationModal.notif-modal-backdrop,
+@media (max-width: 960px) {
+    .notif-modal-backdrop,
     #notificationModal {
-        padding: 1.5rem 1rem !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        inset: 0 !important;
     }
     .notif-modal-dialog {
-        height: calc(100vh - 3rem) !important;
-        height: calc(100dvh - 3rem) !important;
-        border-radius: 20px !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
     }
 }
 
 @keyframes notifModalFadeIn {
-    from { opacity: 0; transform: scale(0.98) translateY(6px); }
+    from { opacity: 0; transform: scale(0.99) translateY(4px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
@@ -558,38 +567,66 @@
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    padding: 1rem 1.4rem !important;
+    padding: 0.55rem 0.85rem !important;
+    min-height: 46px !important;
     border-bottom: 1px solid #e2e8f0 !important;
     background: #ffffff !important;
     flex-shrink: 0 !important;
     box-sizing: border-box !important;
 }
-.notif-modal-header h3 {
-    margin: 0 !important;
-    color: #1e293b !important;
+.notif-header-title-box {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+}
+.notif-header-bell {
     font-size: 1.15rem !important;
-    font-weight: 700 !important;
-    line-height: 1.3 !important;
+    line-height: 1 !important;
+}
+.notif-header-title {
+    margin: 0 !important;
+    color: #0f172a !important;
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.3px !important;
+    line-height: 1.2 !important;
+}
+.notif-header-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+}
+.notif-master-toggle-label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.3rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    font-size: 0.78rem !important;
+    color: #475569 !important;
+    margin: 0 !important;
+    user-select: none !important;
 }
 .notif-close-x {
     background: #f1f5f9 !important;
     border: none !important;
-    width: 36px !important;
-    height: 36px !important;
-    min-width: 36px !important;
-    min-height: 36px !important;
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
     padding: 0 !important;
     border-radius: 50% !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 1.15rem !important;
+    font-size: 1rem !important;
     color: #475569 !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
     line-height: 1 !important;
 }
-.notif-close-x:hover {
+.notif-close-x:hover,
+.notif-close-x:active {
     background: #e2e8f0 !important;
     color: #0f172a !important;
     transform: scale(1.05) !important;
@@ -603,14 +640,14 @@
 }
 .notif-tab-item {
     flex: 1 !important;
-    padding: 0.7rem 0.5rem !important;
-    font-size: 0.88rem !important;
+    padding: 0.5rem 0.5rem !important;
+    font-size: 0.84rem !important;
     font-weight: 600 !important;
     color: #64748b !important;
     border: none !important;
     background: transparent !important;
     cursor: pointer !important;
-    border-bottom: 2px solid transparent !important;
+    border-bottom: 2.5px solid transparent !important;
     transition: all 0.15s !important;
     display: flex !important;
     align-items: center !important;
@@ -624,6 +661,7 @@
     color: #2563eb !important;
     background: #ffffff !important;
     border-bottom-color: #2563eb !important;
+    font-weight: 700 !important;
 }
 .notif-tab-badge {
     background: #ef4444 !important;
@@ -638,8 +676,12 @@
     flex: 1 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    padding: 1rem 1.1rem !important;
+    padding: 0 !important;
     background: #f8fafc !important;
+    box-sizing: border-box !important;
+}
+#notifMainViewSettings {
+    padding: 1rem 1.1rem !important;
     box-sizing: border-box !important;
 }
 .notif-perm-banner {
@@ -898,18 +940,22 @@
     border-color: #fecaca !important;
     color: #dc2626 !important;
 }
-/* 🏷️ 카테고리 필터 칩 바 (가로 스크롤 가능) */
+/* 🏷️ 카테고리 필터 칩 바 (가로 스크롤 & 스크롤 시 상단 자석처럼 Sticky 고정) */
 .notif-category-bar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50 !important;
     display: flex !important;
     align-items: center !important;
-    gap: 0.45rem !important;
-    padding: 0.75rem 1.25rem !important;
+    gap: 0.35rem !important;
+    padding: 0.45rem 5px !important; /* 좌우 여백 약 5px로 최소화 */
     background: #ffffff !important;
     border-bottom: 1px solid #e2e8f0 !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
     flex-shrink: 0 !important;
     white-space: nowrap !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
 }
 .notif-category-bar::-webkit-scrollbar {
     display: none !important;
@@ -917,10 +963,10 @@
 .notif-cat-chip {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 0.35rem !important;
-    padding: 0.42rem 0.85rem !important;
+    gap: 0.3rem !important;
+    padding: 0.38rem 0.75rem !important;
     border-radius: 20px !important;
-    font-size: 0.82rem !important;
+    font-size: 0.8rem !important;
     font-weight: 600 !important;
     color: #475569 !important;
     background: #f1f5f9 !important;
@@ -941,8 +987,8 @@
     box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25) !important;
 }
 .notif-cat-badge {
-    font-size: 0.72rem !important;
-    padding: 1px 6px !important;
+    font-size: 0.7rem !important;
+    padding: 1px 5px !important;
     border-radius: 10px !important;
     background: #e2e8f0 !important;
     color: #334155 !important;
@@ -960,176 +1006,71 @@
     display: inline-block !important;
 }
 
-/* 📜 알림 히스토리 스크롤 컨테이너 (화면 전체 쾌적 사용) */
-.notif-history-scroll {
-    flex: 1 !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding: 1rem 1.25rem 2rem !important;
-    box-sizing: border-box !important;
+/* 툴바 (카테고리 바 바로 아래에 자석처럼 Sticky 고정) */
+.notif-subtoolbar {
+    position: sticky !important;
+    top: 43px !important;
+    z-index: 49 !important;
     display: flex !important;
-    flex-direction: column !important;
-    gap: 0.75rem !important;
-}
-
-/* 📇 알림 카드 아이템 */
-.notif-card-item {
-    background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
-    border-radius: 14px !important;
-    padding: 1.1rem 1.25rem !important;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    cursor: pointer !important;
-    position: relative !important;
-    display: flex !important;
-    flex-direction: column !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
-    box-sizing: border-box !important;
-    width: 100% !important;
-}
-.notif-card-item:hover {
-    border-color: #3b82f6 !important;
-    transform: translateY(-2px) !important;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
-}
-.notif-card-item.is-unread {
-    background: #ffffff !important;
-    border-color: #bfdbfe !important;
-    border-left: 4px solid #2563eb !important;
-}
-.notif-card-item.is-read {
-    background: #ffffff !important;
-    opacity: 0.88 !important;
-}
-.notif-card-header {
-    display: flex !important;
-    align-items: center !important;
     justify-content: space-between !important;
-    margin-bottom: 0.55rem !important;
+    align-items: center !important;
+    padding: 0.45rem 6px !important; /* 좌우 6px 최소화 */
+    border-bottom: 1px solid #e2e8f0 !important;
+    background: #f8fafc !important;
     flex-wrap: wrap !important;
     gap: 0.35rem !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
 }
-.notif-card-category-badge {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 0.3rem !important;
-    font-size: 0.74rem !important;
-    font-weight: 700 !important;
-    padding: 0.25rem 0.6rem !important;
-    border-radius: 6px !important;
-    letter-spacing: -0.2px !important;
-}
-.cat-breaking { background: #fee2e2 !important; color: #dc2626 !important; }
-.cat-calendar { background: #e0e7ff !important; color: #4338ca !important; }
-.cat-weather  { background: #e0f2fe !important; color: #0369a1 !important; }
-.cat-finance  { background: #fef3c7 !important; color: #b45309 !important; }
-.cat-health   { background: #fce7f3 !important; color: #be185d !important; }
-.cat-system   { background: #f3e8ff !important; color: #7e22ce !important; }
-.cat-general  { background: #f1f5f9 !important; color: #475569 !important; }
-
-.notif-card-meta {
-    display: flex !important;
-    align-items: center !important;
-    gap: 0.45rem !important;
-    margin-left: auto !important;
-}
-.notif-card-time {
-    font-size: 0.76rem !important;
-    color: #94a3b8 !important;
-}
-.notif-badge-new {
-    background: #ef4444 !important;
-    color: #ffffff !important;
-    font-size: 0.65rem !important;
-    font-weight: 800 !important;
-    padding: 1px 5px !important;
-    border-radius: 4px !important;
-    letter-spacing: -0.2px !important;
-}
-.notif-card-title {
-    font-size: 0.98rem !important;
-    font-weight: 700 !important;
-    color: #0f172a !important;
-    margin: 0 0 0.4rem 0 !important;
-    line-height: 1.4 !important;
-}
-.notif-card-body {
-    font-size: 0.86rem !important;
-    color: #475569 !important;
-    line-height: 1.5 !important;
-    margin: 0 !important;
-    word-break: break-word !important;
-}
-
-/* 🎯 카드 하단: 알림 읽음, 삭제 가운데 정렬 */
-.notif-card-actions-center {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 0.75rem !important;
-    margin-top: 0.85rem !important;
-    padding-top: 0.75rem !important;
-    border-top: 1px dashed #e2e8f0 !important;
-}
-.btn-card-action {
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 0.35rem !important;
-    padding: 0.38rem 0.95rem !important;
-    border-radius: 8px !important;
-    font-size: 0.8rem !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-    transition: all 0.15s ease !important;
-    border: 1px solid transparent !important;
-    font-family: inherit !important;
-    line-height: 1.2 !important;
-}
-.btn-card-read {
-    background: #eff6ff !important;
-    color: #2563eb !important;
-    border-color: #bfdbfe !important;
-}
-.btn-card-read:hover {
-    background: #dbeafe !important;
-}
-.btn-card-delete {
-    background: #f8fafc !important;
-    color: #64748b !important;
-    border-color: #e2e8f0 !important;
-}
-.btn-card-delete:hover {
-    background: #fee2e2 !important;
-    color: #ef4444 !important;
-    border-color: #fecaca !important;
-}
-
-/* ℹ️ 알림 보관 주기 안내 툴팁 (마우스 호버 & 모바일 터치 지원) */
-.notif-info-tooltip-wrapper {
+.notif-count-box {
     position: relative !important;
     display: inline-flex !important;
     align-items: center !important;
+    gap: 0.35rem !important;
+    min-width: 0 !important;
 }
-.notif-info-btn {
-    background: none !important;
-    border: none !important;
-    color: #64748b !important;
-    font-size: 0.92rem !important;
+#notifHistoryCountLabel,
+.notif-count-label {
+    font-size: 0.8rem !important;
+    color: #334155 !important;
     font-weight: 700 !important;
-    cursor: pointer !important;
-    padding: 0 4px !important;
+    white-space: nowrap !important;
+}
+
+/* ℹ️ 눈에 띄는 파란색 원형 알림 보관 안내 버튼 */
+.notif-info-btn {
+    width: 20px !important;
+    height: 20px !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
     border-radius: 50% !important;
-    line-height: 1 !important;
+    background: #2563eb !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-size: 0.76rem !important;
+    font-weight: 800 !important;
+    font-family: serif, sans-serif !important;
+    font-style: italic !important;
+    cursor: pointer !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.35) !important;
     transition: all 0.15s ease !important;
     outline: none !important;
 }
 .notif-info-btn:hover,
+.notif-info-btn:active,
 .notif-info-tooltip-wrapper.active .notif-info-btn {
-    color: #2563eb !important;
-    background: #e0e7ff !important;
+    background: #1d4ed8 !important;
+    transform: scale(1.1) !important;
+}
+.notif-info-tooltip-wrapper {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 .notif-info-tooltip {
     display: none;
@@ -1144,8 +1085,8 @@
     padding: 0.45rem 0.75rem !important;
     border-radius: 8px !important;
     white-space: nowrap !important;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22) !important;
-    z-index: 100 !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
+    z-index: 1000 !important;
     pointer-events: none !important;
     border: 1px solid #334155 !important;
 }
@@ -1171,11 +1112,202 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* 📜 알림 카드 컨테이너 (좌우 여백 6px로 카드가 화면 거의 꽉 차도록 확장) */
+.notif-history-scroll {
+    flex: 1 !important;
+    overflow-y: visible !important;
+    padding: 0.5rem 6px 2rem !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.6rem !important;
+    width: 100% !important;
+}
+
+/* 📇 모던 알림 카드 아이템 */
+.notif-card-item {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    padding: 0.85rem 0.95rem !important;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    cursor: pointer !important;
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+}
+.notif-card-item:hover {
+    border-color: #3b82f6 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07) !important;
+}
+.notif-card-item.is-unread {
+    background: #ffffff !important;
+    border-color: #bfdbfe !important;
+    border-left: 4px solid #2563eb !important;
+}
+.notif-card-item.is-read {
+    background: #ffffff !important;
+    opacity: 0.85 !important;
+}
+.notif-card-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 0.4rem !important;
+    gap: 0.35rem !important;
+}
+.notif-card-category-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
+    font-size: 0.74rem !important;
+    font-weight: 700 !important;
+    padding: 0.2rem 0.55rem !important;
+    border-radius: 6px !important;
+    letter-spacing: -0.2px !important;
+}
+.cat-breaking { background: #fee2e2 !important; color: #dc2626 !important; }
+.cat-calendar { background: #e0e7ff !important; color: #4338ca !important; }
+.cat-weather  { background: #e0f2fe !important; color: #0369a1 !important; }
+.cat-finance  { background: #fef3c7 !important; color: #b45309 !important; }
+.cat-health   { background: #fce7f3 !important; color: #be185d !important; }
+.cat-system   { background: #f3e8ff !important; color: #7e22ce !important; }
+.cat-general  { background: #f1f5f9 !important; color: #475569 !important; }
+
+.notif-card-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    margin-left: auto !important;
+}
+.notif-card-time {
+    font-size: 0.74rem !important;
+    color: #94a3b8 !important;
+    white-space: nowrap !important;
+}
+.notif-badge-new {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-size: 0.65rem !important;
+    font-weight: 800 !important;
+    padding: 1px 5px !important;
+    border-radius: 4px !important;
+    letter-spacing: -0.2px !important;
+}
+
+/* ⋮ 더보기 메뉴 버튼 & 드롭다운 */
+.notif-more-menu-wrapper {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+.btn-notif-more {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 6px !important;
+    background: transparent !important;
+    border: none !important;
+    color: #64748b !important;
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    transition: all 0.15s ease !important;
+}
+.btn-notif-more:hover,
+.btn-notif-more:active {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+.notif-dropdown-menu {
+    display: none;
+    position: absolute !important;
+    top: calc(100% + 4px) !important;
+    right: 0 !important;
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+    z-index: 1000 !important;
+    min-width: 145px !important;
+    overflow: hidden !important;
+    padding: 4px 0 !important;
+}
+.notif-dropdown-menu.show {
+    display: flex !important;
+    flex-direction: column !important;
+    animation: notifMenuPop 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+@keyframes notifMenuPop {
+    from { opacity: 0; transform: scale(0.92) translateY(-4px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.notif-dropdown-btn {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    padding: 0.55rem 0.85rem !important;
+    background: none !important;
+    border: none !important;
+    width: 100% !important;
+    text-align: left !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    cursor: pointer !important;
+    transition: background 0.12s ease !important;
+    font-family: inherit !important;
+    white-space: nowrap !important;
+}
+.notif-dropdown-btn:hover {
+    background: #f8fafc !important;
+}
+.notif-dropdown-btn.btn-action-delete:hover {
+    background: #fee2e2 !important;
+    color: #dc2626 !important;
+}
+.notif-dropdown-btn.btn-action-mute:hover {
+    background: #fef3c7 !important;
+    color: #b45309 !important;
+}
+
+.notif-card-title-row {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+    margin-bottom: 0.35rem !important;
+}
+.notif-card-title {
+    font-size: 0.94rem !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    line-height: 1.4 !important;
+    flex: 1 !important;
+    word-break: break-word !important;
+}
+.notif-card-body {
+    font-size: 0.84rem !important;
+    color: #475569 !important;
+    line-height: 1.45 !important;
+    margin: 0 !important;
+    word-break: break-word !important;
+}
+
 /* 📄 알림 목록 마지막 안내 블록 */
 .notif-list-end-notice {
     text-align: center !important;
-    padding: 1.6rem 1rem 1.4rem !important;
-    margin: 0.5rem 0 0.5rem 0 !important;
+    padding: 1.5rem 1rem 1.25rem !important;
+    margin: 0.4rem 0 !important;
     border-radius: 12px !important;
     background: #f8fafc !important;
     border: 1px dashed #cbd5e1 !important;
@@ -1187,18 +1319,18 @@
     gap: 0.25rem !important;
 }
 .notif-end-icon {
-    font-size: 1.4rem !important;
+    font-size: 1.35rem !important;
     line-height: 1 !important;
-    margin-bottom: 0.2rem !important;
+    margin-bottom: 0.15rem !important;
 }
 .notif-end-text {
-    font-size: 0.88rem !important;
+    font-size: 0.86rem !important;
     font-weight: 700 !important;
     color: #1e293b !important;
     margin: 0 !important;
 }
 .notif-end-sub {
-    font-size: 0.78rem !important;
+    font-size: 0.76rem !important;
     color: #64748b !important;
     margin: 0 !important;
 }

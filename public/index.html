@@ -15,7 +15,7 @@
     <meta name="color-scheme" content="light">
     <link rel="stylesheet" href="/css/pretendard.css?v=20261019_v1">
     <link rel="stylesheet" href="/css/style.css?v=20261019_v1">
-    <link rel="stylesheet" href="/css/index.css?v=20261020_v1">
+    <link rel="stylesheet" href="/css/index.css?v=20261020_v2">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
@@ -499,13 +499,13 @@
         <div class="notif-modal-dialog">
             <!-- 모달 상단 고정 헤더 -->
             <div class="notif-modal-header">
-                <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 1.3rem;">🔔</span>
-                    <h3 style="margin: 0; color: #1e293b; font-size: 1.15rem; font-weight: 700;">통합 알림 센터</h3>
+                <div class="notif-header-title-box">
+                    <span class="notif-header-bell">🔔</span>
+                    <h3 class="notif-header-title">알림 센터</h3>
                 </div>
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <label style="display: flex; align-items: center; gap: 0.35rem; font-weight: 600; cursor: pointer; font-size: 0.85rem; color: #334155; margin: 0;">
-                        <input type="checkbox" id="notifMasterEnabled" checked style="width: 17px; height: 17px; accent-color: #2563eb; cursor: pointer;">
+                <div class="notif-header-actions">
+                    <label class="notif-master-toggle-label">
+                        <input type="checkbox" id="notifMasterEnabled" checked onchange="window.toggleNotifMaster && window.toggleNotifMaster(this.checked)" style="width: 16px; height: 16px; accent-color: #2563eb; cursor: pointer;">
                         <span>전체 켜기</span>
                     </label>
                     <button type="button" onclick="closeNotificationModal()" class="notif-close-x" aria-label="닫기">✕</button>
@@ -702,9 +702,9 @@
                     </div>
 
                     <!-- 서브 툴바 (카운트 및 일괄 액션) -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 1.25rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc; flex-wrap: wrap; gap: 0.4rem; flex-shrink: 0;">
-                        <div style="display: flex; align-items: center; gap: 0.35rem; min-width: 0;">
-                            <span id="notifHistoryCountLabel" style="font-size: 0.82rem; color: #475569; font-weight: 600;">알림 내역</span>
+                    <div class="notif-subtoolbar">
+                        <div class="notif-count-box">
+                            <span id="notifHistoryCountLabel" class="notif-count-label">알림 내역</span>
                             <div class="notif-info-tooltip-wrapper" id="notifInfoTooltipWrapper">
                                 <button type="button" class="notif-info-btn" id="notifInfoBtn" aria-label="알림 보관 주기 안내" onclick="toggleNotifInfoTooltip(event)" title="알림 보관 주기 안내">ⓘ</button>
                                 <div class="notif-info-tooltip">
@@ -829,8 +829,8 @@
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 + 하단 뉴스/속보 티커 자동 로드) -->
     <script src="/js/portal-main.js?v=20261020_v1"></script>
-    <script src="/js/portal-notification.js?v=20261020_v1"></script>
+    <script src="/js/portal-notification.js?v=20261020_v2"></script>
     <script src="/js/portal-search.js?v=20261020_v1"></script>
-    <script src="/js/jg-ui.js?v=20261020_v5" defer></script>
+    <script src="/js/jg-ui.js?v=20261020_v6" defer></script>
 </body>
 </html>
