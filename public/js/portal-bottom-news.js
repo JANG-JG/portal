@@ -1,38 +1,31 @@
 /**
  * 📰 JG 포털 전용 하단 실시간 뉴스/속보 티커 바 (portal-bottom-news.js)
- * - 외부 의존성(jg-ui, unified-nav) 없이 완전히 독립 동작하는 전용 하단 바
- * - 24시간 실시간 시계 + 뉴스 헤드라인 롤링 + 날씨/증시 지표 + 긴급 속보 띠
- * - 모듈화 표준 (500줄 이하) 준수
+ * - 좌측: 24시간 실시간 시계 (KST)
+ * - 중앙: 전체 뉴스 기사 좌측 연속 롤링 (Marquee 무한 스크롤, 호버 시 일시정지)
+ * - 우측: 날씨 · 코스피 · 코스닥 · 환율 실시간 수직 롤링 (위로 스크롤)
+ * - 상단 띠: 실시간 긴급 속보 발생 시 즉시 활성화
+ * - 규칙 준수: 500줄 이하 모듈화 & 100% 한국어 친화적 인터페이스
  */
 (function() {
     'use strict';
     if (document.getElementById('jg-global-ticker-bar')) return;
 
     let currentHasBreaking = false;
-    let articlesList = [];
-    let currentArticleIndex = 0;
-    let tickerRollTimer = null;
-    let breakingRollTimer = null;
-    let breakingList = [];
-    let currentBreakingIndex = 0;
+    let vRollingTimer = null;
 
-    // 1. 하단 여백 자동 확보
+    // 1. 하단 바 여백 동적 계산
     function updateBottomPadding(hasBreaking) {
         currentHasBreaking = !!hasBreaking;
         const isMobile = window.innerWidth <= 768;
-        const tickerHeight = isMobile ? 54 : 42;
-        const breakingHeight = currentHasBreaking ? (isMobile ? 32 : 34) : 0;
+        const tickerHeight = isMobile ? 56 : 42;
+        const breakingHeight = currentHasBreaking ? (isMobile ? 34 : 36) : 0;
         const totalHeight = tickerHeight + breakingHeight;
 
         const tickerBar = document.getElementById('jg-global-ticker-bar');
-        if (tickerBar) {
-            tickerBar.style.setProperty('bottom', '0px', 'important');
-        }
+        if (tickerBar) tickerBar.style.setProperty('bottom', '0px', 'important');
 
         const breakingBar = document.getElementById('jg-global-breaking-bar');
-        if (breakingBar) {
-            breakingBar.style.setProperty('bottom', tickerHeight + 'px', 'important');
-        }
+        if (breakingBar) breakingBar.style.setProperty('bottom', tickerHeight + 'px', 'important');
 
         if (document.body) {
             document.body.style.paddingBottom = (totalHeight + 8) + 'px';
@@ -40,241 +33,159 @@
     }
     window.addEventListener('resize', () => updateBottomPadding(currentHasBreaking));
 
-    // 2. 다크 테마 인라인 스타일 주입
+    // 2. 다크 테마 전용 스타일 주입
     const style = document.createElement('style');
     style.textContent = `
-        /* 🚨 긴급 속보 바 (하단 티커 바로 위에 밀착) */
+        /* 🚨 긴급 속보 상단 띠 */
         #jg-global-breaking-bar {
             position: fixed !important; bottom: 42px !important; left: 0 !important; right: 0 !important;
-            height: 34px !important; background: #450a0a !important; border-top: 1px solid #7f1d1d !important;
-            color: #fecaca !important; z-index: 99998 !important; display: none; align-items: center !important;
-            padding: 0 12px !important; box-sizing: border-box !important; font-size: 12px !important;
+            height: 36px !important; background: linear-gradient(90deg, #991b1b 0%, #b91c1c 50%, #7f1d1d 100%) !important;
+            border-top: 1px solid #ef4444 !important; border-bottom: 1px solid #450a0a !important;
+            color: #ffffff !important; z-index: 99998 !important; display: none; align-items: center !important;
+            padding: 0 12px !important; font-size: 11.5px !important; box-shadow: 0 -2px 10px rgba(185, 28, 28, 0.4) !important;
+            user-select: none !important; box-sizing: border-box !important;
         }
-        #jg-global-breaking-bar.active { display: flex !important; }
-        .jg-breaking-badge {
+        #jg-global-breaking-bar.jg-breaking-active { display: flex !important; }
+        .jg-brk-badge {
             display: inline-flex !important; align-items: center !important; gap: 5px !important;
-            background: #991b1b !important; color: #ffffff !important; padding: 2px 7px !important;
-            border-radius: 4px !important; font-weight: 700 !important; font-size: 11px !important;
-            flex-shrink: 0 !important; margin-right: 10px !important;
+            background: #ffffff !important; color: #b91c1c !important; font-weight: 800 !important;
+            font-size: 11px !important; padding: 2px 7px !important; border-radius: 4px !important;
+            margin-right: 10px !important; flex-shrink: 0 !important;
         }
-        .jg-breaking-pulse {
-            width: 6px !important; height: 6px !important; background: #f87171 !important;
-            border-radius: 50% !important; animation: jgBreakingPulse 1.2s infinite ease-in-out !important;
+        .jg-brk-scroll-area {
+            flex: 1 !important; min-width: 0 !important; overflow: hidden !important;
+            position: relative !important; height: 100% !important; display: flex !important; align-items: center !important;
         }
-        @keyframes jgBreakingPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.3; transform: scale(1.4); }
+        .jg-brk-track {
+            display: inline-flex !important; white-space: nowrap !important; will-change: transform !important;
+            animation: jgBrkScroll 60s linear infinite !important;
         }
-        .jg-breaking-content {
-            flex: 1 !important; overflow: hidden !important; white-space: nowrap !important;
-            text-overflow: ellipsis !important; text-decoration: none !important;
-            color: #ffffff !important; font-weight: 600 !important; text-align: left !important;
+        .jg-brk-track:hover { animation-play-state: paused !important; }
+        @keyframes jgBrkScroll { 0% { transform: translateX(0%); } 100% { transform: translateX(-50%); } }
+        .jg-brk-link {
+            display: inline-flex !important; align-items: center !important; gap: 6px !important;
+            color: #ffffff !important; text-decoration: none !important; margin-right: 24px !important;
+            font-weight: 600 !important; font-size: 11.5px !important;
         }
-        .jg-breaking-close {
-            background: transparent !important; border: none !important; color: #fca5a5 !important;
-            cursor: pointer !important; padding: 2px 6px !important; font-size: 13px !important; margin-left: 8px !important;
+        .jg-brk-link:hover { text-decoration: underline !important; color: #fef08a !important; }
+        .jg-brk-close {
+            background: rgba(0, 0, 0, 0.35) !important; border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            color: #ffffff !important; border-radius: 4px !important; padding: 2px 7px !important;
+            font-size: 10.5px !important; font-weight: 700 !important; cursor: pointer !important; margin-left: 8px !important;
         }
 
         /* 📰 기본 하단 티커 바 */
         #jg-global-ticker-bar {
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            height: 42px !important;
-            background: #09090b !important;
-            border-top: 1px solid #27272a !important;
-            color: #f4f4f5 !important;
-            z-index: 99997 !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            padding: 0 14px !important;
-            box-sizing: border-box !important;
-            font-family: inherit !important;
-            font-size: 12px !important;
-            user-select: none !important;
+            position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
+            height: 42px !important; background: #09090b !important; border-top: 1px solid #27272a !important;
+            color: #f4f4f5 !important; z-index: 99997 !important; display: flex !important;
+            align-items: center !important; padding: 0 12px !important; font-size: 12px !important;
+            user-select: none !important; box-sizing: border-box !important;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.3) !important;
         }
-        .jg-ticker-left {
-            display: flex !important;
-            align-items: center !important;
-            gap: 6px !important;
-            color: #a1a1aa !important;
-            font-size: 11.5px !important;
-            font-weight: 600 !important;
-            white-space: nowrap !important;
-            flex-shrink: 0 !important;
-            font-variant-numeric: tabular-nums !important;
-        }
-        .jg-ticker-center {
-            flex: 1 !important;
-            height: 24px !important;
-            line-height: 24px !important;
-            overflow: hidden !important;
-            margin: 0 14px !important;
-            position: relative !important;
-        }
-        .jg-ticker-track {
-            display: flex !important;
-            align-items: center !important;
-            height: 24px !important;
-            overflow: hidden !important;
-        }
-        .jg-ticker-item {
-            display: flex !important;
-            align-items: center !important;
-            gap: 6px !important;
-            color: #f4f4f5 !important;
-            text-decoration: none !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            font-size: 12.5px !important;
-            transition: color 0.15s ease !important;
-        }
-        .jg-ticker-item:hover {
-            color: #60a5fa !important;
-        }
-        .jg-ticker-cat {
-            background: #18181b !important;
-            border: 1px solid #27272a !important;
-            color: #a1a1aa !important;
-            font-size: 10px !important;
-            font-weight: 700 !important;
-            padding: 1px 5px !important;
-            border-radius: 3px !important;
-            flex-shrink: 0 !important;
-        }
-        .jg-ticker-right {
-            display: flex !important;
-            align-items: center !important;
-            gap: 10px !important;
-            flex-shrink: 0 !important;
-            font-size: 11.5px !important;
-            color: #a1a1aa !important;
-        }
-        .jg-ticker-meta-item {
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 4px !important;
-            color: #a1a1aa !important;
-            text-decoration: none !important;
-            font-variant-numeric: tabular-nums !important;
-        }
-        .jg-ticker-meta-item:hover {
-            color: #f4f4f5 !important;
-        }
-        .jg-ticker-val-up { color: #f43f5e !important; }
-        .jg-ticker-val-down { color: #3b82f6 !important; }
+        #jg-global-ticker-bar *, #jg-global-breaking-bar * { box-sizing: border-box !important; }
 
+        /* 좌측 실시간 시계 */
+        .jg-t-left {
+            display: flex !important; align-items: center !important; gap: 6px !important;
+            font-size: 11.5px !important; color: #a1a1aa !important; font-weight: 600 !important;
+            white-space: nowrap !important; font-variant-numeric: tabular-nums !important;
+        }
+        .jg-t-time { color: #38bdf8 !important; font-weight: 700 !important; }
+
+        /* 중앙 뉴스 스크롤 영역 (좌측으로 무한 롤링) */
+        .jg-t-center {
+            flex: 1 !important; min-width: 0 !important; display: flex !important;
+            align-items: center !important; height: 100% !important; margin: 0 12px !important;
+        }
+        .jg-t-badge {
+            display: inline-flex !important; align-items: center !important; gap: 5px !important;
+            background: #2563eb !important; color: #ffffff !important; font-weight: 800 !important;
+            font-size: 11px !important; padding: 2.5px 8px !important; border-radius: 5px !important;
+            margin-right: 10px !important; white-space: nowrap !important; flex-shrink: 0 !important;
+        }
+        .jg-t-pulse {
+            width: 6px !important; height: 6px !important; background: #ffffff !important;
+            border-radius: 50% !important; animation: jgPulse 1.5s infinite !important;
+        }
+        @keyframes jgPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.8); } }
+        .jg-t-scroll-area {
+            flex: 1 !important; min-width: 0 !important; overflow: hidden !important;
+            position: relative !important; height: 100% !important; display: flex !important; align-items: center !important;
+        }
+        .jg-t-track {
+            display: inline-flex !important; white-space: nowrap !important; will-change: transform !important;
+            animation: jgTickerScroll 85s linear infinite !important;
+        }
+        .jg-t-track:hover { animation-play-state: paused !important; }
+        @keyframes jgTickerScroll {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+        }
+        .jg-t-link {
+            display: inline-flex !important; align-items: center !important; gap: 6px !important;
+            color: #e4e4e7 !important; text-decoration: none !important; margin-right: 22px !important;
+            font-size: 12px !important; font-weight: 500 !important; transition: color 0.15s !important;
+        }
+        .jg-t-link:hover { color: #60a5fa !important; text-decoration: underline !important; }
+        .jg-t-cat {
+            background: #18181b !important; color: #38bdf8 !important; border: 1px solid #27272a !important;
+            padding: 1px 5px !important; border-radius: 4px !important; font-size: 10px !important; font-weight: 700 !important;
+        }
+        .jg-t-media { color: #71717a !important; font-size: 10.5px !important; }
+        .jg-t-sep { color: #3f3f46 !important; margin: 0 4px !important; }
+
+        /* 우측 날씨 / 증시 / 환율 수직 롤링 박스 */
+        .jg-t-right {
+            flex-shrink: 0 !important; height: 30px !important; display: flex !important; align-items: center !important;
+        }
+        .jg-v-box {
+            position: relative !important; height: 30px !important; width: 180px !important; overflow: hidden !important;
+        }
+        .jg-v-item {
+            position: absolute !important; inset: 0 !important; display: flex !important;
+            align-items: center !important; justify-content: center !important; gap: 6px !important;
+            padding: 0 8px !important; background: #18181b !important; border: 1px solid #27272a !important;
+            border-radius: 6px !important; color: #d4d4d8 !important; font-size: 11.5px !important;
+            font-weight: 600 !important; white-space: nowrap !important; text-decoration: none !important;
+            transition: transform 0.45s ease-in-out, opacity 0.45s ease-in-out !important;
+        }
+        .jg-v-item:hover { background: #27272a !important; border-color: #38bdf8 !important; }
+        .jg-val-up { color: #f43f5e !important; }
+        .jg-val-down { color: #3b82f6 !important; }
+
+        /* 🖥️ 데스크톱 레이아웃 */
         @media (min-width: 769px) {
-            #jg-global-ticker-bar {
-                flex-direction: row !important;
-                justify-content: space-between !important;
-                height: 42px !important;
-            }
-            .jg-ticker-meta-row {
-                display: contents !important;
-            }
-            .jg-ticker-left {
-                order: 1 !important;
-                flex-shrink: 0 !important;
-                margin-right: 14px !important;
-                padding-right: 14px !important;
-                border-right: 1px solid #27272a !important;
-                height: 26px !important;
-            }
-            .jg-ticker-center {
-                order: 2 !important;
-                flex: 1 !important;
-                min-width: 0 !important;
-                margin: 0 !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-                text-align: left !important;
-            }
-            .jg-ticker-track {
-                width: 100% !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-                text-align: left !important;
-            }
-            .jg-ticker-item {
-                display: inline-flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-                text-align: left !important;
-                max-width: 100% !important;
-            }
-            .jg-ticker-title {
-                text-align: left !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                white-space: nowrap !important;
-            }
-            .jg-ticker-right {
-                order: 3 !important;
-                flex-shrink: 0 !important;
-                margin-left: 14px !important;
-                padding-left: 14px !important;
-                border-left: 1px solid #27272a !important;
-                display: flex !important;
-                height: 26px !important;
-            }
+            #jg-global-ticker-bar { flex-direction: row !important; justify-content: space-between !important; height: 42px !important; }
+            .jg-t-meta-row { display: contents !important; }
+            .jg-t-left { order: 1 !important; margin-right: 12px !important; padding-right: 12px !important; border-right: 1px solid #27272a !important; height: 26px !important; }
+            .jg-t-center { order: 2 !important; }
+            .jg-t-right { order: 3 !important; margin-left: 12px !important; padding-left: 12px !important; border-left: 1px solid #27272a !important; height: 26px !important; }
+            .jg-badge-mobile { display: none !important; }
+            .jg-badge-full { display: inline !important; }
         }
 
+        /* 📱 모바일 레이아웃 (2줄: 위쪽 시계+날씨증시 / 아래쪽 뉴스) */
         @media (max-width: 768px) {
             #jg-global-ticker-bar {
-                height: 54px !important;
-                flex-direction: column !important;
-                justify-content: center !important;
-                padding: 4px 10px !important;
-                gap: 2px !important;
+                height: 56px !important; flex-direction: column !important; padding: 4px 8px !important;
+                justify-content: center !important; gap: 2px !important;
             }
-            .jg-ticker-meta-row {
-                display: flex !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                width: 100% !important;
+            #jg-global-breaking-bar { bottom: 56px !important; height: 34px !important; padding: 0 8px !important; }
+            .jg-t-meta-row {
+                width: 100% !important; height: 24px !important; display: flex !important;
+                align-items: center !important; justify-content: space-between !important;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important; padding-bottom: 2px !important;
             }
-            .jg-ticker-left {
-                font-size: 10.5px !important;
-            }
-            .jg-ticker-right {
-                display: flex !important;
-                font-size: 10.5px !important;
-                gap: 8px !important;
-            }
-            .jg-ticker-center {
-                width: 100% !important;
-                margin: 0 !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-                text-align: left !important;
-            }
-            .jg-ticker-track {
-                width: 100% !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-                text-align: left !important;
-            }
-            .jg-ticker-item {
-                width: 100% !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: flex-start !important;
-                text-align: left !important;
-            }
-            .jg-ticker-title {
-                text-align: left !important;
-                overflow: hidden !important;
-                text-overflow: ellipsis !important;
-                white-space: nowrap !important;
-            }
+            .jg-t-left { font-size: 10.5px !important; gap: 4px !important; }
+            .jg-t-right { height: 22px !important; }
+            .jg-v-box { width: 145px !important; height: 22px !important; }
+            .jg-v-item { font-size: 10px !important; gap: 4px !important; padding: 0 4px !important; }
+            .jg-t-center { width: 100% !important; height: 24px !important; margin: 0 !important; }
+            .jg-t-badge { padding: 1.5px 5px !important; margin-right: 6px !important; font-size: 9.5px !important; }
+            .jg-badge-full { display: none !important; }
+            .jg-badge-mobile { display: inline !important; }
+            .jg-t-link { font-size: 11px !important; margin-right: 14px !important; }
         }
     `;
     document.head.appendChild(style);
@@ -283,49 +194,49 @@
     const breakingBar = document.createElement('div');
     breakingBar.id = 'jg-global-breaking-bar';
     breakingBar.innerHTML = `
-        <div class="jg-breaking-badge">
-            <span class="jg-breaking-pulse"></span>
+        <div class="jg-brk-badge">
+            <span class="jg-t-pulse" style="background:#b91c1c !important;"></span>
             <span>🚨 속보</span>
         </div>
-        <a href="https://news.j-jg.cc/breaking" target="_blank" rel="noopener" class="jg-breaking-content" id="jgBreakingText">
-            실시간 속보를 확인하는 중...
-        </a>
-        <button type="button" class="jg-breaking-close" id="jgBreakingCloseBtn" title="속보 닫기">✕</button>
+        <div class="jg-brk-scroll-area">
+            <div id="jgBrkTrack" class="jg-brk-track"></div>
+        </div>
+        <button type="button" class="jg-brk-close" id="jgBrkCloseBtn" title="속보 닫기">✕ 닫기</button>
     `;
 
     // 4. 기본 하단 티커 바 생성
     const tickerBar = document.createElement('div');
     tickerBar.id = 'jg-global-ticker-bar';
     tickerBar.innerHTML = `
-        <div class="jg-ticker-meta-row">
-            <div class="jg-ticker-left">
+        <div class="jg-t-meta-row">
+            <div class="jg-t-left" title="현재 한국 표준시">
                 <span>🕒</span>
                 <span id="jgClockDate">-</span>
-                <span id="jgClockTime" style="color:#ffffff; font-weight:700;">-</span>
+                <span id="jgClockTime" class="jg-t-time">-</span>
             </div>
-            <div class="jg-ticker-right" id="jgTickerRight">
-                <a href="https://news.j-jg.cc/weather" target="_blank" rel="noopener" class="jg-ticker-meta-item" id="jgTickerWeather">
-                    <span id="jgWeatherIcon">🌤️</span>
-                    <span id="jgWeatherTemp">-</span>
-                </a>
-                <span style="color:#3f3f46;">|</span>
-                <a href="/go/economy" class="jg-ticker-meta-item" id="jgTickerMarket">
-                    <span id="jgMarketLabel">증시</span>
-                    <span id="jgMarketVal">-</span>
-                </a>
+            <div class="jg-t-right">
+                <div class="jg-v-box" id="jgVBox">
+                    <div class="jg-v-item" style="transform:translateY(0%); opacity:1;">
+                        <span>🌤️ 계룡</span> <span style="color:#38bdf8;">조회 중...</span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="jg-ticker-center">
-            <div class="jg-ticker-track" id="jgTickerTrack">
-                <a href="/go/news" class="jg-ticker-item">
-                    <span class="jg-ticker-cat">뉴스</span>
-                    <span class="jg-ticker-title">최신 뉴스 브리핑을 준비 중입니다...</span>
-                </a>
+        <div class="jg-t-center">
+            <div class="jg-t-badge">
+                <span class="jg-t-pulse"></span>
+                <span class="jg-badge-full">뉴스 브리핑</span>
+                <span class="jg-badge-mobile">뉴스</span>
+            </div>
+            <div class="jg-t-scroll-area">
+                <div id="jgNewsTrack" class="jg-t-track">
+                    <span class="jg-t-link">최신 뉴스 브리핑을 준비 중입니다...</span>
+                </div>
             </div>
         </div>
     `;
 
-    // 5. 실시간 시계 (1초 단위 갱신)
+    // 5. 실시간 시계 업데이트 (초 단위)
     function updateClock() {
         const now = new Date();
         const days = ['일', '월', '화', '수', '목', '금', '토'];
@@ -342,115 +253,207 @@
         if (timeEl) timeEl.textContent = `${hh}:${mm}:${ss}`;
     }
 
-    // 6. 데이터 페칭 및 렌더링
+    // 6. 데이터 렌더링 코어
+    function renderTickerData(data) {
+        if (!data || !data.success) return;
+
+        // 6-1. 긴급 속보 처리 (좌측 연속 스크롤)
+        const breakingList = data.breakingArticles || [];
+        const brkTrack = document.getElementById('jgBrkTrack');
+        if (breakingList.length > 0 && brkTrack) {
+            breakingBar.classList.add('jg-breaking-active');
+            updateBottomPadding(true);
+
+            const makeBrkItems = () => breakingList.map(a => `
+                <a href="${a.link || 'https://news.j-jg.cc/breaking'}" target="_blank" rel="noopener" class="jg-brk-link">
+                    <span style="background:#fee2e2; color:#991b1b; padding:1px 5px; border-radius:3px; font-weight:800; font-size:10px;">속보</span>
+                    <span>${escapeHtml(a.title)}</span>
+                    ${a.media_name ? `<span style="opacity:0.8; font-size:10px;">(${escapeHtml(a.media_name)})</span>` : ''}
+                    <span style="opacity:0.5; margin:0 4px;">•</span>
+                </a>
+            `).join('');
+
+            // 연속 무한 스크롤을 위해 2벌 연결
+            brkTrack.innerHTML = makeBrkItems() + makeBrkItems();
+        } else {
+            breakingBar.classList.remove('jg-breaking-active');
+            updateBottomPadding(false);
+        }
+
+        // 6-2. 전체 뉴스 기사 좌측 연속 롤링 (Marquee 무한 스크롤)
+        const newsTrack = document.getElementById('jgNewsTrack');
+        const articles = data.articles || [];
+        if (newsTrack && articles.length > 0) {
+            const makeNewsItems = () => articles.map(a => `
+                <a href="${a.link || '/go/news'}" target="_blank" rel="noopener" class="jg-t-link">
+                    <span class="jg-t-cat">${escapeHtml(a.category_name || '뉴스')}</span>
+                    <span>${escapeHtml(a.title)}</span>
+                    ${a.media_name ? `<span class="jg-t-media">(${escapeHtml(a.media_name)})</span>` : ''}
+                    <span class="jg-t-sep">•</span>
+                </a>
+            `).join('');
+
+            // 끊김 없는 무한 스크롤(-50% transform)을 위해 2벌 연결
+            newsTrack.innerHTML = makeNewsItems() + makeNewsItems();
+        }
+
+        // 6-3. 우측 날씨 / 증시 / 환율 수직 롤링 슬라이드 구성
+        const vBox = document.getElementById('jgVBox');
+        if (vBox) {
+            const weather = data.weather || { city: '계룡', temp: '-', condition: '맑음', icon: '🌤️' };
+            const market = data.market || {};
+            const kospi = market.kospi || { price: '2,600.0', direction: 'down' };
+            const kosdaq = market.kosdaq || { price: '850.0', direction: 'down' };
+            const usd = market.usd_krw || { price: '1,350.0', direction: 'up' };
+
+            const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
+            const usdPrice = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
+
+            const slides = [];
+
+            // 1) 날씨 슬라이드
+            if (weather && weather.temp && weather.temp !== '-') {
+                slides.push(`
+                    <a href="https://news.j-jg.cc/weather" target="_blank" rel="noopener" class="jg-v-item" title="실시간 날씨 브리핑">
+                        <span>${weather.icon || '🌤️'} ${cityName}</span>
+                        <span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>
+                        ${weather.condition ? `<span style="color:#a1a1aa; font-size:10.5px;">${weather.condition}</span>` : ''}
+                    </a>
+                `);
+            }
+
+            // 2) 코스피 슬라이드
+            if (kospi && kospi.price && kospi.price !== '-') {
+                const dirUp = kospi.direction === 'up' || (kospi.ratio && kospi.ratio.startsWith('+'));
+                slides.push(`
+                    <a href="/go/economy" class="jg-v-item" title="실시간 코스피 증시">
+                        <span style="color:#a1a1aa; font-size:10.5px;">코스피</span>
+                        <span style="color:#ffffff; font-weight:700;">${kospi.price}</span>
+                        <span class="${dirUp ? 'jg-val-up' : 'jg-val-down'}" style="font-size:10.5px;">${dirUp ? '▲' : '▼'}${kospi.ratio || ''}</span>
+                    </a>
+                `);
+            }
+
+            // 3) 코스닥 슬라이드
+            if (kosdaq && kosdaq.price && kosdaq.price !== '-') {
+                const dirUp = kosdaq.direction === 'up' || (kosdaq.ratio && kosdaq.ratio.startsWith('+'));
+                slides.push(`
+                    <a href="/go/economy" class="jg-v-item" title="실시간 코스닥 증시">
+                        <span style="color:#a1a1aa; font-size:10.5px;">코스닥</span>
+                        <span style="color:#ffffff; font-weight:700;">${kosdaq.price}</span>
+                        <span class="${dirUp ? 'jg-val-up' : 'jg-val-down'}" style="font-size:10.5px;">${dirUp ? '▲' : '▼'}${kosdaq.ratio || ''}</span>
+                    </a>
+                `);
+            }
+
+            // 4) 달러 환율 슬라이드
+            if (usd && usd.price && usd.price !== '-' && !usdPrice.includes('-')) {
+                const dirUp = usd.direction === 'up' || (usd.ratio && usd.ratio.startsWith('+'));
+                slides.push(`
+                    <a href="/go/economy" class="jg-v-item" title="실시간 달러 환율 (USD/KRW)">
+                        <span style="color:#a1a1aa; font-size:10.5px;">달러</span>
+                        <span style="color:#ffffff; font-weight:700;">${usdPrice}</span>
+                        <span class="${dirUp ? 'jg-val-up' : 'jg-val-down'}" style="font-size:10.5px;">${dirUp ? '▲' : '▼'}${usd.ratio || ''}</span>
+                    </a>
+                `);
+            }
+
+            // 5) 100엔 환율 슬라이드 (있을 경우)
+            if (market.jpy_krw && market.jpy_krw.price && market.jpy_krw.price !== '-') {
+                const jpy = market.jpy_krw;
+                const dirUp = jpy.direction === 'up' || (jpy.ratio && jpy.ratio.startsWith('+'));
+                slides.push(`
+                    <a href="/go/economy" class="jg-v-item" title="실시간 엔화 환율 (JPY/KRW)">
+                        <span style="color:#a1a1aa; font-size:10.5px;">100엔</span>
+                        <span style="color:#ffffff; font-weight:700;">${jpy.price}</span>
+                        <span class="${dirUp ? 'jg-val-up' : 'jg-val-down'}" style="font-size:10.5px;">${dirUp ? '▲' : '▼'}${jpy.ratio || ''}</span>
+                    </a>
+                `);
+            }
+
+            if (slides.length > 0) {
+                vBox.innerHTML = slides.join('');
+                startVerticalRolling(vBox);
+            }
+        }
+    }
+
+    // 7. 우측 날씨/증시/환율 수직 위로 슬라이드 롤링 (3.5초 간격)
+    function startVerticalRolling(container) {
+        if (vRollingTimer) clearInterval(vRollingTimer);
+        const items = container.querySelectorAll('.jg-v-item');
+        if (items.length <= 1) return;
+
+        let curIdx = 0;
+        items.forEach((item, i) => {
+            item.style.transform = (i === 0) ? 'translateY(0%)' : 'translateY(100%)';
+            item.style.opacity = (i === 0) ? '1' : '0';
+            item.style.pointerEvents = (i === 0) ? 'auto' : 'none';
+        });
+
+        vRollingTimer = setInterval(() => {
+            const prev = items[curIdx];
+            curIdx = (curIdx + 1) % items.length;
+            const next = items[curIdx];
+
+            // 이전 항목: 위로 나가기
+            prev.style.transition = 'transform 0.45s ease-in-out, opacity 0.45s ease-in-out';
+            prev.style.transform = 'translateY(-100%)';
+            prev.style.opacity = '0';
+            prev.style.pointerEvents = 'none';
+
+            // 다음 항목: 아래 대기 후 위로 올라오기
+            next.style.transition = 'none';
+            next.style.transform = 'translateY(100%)';
+            next.style.opacity = '0';
+            void next.offsetHeight; // Reflow 트리거
+
+            next.style.transition = 'transform 0.45s ease-in-out, opacity 0.45s ease-in-out';
+            next.style.transform = 'translateY(0%)';
+            next.style.opacity = '1';
+            next.style.pointerEvents = 'auto';
+
+            setTimeout(() => {
+                prev.style.transition = 'none';
+                prev.style.transform = 'translateY(100%)';
+            }, 460);
+        }, 3500);
+    }
+
+    // 8. 데이터 페칭 (캐시 연동)
     async function fetchTicker() {
         try {
-            const res = await fetch('/api/ticker?_t=' + Math.floor(Date.now() / 30000));
+            const res = await fetch('/api/ticker?_t=' + Math.floor(Date.now() / 20000));
             if (!res.ok) return;
             const data = await res.json();
             if (!data.success) return;
 
-            // 로컬 캐시 저장
             try { localStorage.setItem('jg_cached_bottom_ticker', JSON.stringify(data)); } catch (e) {}
-
             renderTickerData(data);
         } catch (e) {
-            console.error('[BottomNews] 페칭 에러:', e);
+            console.warn('[BottomNews] 페칭 에러:', e);
         }
     }
 
-    function renderTickerData(data) {
-        // 날씨
-        if (data.weather) {
-            const iconEl = document.getElementById('jgWeatherIcon');
-            const tempEl = document.getElementById('jgWeatherTemp');
-            if (iconEl && data.weather.icon) iconEl.textContent = data.weather.icon;
-            if (tempEl && data.weather.temp) tempEl.textContent = data.weather.temp;
-        }
-
-        // 시장 지표 (코스피 / 코스닥 / 환율 순환)
-        if (data.market) {
-            const mLabel = document.getElementById('jgMarketLabel');
-            const mVal = document.getElementById('jgMarketVal');
-            const mItem = data.market.kospi || data.market.usd_krw;
-            if (mLabel && mItem) mLabel.textContent = mItem.name || '코스피';
-            if (mVal && mItem) {
-                mVal.textContent = `${mItem.price} (${mItem.ratio})`;
-                mVal.className = (mItem.direction === 'up' || (mItem.ratio && mItem.ratio.startsWith('+')))
-                    ? 'jg-ticker-val-up' : 'jg-ticker-val-down';
-            }
-        }
-
-        // 기사 목록
-        if (data.articles && data.articles.length > 0) {
-            articlesList = data.articles;
-            startArticleRolling();
-        }
-
-        // 긴급 속보
-        if (data.breakingArticles && data.breakingArticles.length > 0) {
-            breakingList = data.breakingArticles;
-            startBreakingRolling();
-        } else {
-            breakingBar.classList.remove('active');
-            updateBottomPadding(false);
-        }
+    // 9. HTML 이스케이프 유틸
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
     }
 
-    // 뉴스 롤링 (4초 간격)
-    function startArticleRolling() {
-        if (tickerRollTimer) clearInterval(tickerRollTimer);
-        const track = document.getElementById('jgTickerTrack');
-        if (!track || articlesList.length === 0) return;
-
-        const showArticle = () => {
-            const art = articlesList[currentArticleIndex];
-            if (!art) return;
-            const cat = art.category_name || '종합';
-            track.innerHTML = `
-                <a href="${art.link || '/go/news'}" target="_blank" rel="noopener" class="jg-ticker-item">
-                    <span class="jg-ticker-cat">${cat}</span>
-                    <span class="jg-ticker-title">${art.title || ''}</span>
-                </a>
-            `;
-            currentArticleIndex = (currentArticleIndex + 1) % articlesList.length;
-        };
-
-        showArticle();
-        tickerRollTimer = setInterval(showArticle, 4500);
-    }
-
-    // 속보 롤링 (5초 간격)
-    function startBreakingRolling() {
-        if (breakingRollTimer) clearInterval(breakingRollTimer);
-        const textEl = document.getElementById('jgBreakingText');
-        if (!textEl || breakingList.length === 0) return;
-
-        breakingBar.classList.add('active');
-        updateBottomPadding(true);
-
-        const showBreaking = () => {
-            const b = breakingList[currentBreakingIndex];
-            if (!b) return;
-            textEl.textContent = b.title || '';
-            textEl.href = b.link || 'https://news.j-jg.cc/breaking';
-            currentBreakingIndex = (currentBreakingIndex + 1) % breakingList.length;
-        };
-
-        showBreaking();
-        breakingRollTimer = setInterval(showBreaking, 5000);
-    }
-
-    // 속보 닫기 버튼
+    // 10. 속보 닫기 이벤트
     document.addEventListener('click', (e) => {
-        if (e.target && e.target.id === 'jgBreakingCloseBtn') {
-            breakingBar.classList.remove('active');
+        if (e.target && e.target.id === 'jgBrkCloseBtn') {
+            breakingBar.classList.remove('jg-breaking-active');
             updateBottomPadding(false);
-            if (breakingRollTimer) clearInterval(breakingRollTimer);
         }
     });
 
-    // 7. 마운트
+    // 11. 초기 마운트
     const mount = () => {
         if (document.body) {
             document.body.appendChild(breakingBar);
@@ -459,7 +462,7 @@
             updateClock();
             setInterval(updateClock, 1000);
 
-            // 캐시 즉시 렌더링
+            // 로컬 캐시 즉시 렌더링 (0ms 첫 표시)
             try {
                 const cached = localStorage.getItem('jg_cached_bottom_ticker');
                 if (cached) renderTickerData(JSON.parse(cached));
