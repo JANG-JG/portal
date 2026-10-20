@@ -868,6 +868,84 @@
             .replace(/'/g, '&#39;');
     }
 
+    // ⏱️ 알림 시간 상대 표기 (오늘 온 알림은 몇분 전, 몇시간 전, 몇시간 몇분 전)
+    function formatNotificationTime(dateStr) {
+        if (!dateStr) return '';
+        // "YYYY-MM-DD HH:MM:SS" 또는 ISO 형식 정밀 파싱 (로컬 타임존 보장)
+        const m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?/);
+        let targetDate = null;
+        if (m) {
+            targetDate = new Date(
+                parseInt(m[1], 10),
+                parseInt(m[2], 10) - 1,
+                parseInt(m[3], 10),
+                parseInt(m[4], 10),
+                parseInt(m[5], 10),
+                parseInt(m[6] || '0', 10)
+            );
+        } else {
+            const parsed = new Date(dateStr);
+            if (!isNaN(parsed.getTime())) targetDate = parsed;
+        }
+
+        if (!targetDate) {
+            return String(dateStr).replace('T', ' ').slice(5, 16);
+        }
+
+        const now = new Date();
+        const diffMs = now.getTime() - targetDate.getTime();
+
+        // 같은 날(오늘)인지 확인
+        const isToday = (
+            now.getFullYear() === targetDate.getFullYear() &&
+            now.getMonth() === targetDate.getMonth() &&
+            now.getDate() === targetDate.getDate()
+        );
+
+        if (isToday) {
+            if (diffMs < 60 * 1000) {
+                return '방금 전';
+            }
+            const diffMinutes = Math.floor(diffMs / (60 * 1000));
+            if (diffMinutes < 60) {
+                return `${diffMinutes}분 전`;
+            }
+            const diffHours = Math.floor(diffMinutes / 60);
+            const remainMinutes = diffMinutes % 60;
+            if (remainMinutes === 0) {
+                return `${diffHours}시간 전`;
+            }
+            return `${diffHours}시간 ${remainMinutes}분 전`;
+        }
+
+        // 어제인지 확인
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+        const isYesterday = (
+            yesterday.getFullYear() === targetDate.getFullYear() &&
+            yesterday.getMonth() === targetDate.getMonth() &&
+            yesterday.getDate() === targetDate.getDate()
+        );
+
+        const pad = n => String(n).padStart(2, '0');
+        const hours = pad(targetDate.getHours());
+        const minutes = pad(targetDate.getMinutes());
+        const month = pad(targetDate.getMonth() + 1);
+        const date = pad(targetDate.getDate());
+
+        if (isYesterday) {
+            return `어제 ${hours}:${minutes}`;
+        }
+
+        // 올해인 경우
+        if (now.getFullYear() === targetDate.getFullYear()) {
+            return `${month}-${date} ${hours}:${minutes}`;
+        }
+
+        // 이전 연도
+        return `${targetDate.getFullYear()}-${month}-${date} ${hours}:${minutes}`;
+    }
+
     // 🏷️ 알림 카테고리 메타 정의
     const NOTIF_CATEGORIES = [
         { key: 'all', label: '전체', icon: '🔔' },
@@ -976,7 +1054,7 @@
 
         listEl.innerHTML = filteredItems.map(item => {
             const cat = getNotificationCategory(item);
-            const timeStr = item.created_at ? item.created_at.replace('T', ' ').slice(5, 16) : '';
+            const timeStr = formatNotificationTime(item.created_at);
             const linkUrl = item.url || '#';
             const isUnread = item.is_read === 0;
             const cardClass = isUnread ? 'notif-card-item is-unread' : 'notif-card-item is-read';
@@ -991,7 +1069,7 @@
                             <span>${cat.label}</span>
                         </span>
                         <div class="notif-card-meta">
-                            <span class="notif-card-time">${timeStr}</span>
+                            <span class="notif-card-time" title="${item.created_at || ''}">${timeStr}</span>
                             ${newBadge}
                         </div>
                     </div>
