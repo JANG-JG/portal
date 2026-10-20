@@ -111,7 +111,18 @@ function bindBreakingTicker(articles) {
     }
 
     let bIdx = 0;
-    trackEl.innerHTML = `<div class="breaking-ticker-item"><span class="breaking-item-title">${articles[0].title}</span></div>`;
+    trackEl.innerHTML = `<a href="${articles[0].link || 'https://news.j-jg.cc/breaking'}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item"><span class="breaking-item-title">${articles[0].title}</span></a>`;
+
+    if (!bannerEl.dataset.boundClick) {
+        bannerEl.dataset.boundClick = 'true';
+        bannerEl.addEventListener('click', (e) => {
+            if (e.target.closest('.breaking-dropdown-panel') || e.target.closest('.breaking-ticker-item') || e.target.closest('.breaking-dropdown-link')) return;
+            bannerEl.classList.toggle('active');
+        });
+        document.addEventListener('click', (e) => {
+            if (!bannerEl.contains(e.target)) bannerEl.classList.remove('active');
+        });
+    }
 
     if (breakingTickerTimer) clearInterval(breakingTickerTimer);
     if (articles.length > 1) {
@@ -119,7 +130,7 @@ function bindBreakingTicker(articles) {
             bIdx = (bIdx + 1) % articles.length;
             trackEl.style.opacity = '0';
             setTimeout(() => {
-                trackEl.innerHTML = `<div class="breaking-ticker-item"><span class="breaking-item-title">${articles[bIdx].title}</span></div>`;
+                trackEl.innerHTML = `<a href="${articles[bIdx].link || 'https://news.j-jg.cc/breaking'}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item"><span class="breaking-item-title">${articles[bIdx].title}</span></a>`;
                 trackEl.style.opacity = '1';
             }, 250);
         }, 4000);

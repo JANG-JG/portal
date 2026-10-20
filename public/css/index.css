@@ -740,12 +740,18 @@ html, body {
     overflow: hidden !important;
     position: relative !important;
     min-width: 0 !important;
+    text-align: left !important;
 }
 
 .breaking-ticker-track {
     position: relative !important;
     transition: transform 0.45s cubic-bezier(0.2, 0, 0, 1) !important;
     will-change: transform !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    width: 100% !important;
 }
 
 .breaking-ticker-item {
@@ -753,6 +759,8 @@ html, body {
     line-height: 26px !important;
     display: flex !important;
     align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
     gap: 0.5rem !important;
     white-space: nowrap !important;
     overflow: hidden !important;
@@ -762,6 +770,7 @@ html, body {
     font-size: 0.82rem !important;
     font-weight: 600 !important;
     cursor: pointer !important;
+    width: 100% !important;
 }
 
 .breaking-ticker-item:hover .breaking-item-title {
@@ -774,6 +783,7 @@ html, body {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
+    text-align: left !important;
 }
 
 .breaking-more-btn {
@@ -826,6 +836,8 @@ html, body {
 }
 
 .breaking-banner-bar:hover .breaking-dropdown-panel,
+.breaking-banner-bar.active .breaking-dropdown-panel,
+.breaking-dropdown-panel.active,
 .breaking-dropdown-panel:hover {
     opacity: 1 !important;
     visibility: visible !important;
@@ -869,6 +881,59 @@ html, body {
     padding: 0.4rem 0.5rem !important;
     overflow-y: auto !important;
     max-height: 280px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.2rem !important;
+}
+
+.breaking-dropdown-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.75rem !important;
+    padding: 0.55rem 0.75rem !important;
+    border-radius: var(--radius-sm) !important;
+    text-decoration: none !important;
+    color: var(--text-primary) !important;
+    font-size: 0.82rem !important;
+    background: transparent !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+    box-sizing: border-box !important;
+}
+
+.breaking-dropdown-item:last-child {
+    border-bottom: none !important;
+}
+
+.breaking-dropdown-item:hover {
+    background: var(--bg-hover) !important;
+    color: var(--status-rose) !important;
+}
+
+.breaking-dropdown-item-title {
+    font-weight: 500 !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-align: left !important;
+    color: inherit !important;
+}
+
+.breaking-dropdown-item-meta {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    font-size: 0.72rem !important;
+    color: var(--text-muted) !important;
+    flex-shrink: 0 !important;
+    background: var(--bg-subtle) !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    border: 1px solid var(--border-color) !important;
+    white-space: nowrap !important;
 }
 
 /* ==============================================================================

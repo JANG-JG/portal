@@ -45,65 +45,34 @@
     style.textContent = `
         /* 🚨 긴급 속보 바 (하단 티커 바로 위에 밀착) */
         #jg-global-breaking-bar {
-            position: fixed !important;
-            bottom: 42px !important;
-            left: 0 !important;
-            right: 0 !important;
-            height: 34px !important;
-            background: #450a0a !important;
-            border-top: 1px solid #7f1d1d !important;
-            color: #fecaca !important;
-            z-index: 99998 !important;
-            display: none;
-            align-items: center !important;
-            padding: 0 12px !important;
-            box-sizing: border-box !important;
-            font-size: 12px !important;
+            position: fixed !important; bottom: 42px !important; left: 0 !important; right: 0 !important;
+            height: 34px !important; background: #450a0a !important; border-top: 1px solid #7f1d1d !important;
+            color: #fecaca !important; z-index: 99998 !important; display: none; align-items: center !important;
+            padding: 0 12px !important; box-sizing: border-box !important; font-size: 12px !important;
         }
-        #jg-global-breaking-bar.active {
-            display: flex !important;
-        }
+        #jg-global-breaking-bar.active { display: flex !important; }
         .jg-breaking-badge {
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 5px !important;
-            background: #991b1b !important;
-            color: #ffffff !important;
-            padding: 2px 7px !important;
-            border-radius: 4px !important;
-            font-weight: 700 !important;
-            font-size: 11px !important;
-            flex-shrink: 0 !important;
-            margin-right: 10px !important;
+            display: inline-flex !important; align-items: center !important; gap: 5px !important;
+            background: #991b1b !important; color: #ffffff !important; padding: 2px 7px !important;
+            border-radius: 4px !important; font-weight: 700 !important; font-size: 11px !important;
+            flex-shrink: 0 !important; margin-right: 10px !important;
         }
         .jg-breaking-pulse {
-            width: 6px !important;
-            height: 6px !important;
-            background: #f87171 !important;
-            border-radius: 50% !important;
-            animation: jgBreakingPulse 1.2s infinite ease-in-out !important;
+            width: 6px !important; height: 6px !important; background: #f87171 !important;
+            border-radius: 50% !important; animation: jgBreakingPulse 1.2s infinite ease-in-out !important;
         }
         @keyframes jgBreakingPulse {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.3; transform: scale(1.4); }
         }
         .jg-breaking-content {
-            flex: 1 !important;
-            overflow: hidden !important;
-            white-space: nowrap !important;
-            text-overflow: ellipsis !important;
-            text-decoration: none !important;
-            color: #ffffff !important;
-            font-weight: 600 !important;
+            flex: 1 !important; overflow: hidden !important; white-space: nowrap !important;
+            text-overflow: ellipsis !important; text-decoration: none !important;
+            color: #ffffff !important; font-weight: 600 !important; text-align: left !important;
         }
         .jg-breaking-close {
-            background: transparent !important;
-            border: none !important;
-            color: #fca5a5 !important;
-            cursor: pointer !important;
-            padding: 2px 6px !important;
-            font-size: 13px !important;
-            margin-left: 8px !important;
+            background: transparent !important; border: none !important; color: #fca5a5 !important;
+            cursor: pointer !important; padding: 2px 6px !important; font-size: 13px !important; margin-left: 8px !important;
         }
 
         /* 📰 기본 하단 티커 바 */
@@ -198,6 +167,64 @@
         .jg-ticker-val-up { color: #f43f5e !important; }
         .jg-ticker-val-down { color: #3b82f6 !important; }
 
+        @media (min-width: 769px) {
+            #jg-global-ticker-bar {
+                flex-direction: row !important;
+                justify-content: space-between !important;
+                height: 42px !important;
+            }
+            .jg-ticker-meta-row {
+                display: contents !important;
+            }
+            .jg-ticker-left {
+                order: 1 !important;
+                flex-shrink: 0 !important;
+                margin-right: 14px !important;
+                padding-right: 14px !important;
+                border-right: 1px solid #27272a !important;
+                height: 26px !important;
+            }
+            .jg-ticker-center {
+                order: 2 !important;
+                flex: 1 !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                text-align: left !important;
+            }
+            .jg-ticker-track {
+                width: 100% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                text-align: left !important;
+            }
+            .jg-ticker-item {
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                text-align: left !important;
+                max-width: 100% !important;
+            }
+            .jg-ticker-title {
+                text-align: left !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+            }
+            .jg-ticker-right {
+                order: 3 !important;
+                flex-shrink: 0 !important;
+                margin-left: 14px !important;
+                padding-left: 14px !important;
+                border-left: 1px solid #27272a !important;
+                display: flex !important;
+                height: 26px !important;
+            }
+        }
+
         @media (max-width: 768px) {
             #jg-global-ticker-bar {
                 height: 54px !important;
@@ -206,20 +233,47 @@
                 padding: 4px 10px !important;
                 gap: 2px !important;
             }
-            .jg-ticker-center {
+            .jg-ticker-meta-row {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
                 width: 100% !important;
-                margin: 0 !important;
             }
             .jg-ticker-left {
                 font-size: 10.5px !important;
             }
             .jg-ticker-right {
-                display: none !important;
-            }
-            .jg-ticker-meta-row {
                 display: flex !important;
-                justify-content: space-between !important;
+                font-size: 10.5px !important;
+                gap: 8px !important;
+            }
+            .jg-ticker-center {
                 width: 100% !important;
+                margin: 0 !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                text-align: left !important;
+            }
+            .jg-ticker-track {
+                width: 100% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                text-align: left !important;
+            }
+            .jg-ticker-item {
+                width: 100% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: flex-start !important;
+                text-align: left !important;
+            }
+            .jg-ticker-title {
+                text-align: left !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
             }
         }
     `;
