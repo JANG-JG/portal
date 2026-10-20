@@ -940,9 +940,11 @@
     border-color: #fecaca !important;
     color: #dc2626 !important;
 }
-/* 🏷️ 카테고리 필터 칩 바 (스크롤 시 함께 자연스럽게 위로 이동) */
+/* 🏷️ 카테고리 필터 칩 바 (상단 고정 Sticky) */
 .notif-category-bar {
-    position: relative !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50 !important;
     display: flex !important;
     align-items: center !important;
     gap: 0.35rem !important;
