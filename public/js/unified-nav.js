@@ -329,6 +329,16 @@
             }
         });
 
+        // ESC 키 입력 시 알림 모달 닫기
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('notificationModal');
+                if (modal && (modal.classList.contains('open') || modal.style.display === 'flex')) {
+                    window.closeNotificationModal();
+                }
+            }
+        });
+
         // URL 쿼리 또는 해시(?open=notification, #notification)로 유입 시 모달 자동 열기 및 주소창 즉시 정리
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('open') === 'notification' || window.location.hash === '#notification') {
@@ -420,6 +430,7 @@
             console.warn('[UnifiedNav] notificationModal 요소를 찾을 수 없습니다.');
             return;
         }
+        modal.classList.add('open');
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         window.switchNotifMainTab('history');
@@ -431,7 +442,10 @@
     // 알림 모달 닫기
     window.closeNotificationModal = function() {
         const modal = document.getElementById('notificationModal');
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            modal.classList.remove('open');
+            modal.style.display = 'none';
+        }
         document.body.style.overflow = '';
     };
 

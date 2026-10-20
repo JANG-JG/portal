@@ -10,7 +10,10 @@ function openNotificationModal() {
         window.openNotificationModal();
     } else {
         const modal = document.getElementById('notificationModal');
-        if (modal) modal.style.display = 'flex';
+        if (modal) {
+            modal.classList.add('open');
+            modal.style.display = 'flex';
+        }
         document.body.style.overflow = 'hidden';
     }
 }
@@ -20,7 +23,10 @@ function closeNotificationModal() {
         window.closeNotificationModal();
     } else {
         const modal = document.getElementById('notificationModal');
-        if (modal) modal.style.display = 'none';
+        if (modal) {
+            modal.classList.remove('open');
+            modal.style.display = 'none';
+        }
         document.body.style.overflow = '';
     }
 }
