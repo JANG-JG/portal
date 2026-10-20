@@ -940,11 +940,9 @@
     border-color: #fecaca !important;
     color: #dc2626 !important;
 }
-/* 🏷️ 카테고리 필터 칩 바 (가로 스크롤 & 스크롤 시 상단 자석처럼 Sticky 고정) */
+/* 🏷️ 카테고리 필터 칩 바 (스크롤 시 함께 자연스럽게 위로 이동) */
 .notif-category-bar {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 50 !important;
+    position: relative !important;
     display: flex !important;
     align-items: center !important;
     gap: 0.35rem !important;
@@ -1006,11 +1004,9 @@
     display: inline-block !important;
 }
 
-/* 툴바 (카테고리 바 바로 아래에 자석처럼 Sticky 고정) */
+/* 툴바 (스크롤 시 함께 위로 이동) */
 .notif-subtoolbar {
-    position: sticky !important;
-    top: 43px !important;
-    z-index: 49 !important;
+    position: relative !important;
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
@@ -1029,6 +1025,12 @@
     gap: 0.35rem !important;
     min-width: 0 !important;
 }
+.notif-subtoolbar-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
+    margin-left: auto !important;
+}
 #notifHistoryCountLabel,
 .notif-count-label {
     font-size: 0.8rem !important;
@@ -1037,46 +1039,49 @@
     white-space: nowrap !important;
 }
 
-/* ℹ️ 눈에 띄는 파란색 원형 알림 보관 안내 버튼 */
+/* ℹ️ 단순하고 선명한 검정 원에 흰색 i 아이콘 (우측 배치) */
 .notif-info-btn {
-    width: 20px !important;
-    height: 20px !important;
-    min-width: 20px !important;
-    min-height: 20px !important;
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    min-height: 18px !important;
     border-radius: 50% !important;
-    background: #2563eb !important;
+    background: #000000 !important;
     border: none !important;
     color: #ffffff !important;
-    font-size: 0.76rem !important;
+    font-size: 0.72rem !important;
     font-weight: 800 !important;
-    font-family: serif, sans-serif !important;
-    font-style: italic !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    font-style: normal !important;
     cursor: pointer !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
     line-height: 1 !important;
-    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.35) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
     transition: all 0.15s ease !important;
     outline: none !important;
+    user-select: none !important;
 }
 .notif-info-btn:hover,
 .notif-info-btn:active,
 .notif-info-tooltip-wrapper.active .notif-info-btn {
-    background: #1d4ed8 !important;
+    background: #334155 !important;
     transform: scale(1.1) !important;
 }
 .notif-info-tooltip-wrapper {
     position: relative !important;
     display: inline-flex !important;
     align-items: center !important;
+    margin-left: 0.2rem !important;
 }
 .notif-info-tooltip {
     display: none;
     position: absolute !important;
     top: calc(100% + 8px) !important;
-    left: 0 !important;
+    right: 0 !important; /* 우측 기준으로 좌측 방향으로 노출 */
+    left: auto !important;
     background: #0f172a !important;
     color: #f8fafc !important;
     font-size: 0.76rem !important;
@@ -1084,7 +1089,11 @@
     line-height: 1.45 !important;
     padding: 0.45rem 0.75rem !important;
     border-radius: 8px !important;
-    white-space: nowrap !important;
+    width: max-content !important;
+    max-width: min(85vw, 290px) !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    text-align: left !important;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
     z-index: 1000 !important;
     pointer-events: none !important;
@@ -1098,7 +1107,8 @@
     content: '' !important;
     position: absolute !important;
     bottom: 100% !important;
-    left: 8px !important;
+    right: 4px !important; /* i 버튼 중심에 맞춤 */
+    left: auto !important;
     border: 5px solid transparent !important;
     border-bottom-color: #0f172a !important;
 }

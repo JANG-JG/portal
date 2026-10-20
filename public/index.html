@@ -705,17 +705,17 @@
                     <div class="notif-subtoolbar">
                         <div class="notif-count-box">
                             <span id="notifHistoryCountLabel" class="notif-count-label">알림 내역</span>
+                        </div>
+                        <div class="notif-subtoolbar-actions" style="display: flex; gap: 0.35rem; align-items: center; margin-left: auto;">
+                            <button type="button" onclick="markAllNotificationsAsRead()" class="btn-history-tool" style="color: #2563eb; border-color: #bfdbfe; background: #eff6ff; font-weight: 700;">✓ 모두 읽음</button>
+                            <button type="button" onclick="refreshNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
+                            <button type="button" onclick="clearAllNotificationHistory()" class="btn-history-tool btn-danger-tool">🗑️ 전체 삭제</button>
                             <div class="notif-info-tooltip-wrapper" id="notifInfoTooltipWrapper">
-                                <button type="button" class="notif-info-btn" id="notifInfoBtn" aria-label="알림 보관 주기 안내" onclick="toggleNotifInfoTooltip(event)" title="알림 보관 주기 안내">ⓘ</button>
+                                <button type="button" class="notif-info-btn" id="notifInfoBtn" aria-label="알림 보관 주기 안내" onclick="toggleNotifInfoTooltip(event)" title="알림 보관 주기 안내">i</button>
                                 <div class="notif-info-tooltip">
                                     ℹ️ 알림 내역은 수신일로부터 <strong>30일 후 자동 삭제</strong>됩니다.
                                 </div>
                             </div>
-                        </div>
-                        <div style="display: flex; gap: 0.35rem; align-items: center;">
-                            <button type="button" onclick="markAllNotificationsAsRead()" class="btn-history-tool" style="color: #2563eb; border-color: #bfdbfe; background: #eff6ff; font-weight: 700;">✓ 모두 읽음</button>
-                            <button type="button" onclick="refreshNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
-                            <button type="button" onclick="clearAllNotificationHistory()" class="btn-history-tool btn-danger-tool">🗑️ 전체 삭제</button>
                         </div>
                     </div>
 
@@ -831,6 +831,6 @@
     <script src="/js/portal-main.js?v=20261020_v1"></script>
     <script src="/js/portal-notification.js?v=20261020_v2"></script>
     <script src="/js/portal-search.js?v=20261020_v1"></script>
-    <script src="/js/jg-ui.js?v=20261020_v6" defer></script>
+    <script src="/js/jg-ui.js?v=20261020_v7" defer></script>
 </body>
 </html>
