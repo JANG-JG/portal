@@ -609,6 +609,15 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
 
             if (sentCount >= maxRepeat) return;
 
+            // 🌟 사용자 요청 포맷: 
+            // 일정 제목
+            // 일정 메모
+            // 일정 시점 - 일정 시간
+            function buildCalPushBody(pointLabel, timeLabel) {
+                const memoText = (ev.memo && ev.memo.trim()) ? `${ev.memo.trim()}\n` : '';
+                return `${memoText}${pointLabel} - ${timeLabel}`;
+            }
+
             // 1. 종일 일정 처리 (기본 오전 09:00 발송)
             if (isAllDay) {
                 if (kstTimeStr !== '09:00') return;
@@ -618,18 +627,18 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
                     // 내일 일정인 경우 (1일 전 오전 9시 알림)
                     const tomorrow = new Date(Date.now() + 86400000 + 32400000).toISOString().slice(0, 10);
                     if (ev.event_date === tomorrow && sentCount === 0) {
-                        dispatchCalPush(db, ev, userId, `[내일 일정 미리알림] 📌 ${ev.title}`, `내일 종일 일정이 있습니다: ${ev.title}${ev.memo ? ' (' + ev.memo + ')' : ''}`, 1);
+                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('1일 전', '종일'), 1);
                         return;
                     }
                     // 당일 오전 9시 알림 (2회 발송 설정 시)
                     if (ev.event_date === kstDateStr && maxRepeat >= 2 && sentCount < 2) {
-                        dispatchCalPush(db, ev, userId, `[오늘 일정] ☀️ ${ev.title}`, `오늘 종일 일정이 있습니다: ${ev.title}${ev.memo ? ' (' + ev.memo + ')' : ''}`, 2);
+                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('오늘', '종일'), 2);
                         return;
                     }
                 } else {
                     // 당일 알림 (timing === 'exact' 등)
                     if (ev.event_date === kstDateStr && sentCount === 0) {
-                        dispatchCalPush(db, ev, userId, `[오늘 일정] ☀️ ${ev.title}`, `오늘 종일 일정이 있습니다: ${ev.title}${ev.memo ? ' (' + ev.memo + ')' : ''}`, 1);
+                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('오늘', '종일'), 1);
                         return;
                     }
                 }
@@ -666,8 +675,8 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
                         db,
                         ev,
                         userId,
-                        `[일정 ${label}] ⏰ ${ev.title}`,
-                        `${ev.event_time} 예정: ${ev.title}${ev.memo ? ' (' + ev.memo + ')' : ''}`,
+                        ev.title,
+                        buildCalPushBody(label, ev.event_time),
                         1
                     );
                     return;
@@ -680,8 +689,8 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
                             db,
                             ev,
                             userId,
-                            `[일정 시작] ⏰ ${ev.title}`,
-                            `지금 일정이 시작됩니다: ${ev.title}${ev.memo ? ' (' + ev.memo + ')' : ''}`,
+                            ev.title,
+                            buildCalPushBody('시작', ev.event_time),
                             1
                         );
                     } else if (maxRepeat >= 2 && sentCount === 1) {
@@ -689,8 +698,8 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
                             db,
                             ev,
                             userId,
-                            `[일정 시작] ⏰ ${ev.title}`,
-                            `지금 일정이 시작됩니다: ${ev.title}${ev.memo ? ' (' + ev.memo + ')' : ''}`,
+                            ev.title,
+                            buildCalPushBody('시작', ev.event_time),
                             2
                         );
                     }

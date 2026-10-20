@@ -2899,7 +2899,7 @@ function saveNotificationHistory({ userId = 'admin', type = 'general', title, bo
     });
 }
 
-// 푸시 알림 텍스트 정제 헬퍼 (&nbsp; 및 불필요한 HTML 엔티티/태그 완전 제거)
+// 푸시 알림 텍스트 정제 헬퍼 (&nbsp; 및 불필요한 HTML 엔티티/태그 제거, 개행 유지)
 function sanitizePushText(text) {
     if (!text) return '';
     return String(text)
@@ -2911,7 +2911,10 @@ function sanitizePushText(text) {
         .replace(/&gt;/gi, '>')
         .replace(/\u00a0/g, ' ')
         .replace(/<[^>]+>/g, '')
-        .replace(/\s+/g, ' ')
+        .replace(/[^\S\r\n]+/g, ' ')
+        .replace(/\n\s+/g, '\n')
+        .replace(/\s+\n/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
         .trim();
 }
 
@@ -3928,6 +3931,55 @@ app.post('/api/calendar/events', authenticateToken, (req, res) => {
             return res.status(500).json({ success: false, message: '일정 등록 실패' });
         }
         res.json({ success: true, id: this.lastID, message: '새 일정이 등록되었습니다.' });
+    });
+});
+
+app.put('/api/calendar/events/:id', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const eventId = req.params.id;
+    const {
+        title,
+        event_date,
+        event_time = '',
+        category = '일반',
+        color = '#6366f1',
+        memo = '',
+        is_all_day = 0,
+        notify_timing = 'exact',
+        notify_repeat = 1
+    } = req.body;
+
+    if (!title || !event_date) {
+        return res.status(400).json({ success: false, message: '일정 제목과 날짜(YYYY-MM-DD)를 입력해주세요.' });
+    }
+
+    const isAllDayVal = is_all_day ? 1 : 0;
+    const timeVal = isAllDayVal ? '' : (event_time || '').trim();
+
+    const query = `
+        UPDATE calendar_events
+        SET title = ?, event_date = ?, event_time = ?, category = ?, color = ?, memo = ?,
+            is_all_day = ?, notify_timing = ?, notify_repeat = ?, notify_sent_count = 0
+        WHERE id = ? AND (user_id = ? OR user_id = 'admin')
+    `;
+    db.run(query, [
+        title.trim(),
+        event_date.trim(),
+        timeVal,
+        category.trim(),
+        color.trim(),
+        (memo || '').trim(),
+        isAllDayVal,
+        notify_timing || 'exact',
+        parseInt(notify_repeat, 10) || 1,
+        eventId,
+        userId
+    ], function(err) {
+        if (err) {
+            console.error('[Calendar 일정 수정 실패]:', err.message);
+            return res.status(500).json({ success: false, message: '일정 수정 실패' });
+        }
+        res.json({ success: true, message: '일정이 수정되었습니다.' });
     });
 });
 

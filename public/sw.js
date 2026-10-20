@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261019_v18';
+const CACHE_NAME = 'jg-portal-v20261020_v19';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -149,7 +149,10 @@ self.addEventListener('push', (event) => {
             .replace(/&quot;/gi, '"')
             .replace(/&#39;/gi, "'")
             .replace(/<[^>]+>/g, '')
-            .replace(/\s+/g, ' ')
+            .replace(/[^\S\r\n]+/g, ' ')
+            .replace(/\n\s+/g, '\n')
+            .replace(/\s+\n/g, '\n')
+            .replace(/\n{3,}/g, '\n\n')
             .trim();
     }
 
