@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261020_v19';
+const CACHE_NAME = 'jg-portal-v20261020_v20';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -58,8 +58,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 2. HTML 문서 탐색 및 중앙 UI 런처(jg-ui.js) 요청: Network-First (항상 최신 버전 우선, 실패 시 오프라인 캐시)
-    if (req.mode === 'navigate' || url.pathname.endsWith('/js/jg-ui.js')) {
+    // 2. HTML 문서 탐색 및 중앙 UI 런처(jg-ui.js) / 통합 내비게이션 요청: Network-First (항상 최신 버전 우선, 실패 시 오프라인 캐시)
+    if (req.mode === 'navigate' || url.pathname.endsWith('/js/jg-ui.js') || url.pathname.includes('unified-nav')) {
         event.respondWith(
             fetch(req)
                 .then((res) => {

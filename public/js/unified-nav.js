@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = '20261020_v10';
+    const UNAV_VERSION = '20261020_v11';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -422,9 +422,9 @@
                 // 1) localStorage 캐시에서 먼저 복구 시도 (카테고리 바가 있는 최신 캐시인 경우만)
                 const localHtml = localStorage.getItem(CACHE_KEY_HTML);
                 if (localHtml && localHtml.includes('notif-category-bar')) {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(localHtml, 'text/html');
-                    const cachedModal = doc.getElementById('notificationModal');
+                    const temp = document.createElement('div');
+                    temp.innerHTML = localHtml;
+                    const cachedModal = temp.querySelector('#notificationModal');
                     if (cachedModal) {
                         document.body.appendChild(cachedModal);
                         modal = cachedModal;
@@ -443,9 +443,9 @@
                             localStorage.setItem(CACHE_KEY_VER, UNAV_VERSION);
                             localStorage.setItem(CACHE_KEY_TIME, String(Date.now()));
                         } catch (e) {}
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(html, 'text/html');
-                        const fetchedModal = doc.getElementById('notificationModal');
+                        const temp = document.createElement('div');
+                        temp.innerHTML = html;
+                        const fetchedModal = temp.querySelector('#notificationModal');
                         if (fetchedModal) {
                             document.body.appendChild(fetchedModal);
                             modal = fetchedModal;
