@@ -1686,10 +1686,13 @@ async function performSecondaryServerCheck() {
                 'echo "___SEC_BACKUPS___" && (ls -lh /home/upt0731/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null | tail -n 8 || echo "NA")'
             ].join(' && ');
 
-            const sshCmd = `ssh -p 22 -o ConnectTimeout=1 -o BatchMode=yes -o StrictHostKeyChecking=accept-new upt0731@192.168.50.75 "${remoteScript}"`;
+            const sshCmd = `ssh -p 22 -o ConnectTimeout=2 -o BatchMode=yes -o StrictHostKeyChecking=accept-new upt0731@192.168.50.75 "${remoteScript}"`;
 
-            exec(sshCmd, { timeout: 2000 }, (sshErr, stdout) => {
+            exec(sshCmd, { timeout: 4000 }, (sshErr, stdout) => {
                 isUpdatingSecondary = false;
+                if (sshErr) {
+                    console.warn('[Secondary SSH Warning]:', sshErr.message);
+                }
                 let cpuObj = { percent: '1.2%', percentNum: 1.2, temp: '38.5°C', tempStatus: 'normal' };
                 let memObj = { percent: '17.2%', percentNum: 17.2, used: '0.58 GB', total: '3.29 GB' };
                 let diskObj = { percent: '2.1%', percentNum: 2.1, used: '9.62 GB', total: '455.95 GB' };
