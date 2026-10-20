@@ -1681,9 +1681,8 @@ async function performSecondaryServerCheck() {
                 'echo "___SEC_FREE___" && free -m',
                 'echo "___SEC_DF___" && (df -m /home/upt0731 2>/dev/null || df -m /)',
                 'echo "___SEC_TEMP___" && (sensors -j 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "NA")',
-                'echo "___SEC_TOPMEM___" && ps -eo pid,user,%cpu,%mem,rss,args --sort=-%mem | head -n 11',
-                'echo "___SEC_DBS___" && (cat /home/upt0731/backups/jg_server/integrity_status.json 2>/dev/null || ls -lh /home/upt0731/backups/jg_server/current_dbs/*.db 2>/dev/null || ls -lh /home/upt0731/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null || echo "NA")',
-                'echo "___SEC_BACKUPS___" && (ls -lh /home/upt0731/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null | tail -n 8 || echo "NA")'
+                'echo "___SEC_DBS___" && ((cat /home/upt0731/backups/jg_server/integrity_status.json 2>/dev/null && echo "") || ls -lh /home/upt0731/backups/jg_server/current_dbs/*.db 2>/dev/null || ls -lh /home/upt0731/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null || echo "NA")',
+                'echo "___SEC_BACKUPS___" && (cd /home/upt0731/backups/jg_server 2>/dev/null && ls -lh jg_backup_*.tar.gz 2>/dev/null | tail -n 8 || echo "NA")'
             ].join(' && ');
 
             const sshCmd = `ssh -p 22 -o ConnectTimeout=2 -o BatchMode=yes -o StrictHostKeyChecking=accept-new upt0731@192.168.50.75 "${remoteScript}"`;
