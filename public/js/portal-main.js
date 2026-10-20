@@ -499,6 +499,20 @@
                         }
                     }
 
+                    // 2-1) 🍱 홈 벤토 그리드 실시간 뉴스 피드 바인딩 (homeNewsFeedBox)
+                    const homeNewsEl = document.getElementById('homeNewsFeedBox');
+                    if (homeNewsEl && n.recommendedArticles && n.recommendedArticles.length > 0) {
+                        homeNewsEl.innerHTML = n.recommendedArticles.slice(0, 3).map(a => {
+                            const timeAgo = formatNewsTimeAgo(a.published_at);
+                            return `
+                                <div class="bento-news-item">
+                                    <div class="bento-news-item-title truncate" title="${a.title}">${a.title}</div>
+                                    <div class="bento-news-item-meta font-mono">${timeAgo || '최신'}</div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
                     // 3) 실시간 속보 한줄 티커 & 호버 전체목록 바인딩
                     bindBreakingTicker(n.breakingArticles || []);
 

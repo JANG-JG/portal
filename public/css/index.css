@@ -1,278 +1,566 @@
-/* ==================== 포털 메인 공통 스타일 ==================== */
-        /* 🌟 포털 메인 스와이프 슬라이더 & 카테고리 탭 */
-        .portal-tab-bar {
-            position: sticky;
-            top: 54px;
-            z-index: 40;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border-radius: 1rem;
-            border: 1px solid var(--border);
-            padding: 0.35rem;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
-        }
-        .portal-tab-nav {
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-            overflow-x: auto;
-            scrollbar-width: none;
-            -webkit-overflow-scrolling: touch;
-            scroll-behavior: smooth;
-            padding: 0.1rem;
-        }
-        .portal-tab-nav::-webkit-scrollbar {
-            display: none;
-        }
-        .portal-tab-btn {
-            flex-shrink: 0;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            padding: 0.55rem 1rem;
-            border-radius: 0.75rem;
-            font-size: 0.92rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s ease;
-        }
-        .portal-tab-btn:hover {
-            color: var(--text-main);
-            background: #f1f5f9;
-        }
-        .portal-tab-btn.active {
-            color: #ffffff;
-            background: var(--primary);
-            box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.35);
-            font-weight: 700;
-        }
+/* ===================================================================== */
+/* 🌟 JG 포털 메인 스타일시트 (Clean Light Command Center Bento Grid)   */
+/* Stripe / Linear Light / Apple Health 디자인 시스템 핏                 */
+/* ===================================================================== */
 
-        /* 🌟 스와이프 트랙 & 패널 (높이 동적 피팅) */
-        .swipe-track {
-            display: flex;
-            align-items: flex-start;
-            overflow-x: auto;
-            overflow-y: hidden;
-            scroll-snap-type: x mandatory;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            transition: height 0.25s ease-out;
-            width: 100%;
-        }
-        .swipe-track::-webkit-scrollbar {
-            display: none;
-        }
-        .swipe-panel {
-            flex: 0 0 100%;
-            width: 100%;
-            min-width: 100%;
-            max-width: 100%;
-            align-self: flex-start;
-            scroll-snap-align: start;
-            scroll-snap-stop: always;
-            box-sizing: border-box;
-        }
-        .swipe-track.is-dragging {
-            scroll-behavior: auto;
-            cursor: grabbing;
-            user-select: none;
-        }
+:root {
+    --bg-main: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-sub: #94a3b8;
+    --border: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --primary: #2563eb;
+    --primary-dark: #0f172a;
+    --emerald-bg: #ecfdf5;
+    --emerald-text: #059669;
+    --emerald-border: #a7f3d0;
+    --rose-bg: #fef2f2;
+    --rose-text: #dc2626;
+    --rose-border: #fecaca;
+    --amber-bg: #fffbeb;
+    --amber-text: #d97706;
+    --amber-border: #fde68a;
+    --sky-bg: #eff6ff;
+    --sky-text: #0284c7;
+    --sky-border: #bae6fd;
+}
 
-        /* 🌟 홈 패널 서비스 바로가기 미니 카드 그리드 */
-        .home-mini-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 1rem;
-            margin-top: 1.25rem;
-        }
-        .home-mini-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: 1rem;
-            padding: 1.2rem;
-            box-shadow: var(--shadow);
-            transition: all 0.2s ease;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            text-decoration: none;
-            color: inherit;
-        }
-        .home-mini-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-hover);
-            border-color: #cbd5e1;
-        }
-        .home-mini-card-info {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .home-mini-card-icon {
-            font-size: 1.75rem;
-        }
-        .home-mini-card-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: var(--text-main);
-        }
-        .home-mini-card-desc {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-top: 0.15rem;
-        }
-        .home-mini-card-arrow {
-            font-size: 1.1rem;
-            color: var(--primary);
-            font-weight: 700;
-        }
+/* 숫자 고정폭 통일 */
+.tabular, .font-mono {
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 
-        /* 📰 뉴스 브리핑 / 네이버 뉴스 스타일 실시간 주요 기사 카드 (헤드 즉시 주입) */
-        .news-feed-card {
-            background: #ffffff !important;
-            border: 1px solid #e2e8f0 !important;
-            border-radius: 0.85rem !important;
-            padding: 0.75rem 0.85rem !important;
-            margin-bottom: 0.6rem !important;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
-            transition: all 0.2s ease;
-            display: flex !important;
-            flex-direction: column !important;
-            min-width: 0 !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-        }
-        .news-feed-card:last-child {
-            margin-bottom: 0 !important;
-        }
-        .news-feed-main {
-            display: flex !important;
-            align-items: flex-start !important;
-            justify-content: space-between !important;
-            gap: 0.75rem !important;
-            min-width: 0 !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-        }
-        .news-feed-text {
-            flex: 1 1 0% !important;
-            min-width: 0 !important;
-        }
-        .news-feed-title {
-            font-size: 0.95rem !important;
-            font-weight: 700 !important;
-            color: #0f172a !important;
-            line-height: 1.4 !important;
-            display: -webkit-box !important;
-            -webkit-line-clamp: 2 !important;
-            -webkit-box-orient: vertical !important;
-            overflow: hidden !important;
-            word-break: keep-all !important;
-            text-decoration: none !important;
-            margin: 0 !important;
-        }
-        .news-feed-title:hover {
-            color: #2563eb !important;
-        }
-        .news-feed-thumb {
-            flex-shrink: 0 !important;
-            width: 80px !important;
-            height: 64px !important;
-            border-radius: 0.75rem !important;
-            overflow: hidden !important;
-            background-color: #f1f5f9 !important;
-            border: 1px solid rgba(226, 232, 240, 0.8) !important;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-            display: block !important;
-        }
-        .news-feed-thumb img {
-            width: 100% !important;
-            height: 100% !important;
-            max-width: 100% !important;
-            object-fit: cover !important;
-            display: block !important;
-        }
-        .news-feed-meta {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: space-between !important;
-            padding-top: 0.5rem !important;
-            margin-top: 0.5rem !important;
-            border-top: 1px solid #f1f5f9 !important;
-            font-size: 0.76rem !important;
-            color: #64748b !important;
-            min-width: 0 !important;
-            width: 100% !important;
-            box-sizing: border-box !important;
-        }
-        .news-feed-meta-left {
-            display: flex !important;
-            align-items: center !important;
-            gap: 0.35rem !important;
-            min-width: 0 !important;
-            overflow: hidden !important;
-        }
-        .news-cat-badge {
-            background: #eff6ff !important;
-            color: #2563eb !important;
-            font-weight: 700 !important;
-            padding: 2px 7px !important;
-            border-radius: 6px !important;
-            font-size: 0.72rem !important;
-            flex-shrink: 0 !important;
-        }
-        .news-feed-media {
-            font-weight: 600 !important;
-            color: #475569 !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            white-space: nowrap !important;
-        }
-        .news-feed-dot {
-            color: #cbd5e1 !important;
-            margin: 0 1px !important;
-        }
-        .news-feed-time {
-            color: #94a3b8 !important;
-            white-space: nowrap !important;
-        }
-        .news-feed-link {
-            color: #2563eb !important;
-            font-weight: 600 !important;
-            text-decoration: none !important;
-            font-size: 0.75rem !important;
-            flex-shrink: 0 !important;
-        }
+/* ==================== 1. 상단 인삿말 & 검색창 ==================== */
+.welcome-section {
+    margin-bottom: 1rem;
+}
+.welcome-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+.welcome-header-row h2 {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+.welcome-live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #10b981;
+    display: inline-block;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+.weather-compact-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    text-decoration: none;
+    color: var(--text-main);
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    transition: all 0.15s ease;
+}
+.weather-compact-badge:hover {
+    border-color: var(--border-hover);
+    background: #f8fafc;
+}
+.weather-compact-temp {
+    font-weight: 800;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+}
+.weather-compact-desc {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+.btn-pwa-install {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    padding: 0.35rem 0.65rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+.btn-pwa-install:hover {
+    color: var(--text-main);
+    border-color: var(--border-hover);
+}
 
-/* ==================== 카드 & 배지 스타일 ==================== */
-        #bpGuideModal {
-            display: none !important;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            height: 100dvh !important;
-            background: rgba(15, 23, 42, 0.65) !important;
-            backdrop-filter: blur(4px) !important;
-            -webkit-backdrop-filter: blur(4px) !important;
-            z-index: 10000000 !important;
-            align-items: center !important;
-            justify-content: center !important;
-            padding: 1rem !important;
-            box-sizing: border-box !important;
-        }
-        #bpGuideModal.active {
-            display: flex !important;
-        }
+/* 🔍 빠른 검색 (Ctrl+K) 바 */
+.quick-search-trigger-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.55rem 0.85rem;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: all 0.15s ease;
+}
+.quick-search-trigger-bar:hover {
+    border-color: #94a3b8;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+.quick-search-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+}
+.quick-search-placeholder {
+    color: #94a3b8;
+}
+.quick-search-shortcut {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+.quick-search-kbd {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+    font-family: monospace;
+}
+
+/* ==================== 2. 스티키 카테고리 칩 탭바 ==================== */
+.portal-tab-bar {
+    position: sticky;
+    top: 54px;
+    z-index: 40;
+    background: rgba(248, 250, 252, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 9999px;
+    padding: 0.25rem;
+    margin-bottom: 1.25rem;
+    transition: all 0.2s ease;
+}
+.portal-tab-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    padding: 0.1rem;
+}
+.portal-tab-nav::-webkit-scrollbar {
+    display: none;
+}
+.portal-tab-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.95rem;
+    border-radius: 9999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: #ffffff;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+.portal-tab-btn:hover {
+    color: var(--text-main);
+    border-color: var(--border-hover);
+    background: #f8fafc;
+}
+.portal-tab-btn.active {
+    color: #ffffff;
+    background: #0f172a;
+    border-color: #0f172a;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);
+    font-weight: 700;
+}
+
+/* ==================== 3. 스와이프 트랙 & 패널 ==================== */
+.swipe-track {
+    display: flex;
+    align-items: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    transition: height 0.25s ease-out;
+    width: 100%;
+}
+.swipe-track::-webkit-scrollbar {
+    display: none;
+}
+.swipe-panel {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    align-self: flex-start;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    box-sizing: border-box;
+}
+
+/* ==================== 4. 퀵 액션 스트립 ==================== */
+.quick-action-strip {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+.quick-action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    padding: 0.65rem 0.5rem;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    text-decoration: none;
+    color: var(--text-main);
+    font-size: 0.75rem;
+    font-weight: 700;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+.quick-action-btn:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+.quick-action-btn span:first-child {
+    font-size: 1.15rem;
+}
+
+/* ==================== 5. Bento Grid Command Center ==================== */
+.today-bento-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+}
+
+.bento-box {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    padding: 1.15rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    min-width: 0;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+.bento-box:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04);
+}
+
+.bento-col-4 { grid-column: span 4; }
+.bento-col-6 { grid-column: span 6; }
+.bento-col-8 { grid-column: span 8; }
+.bento-col-12 { grid-column: span 12; }
+
+/* Bento 헤더 */
+.bento-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.bento-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.bento-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.bento-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Bento Hero 수치 */
+.bento-val-hero {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+.bento-val-hero small {
+    font-size: 0.8rem;
+    font-weight: normal;
+    color: var(--text-muted);
+    margin-left: 0.2rem;
+}
+.bento-val-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 임상 스파크라인 SVG */
+.bento-sparkline-wrap {
+    margin: 0.5rem 0;
+    height: 32px;
+    display: flex;
+    align-items: center;
+}
+.bento-sparkline-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+/* 인라인 복약 스트립 */
+.bento-med-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 0.65rem;
+    padding: 0.5rem 0.65rem;
+    margin-top: 0.6rem;
+}
+.bento-med-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.bento-med-icon {
+    font-size: 1.1rem;
+}
+.bento-med-status {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+.bento-med-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+.bento-med-action {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+/* 자산 미니 리스트 */
+.bento-asset-list {
+    margin-top: 0.65rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+}
+.bento-asset-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #475569;
+}
+.bento-asset-val {
+    font-weight: 700;
+    color: var(--text-main);
+}
+.text-rose { color: #e11d48; }
+.text-blue { color: #2563eb; }
+
+/* 실시간 뉴스 리스트 */
+.bento-news-feed {
+    display: flex;
+    flex-direction: column;
+    divide-y: 1px solid #f1f5f9;
+}
+.bento-news-item {
+    padding: 0.45rem 0;
+    border-bottom: 1px solid #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.bento-news-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.bento-news-item-title {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: #1e293b;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+.bento-news-item-title:hover {
+    color: var(--primary);
+}
+.bento-news-item-meta {
+    font-size: 0.74rem;
+    color: var(--text-sub);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* 스케줄 리스트 */
+.bento-schedule-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.bento-schedule-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    padding: 0.55rem 0.65rem;
+    border-radius: 0.65rem;
+}
+.bento-schedule-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #f59e0b;
+    margin-top: 4px;
+    flex-shrink: 0;
+}
+.bento-schedule-text {
+    flex: 1;
+    min-width: 0;
+}
+.bento-schedule-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-main);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.bento-schedule-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+/* ==================== 6. 상태 배지 규격 ==================== */
+.today-widget-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    letter-spacing: -0.01em;
+}
+.badge-state-ok { background: var(--emerald-bg); color: var(--emerald-text); border: 1px solid var(--emerald-border); }
+.badge-state-warn { background: var(--amber-bg); color: var(--amber-text); border: 1px solid var(--amber-border); }
+.badge-state-danger { background: var(--rose-bg); color: var(--rose-text); border: 1px solid var(--rose-border); }
+.badge-state-info { background: var(--sky-bg); color: var(--sky-text); border: 1px solid var(--sky-border); }
+
+/* 기준 모달 버튼 */
+.btn-bp-guide-trigger {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 0.12rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.btn-widget-quick-med {
+    background: #059669;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* ==================== 7. 모바일 360px 반응형 핏 ==================== */
+@media (max-width: 1024px) {
+    .bento-col-4, .bento-col-6, .bento-col-8 {
+        grid-column: span 6;
+    }
+}
+
+@media (max-width: 768px) {
+    .quick-action-strip {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.4rem;
+    }
+    .today-bento-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .bento-box {
+        padding: 0.95rem;
+        border-radius: 0.85rem;
+    }
+    .bento-val-hero {
+        font-size: 1.6rem;
+    }
+    .portal-tab-bar {
+        border-radius: 0;
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+}
