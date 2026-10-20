@@ -114,6 +114,11 @@ app.get(['/', '/index.html'], authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// 1-0. 신규 클린 Bento Grid 대시보드 화면 (안전 사전 검증용 독립 라우트)
+app.get(['/bento', '/bento.html', '/v2'], authenticateToken, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'bento.html'));
+});
+
 // 1-1. 통합 관리자 센터 화면 (관리자 전용 접근 제어)
 app.get(['/admin', '/admin.html'], authenticateToken, requireAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
