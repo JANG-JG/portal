@@ -44,7 +44,7 @@ document.addEventListener('click', (e) => {
 
 // 🔍 3. 통합 퀵 검색 모달 (Ctrl+K)
 function openQuickSearchModal() {
-    const modal = document.getElementById('quickSearchModal');
+    const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
     if (modal) {
         modal.classList.add('active');
         modal.style.setProperty('display', 'flex', 'important');
@@ -57,7 +57,7 @@ function openQuickSearchModal() {
 }
 
 function closeQuickSearchModal() {
-    const modal = document.getElementById('quickSearchModal');
+    const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
     if (modal) {
         modal.classList.remove('active');
         modal.style.setProperty('display', 'none', 'important');
@@ -69,8 +69,8 @@ function closeQuickSearchModal() {
 window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
-        const modal = document.getElementById('quickSearchModal');
-        if (modal && modal.classList.contains('active')) {
+        const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
+        if (modal && (modal.classList.contains('active') || modal.style.display === 'flex')) {
             closeQuickSearchModal();
         } else {
             openQuickSearchModal();

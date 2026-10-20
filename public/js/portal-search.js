@@ -69,10 +69,11 @@
         });
 
         function openQuickSearchModal() {
-            const modal = document.getElementById('qsModalBackdrop');
+            const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
             const input = document.getElementById('qsInput');
             if (!modal) return;
             modal.classList.add('active');
+            modal.style.setProperty('display', 'flex', 'important');
             document.body.style.overflow = 'hidden';
             setTimeout(() => {
                 if (input) {
@@ -83,15 +84,16 @@
         }
 
         function closeQuickSearchModal() {
-            const modal = document.getElementById('qsModalBackdrop');
+            const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
             if (!modal) return;
             modal.classList.remove('active');
+            modal.style.setProperty('display', 'none', 'important');
             document.body.style.overflow = '';
             qsFocusedIndex = -1;
         }
 
         function handleQsBackdropClick(e) {
-            if (e.target.id === 'qsModalBackdrop') {
+            if (e.target.id === 'qsModalBackdrop' || e.target.classList.contains('qs-modal-backdrop') || e.target.id === 'quickSearchModal') {
                 closeQuickSearchModal();
             }
         }

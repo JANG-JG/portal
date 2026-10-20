@@ -1203,10 +1203,14 @@ html, body {
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
     z-index: 9999 !important;
-    display: flex !important;
+    display: none !important;
     justify-content: center !important;
     align-items: flex-start !important;
     padding: 24px 1rem 2rem !important;
+}
+
+.qs-modal-backdrop.active {
+    display: flex !important;
 }
 
 .qs-modal-dialog {
@@ -1259,6 +1263,15 @@ html, body {
     background: var(--bg-page) !important;
     border: 1px solid var(--border-color) !important;
     color: var(--text-secondary) !important;
+    cursor: pointer !important;
+    padding: 0.2rem 0.5rem !important;
+    border-radius: var(--radius-sm) !important;
+    user-select: none !important;
+}
+
+.qs-close-kbd:hover {
+    color: var(--text-primary) !important;
+    border-color: var(--border-strong) !important;
 }
 
 .qs-tabs {
