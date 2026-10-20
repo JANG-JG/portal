@@ -2197,9 +2197,33 @@ html, body {
 
 /* 9. 모달 다크 테마 오버라이드 (혈압 판정 기준표 & 통합 알림 센터) */
 .bp-modal-backdrop,
-.notif-modal-backdrop {
-    background: rgba(0, 0, 0, 0.78) !important;
-    backdrop-filter: none !important;
+.notif-modal-backdrop,
+#notificationModal {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    background: rgba(0, 0, 0, 0.82) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    z-index: 10000005 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+}
+
+.bp-modal-backdrop.active,
+.notif-modal-backdrop.open,
+#notificationModal.open {
+    display: flex !important;
 }
 
 .bp-modal-dialog,
@@ -2207,8 +2231,16 @@ html, body {
     background: var(--bg-surface) !important;
     border: 1px solid var(--border-strong) !important;
     border-radius: var(--radius-md) !important;
-    box-shadow: none !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.75) !important;
     color: var(--text-primary) !important;
+    width: 100% !important;
+    max-width: 960px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
 }
 
 .bp-modal-header,
@@ -2216,6 +2248,14 @@ html, body {
     border-bottom: 1px solid var(--border-color) !important;
     background: var(--bg-surface) !important;
     color: var(--text-primary) !important;
+}
+
+.notif-header-title {
+    color: var(--text-primary) !important;
+}
+
+.notif-master-toggle-label {
+    color: var(--text-secondary) !important;
 }
 
 .bp-modal-title {
@@ -2226,11 +2266,83 @@ html, body {
 .bp-modal-close,
 .notif-close-x {
     color: var(--text-muted) !important;
+    background: var(--bg-subtle) !important;
 }
 
 .bp-modal-close:hover,
 .notif-close-x:hover {
     color: var(--text-primary) !important;
+    background: var(--bg-hover) !important;
+}
+
+.notif-main-tabs {
+    background: var(--bg-subtle) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.notif-tab-item {
+    color: var(--text-muted) !important;
+    background: transparent !important;
+}
+
+.notif-tab-item.active {
+    color: var(--status-blue) !important;
+    background: var(--bg-surface) !important;
+    border-bottom-color: var(--status-blue) !important;
+}
+
+.notif-modal-scroll {
+    background: var(--bg-page) !important;
+    color: var(--text-primary) !important;
+}
+
+.notif-card-group {
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.notif-card-group.admin-only-section {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.notif-toggle-content strong {
+    color: var(--text-primary) !important;
+}
+
+.notif-toggle-content p {
+    color: var(--text-muted) !important;
+}
+
+.notif-category-bar {
+    background: var(--bg-surface) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.notif-subtoolbar {
+    background: var(--bg-subtle) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 0.5rem 0.85rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.notif-count-label {
+    color: var(--text-secondary) !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
+}
+
+.notif-modal-footer {
+    background: var(--bg-surface) !important;
+    border-top: 1px solid var(--border-color) !important;
+}
+
+.notif-time-box {
+    background: var(--bg-subtle) !important;
+    border: 1px solid var(--border-color) !important;
 }
 
 .bp-guide-table {

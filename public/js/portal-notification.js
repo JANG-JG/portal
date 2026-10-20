@@ -131,6 +131,7 @@
     window.fetchNotificationSettings = async function() {
         try {
             const res = await fetch('/api/notification/settings');
+            if (!res.ok) return;
             const data = await res.json();
             if (data.success && data.settings) {
                 portalNotifSettings = data.settings;
@@ -178,8 +179,7 @@
 
     window.toggleNotifMaster = function(checked) {
         portalNotifSettings.enabled = checked ? 1 : 0;
-        const subChecks = document.querySelectorAll('#notifMainViewSettings input[type="checkbox"]');
-        subChecks.forEach(cb => {
+        document.querySelectorAll('#notifMainViewSettings input[type="checkbox"]').forEach(cb => {
             if (cb.id !== 'notifMasterEnabled') cb.checked = checked;
         });
     };
@@ -211,16 +211,10 @@
             : (category === 'med' ? 'inputWeekendMedTime' : 'inputWeekendBpTime');
         const key = `${dayType}_${category}_times`;
         const inputEl = document.getElementById(inputId);
-        if (!inputEl || !inputEl.value) {
-            alert('추가할 알림 시간을 먼저 선택해 주세요.');
-            return;
-        }
+        if (!inputEl || !inputEl.value) { alert('추가할 알림 시간을 먼저 선택해 주세요.'); return; }
         const val = inputEl.value;
         if (!portalNotifSettings[key]) portalNotifSettings[key] = [];
-        if (portalNotifSettings[key].includes(val)) {
-            alert('이미 등록된 시간입니다.');
-            return;
-        }
+        if (portalNotifSettings[key].includes(val)) { alert('이미 등록된 시간입니다.'); return; }
         portalNotifSettings[key].push(val);
         portalNotifSettings[key].sort();
         inputEl.value = '';
@@ -294,6 +288,7 @@
 
         try {
             const res = await fetch(`/api/notification/history?limit=${NOTIF_HISTORY_LIMIT}&offset=${notifHistoryOffset}`);
+            if (!res.ok) return;
             const data = await res.json();
             const history = data.history || [];
             const unreadCount = data.unreadCount || 0;
@@ -423,9 +418,7 @@
             const res = await fetch(`/api/notification/history/${id}`, { method: 'DELETE' });
             const data = await res.json();
             if (data.success) refreshNotificationHistory();
-        } catch (e) {
-            alert('삭제 오류: ' + e.message);
-        }
+        } catch (e) { alert('삭제 오류: ' + e.message); }
     };
 
     window.clearAllNotificationHistory = async function() {
@@ -434,9 +427,7 @@
             const res = await fetch('/api/notification/history/clear/all', { method: 'DELETE' });
             const data = await res.json();
             if (data.success) refreshNotificationHistory();
-        } catch (e) {
-            alert('전체 삭제 오류: ' + e.message);
-        }
+        } catch (e) { alert('전체 삭제 오류: ' + e.message); }
     };
 
     // 7. 웹 푸시 구독
@@ -473,9 +464,36 @@
         }
     }
 
+    function bindNotifTrigger() {
+        const btn = document.getElementById('btnNotifCenter');
+        if (btn && !btn.dataset.boundClick) {
+            btn.dataset.boundClick = 'true';
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                window.openNotificationModal();
+            });
+        }
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('notificationModal');
+            if (modal && (modal.classList.contains('open') || modal.style.display === 'flex')) {
+                window.closeNotificationModal();
+            }
+        }
+    });
+
     // 8. 초기 로드
-    window.addEventListener('DOMContentLoaded', () => {
+    if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', () => {
+            bindNotifTrigger();
+            fetchNotificationHistory(false);
+            setTimeout(registerWebPushSubscription, 1500);
+        });
+    } else {
+        bindNotifTrigger();
         fetchNotificationHistory(false);
         setTimeout(registerWebPushSubscription, 1500);
-    });
+    }
 })();
