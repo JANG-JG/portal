@@ -2,230 +2,276 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JG Command Center</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JG 포털 대시보드</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json?v=2">
     <meta name="theme-color" content="#ffffff">
     <meta name="color-scheme" content="light">
-    <!-- Pretendard & Bento Pure White Engineering Stylesheet -->
+    <!-- Pretendard 폰트 & 클린 라이트 Bento 스타일시트 -->
     <link rel="stylesheet" href="/css/pretendard.css?v=20261019_v1">
-    <link rel="stylesheet" href="/css/bento.css?v=20261020_v2">
+    <link rel="stylesheet" href="/css/bento.css?v=20261020_v3">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
     <div id="unified-nav-root" style="min-height: 54px;"></div>
 
-    <!-- 🎛️ 모바일/데스크톱 2단 칩 내비게이션 바 (Linear Style) -->
+    <!-- 🎛️ 모바일/데스크톱 2단 칩 내비게이션 바 -->
     <div class="bento-nav-strip">
-        <nav class="bento-nav-inner" aria-label="Command Center Quick Links">
+        <nav class="bento-nav-inner" aria-label="서비스 퀵 메뉴">
             <a href="/bento" class="bento-nav-item active">
-                <svg class="bento-nav-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                <span>Dashboard</span>
+                <span>전체 홈</span>
             </a>
             <a href="https://blood.j-jg.cc" class="bento-nav-item">
-                <svg class="bento-nav-icon" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                <span>Vitals</span>
+                <span>혈압 관리</span>
             </a>
             <a href="https://asset.j-jg.cc" class="bento-nav-item">
-                <svg class="bento-nav-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                <span>Assets</span>
+                <span>자산 분석</span>
             </a>
             <a href="https://news.j-jg.cc" class="bento-nav-item">
-                <svg class="bento-nav-icon" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><path d="M18 14h-8"></path><path d="M15 18h-5"></path><path d="M10 6h8v4h-8V6Z"></path></svg>
-                <span>Dispatch</span>
+                <span>뉴스 브리핑</span>
             </a>
             <a href="/calendar" class="bento-nav-item">
-                <svg class="bento-nav-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                <span>Calendar</span>
+                <span>복약·일정</span>
             </a>
             <a href="/memo" class="bento-nav-item">
-                <svg class="bento-nav-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                <span>Scratchpad</span>
+                <span>메모장</span>
             </a>
             <a href="/admin" class="bento-nav-item">
-                <svg class="bento-nav-icon" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-                <span>Infrastructure</span>
+                <span>서버 관제</span>
             </a>
         </nav>
     </div>
 
-    <!-- 🏛️ 메인 쉘 -->
-    <main class="bento-shell">
+    <!-- 🏛️ 메인 대시보드 컨테이너 -->
+    <main class="bento-container">
         
-        <!-- 상단 헤더 스트립 -->
-        <header class="bento-header-strip">
-            <div class="bento-header-meta">
-                <span class="bento-header-tag">JG Command Center // Production</span>
-                <h1 class="bento-header-title">Personal Operations Dashboard</h1>
+        <!-- 상단 인삿말 & 라이브 날씨 / 검색 헤더 -->
+        <header class="bento-header-row">
+            <div class="bento-header-left">
+                <span class="bento-welcome-text">안녕하세요, 사용자님 👋</span>
+                <span class="bento-status-badge">
+                    <span class="bento-pulse-dot"></span> 정상 가동
+                </span>
             </div>
 
-            <div class="bento-header-controls">
-                <a href="https://news.j-jg.cc/weather" class="bento-weather-pill" title="실시간 기상 관측">
+            <div class="bento-header-right">
+                <a href="https://news.j-jg.cc/weather" class="bento-weather-badge" title="상세 기상 정보">
+                    <span id="bentoWeatherIcon">🌤️</span>
                     <span id="bentoWeatherCity">계룡</span>
                     <span id="bentoWeatherTemp" class="font-mono">-</span>
-                    <span id="bentoWeatherDesc" style="color:var(--text-muted);">-</span>
+                    <span id="bentoWeatherDesc" style="color:var(--text-subtle);">-</span>
                 </a>
 
-                <div class="bento-search-box" onclick="location.href='/'" role="button" tabindex="0" title="통합 검색 열기">
-                    <span>Search telemetry, news, notes...</span>
-                    <kbd class="bento-search-kbd">⌘K</kbd>
+                <div class="bento-search-trigger" onclick="location.href='/'" role="button" tabindex="0" title="통합 검색 (Ctrl+K)">
+                    <span>검색...</span>
+                    <kbd class="bento-kbd">Ctrl+K</kbd>
                 </div>
             </div>
         </header>
 
         <!-- 🍱 BENTO GRID CORE -->
-        <div class="bento-layout">
+        <div class="bento-grid">
             
-            <!-- Bento 1: 💖 VITAL MONITOR (혈압/건강 지표) - 4 cols -->
-            <div class="bento-panel bento-vital interactive" onclick="location.href='https://blood.j-jg.cc'">
-                <div class="bento-panel-header">
-                    <span class="bento-panel-label">
-                        <svg class="bento-icon-svg" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                        Vital Monitor
-                    </span>
-                    <span class="bento-tag tag-emerald" id="bentoBloodBadge">
-                        <span class="bento-dot"></span> <span id="bentoBloodBadgeText">NORMAL</span>
-                    </span>
-                </div>
-
+            <!-- Bento 1: 🩸 혈압 & 건강 관리 (col-span-6) -->
+            <div class="bento-card col-blood clickable" onclick="location.href='https://blood.j-jg.cc'">
                 <div>
-                    <div class="bento-vital-val-wrap">
-                        <span class="bento-vital-val font-mono" id="bentoBloodSys">118</span>
-                        <span class="bento-vital-slash">/</span>
-                        <span class="bento-vital-val font-mono" id="bentoBloodDia">76</span>
-                        <span class="bento-vital-unit font-mono">mmHg</span>
-                    </div>
-                </div>
-
-                <div class="bento-vital-footer font-mono">
-                    <div>PULSE <strong id="bentoBloodPulse" style="color:var(--text-primary); font-weight:700;">72</strong> bpm</div>
-                    <div id="bentoBloodTime" style="color:var(--text-muted);">Recent Telemetry</div>
-                </div>
-            </div>
-
-            <!-- Bento 2: 💰 ASSET ALLOCATION (순자산 및 변동률) - 4 cols -->
-            <div class="bento-panel bento-asset interactive" onclick="location.href='https://asset.j-jg.cc'">
-                <div class="bento-panel-header">
-                    <span class="bento-panel-label">
-                        <svg class="bento-icon-svg" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                        Portfolio Total
-                    </span>
-                    <span class="bento-panel-action">Details ↗</span>
-                </div>
-
-                <div>
-                    <div class="bento-asset-val-wrap">
-                        <span class="bento-asset-val font-mono" id="bentoAssetNumber">---</span>
-                        <span class="bento-asset-unit font-mono">KRW</span>
-                    </div>
-                </div>
-
-                <div class="bento-asset-footer font-mono">
-                    <span id="bentoAssetRate" class="asset-diff-up">+0.0% MoM</span>
-                    <span id="bentoAssetDate" style="color:var(--text-muted);">Snapshot</span>
-                </div>
-            </div>
-
-            <!-- Bento 3: 🖥️ INFRASTRUCTURE OBSERVER (서버 인프라 관제) - 4 cols -->
-            <div class="bento-panel bento-infra interactive" onclick="location.href='/admin'">
-                <div class="bento-panel-header">
-                    <span class="bento-panel-label">
-                        <svg class="bento-icon-svg" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
-                        Infrastructure
-                    </span>
-                    <span class="bento-tag tag-emerald">
-                        <span class="bento-dot"></span> Note 9
-                    </span>
-                </div>
-
-                <div class="bento-infra-grid">
-                    <div class="bento-infra-box">
-                        <span class="bento-infra-label">CPU LOAD</span>
-                        <span class="bento-infra-num font-mono" id="bentoServerCpu">0.0%</span>
-                    </div>
-                    <div class="bento-infra-box">
-                        <span class="bento-infra-label">MEM USAGE</span>
-                        <span class="bento-infra-num font-mono" id="bentoServerRam">46.8%</span>
-                    </div>
-                </div>
-
-                <div class="bento-infra-services">
-                    <span class="bento-infra-pill"><span class="bento-dot-green"></span> PORTAL</span>
-                    <span class="bento-infra-pill"><span class="bento-dot-green"></span> BLOOD</span>
-                    <span class="bento-infra-pill"><span class="bento-dot-green"></span> ASSET</span>
-                    <span class="bento-infra-pill"><span class="bento-dot-green"></span> NEWS</span>
-                </div>
-            </div>
-
-            <!-- Bento 4: 📰 LIVE DISPATCH (실시간 기사 피드 - Linear List) - 7 cols -->
-            <div class="bento-panel bento-news">
-                <div class="bento-panel-header">
-                    <span class="bento-panel-label">
-                        <svg class="bento-icon-svg" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path></svg>
-                        Live Dispatch
-                    </span>
-                    <a href="https://news.j-jg.cc" class="bento-panel-action">Newsroom ↗</a>
-                </div>
-
-                <div class="bento-table-list" id="bentoNewsList">
-                    <div class="bento-table-row">
-                        <div class="bento-row-main">
-                            <span class="bento-source-tag">SYSTEM</span>
-                            <span class="bento-row-title">실시간 기사를 파싱하고 있습니다...</span>
+                    <div class="bento-card-header">
+                        <div class="bento-card-title-group">
+                            <span class="bento-pulse-dot"></span>
+                            <h2 class="bento-card-title">혈압 건강 대시보드</h2>
+                            <span class="bento-chip-badge badge-emerald" id="bentoBloodBadge">정상 범위</span>
                         </div>
-                        <span class="bento-row-time">just now</span>
+                        <span class="bento-card-link">리포트 상세 →</span>
                     </div>
+
+                    <!-- 수축기 / 이완기 / 맥박 3분할 수치 박스 -->
+                    <div class="bento-stats-3col">
+                        <div class="bento-stat-item">
+                            <div class="bento-stat-label">최근 수축기</div>
+                            <div class="bento-stat-num font-mono" id="bentoBloodSys">118 <span class="bento-stat-unit">mmHg</span></div>
+                        </div>
+                        <div class="bento-stat-item border-mid">
+                            <div class="bento-stat-label">최근 이완기</div>
+                            <div class="bento-stat-num font-mono" id="bentoBloodDia">76 <span class="bento-stat-unit">mmHg</span></div>
+                        </div>
+                        <div class="bento-stat-item">
+                            <div class="bento-stat-label">맥박수</div>
+                            <div class="bento-stat-num font-mono" id="bentoBloodPulse">68 <span class="bento-stat-unit">bpm</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bento-card-footer">
+                    <span id="bentoBloodTime">최근 측정: 오늘 08:30</span>
+                    <span style="color:var(--accent-emerald); font-weight:700;">기록 준수율 100%</span>
                 </div>
             </div>
 
-            <!-- Bento 5: 📅 OPERATIONS & SCHEDULE (일정 & 투약) - 5 cols -->
-            <div class="bento-panel bento-ops interactive" onclick="location.href='/calendar'">
-                <div class="bento-panel-header">
-                    <span class="bento-panel-label">
-                        <svg class="bento-icon-svg" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        Operations
-                    </span>
-                    <span class="bento-tag" id="bentoHospitalDDay">D-Day</span>
+            <!-- Bento 2: 💰 개인 자산 포트폴리오 (col-span-6) -->
+            <div class="bento-card col-asset clickable" onclick="location.href='https://asset.j-jg.cc'">
+                <div>
+                    <div class="bento-card-header">
+                        <div class="bento-card-title-group">
+                            <h2 class="bento-card-title">총 자산 포트폴리오</h2>
+                            <span class="bento-chip-badge badge-rose" id="bentoAssetBadge">+1.42%</span>
+                        </div>
+                        <span class="bento-card-link">자산 상세 →</span>
+                    </div>
+
+                    <!-- 평가 총액 요약 박스 -->
+                    <div class="bento-asset-total-box">
+                        <div>
+                            <div class="bento-stat-label">평가 총액</div>
+                            <div class="bento-asset-big-num font-mono" id="bentoAssetNumber">₩0</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="bento-stat-label">변동률</div>
+                            <div class="bento-asset-diff font-mono" id="bentoAssetDiff" style="color:var(--accent-rose);">+0.0%</div>
+                        </div>
+                    </div>
+
+                    <!-- 주요 보유 종목 분할 리스트 -->
+                    <div class="bento-asset-list" id="bentoAssetItemsList">
+                        <div class="bento-asset-item">
+                            <span style="color:var(--text-secondary); font-weight:600;">보유 종목</span>
+                            <span class="font-mono text-muted">조회 중...</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="bento-ops-list">
-                    <div class="bento-ops-item">
-                        <div class="bento-ops-left">
-                            <span class="bento-dot-green"></span>
-                            <div>
-                                <div class="bento-ops-title" id="bentoHospitalNextDate">병원 정기 진료</div>
-                                <div class="bento-ops-sub" id="bentoHospitalRemain">약 잔여분 계산 중...</div>
+                <div class="bento-card-footer">
+                    <span>실시간 호가 연동</span>
+                    <span>15:30 정규장 마감</span>
+                </div>
+            </div>
+
+            <!-- Bento 3: 📰 실시간 주요 뉴스 (col-span-7, 썸네일 이미지 포함) -->
+            <div class="bento-card col-news">
+                <div>
+                    <div class="bento-card-header">
+                        <div class="bento-card-title-group">
+                            <span class="bento-pulse-dot" style="background-color:var(--accent-rose);"></span>
+                            <h2 class="bento-card-title">실시간 주요 속보 & 브리핑</h2>
+                        </div>
+                        <a href="https://news.j-jg.cc" class="bento-card-link">전체 뉴스 보기 →</a>
+                    </div>
+
+                    <!-- 썸네일 이미지 포함 기사 리스트 -->
+                    <div class="bento-news-feed" id="bentoNewsList">
+                        <div class="bento-news-entry">
+                            <div class="bento-news-thumb">
+                                <div style="width:100%; height:100%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; font-size:12px; color:#94a3b8;">NEWS</div>
                             </div>
-                        </div>
-                    </div>
-                    <div class="bento-ops-item">
-                        <div class="bento-ops-left">
-                            <span class="bento-dot-green"></span>
-                            <div>
-                                <div class="bento-ops-title">일일 복약 체크</div>
-                                <div class="bento-ops-sub" id="bentoMedicationStatus">복약 상태 확인 중...</div>
+                            <div class="bento-news-body">
+                                <div class="bento-news-title">실시간 뉴스를 불러오는 중입니다...</div>
+                                <div class="bento-news-meta-row">
+                                    <span class="bento-news-cat">속보</span>
+                                    <span>•</span>
+                                    <span class="font-mono">실시간</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Bento 6: 💡 SCRATCHPAD & MEMO (메모) - 12 cols -->
-            <div class="bento-panel bento-memo interactive" onclick="location.href='/memo'">
-                <div class="bento-panel-header">
-                    <span class="bento-panel-label">
-                        <svg class="bento-icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                        Scratchpad
-                    </span>
-                    <span class="bento-panel-action">Open Editor ↗</span>
+            <!-- Bento 4: 📅 오늘 복약 및 병원 일정 (col-span-5) -->
+            <div class="bento-card col-schedule clickable" onclick="location.href='/calendar'">
+                <div>
+                    <div class="bento-card-header">
+                        <div class="bento-card-title-group">
+                            <h2 class="bento-card-title">복약 & 병원 진료</h2>
+                            <span class="bento-chip-badge badge-amber" id="bentoHospitalDDay">D-Day</span>
+                        </div>
+                        <span class="bento-card-link">캘린더 →</span>
+                    </div>
+
+                    <div class="bento-schedule-box">
+                        <div class="bento-schedule-row">
+                            <div class="bento-schedule-left">
+                                <div class="bento-schedule-title">아침 혈압약 복용</div>
+                                <div class="bento-schedule-sub font-mono" id="bentoMedStatusText">08:00 복용 완료</div>
+                            </div>
+                            <span class="bento-chip-badge badge-emerald" id="bentoMedBadge">복용완료 ✓</span>
+                        </div>
+
+                        <div class="bento-schedule-row">
+                            <div class="bento-schedule-left">
+                                <div class="bento-schedule-title" id="bentoHospitalNextDate">건양대병원 정기진료</div>
+                                <div class="bento-schedule-sub font-mono" id="bentoHospitalRemain">잔여 약: 조회 중...</div>
+                            </div>
+                            <span class="bento-chip-badge badge-amber" id="bentoHospitalDDayPill">D-12</span>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="bento-memo-codebox">
-                    <span class="bento-memo-content font-mono" id="bentoMemoPreview">최근 작성된 메모를 불러오는 중입니다...</span>
-                    <span class="bento-memo-date font-mono" id="bentoMemoDate">-</span>
+                <div class="bento-card-footer">
+                    <span>정기 진료 알림</span>
+                    <span style="color:var(--accent-amber); font-weight:700;">처방약 잔여 관리 중</span>
+                </div>
+            </div>
+
+            <!-- Bento 5: 💡 아이디어 & 메모장 (col-span-6) -->
+            <div class="bento-card col-memo clickable" onclick="location.href='/memo'">
+                <div>
+                    <div class="bento-card-header">
+                        <div class="bento-card-title-group">
+                            <h2 class="bento-card-title">아이디어 & 최근 메모</h2>
+                        </div>
+                        <span class="bento-card-link">메모장 열기 →</span>
+                    </div>
+
+                    <div class="bento-memo-list" id="bentoMemoList">
+                        <div class="bento-memo-item">
+                            <span class="bento-memo-item-title">최근 메모를 조회하고 있습니다...</span>
+                            <span class="font-mono text-muted">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bento-card-footer">
+                    <span>빠른 메모 작성 지원</span>
+                    <span id="bentoMemoCount">총 0개 기록</span>
+                </div>
+            </div>
+
+            <!-- Bento 6: 🖥️ 서버 인프라 관제 (col-span-6) -->
+            <div class="bento-card col-admin clickable" onclick="location.href='/admin'">
+                <div>
+                    <div class="bento-card-header">
+                        <div class="bento-card-title-group">
+                            <span class="bento-pulse-dot"></span>
+                            <h2 class="bento-card-title">서버 인프라 관제 (Note 9)</h2>
+                            <span class="bento-chip-badge badge-emerald">정상 운영</span>
+                        </div>
+                        <span class="bento-card-link">관리자 센터 →</span>
+                    </div>
+
+                    <div class="bento-infra-stats">
+                        <div class="bento-infra-card">
+                            <span class="bento-infra-card-label">CPU 사용률</span>
+                            <span class="bento-infra-card-val font-mono" id="bentoServerCpu">0.0%</span>
+                        </div>
+                        <div class="bento-infra-card">
+                            <span class="bento-infra-card-label">RAM 사용률</span>
+                            <span class="bento-infra-card-val font-mono" id="bentoServerRam">47.1%</span>
+                        </div>
+                    </div>
+
+                    <div class="bento-infra-services">
+                        <span class="bento-service-chip"><span class="bento-pulse-dot"></span> 포털</span>
+                        <span class="bento-service-chip"><span class="bento-pulse-dot"></span> 혈압</span>
+                        <span class="bento-service-chip"><span class="bento-pulse-dot"></span> 자산</span>
+                        <span class="bento-service-chip"><span class="bento-pulse-dot"></span> 뉴스</span>
+                    </div>
+                </div>
+
+                <div class="bento-card-footer">
+                    <span>PM2 클러스터 모니터링</span>
+                    <span>ARM64 PRoot Node</span>
                 </div>
             </div>
 
@@ -233,7 +279,7 @@
     </main>
 
     <!-- 🚀 실시간 인터랙션 스크립트 및 공통 중앙 UI (상단바 + 하단바) -->
-    <script src="/js/bento.js?v=20261020_v2"></script>
-    <script src="/js/jg-ui.js?v=20261020_220904" defer></script>
+    <script src="/js/bento.js?v=20261020_v3"></script>
+    <script src="/js/jg-ui.js?v=20261020_221623" defer></script>
 </body>
 </html>
