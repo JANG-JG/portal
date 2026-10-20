@@ -339,6 +339,20 @@
             }
         });
 
+        // ℹ️ 알림 보관 주기 안내 툴팁 토글 및 외부 클릭 시 닫기
+        window.toggleNotifInfoTooltip = function(e) {
+            if (e && e.stopPropagation) e.stopPropagation();
+            const wrapper = document.getElementById('notifInfoTooltipWrapper');
+            if (wrapper) wrapper.classList.toggle('active');
+        };
+
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('notifInfoTooltipWrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                wrapper.classList.remove('active');
+            }
+        });
+
         // URL 쿼리 또는 해시(?open=notification, #notification)로 유입 시 모달 자동 열기 및 주소창 즉시 정리
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('open') === 'notification' || window.location.hash === '#notification') {
@@ -1043,7 +1057,12 @@
 
         if (countLabel) {
             const catName = NOTIF_CATEGORIES.find(c => c.key === notifSelectedCategory)?.label || '전체';
-            countLabel.textContent = `${catName} 알림 (${filteredItems.length}건${filteredUnread > 0 ? `, 미확인 ${filteredUnread}건` : ''})`;
+            const unreadText = filteredUnread > 0 ? `, 미확인 ${filteredUnread}건` : '';
+            if (notifSelectedCategory === 'all') {
+                countLabel.textContent = `전체 알림 (총 ${notifHistoryTotal}건 중 ${filteredItems.length}건${unreadText})`;
+            } else {
+                countLabel.textContent = `${catName} 알림 (${filteredItems.length}건 / 전체 총 ${notifHistoryTotal}건${unreadText})`;
+            }
         }
 
         if (filteredItems.length === 0) {
@@ -1052,7 +1071,7 @@
             return;
         }
 
-        listEl.innerHTML = filteredItems.map(item => {
+        const cardsHtml = filteredItems.map(item => {
             const cat = getNotificationCategory(item);
             const timeStr = formatNotificationTime(item.created_at);
             const linkUrl = item.url || '#';
@@ -1085,8 +1104,31 @@
             `;
         }).join('');
 
+        const hasMoreInDb = notifHistoryListItems.length < notifHistoryTotal;
+        const endNoticeHtml = hasMoreInDb
+            ? `
+                <div class="notif-list-end-notice has-more">
+                    <div class="notif-end-icon">📄</div>
+                    <div class="notif-end-text">현재 불러온 알림 목록의 마지막입니다.</div>
+                    <div class="notif-end-sub">이전 알림을 더 확인하시려면 아래 <strong>[+ 이전 알림 더보기]</strong> 메뉴를 눌러주세요.</div>
+                </div>
+            `
+            : `
+                <div class="notif-list-end-notice is-complete">
+                    <div class="notif-end-icon">✨</div>
+                    <div class="notif-end-text">모든 알림을 확인했습니다.</div>
+                    <div class="notif-end-sub">수신된 알림의 마지막입니다.</div>
+                </div>
+            `;
+
+        listEl.innerHTML = cardsHtml + endNoticeHtml;
+
         if (loadMoreBox) {
-            loadMoreBox.style.display = notifHistoryListItems.length < notifHistoryTotal ? 'block' : 'none';
+            loadMoreBox.style.display = hasMoreInDb ? 'block' : 'none';
+            const btn = document.getElementById('btnNotifLoadMore');
+            if (btn) {
+                btn.textContent = `+ 이전 알림 더보기 (${notifHistoryListItems.length}/${notifHistoryTotal})`;
+            }
         }
     }
 

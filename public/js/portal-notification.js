@@ -161,3 +161,9 @@ function clearAllNotificationHistory() {
         window.clearAllNotificationHistory();
     }
 }
+
+function toggleNotifInfoTooltip(e) {
+    if (typeof window.toggleNotifInfoTooltip === 'function') {
+        window.toggleNotifInfoTooltip(e);
+    }
+}

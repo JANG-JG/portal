@@ -580,7 +580,15 @@
 
                 <!-- 서브 툴바 (카운트 및 일괄 액션) -->
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 1.25rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc; flex-wrap: wrap; gap: 0.4rem; flex-shrink: 0;">
-                    <span id="notifHistoryCountLabel" style="font-size: 0.82rem; color: #64748b; font-weight: 600;">알림 내역</span>
+                    <div style="display: flex; align-items: center; gap: 0.35rem; min-width: 0;">
+                        <span id="notifHistoryCountLabel" style="font-size: 0.82rem; color: #475569; font-weight: 600;">알림 내역</span>
+                        <div class="notif-info-tooltip-wrapper" id="notifInfoTooltipWrapper">
+                            <button type="button" class="notif-info-btn" id="notifInfoBtn" aria-label="알림 보관 주기 안내" onclick="toggleNotifInfoTooltip(event)" title="알림 보관 주기 안내">ⓘ</button>
+                            <div class="notif-info-tooltip">
+                                ℹ️ 알림 내역은 수신일로부터 <strong>30일 후 자동 삭제</strong>됩니다.
+                            </div>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 0.35rem; align-items: center;">
                         <button type="button" onclick="markAllNotificationsAsRead()" class="btn-history-tool" style="color: #2563eb; border-color: #bfdbfe; background: #eff6ff; font-weight: 700;">✓ 모두 읽음</button>
                         <button type="button" onclick="refreshNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
@@ -595,7 +603,7 @@
 
                 <!-- 이전 알림 더보기 버튼 박스 -->
                 <div id="notifLoadMoreBox" style="text-align: center; padding: 0.75rem 1.25rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: none; flex-shrink: 0;">
-                    <button type="button" onclick="loadMoreNotificationHistory()" class="btn-history-tool" style="width: 100%; padding: 0.6rem; font-size: 0.84rem; background: #ffffff; border-color: #cbd5e1; color: #334155; font-weight: 600;">
+                    <button type="button" id="btnNotifLoadMore" onclick="loadMoreNotificationHistory()" class="btn-history-tool" style="width: 100%; padding: 0.65rem; font-size: 0.85rem; background: #ffffff; border-color: #cbd5e1; color: #1e293b; font-weight: 700; border-radius: 8px;">
                         + 이전 알림 더보기
                     </button>
                 </div>
