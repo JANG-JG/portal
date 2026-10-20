@@ -24,7 +24,7 @@
     <main class="container">
         <section class="welcome-section" style="margin-bottom: 0.85rem;">
             <div class="welcome-header-row">
-                <h2>안녕하세요, <span id="usernameDisplay">사용자</span>님 👋 <span class="welcome-live-dot" title="시스템 정상 가동 중"></span></h2>
+                <h2>안녕하세요, <span id="usernameDisplay">사용자</span>님 👋</h2>
                 <a href="https://news.j-jg.cc/weather" class="weather-compact-badge" id="welcomeWeatherBadge" title="실시간 날씨 브리핑 바로가기">
                     <span id="welcomeWeatherIcon">🌤️</span>
                     <span id="welcomeWeatherCity">계룡</span>
@@ -139,121 +139,120 @@
                     </div>
                 </div>
 
-                <!-- 🍱 Bento Grid 개인 통합 관제 대시보드 허브 -->
-                <section class="today-bento-grid" id="todaySummaryHub" aria-label="오늘의 요약 위젯">
-                    <!-- Bento Box 1: 🩸 혈압 & 복약 모니터링 (col-span-6) -->
-                    <div class="bento-box bento-col-6" id="widgetRecentBlood">
-                        <div class="bento-header">
-                            <span class="bento-title">🩸 혈압 복용</span>
-                            <div class="bento-header-actions">
+                <!-- 📱 오늘의 라이프 & D-Day 스마트 대시보드 위젯 허브 -->
+                <section class="today-summary-hub" id="todaySummaryHub" aria-label="오늘의 요약 위젯">
+                    <!-- 위젯 1: 오늘 복약 상태 -->
+                    <div class="today-widget-card" id="widgetTodayMed">
+                        <div class="today-widget-header">
+                            <span class="today-widget-title">💊 오늘 복약</span>
+                            <span class="today-widget-badge badge-state-warn" id="widgetMedBadge">확인 중</span>
+                        </div>
+                        <div class="today-widget-body">
+                            <div class="today-widget-val-main" id="widgetMedStatusText">조회 중...</div>
+                            <div class="today-widget-val-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
+                        </div>
+                        <button type="button" class="btn-widget-quick-med" id="btnWidgetQuickMed" onclick="recordQuickMedication()" style="display:none;">
+                            💊 지금 복약 기록
+                        </button>
+                    </div>
+
+                    <!-- 위젯 2: 최근 혈압 상태 -->
+                    <div class="today-widget-card" id="widgetRecentBlood">
+                        <div class="today-widget-header">
+                            <span class="today-widget-title">🩸 최근 혈압</span>
+                            <div style="display:flex; align-items:center; gap:0.35rem;">
                                 <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">ℹ️ 기준</button>
-                                <span class="today-widget-badge badge-state-ok" id="widgetBloodBadge" style="cursor:pointer;" onclick="openBpGuideModal()" title="클릭 시 판정 기준표 보기">정상 🟢</span>
+                                <span class="today-widget-badge badge-state-ok" id="widgetBloodBadge" style="cursor:pointer;" onclick="openBpGuideModal()" title="클릭 시 판정 기준표 보기">-</span>
                             </div>
                         </div>
-                        <div class="bento-body">
-                            <div class="bento-val-hero font-mono" id="widgetBloodValMain">- / - <small>mmHg</small></div>
-                            <div class="bento-val-sub font-mono" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
-                            
-                            <!-- 임상 스파크라인 SVG 곡선 -->
-                            <div class="bento-sparkline-wrap">
-                                <svg class="bento-sparkline-svg" viewBox="0 0 240 32" preserveAspectRatio="none">
-                                    <path d="M0 24 Q 25 12, 50 20 T 100 14 T 150 22 T 200 12 T 240 18" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </div>
-
-                            <!-- 복약 상태 인라인 스트립 (widgetTodayMed DOM ID 보존) -->
-                            <div class="bento-med-strip" id="widgetTodayMed">
-                                <div class="bento-med-info">
-                                    <span class="bento-med-icon">💊</span>
-                                    <div>
-                                        <div class="bento-med-status" id="widgetMedStatusText">조회 중...</div>
-                                        <div class="bento-med-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
-                                    </div>
-                                </div>
-                                <div class="bento-med-action">
-                                    <span class="today-widget-badge badge-state-warn" id="widgetMedBadge">확인 중</span>
-                                    <button type="button" class="btn-widget-quick-med" id="btnWidgetQuickMed" onclick="recordQuickMedication()" style="display:none;">
-                                        💊 지금 복약 기록
-                                    </button>
-                                </div>
-                            </div>
+                        <div class="today-widget-body">
+                            <div class="today-widget-val-main" id="widgetBloodValMain">- / - <small style="font-size:0.75rem; color:#64748b; font-weight:normal;">mmHg</small></div>
+                            <div class="today-widget-val-sub" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
                         </div>
                     </div>
 
-                    <!-- Bento Box 2: 💰 자산 포트폴리오 (col-span-6) -->
-                    <div class="bento-box bento-col-6" id="widgetAssetMarket" onclick="switchPortalTab('asset')" role="button" tabindex="0" title="자산 관리 바로가기">
-                        <div class="bento-header">
-                            <span class="bento-title">💰 자산</span>
-                            <span class="today-widget-badge badge-state-danger" id="widgetMarketBadge">+1.42% (오늘)</span>
+                    <!-- 위젯 3: 병원 & 약 D-Day -->
+                    <div class="today-widget-card" id="widgetHospitalDDay">
+                        <div class="today-widget-header">
+                            <span class="today-widget-title">🏥 진료 D-Day</span>
+                            <span class="today-widget-badge badge-state-info" id="widgetHospitalBadge">-</span>
                         </div>
-                        <div class="bento-body">
-                            <div class="bento-val-hero font-mono" id="widgetAssetTotalMain">-</div>
-                            <div class="bento-val-sub font-mono" id="widgetMarketSubText">시장 시세 수집 중...</div>
-                            
-                            <!-- 1px 미니 포트폴리오 리스트 -->
-                            <div class="bento-asset-list font-mono">
-                                <div class="bento-asset-row">
-                                    <span>삼성전자</span>
-                                    <span class="bento-asset-val">68,200원 <strong class="text-rose">+1.8%</strong></span>
-                                </div>
-                                <div class="bento-asset-row">
-                                    <span>KODEX 200</span>
-                                    <span class="bento-asset-val">36,450원 <strong class="text-rose">+0.9%</strong></span>
-                                </div>
-                            </div>
+                        <div class="today-widget-body">
+                            <div class="today-widget-val-main" id="widgetHospitalDDayText">-</div>
+                            <div class="today-widget-val-sub" id="widgetHospitalSubText">약 잔여 -일분</div>
                         </div>
                     </div>
 
-                    <!-- Bento Box 3: 📰 실시간 뉴스 (col-span-8) -->
-                    <div class="bento-box bento-col-8" id="widgetNewsBento" onclick="switchPortalTab('news')" role="button" tabindex="0" title="실시간 뉴스 탭 열기">
-                        <div class="bento-header">
-                            <span class="bento-title">📰 뉴스</span>
-                            <span class="bento-meta font-mono">실시간 자동 브리핑 ↗</span>
+                    <!-- 위젯 4: 총자산 & 시장 요약 -->
+                    <div class="today-widget-card" id="widgetAssetMarket">
+                        <div class="today-widget-header">
+                            <span class="today-widget-title">💰 총자산 & 시장</span>
+                            <span class="today-widget-badge badge-state-ok" id="widgetMarketBadge">코스피</span>
                         </div>
-                        <div class="bento-body">
-                            <div class="bento-news-feed" id="homeNewsFeedBox">
-                                <div class="bento-news-item">
-                                    <div class="bento-news-item-title truncate">[증시 마감] 외국인 순매수에 코스피 2,654.12선 안착... 반도체 강세</div>
-                                    <div class="bento-news-item-meta font-mono">12분 전</div>
-                                </div>
-                                <div class="bento-news-item">
-                                    <div class="bento-news-item-title truncate">한국은행 금융통화위원회 기준금리 연 3.50% 동결 결정... 물가 주시</div>
-                                    <div class="bento-news-item-meta font-mono">28분 전</div>
-                                </div>
-                                <div class="bento-news-item">
-                                    <div class="bento-news-item-title truncate">차세대 2나노 온디바이스 AI 칩셋 양산 본격화... 스마트폰 탑재</div>
-                                    <div class="bento-news-item-meta font-mono">45분 전</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Bento Box 4: 📅 Schedule & 일정 (col-span-4) -->
-                    <div class="bento-box bento-col-4" id="widgetHospitalDDay" onclick="switchPortalTab('life')" role="button" tabindex="0" title="캘린더 일정 바로가기">
-                        <div class="bento-header">
-                            <span class="bento-title">📅 Schedule</span>
-                            <span class="today-widget-badge badge-state-warn" id="widgetHospitalBadge">D-12</span>
-                        </div>
-                        <div class="bento-body">
-                            <div class="bento-schedule-list">
-                                <div class="bento-schedule-item">
-                                    <div class="bento-schedule-dot"></div>
-                                    <div class="bento-schedule-text">
-                                        <div class="bento-schedule-title" id="widgetHospitalDDayText">병원 정기 진료</div>
-                                        <div class="bento-schedule-sub font-mono" id="widgetHospitalSubText">약 잔여 -일분</div>
-                                    </div>
-                                </div>
-                                <div class="bento-schedule-item">
-                                    <div class="bento-schedule-dot" style="background:#0ea5e9;"></div>
-                                    <div class="bento-schedule-text">
-                                        <div class="bento-schedule-title">19:00 혈압약 복용</div>
-                                        <div class="bento-schedule-sub font-mono">취침 전 편안한 상태</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="today-widget-body">
+                            <div class="today-widget-val-main" id="widgetAssetTotalMain">-</div>
+                            <div class="today-widget-val-sub" id="widgetMarketSubText">시장 시세 수집 중...</div>
                         </div>
                     </div>
                 </section>
+
+                <!-- 🌟 5대 핵심 서비스 빠른 둘러보기 미니 카드 그리드 -->
+                <div class="home-mini-grid">
+                    <div class="home-mini-card" onclick="switchPortalTab('news')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">📰</span>
+                            <div>
+                                <div class="home-mini-card-title">뉴스·속보 브리핑</div>
+                                <div class="home-mini-card-desc">실시간 AI 뉴스 & 증시 마켓 지표</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+
+                    <div class="home-mini-card" onclick="switchPortalTab('blood')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">💖</span>
+                            <div>
+                                <div class="home-mini-card-title">건강·혈압 관리</div>
+                                <div class="home-mini-card-desc">혈압 기록, 병원 일정, 복약 알림</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+
+                    <div class="home-mini-card" onclick="switchPortalTab('asset')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">💰</span>
+                            <div>
+                                <div class="home-mini-card-title">자산·금융 포트폴리오</div>
+                                <div class="home-mini-card-desc">월별 자산 추이 및 금융 자산 분석</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+
+                    <div class="home-mini-card" onclick="switchPortalTab('life')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">📅</span>
+                            <div>
+                                <div class="home-mini-card-title">스마트 라이프 캘린더</div>
+                                <div class="home-mini-card-desc">병원 진료 및 개인 통합 일정표</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+
+                    <div class="home-mini-card" onclick="switchPortalTab('life')" role="button" tabindex="0">
+                        <div class="home-mini-card-info">
+                            <span class="home-mini-card-icon">💡</span>
+                            <div>
+                                <div class="home-mini-card-title">아이디어 & 메모장</div>
+                                <div class="home-mini-card-desc">체크리스트 & 카테고리별 메모</div>
+                            </div>
+                        </div>
+                        <span class="home-mini-card-arrow">›</span>
+                    </div>
+                </div>
 
             </div>
 
