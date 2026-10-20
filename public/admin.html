@@ -562,15 +562,15 @@
                         </div>
                     </div>
 
-                    <!-- 💻 실시간 서버 시스템 및 백업 로그 (최근 50줄) -->
+                    <!-- 💻 보조 서버 백업 보관 현황 및 정기 백업 실행 로그 -->
                     <div class="admin-card" style="margin-top:1.5rem; padding: 1.25rem;">
                         <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
                             <div>
-                                <h3 style="margin-bottom:0.25rem;">💻 실시간 보조 서버 시스템 및 백업 로그 (최근 50줄)</h3>
-                                <span style="font-size:0.82rem; color:#64748b;">보조 서버의 시스템 로그(/var/log/syslog) 및 Rsync 정기 백업 실행 결과</span>
+                                <h3 style="margin-bottom:0.25rem;">💻 보조 서버 백업 보관 현황 및 정기 백업 실행 로그</h3>
+                                <span style="font-size:0.82rem; color:#64748b;">보조 서버(HP 노트북) 30일 보존 아카이브 목록 및 매일 새벽 04시 정기 핫 백업/무결성 검증 실행 상세 로그</span>
                             </div>
                             <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                                <input type="search" id="secLogSearchInput" placeholder="🔍 보조 로그 검색..." oninput="filterSecConsoleLogs()" style="padding:0.35rem 0.65rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; width:135px; background:#f8fafc;">
+                                <input type="search" id="secLogSearchInput" placeholder="🔍 백업 로그 검색..." oninput="filterSecConsoleLogs()" style="padding:0.35rem 0.65rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; width:140px; background:#f8fafc;">
                                 <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadOverviewData()">
                                     🔄 새로고침
                                 </button>
@@ -584,11 +584,11 @@
                                         <span class="terminal-dot dot-yellow"></span>
                                         <span class="terminal-dot dot-green"></span>
                                     </div>
-                                    <span class="terminal-title">bash - journalctl -u backup -n 50 (HP-15-g008au)</span>
+                                    <span class="terminal-title">bash - backup-to-secondary.sh &amp; secondary archives</span>
                                 </div>
-                                <span style="font-size:0.7rem; color:#a78bfa; font-family:monospace;">tail -n 50 (live)</span>
+                                <span style="font-size:0.7rem; color:#a78bfa; font-family:monospace;">backup.log (live)</span>
                             </div>
-                            <pre id="secLogConsole" class="pm2-console">보조 서버 로그를 불러오는 중입니다...</pre>
+                            <pre id="secLogConsole" class="pm2-console">보조 서버 백업 로그를 불러오는 중입니다...</pre>
                         </div>
                     </div>
 

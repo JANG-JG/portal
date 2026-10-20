@@ -1683,7 +1683,7 @@ async function performSecondaryServerCheck() {
                 'echo "___SEC_TEMP___" && (sensors -j 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "NA")',
                 'echo "___SEC_TOPMEM___" && ps -eo pid,user,%cpu,%mem,rss,args --sort=-%mem | head -n 11',
                 'echo "___SEC_DBS___" && (cat /home/upt0731/backups/jg_server/integrity_status.json 2>/dev/null || ls -lh /home/upt0731/backups/jg_server/current_dbs/*.db 2>/dev/null || ls -lh /home/upt0731/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null || echo "NA")',
-                'echo "___SEC_LOGS___" && (tail -n 50 /var/log/syslog 2>/dev/null || journalctl -n 50 --no-pager 2>/dev/null || echo "NA")'
+                'echo "___SEC_BACKUPS___" && (ls -lh /home/upt0731/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null | tail -n 8 || echo "NA")'
             ].join(' && ');
 
             const sshCmd = `ssh -p 22 -o ConnectTimeout=1 -o BatchMode=yes -o StrictHostKeyChecking=accept-new upt0731@192.168.50.75 "${remoteScript}"`;
@@ -1857,10 +1857,37 @@ async function performSecondaryServerCheck() {
                             }
                         }
 
-                        // 7. LOGS 파싱
-                        if (sections.SEC_LOGS) {
-                            secLogs = sections.SEC_LOGS.join('\n').trim() || '수집된 로그가 없습니다.';
+                        // 7. 실시간 백업 상세 로그 (노트 9 로컬 backup.log + 보조 서버 아카이브 목록 결합)
+                        let backupLogTail = '';
+                        const localBackupLog = fs.existsSync('/home/upt0731/scripts/backup.log')
+                            ? '/home/upt0731/scripts/backup.log'
+                            : path.resolve(WORKSPACE_ROOT, 'scripts', 'backup.log');
+                        if (fs.existsSync(localBackupLog)) {
+                            try {
+                                const logRaw = fs.readFileSync(localBackupLog, 'utf8').trim();
+                                const logLines = logRaw.split('\n');
+                                backupLogTail = logLines.slice(-50).join('\n');
+                            } catch (e) {}
                         }
+
+                        let secStorageList = '';
+                        if (sections.SEC_BACKUPS && sections.SEC_BACKUPS.length > 0 && sections.SEC_BACKUPS[0] !== 'NA') {
+                            secStorageList = sections.SEC_BACKUPS.join('\n');
+                        }
+
+                        const logHeader = [
+                            '========================================================================',
+                            '📦 [보조 서버(HP 노트북: 192.168.50.75) 30일 백업 아카이브 보관 목록 (최근)]',
+                            '========================================================================',
+                            secStorageList || '보조 서버에 백업 아카이브가 아직 없습니다.',
+                            '',
+                            '========================================================================',
+                            '📋 [정기 핫 백업 및 무결성 검증 실행 상세 로그 (/home/upt0731/scripts/backup.log)]',
+                            '========================================================================',
+                            backupLogTail || '기록된 백업 실행 로그가 없습니다.'
+                        ].join('\n');
+
+                        secLogs = logHeader;
                     } catch (pe) {}
                 }
 
@@ -1893,6 +1920,25 @@ async function performSecondaryServerCheck() {
             if (settled) return;
             settled = true;
             socket.destroy();
+
+            let backupLogTail = '';
+            const localBackupLog = fs.existsSync('/home/upt0731/scripts/backup.log')
+                ? '/home/upt0731/scripts/backup.log'
+                : path.resolve(WORKSPACE_ROOT, 'scripts', 'backup.log');
+            if (fs.existsSync(localBackupLog)) {
+                try {
+                    const logRaw = fs.readFileSync(localBackupLog, 'utf8').trim();
+                    const logLines = logRaw.split('\n');
+                    backupLogTail = logLines.slice(-50).join('\n');
+                } catch (e) {}
+            }
+
+            const offlineLogHeader = [
+                '⚠️ [보조 서버 오프라인 대기 상태 - 메인 서버(노트 9) 로컬 백업 로그]',
+                '========================================================================',
+                backupLogTail || '기록된 백업 실행 로그가 없습니다.'
+            ].join('\n');
+
             secondaryServerCache = {
                 ...secondaryServerCache,
                 online: false,
@@ -1911,7 +1957,7 @@ async function performSecondaryServerCheck() {
                     { name: 'cron-scheduler', displayName: '⏱️ Cron 정기 스케줄러 데몬', status: 'standby', memory: '6.8 MB', cpu: '0.0%', port: 'Daemon', desc: '정기 백업 트리거 및 30일 보존 롤오버' },
                     { name: 'sshd-service', displayName: '🛡️ SSH 보안 원격 접속 서비스', status: 'standby', memory: '18.5 MB', cpu: '0.0%', port: '22', desc: '주 서버 간 키 기반 고속 암호화 통신' }
                 ],
-                logs: '보조 서버가 현재 오프라인 상태입니다. (전원 연결 시 SSH 자동 연결 및 실시간 로그 동기화)'
+                logs: offlineLogHeader
             };
             resolve(secondaryServerCache);
         };
