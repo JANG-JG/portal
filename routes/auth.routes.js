@@ -58,13 +58,19 @@ router.post('/api/login', (req, res) => {
             const expiresIn = isRemember ? '7d' : '1d';
             const token = jwt.sign({ username: user.username }, JWT_SECRET, { expiresIn });
 
+            const reqHost = (req.hostname || req.headers.host || '').split(':')[0];
+            const isJjgDomain = reqHost === 'j-jg.cc' || reqHost.endsWith('.j-jg.cc');
+            const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+
             const cookieOptions = {
                 httpOnly: true,
                 path: '/',
-                domain: COOKIE_DOMAIN,
-                secure: true,
-                sameSite: 'lax'
+                sameSite: 'lax',
+                secure: isHttps
             };
+            if (isJjgDomain) {
+                cookieOptions.domain = COOKIE_DOMAIN;
+            }
             if (isRemember) {
                 cookieOptions.maxAge = 7 * 24 * 60 * 60 * 1000;
             }

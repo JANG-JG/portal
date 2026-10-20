@@ -7,415 +7,464 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="manifest" href="/manifest.json?v=2">
-    <meta name="theme-color" content="#2563eb">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#09090b">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JG 포털">
-    <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="/css/pretendard.css?v=20261019_v1">
-    <link rel="stylesheet" href="/css/style.css?v=20261019_v1">
-    <link rel="stylesheet" href="/css/index.css?v=20261020_v2">
+    <meta name="color-scheme" content="dark">
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/index.css">
 </head>
 <body>
-    <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
-    <div id="unified-nav-root" style="min-height: 54px;"></div>
-
-    <main class="container">
-        <section class="welcome-section" style="margin-bottom: 0.85rem;">
-            <div class="welcome-header-row">
-                <h2>안녕하세요, <span id="usernameDisplay">사용자</span>님 👋</h2>
-                <a href="https://news.j-jg.cc/weather" class="weather-compact-badge" id="welcomeWeatherBadge" title="실시간 날씨 브리핑 바로가기">
-                    <span id="welcomeWeatherIcon">🌤️</span>
-                    <span id="welcomeWeatherCity">계룡</span>
-                    <span id="welcomeWeatherTemp" class="weather-compact-temp">-</span>
-                    <span id="welcomeWeatherDesc" class="weather-compact-desc">-</span>
+    <!-- 🌐 단일 통합 커맨드 내비게이션 바 (Command Center Dark Header) -->
+    <header class="cmd-navbar" id="portal-tab-bar">
+        <div class="cmd-nav-container">
+            <!-- 1. 브랜드 로고 (공식 정품 SVG 로고 복원) -->
+            <div class="cmd-nav-left">
+                <a href="/" class="cmd-nav-brand" onclick="switchPortalTab('home'); return false;">
+                    <img src="/favicon.svg" alt="JG" width="22" height="22" class="cmd-brand-logo" style="width:22px; height:22px; border-radius:5px; object-fit:contain; flex-shrink:0;">
+                    <span class="cmd-brand-title">JG 포털</span>
                 </a>
-                <button type="button" class="btn-pwa-install" id="btnPwaInstall" onclick="triggerPwaInstall()" title="스마트폰 및 PC 홈 화면에 바로가기 앱으로 설치">
-                    <span>📲</span>
-                    <span>앱 설치</span>
-                </button>
             </div>
 
-            <!-- 🔍 통합 퀵 검색 트리거 바 (Ctrl + K) -->
-            <div class="quick-search-trigger-bar" onclick="openQuickSearchModal()" role="button" tabindex="0" title="통합 검색 열기 (단축키: Ctrl+K)" style="margin-top: 0.65rem; margin-bottom: 0;">
-                <div class="quick-search-left">
-                    <span class="quick-search-icon">🔍</span>
-                    <span class="quick-search-placeholder">메모, 뉴스 기사, 병원 일정, 보유 자산 검색...</span>
-                </div>
-                <div class="quick-search-shortcut">
-                    <kbd class="quick-search-kbd" id="qsPlatformKbd">Ctrl</kbd>
-                    <span class="quick-search-plus">+</span>
-                    <kbd class="quick-search-kbd">K</kbd>
-                </div>
-            </div>
-        </section>
-
-        <!-- ===================================================================== -->
-        <!-- 🌟 포털 메인 스티키 탭 네비게이션 바 -->
-        <!-- ===================================================================== -->
-        <div id="portal-tab-anchor" style="position: relative; top: 0; height: 0; margin: 0; padding: 0; visibility: hidden; pointer-events: none;"></div>
-        <div id="portal-tab-bar" class="portal-tab-bar">
-            <nav class="portal-tab-nav" id="portal-tab-nav" aria-label="포털 메인 탭">
+            <!-- 2. 기능별 원클릭 전환 탭 (데스크톱) -->
+            <nav class="cmd-nav-tabs" id="portal-tab-nav" aria-label="기능별 메뉴">
                 <button type="button" class="portal-tab-btn active" data-tab="home" onclick="switchPortalTab('home')">
-                    <span>🏠</span><span>종합 홈</span>
-                </button>
-                <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
-                    <span>📰</span><span>뉴스·속보</span>
+                    <span>🏠</span><span>대시보드</span>
                 </button>
                 <button type="button" class="portal-tab-btn" data-tab="blood" onclick="switchPortalTab('blood')">
-                    <span>🩸</span><span>건강·혈압</span>
+                    <span>🩸</span><span>혈압·건강</span>
                 </button>
                 <button type="button" class="portal-tab-btn" data-tab="asset" onclick="switchPortalTab('asset')">
                     <span>💰</span><span>자산·금융</span>
                 </button>
-                <button type="button" class="portal-tab-btn" data-tab="life" onclick="switchPortalTab('life')">
-                    <span>📅</span><span>일정·메모</span>
+                <button type="button" class="portal-tab-btn" data-tab="med" onclick="switchPortalTab('med')">
+                    <span>💊</span><span>약·병원</span>
+                </button>
+                <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
+                    <span>📰</span><span>뉴스룸</span>
+                </button>
+                <button type="button" class="portal-tab-btn" data-tab="ops" onclick="switchPortalTab('ops')">
+                    <span>🖥️</span><span>서버 인프라</span>
                 </button>
             </nav>
+
+            <!-- 3. 우측 컨트롤 (날씨 + 검색 + 로그아웃 + 9-dot 서브 앱 런처) -->
+            <div class="cmd-nav-right">
+                <a href="https://news.j-jg.cc/weather" class="cmd-nav-weather font-mono" id="welcomeWeatherBadge" title="실시간 날씨 브리핑 바로가기">
+                    <span id="welcomeWeatherIcon">🌤️</span>
+                    <span id="welcomeWeatherCity">계룡</span>
+                    <span id="welcomeWeatherTemp" class="weather-compact-temp font-mono">-</span>
+                    <span id="welcomeWeatherDesc" style="display:none;">-</span>
+                </a>
+
+                <button type="button" class="cmd-nav-search-btn" onclick="openQuickSearchModal()" title="통합 검색 (단축키: Ctrl+K)">
+                    <span class="cmd-search-icon">🔍</span>
+                    <span class="cmd-search-text">검색</span>
+                    <kbd class="cmd-kbd" id="qsPlatformKbd">Ctrl+K</kbd>
+                </button>
+
+                <!-- 로그아웃 (나인탭 앞으로 이동) -->
+                <a href="/logout" class="cmd-nav-logout" title="로그아웃">
+                    <span>로그아웃</span>
+                </a>
+
+                <!-- 9-dot 서브 앱 런처 (우측 맨 끝으로 이동) -->
+                <div class="cmd-launcher-wrap">
+                    <button type="button" class="cmd-launcher-btn" id="btnAppLauncher" onclick="toggleAppLauncher()" title="JG 서비스 전체 바로가기">
+                        <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor">
+                            <circle cx="3" cy="3" r="1.5"/><circle cx="8" cy="3" r="1.5"/><circle cx="13" cy="3" r="1.5"/>
+                            <circle cx="3" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/><circle cx="13" cy="8" r="1.5"/>
+                            <circle cx="3" cy="13" r="1.5"/><circle cx="8" cy="13" r="1.5"/><circle cx="13" cy="13" r="1.5"/>
+                        </svg>
+                    </button>
+                    <div class="cmd-launcher-menu" id="cmdLauncherMenu" style="display: none;">
+                        <div class="cmd-launcher-header">JG 패밀리 서비스</div>
+                        <div class="cmd-launcher-grid">
+                            <a href="https://blood.j-jg.cc" class="cmd-launcher-item">
+                                <span class="cmd-launcher-icon">🩸</span>
+                                <span class="cmd-launcher-name">혈압 앱</span>
+                            </a>
+                            <a href="https://asset.j-jg.cc" class="cmd-launcher-item">
+                                <span class="cmd-launcher-icon">💰</span>
+                                <span class="cmd-launcher-name">자산 앱</span>
+                            </a>
+                            <a href="https://news.j-jg.cc" class="cmd-launcher-item">
+                                <span class="cmd-launcher-icon">📰</span>
+                                <span class="cmd-launcher-name">뉴스룸</span>
+                            </a>
+                            <a href="/admin" class="cmd-launcher-item">
+                                <span class="cmd-launcher-icon">⚙️</span>
+                                <span class="cmd-launcher-name">서버 관리</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div>
 
-        <!-- ===================================================================== -->
-        <!-- 🌟 메인 스와이프 트랙 (가로 스와이프 제스처 & 탭 전환 연동) -->
-        <!-- ===================================================================== -->
-        <div id="portal-swipe-track" class="swipe-track">
+        <!-- 📱 모바일 전용 슬림 탭 스트립 -->
+        <nav class="cmd-nav-mobile-strip" aria-label="모바일 탭">
+            <button type="button" class="portal-tab-btn active" data-tab="home" onclick="switchPortalTab('home')">
+                <span>🏠</span><span>대시보드</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-tab="blood" onclick="switchPortalTab('blood')">
+                <span>🩸</span><span>건강</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-tab="asset" onclick="switchPortalTab('asset')">
+                <span>💰</span><span>자산</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-tab="med" onclick="switchPortalTab('med')">
+                <span>💊</span><span>약·병원</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
+                <span>📰</span><span>뉴스</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-tab="ops" onclick="switchPortalTab('ops')">
+                <span>🖥️</span><span>서버</span>
+            </button>
+        </nav>
+    </header>
 
-            <!-- ----------------------------------------------------------------- -->
-            <!-- [패널 0]: 🏠 종합 홈 (한눈에 보는 스마트 라이프 대시보드) -->
-            <!-- ----------------------------------------------------------------- -->
-            <div id="panel-portal-home" class="swipe-panel" data-tab-name="home">
-                
-                <!-- ⚡ 원터치 모바일 퀵 액션 바 -->
-                <div class="quick-action-strip" role="navigation" aria-label="빠른 바로가기" style="margin-bottom: 0.85rem;">
-                    <a href="/go/blood" class="quick-action-btn btn-accent" title="혈압 관리 앱 바로가기">
-                        <span>🩸</span><span>혈압 측정</span>
+    <!-- JS 바인딩 호환용 앵커 및 요소 -->
+    <div id="portal-tab-anchor" style="position: relative; top: 0; height: 0; margin: 0; padding: 0; visibility: hidden; pointer-events: none;"></div>
+    <span id="usernameDisplay" style="display:none;">사용자</span>
+    <button type="button" id="btnPwaInstall" style="display:none;"></button>
+
+    <main class="main-shell">
+
+        <!-- ===================================================================== -->
+        <!-- 🍱 JG UNIFIED BENTO COMMAND CENTER (12-Column High-Density Layout) -->
+        <!-- ===================================================================== -->
+        <div class="bento-command-center" id="portal-bento-root">
+            
+            <!-- ⚡ 12-Column 원터치 퀵 커맨드 스트립 -->
+            <div class="cmd-strip" role="navigation" aria-label="빠른 바로가기">
+                <div class="cmd-strip-header">
+                    <span>빠른 실행</span>
+                    <span class="text-muted">원터치 바로가기</span>
+                </div>
+                <div class="cmd-strip-grid">
+                    <a href="/go/blood" class="cmd-strip-btn" title="혈압 관리 앱">
+                        <span class="cmd-strip-icon">🩸</span>
+                        <span>혈압 측정</span>
                     </a>
-                    <button type="button" class="quick-action-btn" onclick="recordQuickMedication()" title="오늘 혈압약 복용 원터치 기록">
-                        <span>💊</span><span>약 복용</span>
+                    <button type="button" class="cmd-strip-btn" onclick="recordQuickMedication()" title="오늘 혈압약 복용 기록">
+                        <span class="cmd-strip-icon">💊</span>
+                        <span>약 복용</span>
                     </button>
-                    <a href="/go/asset" class="quick-action-btn" title="자산 관리 앱 바로가기">
-                        <span>💰</span><span>자산 분석</span>
+                    <a href="/go/asset" class="cmd-strip-btn" title="자산 관리 앱">
+                        <span class="cmd-strip-icon">💰</span>
+                        <span>자산 분석</span>
                     </a>
-                    <a href="/go/news" class="quick-action-btn" title="AI 뉴스 브리핑 바로가기">
-                        <span>📰</span><span>뉴스 브리핑</span>
+                    <a href="/go/news" class="cmd-strip-btn" title="뉴스 브리핑">
+                        <span class="cmd-strip-icon">📰</span>
+                        <span>뉴스 브리핑</span>
                     </a>
-                    <a href="/calendar" class="quick-action-btn" title="스마트 라이프 캘린더 열기">
-                        <span>📅</span><span>캘린더</span>
+                    <a href="/calendar" class="cmd-strip-btn" title="스마트 라이프 캘린더">
+                        <span class="cmd-strip-icon">📅</span>
+                        <span>캘린더</span>
                     </a>
-                    <a href="/memo" class="quick-action-btn" title="아이디어 메모장 열기">
-                        <span>💡</span><span>메모 작성</span>
+                    <a href="/memo" class="cmd-strip-btn" title="아이디어 메모장">
+                        <span class="cmd-strip-icon">💡</span>
+                        <span>메모 작성</span>
                     </a>
                 </div>
-
-                <!-- 🚨 실시간 속보 한줄 롤링 티커 & 호버 전체목록 드롭다운 -->
-                <div class="breaking-banner-bar" id="breakingBannerBar" style="display: none; margin-bottom: 1rem;">
-                    <div class="breaking-badge">
-                        <span class="breaking-pulse-dot"></span>
-                        <span class="breaking-badge-text-full">🚨 실시간 속보</span>
-                        <span class="breaking-badge-text-mobile" style="display:none;">🚨 속보</span>
-                    </div>
-                    <div class="breaking-ticker-viewport" id="breakingTickerViewport">
-                        <div class="breaking-ticker-track" id="breakingTickerTrack">
-                            <div class="breaking-ticker-item">
-                                <span class="breaking-item-title">실시간 최신 속보를 불러오는 중입니다...</span>
-                            </div>
-                        </div>
-                    </div>
-                    <a href="https://news.j-jg.cc/breaking" class="breaking-more-btn" title="속보 브리핑 바로가기">
-                        <span class="breaking-more-text-full">속보 브리핑</span>
-                        <span class="breaking-more-text-mobile" style="display:none;">브리핑</span>
-                        <span class="breaking-arrow">›</span>
-                    </a>
-
-                    <!-- 마우스 오버 시 전체 목록 드롭다운 레이어 -->
-                    <div class="breaking-dropdown-panel" id="breakingDropdownPanel">
-                        <div class="breaking-dropdown-top">
-                            <span class="breaking-dropdown-title">🚨 실시간 주요 속보 브리핑</span>
-                            <a href="https://news.j-jg.cc/breaking" class="breaking-dropdown-link">속보 페이지 열기 ↗</a>
-                        </div>
-                        <div class="breaking-dropdown-items" id="breakingDropdownItems">
-                            <div style="color:#94a3b8; font-size:0.82rem; padding:1rem; text-align:center;">속보 기사를 불러오는 중...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 📱 오늘의 라이프 & D-Day 스마트 대시보드 위젯 허브 -->
-                <section class="today-summary-hub" id="todaySummaryHub" aria-label="오늘의 요약 위젯">
-                    <!-- 위젯 1: 오늘 복약 상태 -->
-                    <div class="today-widget-card" id="widgetTodayMed">
-                        <div class="today-widget-header">
-                            <span class="today-widget-title">💊 오늘 복약</span>
-                            <span class="today-widget-badge badge-state-warn" id="widgetMedBadge">확인 중</span>
-                        </div>
-                        <div class="today-widget-body">
-                            <div class="today-widget-val-main" id="widgetMedStatusText">조회 중...</div>
-                            <div class="today-widget-val-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
-                        </div>
-                        <button type="button" class="btn-widget-quick-med" id="btnWidgetQuickMed" onclick="recordQuickMedication()" style="display:none;">
-                            💊 지금 복약 기록
-                        </button>
-                    </div>
-
-                    <!-- 위젯 2: 최근 혈압 상태 -->
-                    <div class="today-widget-card" id="widgetRecentBlood">
-                        <div class="today-widget-header">
-                            <span class="today-widget-title">🩸 최근 혈압</span>
-                            <div style="display:flex; align-items:center; gap:0.35rem;">
-                                <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">ℹ️ 기준</button>
-                                <span class="today-widget-badge badge-state-ok" id="widgetBloodBadge" style="cursor:pointer;" onclick="openBpGuideModal()" title="클릭 시 판정 기준표 보기">-</span>
-                            </div>
-                        </div>
-                        <div class="today-widget-body">
-                            <div class="today-widget-val-main" id="widgetBloodValMain">- / - <small style="font-size:0.75rem; color:#64748b; font-weight:normal;">mmHg</small></div>
-                            <div class="today-widget-val-sub" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
-                        </div>
-                    </div>
-
-                    <!-- 위젯 3: 병원 & 약 D-Day -->
-                    <div class="today-widget-card" id="widgetHospitalDDay">
-                        <div class="today-widget-header">
-                            <span class="today-widget-title">🏥 진료 D-Day</span>
-                            <span class="today-widget-badge badge-state-info" id="widgetHospitalBadge">-</span>
-                        </div>
-                        <div class="today-widget-body">
-                            <div class="today-widget-val-main" id="widgetHospitalDDayText">-</div>
-                            <div class="today-widget-val-sub" id="widgetHospitalSubText">약 잔여 -일분</div>
-                        </div>
-                    </div>
-
-                    <!-- 위젯 4: 총자산 & 시장 요약 -->
-                    <div class="today-widget-card" id="widgetAssetMarket">
-                        <div class="today-widget-header">
-                            <span class="today-widget-title">💰 총자산 & 시장</span>
-                            <span class="today-widget-badge badge-state-ok" id="widgetMarketBadge">코스피</span>
-                        </div>
-                        <div class="today-widget-body">
-                            <div class="today-widget-val-main" id="widgetAssetTotalMain">-</div>
-                            <div class="today-widget-val-sub" id="widgetMarketSubText">시장 시세 수집 중...</div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- 🌟 5대 핵심 서비스 빠른 둘러보기 미니 카드 그리드 -->
-                <div class="home-mini-grid">
-                    <div class="home-mini-card" onclick="switchPortalTab('news')" role="button" tabindex="0">
-                        <div class="home-mini-card-info">
-                            <span class="home-mini-card-icon">📰</span>
-                            <div>
-                                <div class="home-mini-card-title">뉴스·속보 브리핑</div>
-                                <div class="home-mini-card-desc">실시간 AI 뉴스 & 증시 마켓 지표</div>
-                            </div>
-                        </div>
-                        <span class="home-mini-card-arrow">›</span>
-                    </div>
-
-                    <div class="home-mini-card" onclick="switchPortalTab('blood')" role="button" tabindex="0">
-                        <div class="home-mini-card-info">
-                            <span class="home-mini-card-icon">💖</span>
-                            <div>
-                                <div class="home-mini-card-title">건강·혈압 관리</div>
-                                <div class="home-mini-card-desc">혈압 기록, 병원 일정, 복약 알림</div>
-                            </div>
-                        </div>
-                        <span class="home-mini-card-arrow">›</span>
-                    </div>
-
-                    <div class="home-mini-card" onclick="switchPortalTab('asset')" role="button" tabindex="0">
-                        <div class="home-mini-card-info">
-                            <span class="home-mini-card-icon">💰</span>
-                            <div>
-                                <div class="home-mini-card-title">자산·금융 포트폴리오</div>
-                                <div class="home-mini-card-desc">월별 자산 추이 및 금융 자산 분석</div>
-                            </div>
-                        </div>
-                        <span class="home-mini-card-arrow">›</span>
-                    </div>
-
-                    <div class="home-mini-card" onclick="switchPortalTab('life')" role="button" tabindex="0">
-                        <div class="home-mini-card-info">
-                            <span class="home-mini-card-icon">📅</span>
-                            <div>
-                                <div class="home-mini-card-title">스마트 라이프 캘린더</div>
-                                <div class="home-mini-card-desc">병원 진료 및 개인 통합 일정표</div>
-                            </div>
-                        </div>
-                        <span class="home-mini-card-arrow">›</span>
-                    </div>
-
-                    <div class="home-mini-card" onclick="switchPortalTab('life')" role="button" tabindex="0">
-                        <div class="home-mini-card-info">
-                            <span class="home-mini-card-icon">💡</span>
-                            <div>
-                                <div class="home-mini-card-title">아이디어 & 메모장</div>
-                                <div class="home-mini-card-desc">체크리스트 & 카테고리별 메모</div>
-                            </div>
-                        </div>
-                        <span class="home-mini-card-arrow">›</span>
-                    </div>
-                </div>
-
             </div>
 
-            <!-- ----------------------------------------------------------------- -->
-            <!-- [패널 1]: 📰 뉴스·속보 뷰 -->
-            <!-- ----------------------------------------------------------------- -->
-            <div id="panel-portal-news" class="swipe-panel" data-tab-name="news">
-                <div class="service-card card-news" style="width: 100%;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem;">
-                        <div class="card-icon" style="margin-bottom:0;">📰</div>
-                        <div style="display:flex; gap:0.35rem; align-items:center;">
-                            <a href="/go/economy" class="btn-news-sub" title="실시간 증시 및 환율 브리핑 바로가기">
-                                📈 증시·환율
-                            </a>
-                            <a href="https://news.j-jg.cc/categories" class="btn-news-sub" title="관심 뉴스 분야 관리">
-                                🏷️ 관심 분야
-                            </a>
+            <!-- 🚨 실시간 속보 한줄 롤링 배너 & 호버 전체목록 드롭다운 -->
+            <div class="breaking-banner-bar" id="breakingBannerBar" style="display: none; margin-bottom: 0.65rem;">
+                <div class="breaking-badge">
+                    <span class="breaking-pulse-dot"></span>
+                    <span class="breaking-badge-text-full">🚨 실시간 속보</span>
+                    <span class="breaking-badge-text-mobile" style="display:none;">🚨 속보</span>
+                </div>
+                <div class="breaking-ticker-viewport" id="breakingTickerViewport">
+                    <div class="breaking-ticker-track" id="breakingTickerTrack">
+                        <div class="breaking-ticker-item">
+                            <span class="breaking-item-title">실시간 최신 속보를 불러오는 중입니다...</span>
                         </div>
                     </div>
-                    <h3>실시간 뉴스 브리핑</h3>
-                    <p class="card-desc">실시간 AI 뉴스 자동 수집 및 모닝 텔레그램 브리핑 피드</p>
-                    
-                    <!-- 상단 실시간 시장 지표 미니 칩 바 (클릭 시 증시/환율 브리핑 이동) -->
-                    <div class="news-market-bar" id="newsMarketBar">
-                        <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 브리핑 바로가기 (코스피 / 코스닥)">
-                            <div class="market-name" id="marketIndexName">코스피</div>
-                            <div class="market-val-row" id="marketIndexBox">
-                                <span class="market-price" id="kospiPrice">-</span>
-                                <span class="market-diff" id="kospiDiff">-</span>
+                </div>
+                <a href="https://news.j-jg.cc/breaking" class="breaking-more-btn" title="속보 브리핑 바로가기">
+                    <span class="breaking-more-text-full">속보 브리핑</span>
+                    <span class="breaking-more-text-mobile" style="display:none;">브리핑</span>
+                    <span class="breaking-arrow">›</span>
+                </a>
+
+                <div class="breaking-dropdown-panel" id="breakingDropdownPanel">
+                    <div class="breaking-dropdown-top">
+                        <span class="breaking-dropdown-title">🚨 실시간 주요 속보 브리핑</span>
+                        <a href="https://news.j-jg.cc/breaking" class="breaking-dropdown-link">속보 페이지 열기 ↗</a>
+                    </div>
+                    <div class="breaking-dropdown-items" id="breakingDropdownItems">
+                        <div style="color:#94a3b8; font-size:0.82rem; padding:1rem; text-align:center;">속보 기사를 불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 🍱 BENTO GRID CORE (12-Column High-Density Layout - 2 Rows) -->
+            <div class="bento-grid">
+                
+                <!-- Bento 1: 🩸 혈압 & 건강 관리 (col-span-4) -->
+                <div class="bento-card col-blood" id="bento-blood">
+                    <div>
+                        <div class="bento-card-header">
+                            <div class="bento-card-title-group">
+                                <span class="cmd-dot-pulse"></span>
+                                <h3 class="bento-card-title">혈압·건강 관리</h3>
+                                <button type="button" class="btn-bp-guide-inline" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">
+                                    기준표 ℹ️
+                                </button>
                             </div>
-                        </a>
-                        <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 브리핑 바로가기 (USD / JPY / EUR)">
-                            <div class="market-name" id="marketFxName">USD/KRW</div>
-                            <div class="market-val-row" id="marketFxBox">
-                                <span class="market-price" id="fxPrice">-</span>
-                                <span class="market-diff" id="fxDiff">-</span>
+                            <a href="/go/blood" class="bento-card-link" title="혈압 관리 앱 바로가기">앱 열기 →</a>
+                        </div>
+
+                        <div class="bento-stat-3col" style="margin-bottom:0.75rem;">
+                            <div class="bento-stat-box" style="grid-column: span 3;">
+                                <div class="bento-stat-label">최근 측정 수치</div>
+                                <div class="bento-stat-val font-mono" id="widgetBloodValMain">- / - <span class="bento-stat-unit">mmHg</span></div>
                             </div>
-                        </a>
+                        </div>
+
+                        <!-- 혈압 세부 상태 및 측정 주기 -->
+                        <div class="bento-ops-list" style="margin-bottom:0.5rem;">
+                            <div class="bento-ops-item">
+                                <div class="bento-ops-info">
+                                    <div class="bento-ops-name" id="widgetBloodSummaryTitle">혈압 상태 평가</div>
+                                    <div class="bento-ops-sub" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
+                                </div>
+                                <span class="bento-badge badge-emerald" id="widgetBloodStatusTag">안정</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- 관심 분야별 자동 추천 기사 목록 -->
-                    <div class="card-summary news-summary-box" id="newsSummary">
-                        <div class="news-rec-header">
-                            <span class="news-rec-title">🎯 실시간 주요 기사 (관심 분야)</span>
-                            <a href="https://news.j-jg.cc/" style="font-size:0.75rem; color:#2563eb; text-decoration:none; font-weight:600;">전체보기 ↗</a>
+                    <div class="bento-card-footer">
+                        <span>대한고혈압학회 2022 기준</span>
+                        <span style="color:var(--status-emerald); font-weight:700;">기록 준수율 100%</span>
+                    </div>
+                </div>
+
+                <!-- Bento 2: 💰 개인 자산 포트폴리오 (col-span-4) -->
+                <div class="bento-card col-asset" id="bento-asset">
+                    <div>
+                        <div class="bento-card-header">
+                            <div class="bento-card-title-group">
+                                <span class="cmd-dot-pulse" style="background-color:var(--status-rose);"></span>
+                                <h3 class="bento-card-title">총 자산 포트폴리오</h3>
+                            </div>
+                            <a href="/go/asset" class="bento-card-link" title="자산 관리 앱 바로가기">앱 열기 →</a>
                         </div>
-                        <div class="news-rec-list" id="newsRecommendedList">
+
+                        <div class="bento-asset-summary">
+                            <div>
+                                <div class="bento-stat-label">평가 총액</div>
+                                <div class="bento-asset-big-val font-mono" id="widgetAssetTotalMain">-</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="bento-stat-label" style="margin-bottom: 3px;">보유 종목</div>
+                                <div class="bento-asset-diff-tag font-mono" id="widgetAssetCountText">14개 종목</div>
+                            </div>
+                        </div>
+
+                        <!-- 🔄 실시간 시장지표(국내지수/미국지수/환율) 롤링 티커 바 -->
+                        <div class="bento-market-ticker-box" id="bentoMarketTickerBox">
+                            <div class="market-ticker-inner font-mono" id="marketTickerContent">
+                                <span class="ticker-label">시장지표</span>
+                                <span class="ticker-val" id="marketTickerVal">지표 로딩 중...</span>
+                            </div>
+                        </div>
+
+                        <!-- 보유 종목 페이드 티커 -->
+                        <div id="assetSummary" style="min-height:28px;"></div>
+                    </div>
+
+                    <div class="bento-card-footer">
+                        <a href="/go/economy" style="color:inherit; text-decoration:none; font-family:var(--font-mono);">📈 증시·환율 브리핑 ↗</a>
+                        <span>15:30 정규장 마감</span>
+                    </div>
+                </div>
+
+                <!-- Bento 3: 💊 약 챙겨먹기 & 병원 일정 (col-span-4) -->
+                <div class="bento-card col-infra" id="bento-med">
+                    <div>
+                        <div class="bento-card-header">
+                            <div class="bento-card-title-group">
+                                <span class="cmd-dot-pulse" style="background-color:var(--status-amber);"></span>
+                                <h3 class="bento-card-title">약 챙겨먹기 & 병원 일정</h3>
+                            </div>
+                            <a href="/calendar" class="bento-card-link" title="캘린더 바로가기">캘린더 →</a>
+                        </div>
+
+                        <div class="bento-ops-list" style="margin-bottom:0.75rem;">
+                            <div class="bento-ops-item">
+                                <div class="bento-ops-info">
+                                    <div class="bento-ops-name" id="widgetMedStatusText">조회 중...</div>
+                                    <div class="bento-ops-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
+                                </div>
+                                <span class="bento-badge badge-emerald" id="widgetMedBadge">확인 중</span>
+                            </div>
+                            <div class="bento-ops-item">
+                                <div class="bento-ops-info">
+                                    <div class="bento-ops-name" id="widgetHospitalDDayText">-</div>
+                                    <div class="bento-ops-sub" id="widgetHospitalSubText">약 잔여 -일분</div>
+                                </div>
+                                <button type="button" class="btn-widget-quick-med" id="btnWidgetQuickMed" onclick="recordQuickMedication();" style="display:none; padding:4px 10px; border-radius:4px; font-size:12px; font-weight:700; background:var(--status-emerald); color:#fff; border:none; cursor:pointer;">
+                                    💊 약 먹었어요
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bento-card-footer">
+                        <button type="button" class="btn-quick-med" id="btnQuickMed" onclick="recordQuickMedication()" style="padding:3px 10px; font-size:0.78rem;">
+                            💊 복용 완료
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Bento 4: 📰 실시간 주요 뉴스 (col-span-7) -->
+                <div class="bento-card col-news" id="bento-news">
+                    <div>
+                        <div class="bento-card-header">
+                            <div class="bento-card-title-group">
+                                <span class="cmd-dot-pulse" style="background-color:var(--status-rose);"></span>
+                                <h3 class="bento-card-title">실시간 주요 뉴스</h3>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <a href="/go/economy" class="bento-card-link" style="color:var(--status-rose);">증시·환율 ↗</a>
+                                <a href="/go/news" class="bento-card-link">뉴스룸 →</a>
+                            </div>
+                        </div>
+
+                        <!-- 실시간 시장 지표 미니 칩 바 -->
+                        <div class="news-market-bar" id="newsMarketBar">
+                            <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 브리핑 바로가기">
+                                <div class="market-name" id="marketIndexName">코스피</div>
+                                <div class="market-val-row" id="marketIndexBox">
+                                    <span class="market-price font-mono" id="kospiPrice">-</span>
+                                    <span class="market-diff font-mono" id="kospiDiff">-</span>
+                                </div>
+                            </a>
+                            <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 브리핑 바로가기">
+                                <div class="market-name" id="marketFxName">USD/KRW</div>
+                                <div class="market-val-row" id="marketFxBox">
+                                    <span class="market-price font-mono" id="fxPrice">-</span>
+                                    <span class="market-diff font-mono" id="fxDiff">-</span>
+                                </div>
+                            </a>
+                        </div>
+
+                        <!-- 관심분야 추천 기사 리스트 -->
+                        <div class="news-rec-list" id="newsRecommendedList" style="margin-bottom:0.5rem;">
                             <div class="news-rec-loading">주요 기사 불러오는 중...</div>
                         </div>
                     </div>
 
-                    <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
-                        <a href="/go/economy" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="실시간 증시 브리핑 열기">
-                            📈 증시 브리핑 ↗
-                        </a>
-                        <a href="/go/news" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                            뉴스 브리핑 앱 열기 →
-                        </a>
+                    <div class="bento-card-footer">
+                        <span>실시간 자동 수집 엔진</span>
+                        <a href="https://news.j-jg.cc/breaking" style="color:var(--text-muted); text-decoration:none;">🚨 속보 브리핑 ↗</a>
                     </div>
                 </div>
-            </div>
 
-            <!-- ----------------------------------------------------------------- -->
-            <!-- [패널 2]: 🩸 건강·혈압 뷰 -->
-            <!-- ----------------------------------------------------------------- -->
-            <div id="panel-portal-blood" class="swipe-panel" data-tab-name="blood">
-                <div class="service-card card-blood" style="width: 100%;">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
-                        <div class="card-icon" style="margin-bottom:0;">💖</div>
-                        <div style="display:flex; gap:0.35rem; align-items:center;">
-                            <button type="button" class="btn-bp-guide-trigger" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">
-                                ℹ️ 판정 기준
-                            </button>
-                            <a href="https://blood.j-jg.cc/hospital.html" class="btn-hospital-sub" title="병원 진료 내역 및 예약일 관리">
-                                🏥 병원 일정
-                            </a>
-                        </div>
-                    </div>
-                    <h3>스마트 혈압 & 복약 관리</h3>
-                    <p class="card-desc">혈압 및 맥박 기록, 병원 진료 일정, 투약 알림 관리</p>
-                    <div class="card-summary" id="bloodSummary">
-                        <span>최근 건강 기록 조회 중...</span>
-                    </div>
-                    
-                    <div class="card-actions">
-                        <button type="button" class="btn-quick-med" id="btnQuickMed" onclick="recordQuickMedication()">
-                            💊 지금 혈압약 복용 (원터치)
-                        </button>
-                        <a href="/go/blood" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                            혈압 관리 앱 열기 →
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ----------------------------------------------------------------- -->
-            <!-- [패널 3]: 💰 자산·금융 뷰 -->
-            <!-- ----------------------------------------------------------------- -->
-            <div id="panel-portal-asset" class="swipe-panel" data-tab-name="asset">
-                <div class="service-card card-asset" style="width: 100%;">
-                    <div class="card-icon">💰</div>
-                    <h3>자산 포트폴리오 관리</h3>
-                    <p class="card-desc">월별 자산 추이 및 금융 포트폴리오 분석</p>
-                    <div class="card-summary" id="assetSummary">
-                        <span>보유 자산 현황 조회 중...</span>
-                    </div>
-                    <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
-                        <a href="/go/economy" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="실시간 국내외 증시 및 환율 시세 확인">
-                            📈 증시·환율 브리핑 ↗
-                        </a>
-                        <a href="/go/asset" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                            자산 관리 앱 열기 →
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ----------------------------------------------------------------- -->
-            <!-- [패널 4]: 📅 일정 & 💡 메모 뷰 -->
-            <!-- ----------------------------------------------------------------- -->
-            <div id="panel-portal-life" class="swipe-panel" data-tab-name="life">
-                <div class="card-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-                    <!-- 스마트 캘린더 카드 -->
-                    <div class="service-card card-calendar">
-                        <div class="card-icon">📅</div>
-                        <h3>스마트 캘린더</h3>
-                        <p class="card-desc">병원 진료일, 개인 일정 및 브리핑 통합 월간 캘린더</p>
-                        <div class="card-summary" id="calendarCardSummary">
-                            <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
-                                <div>🏥 병원 진료 예약 & 복용 예측 일정 자동 연동</div>
-                                <div>🔔 개인 일정, To-Do 및 정기 브리핑 시간표 한눈에 확인</div>
+                <!-- Bento 5: 🖥️ 서버 인프라 관리 (col-span-5) - 주서버/보조서버 균일 2단 & 단추 전환 지원 -->
+                <div class="bento-card col-ops" id="bento-ops">
+                    <div>
+                        <div class="bento-card-header">
+                            <div class="bento-card-title-group">
+                                <span class="cmd-dot-pulse"></span>
+                                <h3 class="bento-card-title">서버 인프라 관리</h3>
+                                <!-- 서버 전환 단추 (통합 / 주서버 / 보조서버) -->
+                                <div class="server-pill-toggle">
+                                    <button type="button" class="server-pill-btn active" id="btnServerDual" onclick="setServerViewMode('dual')">통합</button>
+                                    <button type="button" class="server-pill-btn" id="btnServerPri" onclick="setServerViewMode('pri')">주서버</button>
+                                    <button type="button" class="server-pill-btn" id="btnServerSec" onclick="setServerViewMode('sec')">보조서버</button>
+                                </div>
                             </div>
+                            <a href="/admin" class="bento-card-link">관리자 →</a>
                         </div>
-                        <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
-                            <a href="/calendar" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                                캘린더 열기 →
-                            </a>
-                        </div>
-                    </div>
 
-                    <!-- 아이디어 & 메모장 카드 -->
-                    <div class="service-card card-memo">
-                        <div class="card-icon">💡</div>
-                        <h3>아이디어 & 메모장</h3>
-                        <p class="card-desc">떠오른 영감, 할 일 체크리스트 및 서식 편집 메모</p>
-                        <div class="card-summary" id="memoCardSummary">
-                            <div class="memo-recent-list" id="memoRecentList">
-                                <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#475569;">
-                                    <div>✨ <strong>Quill 2.0 리치 에디터</strong> & 체크리스트</div>
-                                    <div>🎨 카테고리별 컬러 포스트잇 & 실시간 검색</div>
+                        <!-- 균일 2단 서버 현황 뷰 (주서버 & 보조서버 균일 배치) -->
+                        <div class="server-dual-grid" id="serverDualGrid">
+                            <!-- 주서버 (갤럭시 노트 9) -->
+                            <div class="server-unit-card" id="serverUnitPri">
+                                <div class="server-unit-header">
+                                    <span class="server-unit-title"><span class="cmd-dot-pulse"></span> 주서버 (갤럭시 노트 9)</span>
+                                    <span class="bento-badge badge-emerald" id="serverPriBadge">상시 가동</span>
+                                </div>
+                                <div class="server-unit-metrics">
+                                    <div class="server-metric-item">
+                                        <span class="metric-label">CPU 사용량</span>
+                                        <span class="metric-val font-mono" id="serverPriCpu">0.0%</span>
+                                    </div>
+                                    <div class="server-metric-item">
+                                        <span class="metric-label">메모리 사용량</span>
+                                        <span class="metric-val font-mono" id="serverPriRam">44.7%</span>
+                                    </div>
+                                </div>
+                                <div class="server-unit-sub-details">
+                                    <div class="server-sub-row">
+                                        <span class="sub-label">저장공간</span>
+                                        <span class="sub-val font-mono" id="serverPriDisk">42% (26.8GB / 64.0GB)</span>
+                                    </div>
+                                    <div class="server-sub-row">
+                                        <span class="sub-label">네트워크</span>
+                                        <span class="sub-val" id="serverPriNet">정상 (온라인)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 보조서버 (구형 노트북) -->
+                            <div class="server-unit-card" id="serverUnitSec">
+                                <div class="server-unit-header">
+                                    <span class="server-unit-title"><span class="cmd-dot-pulse" style="background:#38bdf8;"></span> 보조서버 (구형 노트북)</span>
+                                    <span class="bento-badge badge-gray" id="serverSecBadge">백업 대기</span>
+                                </div>
+                                <div class="server-unit-metrics">
+                                    <div class="server-metric-item">
+                                        <span class="metric-label">CPU 사용량</span>
+                                        <span class="metric-val font-mono" id="serverSecCpu">대기 중</span>
+                                    </div>
+                                    <div class="server-metric-item">
+                                        <span class="metric-label">메모리 사용량</span>
+                                        <span class="metric-val font-mono" id="serverSecRam">대기 중</span>
+                                    </div>
+                                </div>
+                                <div class="server-unit-sub-details">
+                                    <div class="server-sub-row">
+                                        <span class="sub-label">저장공간</span>
+                                        <span class="sub-val font-mono" id="serverSecDisk">2.1% (9.6GB / 456GB)</span>
+                                    </div>
+                                    <div class="server-sub-row">
+                                        <span class="sub-label">네트워크</span>
+                                        <span class="sub-val" id="serverSecNet">백업 대기 (새벽 04:00)</span>
+                                    </div>
+                                    <div class="server-sub-row">
+                                        <span class="sub-label">CPU 온도</span>
+                                        <span class="sub-val font-mono" id="serverSecTemp" style="color:var(--status-emerald);">38.5°C</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="card-actions" style="display:flex; align-items:center; gap:0.5rem;">
-                            <a href="/memo?action=new" class="btn-hospital-sub" style="font-size:0.78rem; text-decoration:none;" title="새 메모 즉시 작성">
-                                ✍️ 새 메모 쓰기
-                            </a>
-                            <a href="/memo" class="card-link-btn" style="margin-left:auto; text-decoration:none;">
-                                메모장 열기 →
-                            </a>
+
+                        <div class="bento-infra-services" style="margin-top:0.6rem;">
+                            <span class="bento-infra-pill"><span class="cmd-dot-pulse"></span> PORTAL (3004)</span>
+                            <span class="bento-infra-pill"><span class="cmd-dot-pulse"></span> BLOOD (3000)</span>
+                            <span class="bento-infra-pill"><span class="cmd-dot-pulse"></span> ASSET (3003)</span>
+                            <span class="bento-infra-pill"><span class="cmd-dot-pulse"></span> NEWS (5050)</span>
                         </div>
                     </div>
+
+                    <div class="bento-card-footer">
+                        <span>클러스터 모니터링</span>
+                        <span style="color:var(--status-emerald); font-weight:700;" id="serverClusterStatus">노드 정상 가동 중</span>
+                    </div>
                 </div>
+
             </div>
 
         </div>
@@ -446,40 +495,40 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td><span class="bp-badge-normal" style="padding:2px 6px; border-radius:4px; font-weight:700;">정상 혈압</span></td>
-                            <td>&lt; 120 mmHg</td>
-                            <td style="color:#64748b; font-size:0.75rem;">그리고</td>
-                            <td>&lt; 80 mmHg</td>
+                            <td><span class="bp-badge-normal">정상 혈압</span></td>
+                            <td class="font-mono">&lt; 120 mmHg</td>
+                            <td class="bp-sep-and">그리고</td>
+                            <td class="font-mono">&lt; 80 mmHg</td>
                         </tr>
                         <tr>
-                            <td><span class="bp-badge-elevated" style="padding:2px 6px; border-radius:4px; font-weight:700;">주의 혈압</span></td>
-                            <td>120 ~ 129</td>
-                            <td style="color:#64748b; font-size:0.75rem;">그리고</td>
-                            <td>&lt; 80</td>
+                            <td><span class="bp-badge-elevated">주의 혈압</span></td>
+                            <td class="font-mono">120 ~ 129</td>
+                            <td class="bp-sep-and">그리고</td>
+                            <td class="font-mono">&lt; 80</td>
                         </tr>
                         <tr>
-                            <td><span class="bp-badge-pre" style="padding:2px 6px; border-radius:4px; font-weight:700;">고혈압 전단계</span></td>
-                            <td>130 ~ 139</td>
-                            <td style="color:#ea580c; font-size:0.75rem; font-weight:700;">또는</td>
-                            <td>80 ~ 89</td>
+                            <td><span class="bp-badge-pre">고혈압 전단계</span></td>
+                            <td class="font-mono">130 ~ 139</td>
+                            <td class="bp-sep-or-amber">또는</td>
+                            <td class="font-mono">80 ~ 89</td>
                         </tr>
                         <tr>
-                            <td><span class="bp-badge-stage1" style="padding:2px 6px; border-radius:4px; font-weight:700;">1기 고혈압</span></td>
-                            <td>140 ~ 159</td>
-                            <td style="color:#dc2626; font-size:0.75rem; font-weight:700;">또는</td>
-                            <td>90 ~ 99</td>
+                            <td><span class="bp-badge-stage1">1기 고혈압</span></td>
+                            <td class="font-mono">140 ~ 159</td>
+                            <td class="bp-sep-or-rose">또는</td>
+                            <td class="font-mono">90 ~ 99</td>
                         </tr>
                         <tr>
-                            <td><span class="bp-badge-stage2" style="padding:2px 6px; border-radius:4px; font-weight:700;">2기 고혈압</span></td>
-                            <td>&ge; 160</td>
-                            <td style="color:#991b1b; font-size:0.75rem; font-weight:700;">또는</td>
-                            <td>&ge; 100</td>
+                            <td><span class="bp-badge-stage2">2기 고혈압</span></td>
+                            <td class="font-mono">&ge; 160</td>
+                            <td class="bp-sep-or-rose">또는</td>
+                            <td class="font-mono">&ge; 100</td>
                         </tr>
                         <tr>
-                            <td><span class="bp-badge-low" style="padding:2px 6px; border-radius:4px; font-weight:700;">저혈압</span></td>
-                            <td>&lt; 90</td>
-                            <td style="color:#2563eb; font-size:0.75rem; font-weight:700;">또는</td>
-                            <td>&lt; 60</td>
+                            <td><span class="bp-badge-low">저혈압</span></td>
+                            <td class="font-mono">&lt; 90</td>
+                            <td class="bp-sep-or-blue">또는</td>
+                            <td class="font-mono">&lt; 60</td>
                         </tr>
                     </tbody>
                 </table>
@@ -827,10 +876,14 @@
 
     <!-- 🔍 통합 퀵 검색 인터랙션 스크립트 -->
 
-    <!-- 🚀 JG 통합 UI 런처 (상단 내비바 + 하단 뉴스/속보 티커 자동 로드) -->
-    <script src="/js/portal-main.js?v=20261020_v1"></script>
-    <script src="/js/portal-notification.js?v=20261020_v2"></script>
-    <script src="/js/portal-search.js?v=20261020_v1"></script>
-    <script src="/js/jg-ui.js?v=20261020_221623" defer></script>
+    <!-- 🧩 모듈화된 프론트엔드 컴포넌트 스크립트 (500줄 이하 모듈화 헌법 준수) -->
+    <script src="/js/portal-market.js"></script>
+    <script src="/js/portal-infra.js"></script>
+    <script src="/js/portal-modals.js"></script>
+    <script src="/js/portal-summary.js"></script>
+    <script src="/js/portal-main.js"></script>
+    <script src="/js/portal-notification.js"></script>
+    <script src="/js/portal-search.js"></script>
+    <script src="/js/jg-ui.js" data-nav="false" defer></script>
 </body>
 </html>

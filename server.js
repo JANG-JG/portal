@@ -181,7 +181,12 @@ app.get('/health', (req, res) => {
 // ==========================================
 // ⏰ [통합 포털 단일 알림 스케줄러 기동]
 // ==========================================
-initUnifiedNotificationScheduler(db, sendUnifiedPushNotification, getLiveWeatherData, getLiveMarketData);
+const isDevInstance = PORT == 3005 || process.env.IS_DEV === 'true';
+if (!isDevInstance) {
+    initUnifiedNotificationScheduler(db, sendUnifiedPushNotification, getLiveWeatherData, getLiveMarketData);
+} else {
+    console.log('🧪 [portal-dev] 테스트 인스턴스: 알림 중복 발송 방지를 위해 백그라운드 푸시 스케줄러 비활성화');
+}
 
 // 서버 기동
 app.listen(PORT, () => {

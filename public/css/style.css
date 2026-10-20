@@ -2596,7 +2596,7 @@ body {
 .bp-modal-title {
     font-size: 1.05rem;
     font-weight: 700;
-    color: #0f172a;
+    color: #ffffff;
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -2635,7 +2635,7 @@ body {
     font-weight: 600;
 }
 .bp-guide-table tr:hover {
-    background: #f8fafc;
+    background: #1f1f23;
 }
 .bp-guide-notice-box {
     background: #f0fdf4;
