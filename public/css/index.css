@@ -2382,3 +2382,176 @@ html, body {
     color: var(--text-primary) !important;
 }
 
+/* ==============================================================================
+ * 📦 독립 운영을 위한 흡수 컴포넌트 스타일 (style.css 의존성 완전 제거)
+ * ============================================================================== */
+
+/* 1. 공통 유틸리티 */
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+.bento-command-center {
+    width: 100%;
+}
+
+/* 2. 🚨 실시간 속보 바 서브 컴포넌트 */
+.breaking-ticker-viewport {
+    flex: 1;
+    height: 28px;
+    line-height: 28px;
+    overflow: hidden;
+    position: relative;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.breaking-ticker-track {
+    position: relative;
+    transition: transform 0.45s cubic-bezier(0.2, 0, 0, 1);
+    will-change: transform;
+}
+
+.breaking-ticker-item {
+    height: 28px;
+    line-height: 28px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.breaking-ticker-item:hover {
+    color: var(--status-rose);
+}
+
+.breaking-arrow {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.breaking-dropdown-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.7rem 1rem;
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border-color);
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+}
+
+.breaking-dropdown-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--status-rose);
+}
+
+.breaking-dropdown-link {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--status-rose);
+    text-decoration: none;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+}
+
+.breaking-dropdown-link:hover {
+    background: var(--bg-hover);
+}
+
+.breaking-dropdown-items {
+    padding: 0.4rem 0.5rem;
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+@media (max-width: 640px) {
+    .breaking-badge-text-full { display: none !important; }
+    .breaking-badge-text-mobile { display: inline !important; }
+    .breaking-more-text-full { display: none !important; }
+    .breaking-more-text-mobile { display: inline !important; }
+    .breaking-ticker-viewport { height: 26px !important; line-height: 26px !important; }
+    .breaking-ticker-item { height: 26px !important; line-height: 26px !important; font-size: 0.82rem !important; }
+}
+
+/* 3. 🩸 혈압/복약 보조 스타일 */
+.btn-widget-quick-med {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.28rem 0.6rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: var(--status-emerald);
+    border: 1px solid var(--status-emerald-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    margin-top: 0.25rem;
+    transition: opacity 0.15s ease;
+}
+
+.btn-widget-quick-med:hover {
+    opacity: 0.9;
+}
+
+.bp-modal-body {
+    padding: 1.25rem;
+}
+
+/* 4. 🔍 퀵 검색 (Ctrl+K) Command Palette 보조 스타일 */
+.qs-empty-state {
+    padding: 1.5rem 0.5rem;
+    text-align: center;
+}
+
+.qs-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.65rem;
+}
+
+.qs-quick-icon {
+    font-size: 1.5rem;
+}
+
+.qs-quick-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.qs-no-results-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.qs-footer-keys {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.qs-footer-key-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+@media (max-width: 640px) {
+    .qs-footer-keys {
+        display: none !important;
+    }
+}
+
+
