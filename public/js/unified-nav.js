@@ -844,6 +844,160 @@
         }
     };
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // 🏷️ 알림 카테고리 메타 정의
+    const NOTIF_CATEGORIES = [
+        { key: 'all', label: '전체', icon: '🔔' },
+        { key: 'breaking', label: '속보', icon: '🚨' },
+        { key: 'calendar', label: '일정', icon: '📅' },
+        { key: 'weather', label: '날씨', icon: '🌤️' },
+        { key: 'finance', label: '금융', icon: '💰' },
+        { key: 'health', label: '건강', icon: '🩸' },
+        { key: 'system', label: '시스템', icon: '🖥️' }
+    ];
+
+    let notifSelectedCategory = 'all';
+
+    function getNotificationCategory(item) {
+        const type = (item.type || '').toLowerCase();
+        const title = (item.title || '').toLowerCase();
+        const body = (item.body || '').toLowerCase();
+        const full = `${type} ${title} ${body}`;
+
+        if (type === 'breaking' || full.includes('속보')) {
+            return { key: 'breaking', label: '속보', icon: '🚨', colorClass: 'cat-breaking' };
+        }
+        if (type === 'calendar' || full.includes('일정') || full.includes('캘린더')) {
+            return { key: 'calendar', label: '일정', icon: '📅', colorClass: 'cat-calendar' };
+        }
+        if (type === 'weather' || full.includes('날씨') || full.includes('기온') || full.includes('미세먼지') || full.includes('강수')) {
+            return { key: 'weather', label: '날씨', icon: '🌤️', colorClass: 'cat-weather' };
+        }
+        if (['asset', 'economy', 'finance', 'stock'].includes(type) || full.includes('증시') || full.includes('환율') || full.includes('코스피') || full.includes('주가')) {
+            return { key: 'finance', label: '금융', icon: '💰', colorClass: 'cat-finance' };
+        }
+        if (['blood_pressure', 'medication', 'hospital'].includes(type) || full.includes('혈압') || full.includes('복약') || full.includes('병원') || full.includes('약 복용')) {
+            return { key: 'health', label: '건강', icon: '🩸', colorClass: 'cat-health' };
+        }
+        if (['system', 'backup', 'server'].includes(type) || full.includes('서버') || full.includes('백업') || full.includes('경보') || full.includes('다운')) {
+            return { key: 'system', label: '시스템', icon: '🖥️', colorClass: 'cat-system' };
+        }
+        return { key: 'general', label: '일반', icon: '🔔', colorClass: 'cat-general' };
+    }
+
+    function renderCategoryChips() {
+        const barEl = document.getElementById('notifCategoryBar');
+        if (!barEl) return;
+
+        const counts = { all: notifHistoryListItems.length };
+        const unreads = { all: 0 };
+        NOTIF_CATEGORIES.forEach(c => {
+            if (c.key !== 'all') {
+                counts[c.key] = 0;
+                unreads[c.key] = 0;
+            }
+        });
+
+        notifHistoryListItems.forEach(item => {
+            const cat = getNotificationCategory(item);
+            if (counts[cat.key] !== undefined) {
+                counts[cat.key]++;
+                if (item.is_read === 0) unreads[cat.key]++;
+            }
+            if (item.is_read === 0) unreads.all++;
+        });
+
+        barEl.innerHTML = NOTIF_CATEGORIES.map(cat => {
+            const isActive = notifSelectedCategory === cat.key;
+            const total = counts[cat.key] || 0;
+            const unread = unreads[cat.key] || 0;
+            const unreadDot = unread > 0 ? '<span class="notif-cat-unread-dot"></span>' : '';
+            return `
+                <button type="button" class="notif-cat-chip ${isActive ? 'active' : ''}" onclick="selectNotificationCategory('${cat.key}')">
+                    <span>${cat.icon} ${cat.label}</span>
+                    ${unreadDot}
+                    <span class="notif-cat-badge">${total}</span>
+                </button>
+            `;
+        }).join('');
+    }
+
+    window.selectNotificationCategory = function(catKey) {
+        notifSelectedCategory = catKey;
+        renderCategoryChips();
+        renderFilteredNotificationList();
+    };
+
+    function renderFilteredNotificationList() {
+        const listEl = document.getElementById('notifHistoryList');
+        const countLabel = document.getElementById('notifHistoryCountLabel');
+        const loadMoreBox = document.getElementById('notifLoadMoreBox');
+        if (!listEl) return;
+
+        const filteredItems = notifSelectedCategory === 'all'
+            ? notifHistoryListItems
+            : notifHistoryListItems.filter(item => getNotificationCategory(item).key === notifSelectedCategory);
+
+        const filteredUnread = filteredItems.filter(i => i.is_read === 0).length;
+
+        if (countLabel) {
+            const catName = NOTIF_CATEGORIES.find(c => c.key === notifSelectedCategory)?.label || '전체';
+            countLabel.textContent = `${catName} 알림 (${filteredItems.length}건${filteredUnread > 0 ? `, 미확인 ${filteredUnread}건` : ''})`;
+        }
+
+        if (filteredItems.length === 0) {
+            listEl.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 3.5rem 1rem; font-size: 0.9rem;">해당 분류의 알림 내역이 없습니다.</div>';
+            if (loadMoreBox) loadMoreBox.style.display = 'none';
+            return;
+        }
+
+        listEl.innerHTML = filteredItems.map(item => {
+            const cat = getNotificationCategory(item);
+            const timeStr = item.created_at ? item.created_at.replace('T', ' ').slice(5, 16) : '';
+            const linkUrl = item.url || '#';
+            const isUnread = item.is_read === 0;
+            const cardClass = isUnread ? 'notif-card-item is-unread' : 'notif-card-item is-read';
+            const newBadge = isUnread ? '<span class="notif-badge-new">NEW</span>' : '';
+            const safeUrl = linkUrl.replace(/'/g, "\\'");
+
+            return `
+                <div class="${cardClass}" id="notif-card-${item.id}" onclick="openAndReadNotification(${item.id}, '${safeUrl}')">
+                    <div class="notif-card-header">
+                        <span class="notif-card-category-badge ${cat.colorClass}">
+                            <span>${cat.icon}</span>
+                            <span>${cat.label}</span>
+                        </span>
+                        <div class="notif-card-meta">
+                            <span class="notif-card-time">${timeStr}</span>
+                            ${newBadge}
+                        </div>
+                    </div>
+                    <div class="notif-card-content">
+                        <h4 class="notif-card-title">${escapeHtml(item.title || '알림')}</h4>
+                        <p class="notif-card-body">${escapeHtml(item.body || '')}</p>
+                    </div>
+                    <div class="notif-card-actions-center" onclick="event.stopPropagation()">
+                        ${isUnread ? `<button type="button" class="btn-card-action btn-card-read" onclick="markSingleAsRead(${item.id})">✓ 읽음</button>` : ''}
+                        <button type="button" class="btn-card-action btn-card-delete" onclick="deleteNotificationItem(${item.id})">🗑️ 삭제</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if (loadMoreBox) {
+            loadMoreBox.style.display = notifHistoryListItems.length < notifHistoryTotal ? 'block' : 'none';
+        }
+    }
+
     // 수신 내역 새로고침
     window.refreshNotificationHistory = function() {
         notifHistoryOffset = 0;
@@ -860,8 +1014,6 @@
     // 푸시 알림 수신 내역 조회 (API)
     window.fetchNotificationHistory = async function(isAppend = false) {
         const listEl = document.getElementById('notifHistoryList');
-        const loadMoreBox = document.getElementById('notifLoadMoreBox');
-        const countLabel = document.getElementById('notifHistoryCountLabel');
 
         try {
             const res = await fetch(`${NOTIF_BASE_URL}/api/notification/history?limit=${NOTIF_HISTORY_LIMIT}&offset=${notifHistoryOffset}`, {
@@ -889,75 +1041,8 @@
                 notifHistoryListItems = history;
             }
 
-            if (countLabel) {
-                countLabel.textContent = `알림 내역 (${notifHistoryListItems.length}/${notifHistoryTotal}건, 미확인 ${unreadCount}건)`;
-            }
-
-            if (!listEl) return;
-            if (notifHistoryListItems.length === 0) {
-                listEl.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 2.5rem 0; font-size: 0.88rem;">수신된 푸시 알림 내역이 없습니다.</div>';
-                if (loadMoreBox) loadMoreBox.style.display = 'none';
-                return;
-            }
-
-            const typeIconMap = {
-                'breaking': '🚨',
-                'weather': '🌤️',
-                'asset': '💰',
-                'economy': '💰',
-                'finance': '💰',
-                'stock': '💰',
-                'blood_pressure': '🩸',
-                'medication': '💊',
-                'hospital': '🏥',
-                'system': '🖥️',
-                'test': '🔔'
-            };
-
-            listEl.innerHTML = notifHistoryListItems.map(item => {
-                let icon = typeIconMap[item.type];
-                if (!icon) {
-                    if (item.icon && (item.icon.startsWith('http://') || item.icon.startsWith('https://') || item.icon.startsWith('/'))) {
-                        icon = '🔔';
-                    } else {
-                        icon = item.icon || '🔔';
-                    }
-                }
-                // URL 문자열이 포함되어 있다면 무조건 안전한 이모지로 치환 (주소 텍스트 노출 원천 봉쇄)
-                if (typeof icon === 'string' && (icon.includes('http://') || icon.includes('https://') || icon.includes('.png') || icon.includes('.svg'))) {
-                    icon = typeIconMap[item.type] || '🔔';
-                }
-                const timeStr = item.created_at ? item.created_at.replace('T', ' ').slice(5, 16) : '';
-                const linkUrl = item.url || '#';
-                const isUnread = item.is_read === 0;
-                const cardClass = isUnread ? 'notif-history-card is-unread' : 'notif-history-card is-read';
-                const newBadge = isUnread ? '<span class="badge-unread-dot">NEW</span>' : '';
-
-                return `
-                    <div class="${cardClass}" id="notif-card-${item.id}">
-                        <span class="notif-h-icon">${icon}</span>
-                        <div class="notif-h-body">
-                            <div class="notif-h-top">
-                                <div style="display: flex; align-items: center; gap: 0.35rem; min-width: 0;">
-                                    ${newBadge}
-                                    <span class="notif-h-title">${item.title || '알림'}</span>
-                                </div>
-                                <span class="notif-h-time">${timeStr}</span>
-                            </div>
-                            <p class="notif-h-msg">${item.body || ''}</p>
-                            <div class="notif-h-actions">
-                                <button type="button" class="notif-h-btn-link" onclick="openAndReadNotification(${item.id}, '${linkUrl}')">바로가기 ↗</button>
-                                ${isUnread ? `<button type="button" class="notif-h-btn-link" style="color: #64748b; background: #f1f5f9;" onclick="markSingleAsRead(${item.id})">읽음</button>` : ''}
-                                <button type="button" class="notif-h-btn-del" onclick="deleteNotificationItem(${item.id})" title="삭제">🗑️ 삭제</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            if (loadMoreBox) {
-                loadMoreBox.style.display = notifHistoryListItems.length < notifHistoryTotal ? 'block' : 'none';
-            }
+            renderCategoryChips();
+            renderFilteredNotificationList();
 
         } catch (e) {
             console.error('[알림 내역 조회 오류]:', e);
@@ -974,7 +1059,16 @@
             });
             const data = await res.json();
             if (data.success) {
-                window.refreshNotificationHistory();
+                notifHistoryListItems.forEach(i => i.is_read = 1);
+                renderCategoryChips();
+                renderFilteredNotificationList();
+                const updateBadge = (bId) => {
+                    const b = document.getElementById(bId);
+                    if (b) b.style.display = 'none';
+                };
+                updateBadge('unavNotifBadge');
+                updateBadge('unavMNotifBadge');
+                updateBadge('notifHistoryBadge');
             } else {
                 alert('읽음 처리 실패: ' + (data.message || '오류'));
             }
@@ -991,14 +1085,22 @@
                 credentials: 'include',
                 keepalive: true
             });
+            const item = notifHistoryListItems.find(i => i.id === id);
+            if (item) item.is_read = 1;
+            renderCategoryChips();
+            renderFilteredNotificationList();
         } catch (e) {
             console.error('Failed to mark read', e);
         }
 
-        if (url && url !== '#') {
-            window.location.href = url;
-        } else {
-            window.markSingleAsRead(id);
+        const item = notifHistoryListItems.find(i => i.id === id);
+        const targetUrl = (url && url !== '#' && !url.startsWith('javascript:'))
+            ? url
+            : (item && item.url && item.url !== '#' && !item.url.startsWith('javascript:') ? item.url : '');
+
+        if (targetUrl) {
+            window.closeNotificationModal();
+            window.location.href = targetUrl;
         }
     };
 
@@ -1011,15 +1113,10 @@
             });
             const data = await res.json();
             if (data.success) {
-                const card = document.getElementById(`notif-card-${id}`);
-                if (card) {
-                    card.classList.remove('is-unread');
-                    card.classList.add('is-read');
-                    const newBadge = card.querySelector('.badge-unread-dot');
-                    if (newBadge) newBadge.remove();
-                }
                 const item = notifHistoryListItems.find(i => i.id === id);
                 if (item) item.is_read = 1;
+                renderCategoryChips();
+                renderFilteredNotificationList();
 
                 const currentUnread = parseInt(document.getElementById('unavNotifBadge')?.textContent || '1', 10);
                 const newUnread = Math.max(0, currentUnread - 1);
@@ -1049,7 +1146,9 @@
             });
             const data = await res.json();
             if (data.success) {
-                window.refreshNotificationHistory();
+                notifHistoryListItems = notifHistoryListItems.filter(i => i.id !== id);
+                renderCategoryChips();
+                renderFilteredNotificationList();
             } else {
                 alert('삭제 실패: ' + (data.message || '오류'));
             }
@@ -1068,7 +1167,9 @@
             });
             const data = await res.json();
             if (data.success) {
-                window.fetchNotificationHistory(false);
+                notifHistoryListItems = [];
+                renderCategoryChips();
+                renderFilteredNotificationList();
             } else {
                 alert('전체 삭제 실패: ' + (data.message || '오류'));
             }

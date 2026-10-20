@@ -695,33 +695,34 @@
                 </div>
 
                 <!-- 2️⃣ 탭 2: 푸시 알림 수신 내역 뷰 -->
-                <div id="notifMainViewHistory">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; padding-bottom: 0.4rem; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 0.4rem;">
+                <div id="notifMainViewHistory" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+                    <!-- 카테고리 필터 칩 바 (가로 스크롤 가능) -->
+                    <div id="notifCategoryBar" class="notif-category-bar">
+                        <!-- JS에서 동적 주입됨 -->
+                    </div>
+
+                    <!-- 서브 툴바 (카운트 및 일괄 액션) -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 1.25rem; border-bottom: 1px solid #e2e8f0; background: #f8fafc; flex-wrap: wrap; gap: 0.4rem; flex-shrink: 0;">
                         <span id="notifHistoryCountLabel" style="font-size: 0.82rem; color: #64748b; font-weight: 600;">알림 내역</span>
-                        <div style="display: flex; gap: 0.3rem; align-items: center;">
+                        <div style="display: flex; gap: 0.35rem; align-items: center;">
                             <button type="button" onclick="markAllNotificationsAsRead()" class="btn-history-tool" style="color: #2563eb; border-color: #bfdbfe; background: #eff6ff; font-weight: 700;">✓ 모두 읽음</button>
                             <button type="button" onclick="refreshNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
                             <button type="button" onclick="clearAllNotificationHistory()" class="btn-history-tool btn-danger-tool">🗑️ 전체 삭제</button>
                         </div>
                     </div>
-                    <!-- 알림 목록 컨테이너 -->
+
+                    <!-- 알림 카드 목록 컨테이너 -->
                     <div id="notifHistoryList" class="notif-history-scroll">
-                        <div style="text-align: center; color: #94a3b8; padding: 2.5rem 0; font-size: 0.88rem;">알림 내역을 불러오는 중...</div>
+                        <div style="text-align: center; color: #94a3b8; padding: 3rem 0; font-size: 0.88rem;">알림 내역을 불러오는 중...</div>
                     </div>
+
                     <!-- 이전 알림 더보기 버튼 박스 -->
-                    <div id="notifLoadMoreBox" style="text-align: center; margin-top: 0.65rem; display: none;">
-                        <button type="button" onclick="loadMoreNotificationHistory()" class="btn-history-tool" style="width: 100%; padding: 0.5rem; font-size: 0.82rem; background: #ffffff; border-color: #cbd5e1; color: #334155; font-weight: 600;">
+                    <div id="notifLoadMoreBox" style="text-align: center; padding: 0.75rem 1.25rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: none; flex-shrink: 0;">
+                        <button type="button" onclick="loadMoreNotificationHistory()" class="btn-history-tool" style="width: 100%; padding: 0.6rem; font-size: 0.84rem; background: #ffffff; border-color: #cbd5e1; color: #334155; font-weight: 600;">
                             + 이전 알림 더보기
                         </button>
                     </div>
                 </div>
-            </div>
-
-            <!-- 모달 하단 고정 액션 버튼 바 -->
-            <div class="notif-modal-footer">
-                <button type="button" onclick="saveNotificationSettings()" class="btn-notif-save">💾 설정 저장 및 권한 등록</button>
-                <button type="button" onclick="sendTestNotification()" class="btn-notif-test">🔔 테스트 발송</button>
-                <button type="button" onclick="closeNotificationModal()" class="btn-notif-close">닫기</button>
             </div>
         </div>
     </div>
@@ -822,6 +823,6 @@
     <script src="/js/portal-main.js?v=20261020_v1"></script>
     <script src="/js/portal-notification.js?v=20261020_v1"></script>
     <script src="/js/portal-search.js?v=20261020_v1"></script>
-    <script src="/js/jg-ui.js?v=20261019_v3" defer></script>
+    <script src="/js/jg-ui.js?v=20261020_v2" defer></script>
 </body>
 </html>
