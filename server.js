@@ -87,6 +87,8 @@ app.use(express.static(path.join(__dirname, 'public'), {
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
             res.setHeader('Surrogate-Control', 'no-store');
+        } else if (filePath.endsWith('index.css')) {
+            res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
         } else if (filePath.endsWith('news-ticker.js')) {
             res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
         } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
