@@ -249,6 +249,50 @@ html, body {
     font-size: 0.78rem;
 }
 
+/* 🔔 상단 알림 센터 버튼 */
+.cmd-nav-notif-btn {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s ease;
+    padding: 0;
+}
+
+.cmd-nav-notif-btn:hover {
+    background: var(--bg-subtle);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+}
+
+.cmd-notif-icon {
+    font-size: 0.95rem;
+    line-height: 1;
+}
+
+.cmd-notif-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--status-rose);
+    color: #ffffff;
+    border-radius: 9999px;
+    padding: 0 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    line-height: 14px;
+    min-width: 14px;
+    text-align: center;
+    border: 1.5px solid var(--bg-page);
+}
+
 /* 9-dot 서브 앱 런처 */
 .cmd-launcher-wrap {
     position: relative;
@@ -649,53 +693,182 @@ html, body {
 }
 
 /* ==============================================================================
- * 🚨 실시간 속보 배너 오버라이드
+ * 🚨 실시간 속보 배너 (Dark Command Center)
  * ============================================================================== */
 .breaking-banner-bar {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
     background: var(--bg-surface) !important;
     border: 1px solid var(--border-color) !important;
+    border-left: 3px solid var(--status-rose) !important;
     border-radius: var(--radius-sm) !important;
-    box-shadow: none !important;
     padding: 0.4rem 0.75rem !important;
+    min-height: 40px !important;
+    box-sizing: border-box !important;
+    z-index: 30 !important;
 }
 
 .breaking-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.35rem !important;
     background: var(--status-rose-bg) !important;
     color: var(--status-rose) !important;
     border: 1px solid var(--status-rose-border) !important;
     border-radius: 4px !important;
-    font-size: 0.72rem !important;
+    font-size: 0.74rem !important;
     font-weight: 700 !important;
-    padding: 2px 6px !important;
+    padding: 2px 7px !important;
+    flex-shrink: 0 !important;
+    margin-right: 0.65rem !important;
+    white-space: nowrap !important;
 }
 
 .breaking-pulse-dot {
     background-color: var(--status-rose) !important;
     width: 6px !important;
     height: 6px !important;
+    border-radius: 50% !important;
+    animation: jgPulse 1.2s infinite ease-in-out !important;
+}
+
+.breaking-ticker-viewport {
+    flex: 1 !important;
+    height: 26px !important;
+    line-height: 26px !important;
+    overflow: hidden !important;
+    position: relative !important;
+    min-width: 0 !important;
+}
+
+.breaking-ticker-track {
+    position: relative !important;
+    transition: transform 0.45s cubic-bezier(0.2, 0, 0, 1) !important;
+    will-change: transform !important;
+}
+
+.breaking-ticker-item {
+    height: 26px !important;
+    line-height: 26px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-decoration: none !important;
+    color: var(--text-primary) !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+}
+
+.breaking-ticker-item:hover .breaking-item-title {
+    color: var(--status-rose) !important;
 }
 
 .breaking-item-title {
     color: var(--text-primary) !important;
     font-size: 0.82rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
 .breaking-more-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.25rem !important;
     background: var(--bg-subtle) !important;
-    border-left: 1px solid var(--border-color) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: var(--radius-sm) !important;
     color: var(--text-secondary) !important;
-    font-size: 0.75rem !important;
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    padding: 3px 8px !important;
+    text-decoration: none !important;
+    margin-left: 0.5rem !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    transition: all 0.12s ease !important;
 }
 
 .breaking-more-btn:hover {
     color: var(--text-primary) !important;
+    background: var(--bg-hover) !important;
+    border-color: var(--border-strong) !important;
+}
+
+.breaking-arrow {
+    font-size: 0.95rem !important;
+    line-height: 1 !important;
 }
 
 .breaking-dropdown-panel {
+    position: absolute !important;
+    top: calc(100% + 6px) !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(-6px) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    z-index: 100 !important;
+    pointer-events: none !important;
+    max-height: 380px !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.breaking-banner-bar:hover .breaking-dropdown-panel,
+.breaking-dropdown-panel:hover {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(0) !important;
+    pointer-events: auto !important;
+}
+
+.breaking-dropdown-top {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 0.65rem 0.85rem !important;
+    background: var(--bg-subtle) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    border-top-left-radius: var(--radius-md) !important;
+    border-top-right-radius: var(--radius-md) !important;
+}
+
+.breaking-dropdown-title {
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    color: var(--status-rose) !important;
+}
+
+.breaking-dropdown-link {
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    color: var(--status-rose) !important;
+    text-decoration: none !important;
+    padding: 2px 6px !important;
+    border-radius: var(--radius-sm) !important;
     background: var(--bg-surface) !important;
     border: 1px solid var(--border-color) !important;
-    box-shadow: none !important;
-    border-radius: var(--radius-sm) !important;
+}
+
+.breaking-dropdown-link:hover {
+    background: var(--bg-hover) !important;
+}
+
+.breaking-dropdown-items {
+    padding: 0.4rem 0.5rem !important;
+    overflow-y: auto !important;
+    max-height: 280px !important;
 }
 
 /* ==============================================================================
@@ -1404,7 +1577,7 @@ html, body {
 
 @media (max-width: 768px) {
     .main-shell {
-        padding: calc(96px + 0.85rem) 0.75rem 3.5rem !important;
+        padding: calc(84px + 0.5rem) 0.75rem 3.5rem !important;
     }
 
     .cmd-strip {
