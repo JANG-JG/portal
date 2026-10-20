@@ -83,7 +83,10 @@ app.use(express.static(path.join(__dirname, 'public'), {
         if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache, must-revalidate');
         } else if (filePath.endsWith('jg-ui.js')) {
-            res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            res.setHeader('Surrogate-Control', 'no-store');
         } else if (filePath.endsWith('news-ticker.js')) {
             res.setHeader('Cache-Control', 'public, max-age=60, must-revalidate');
         } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
