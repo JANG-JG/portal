@@ -67,12 +67,18 @@ body {
     box-sizing: border-box;
 }
 
-/* 2열 데스크탑 / 1열 모바일 반응형 그리드 */
+/* 2열 데스크탑 / 1열 모바일 반응형 그리드
+ * ⚠️ minmax(0, 1fr) + min-width:0 필수: 1fr(=minmax(auto,1fr))이면 가로 스크롤 칩 바(nowrap)의
+ *    전체 너비가 카드 최소 너비가 되어 화면 밖으로 밀려남 */
 .layout-grid {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
     width: 100%;
+}
+
+.layout-grid > * {
+    min-width: 0;
 }
 
 @media (min-width: 1024px) {
@@ -91,6 +97,7 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     box-sizing: border-box;
     width: 100%;
+    min-width: 0;
 }
 
 /* 캘린더 네비게이션 헤더 */
@@ -467,36 +474,54 @@ body {
         padding: 0.35rem 0.6rem;
         font-size: 0.78rem;
     }
+    .cal-day-name {
+        padding: 0.35rem 0.1rem;
+        font-size: 0.7rem;
+    }
     .cal-cell {
-        min-height: 64px;
-        padding: 0.2rem 0.15rem;
-        align-items: center;
+        min-height: 50px;
+        padding: 0.25rem 0.1rem;
+        /* 도트를 날짜 아래 가로 한 줄로 배치 */
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-content: flex-start;
+        gap: 2px;
     }
     .cal-date-num {
         font-size: 0.78rem;
         width: 22px;
         height: 22px;
-        margin-bottom: 2px;
+        /* 날짜 번호가 한 줄을 단독 점유하도록 좌우 여백으로 채움 */
+        margin: 0 calc(50% - 11px) 1px;
     }
 
     /* 🎯 모바일에서는 긴 텍스트 배지 대신 Google Calendar 식 도트(Dot)로 변환 */
     .event-badge {
-        width: 7px;
-        height: 7px;
-        min-width: 7px;
+        width: 6px;
+        height: 6px;
+        min-width: 6px;
         padding: 0;
         border-radius: 50%;
+        border: none;
         color: transparent;
+        font-size: 0;
         overflow: hidden;
         display: inline-block;
-        margin: 1px;
+        margin: 0;
         box-shadow: none;
     }
     .event-more-badge {
-        font-size: 0.6rem;
-        padding: 0 3px;
-        border-radius: 9999px;
-        margin-top: 1px;
+        font-size: 0.58rem;
+        padding: 0 2px;
+        border: none;
+        background: transparent;
+        line-height: 6px;
+        margin: 0;
+    }
+    .legend-section {
+        margin-top: 0.65rem;
+        padding-top: 0.6rem;
     }
 
     /* 모바일 바텀시트 모달 변환 */
