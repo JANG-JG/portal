@@ -273,8 +273,9 @@
                 </a>
             `).join('');
 
-            // 연속 무한 스크롤을 위해 2벌 연결
-            brkTrack.innerHTML = makeBrkItems() + makeBrkItems();
+            const repeatCount = Math.max(1, Math.ceil(6 / breakingList.length));
+            const singleSetHtml = Array(repeatCount).fill(makeBrkItems()).join('');
+            brkTrack.innerHTML = singleSetHtml + singleSetHtml;
         } else {
             breakingBar.classList.remove('jg-breaking-active');
             updateBottomPadding(false);
@@ -296,6 +297,22 @@
             // 끊김 없는 무한 스크롤(-50% transform)을 위해 2벌 연결
             newsTrack.innerHTML = makeNewsItems() + makeNewsItems();
         }
+
+        requestAnimationFrame(() => {
+            if (newsTrack && articles.length > 0) {
+                const newsDistance = newsTrack.scrollWidth / 2;
+                const speedPxPerSec = newsDistance > 0 ? (newsDistance / 85) : 75;
+                newsTrack.style.setProperty('animation-duration', '85s', 'important');
+
+                if (brkTrack && breakingList.length > 0) {
+                    const brkDistance = brkTrack.scrollWidth / 2;
+                    if (brkDistance > 0 && speedPxPerSec > 0) {
+                        const brkDuration = Math.max(8, Math.round((brkDistance / speedPxPerSec) * 10) / 10);
+                        brkTrack.style.setProperty('animation-duration', `${brkDuration}s`, 'important');
+                    }
+                }
+            }
+        });
 
         // 6-3. 우측 날씨 / 증시 / 환율 수직 롤링 슬라이드 구성
         const vBox = document.getElementById('jgVBox');

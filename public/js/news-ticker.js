@@ -639,7 +639,10 @@
                     </a>
                 `).join('');
 
-                breakingTrack.innerHTML = makeBreakingItems() + makeBreakingItems();
+                // 속보 건수가 적을 때(1~2건)도 화면이 비지 않도록 최소 6개 아이템 분량으로 1벌을 구성한 뒤 2벌 연결(-50% 무한 루프)
+                const repeatCount = Math.max(1, Math.ceil(6 / breakingList.length));
+                const singleSetHtml = Array(repeatCount).fill(makeBreakingItems()).join('');
+                breakingTrack.innerHTML = singleSetHtml + singleSetHtml;
             }
         } else {
             breakingBar.classList.remove('jg-breaking-active');
@@ -663,6 +666,24 @@
 
             track.innerHTML = makeItems() + makeItems();
         }
+
+        // 7-2b. 뉴스 기사 제목 이동 속도와 긴급 속보 이동 속도(px/sec) 100% 동기화
+        requestAnimationFrame(() => {
+            if (track && articles.length > 0) {
+                const newsDistance = track.scrollWidth / 2;
+                // 기본 뉴스 브리핑 이동 속도 기준 (85초 동안 newsDistance 이동, 기본 약 75px/sec)
+                const speedPxPerSec = newsDistance > 0 ? (newsDistance / 85) : 75;
+                track.style.setProperty('animation-duration', '85s', 'important');
+
+                if (breakingTrack && hasBreaking) {
+                    const breakingDistance = breakingTrack.scrollWidth / 2;
+                    if (breakingDistance > 0 && speedPxPerSec > 0) {
+                        const breakingDuration = Math.max(8, Math.round((breakingDistance / speedPxPerSec) * 10) / 10);
+                        breakingTrack.style.setProperty('animation-duration', `${breakingDuration}s`, 'important');
+                    }
+                }
+            }
+        });
 
         // 7-3. 우측 날씨/증시 롤링 위젯 구성
         const vBox = document.getElementById('jg-v-box');
