@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261021_v22';
+const CACHE_NAME = 'jg-portal-v20261021_192848';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -63,8 +63,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 2. HTML 문서 탐색 및 통합 내비게이션 요청: Network-First (항상 최신 버전 우선, 실패 시 오프라인 캐시)
-    if (req.mode === 'navigate' || url.pathname.includes('unified-nav')) {
+    // 2. HTML 문서 탐색 및 CSS/JS 코드 요청: Network-First (항상 최신 버전 우선, 오프라인 시에만 캐시 폴백)
+    if (req.mode === 'navigate' || url.pathname.match(/\.(css|js)$/i) || url.pathname.includes('unified-nav')) {
         event.respondWith(
             fetch(req)
                 .then((res) => {
@@ -84,9 +84,9 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 3. 정적 에셋 (CSS, JS, 이미지, 폰트): Stale-While-Revalidate (0ms 응답 + 백그라운드 갱신)
+    // 3. 정적 미디어 에셋 (이미지, 폰트, 아이콘): Stale-While-Revalidate (0ms 응답 + 백그라운드 갱신)
     const isStaticAsset = (
-        url.pathname.match(/\.(css|js|png|svg|jpg|jpeg|webp|woff2?|ico)$/i) ||
+        url.pathname.match(/\.(png|svg|jpg|jpeg|webp|woff2?|ico)$/i) ||
         PRECACHE_ASSETS.includes(url.pathname)
     );
 
