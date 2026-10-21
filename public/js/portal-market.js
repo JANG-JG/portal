@@ -218,9 +218,9 @@ function bindBreakingTicker(articles) {
     let bIdx = 0;
     const renderItem = (idx) => {
         const item = articles[idx];
-        trackEl.style.opacity = '1';
         trackEl.innerHTML = `<a href="${item.link || 'https://news.j-jg.cc/breaking'}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item"><span class="breaking-item-title">${item.title}</span></a>`;
     };
+    trackEl.classList.remove('fade-out');
     renderItem(0);
 
     if (!bannerEl.dataset.boundClick) {
@@ -237,8 +237,12 @@ function bindBreakingTicker(articles) {
     if (breakingTickerTimer) clearInterval(breakingTickerTimer);
     if (articles.length > 1) {
         breakingTickerTimer = setInterval(() => {
-            bIdx = (bIdx + 1) % articles.length;
-            renderItem(bIdx);
-        }, 3000);
+            trackEl.classList.add('fade-out');
+            setTimeout(() => {
+                bIdx = (bIdx + 1) % articles.length;
+                renderItem(bIdx);
+                trackEl.classList.remove('fade-out');
+            }, 220);
+        }, 3220);
     }
 }

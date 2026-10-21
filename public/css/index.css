@@ -836,13 +836,18 @@ body.modal-open {
 
 .breaking-ticker-track {
     position: relative !important;
-    transition: transform 0.45s cubic-bezier(0.2, 0, 0, 1) !important;
-    will-change: transform !important;
+    opacity: 1;
+    transition: opacity 0.25s ease, transform 0.25s ease !important;
+    will-change: opacity, transform !important;
     display: flex !important;
     align-items: center !important;
     justify-content: flex-start !important;
     text-align: left !important;
     width: 100% !important;
+}
+
+.breaking-ticker-track.fade-out {
+    opacity: 0 !important;
 }
 
 .breaking-ticker-item {
@@ -3264,8 +3269,8 @@ body.modal-open {
 
 .breaking-ticker-track {
     position: relative;
-    transition: transform 0.45s cubic-bezier(0.2, 0, 0, 1);
-    will-change: transform;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    will-change: opacity, transform;
 }
 
 .breaking-ticker-item {
