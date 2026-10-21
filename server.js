@@ -70,6 +70,17 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// 🚀 중앙 UI 로더 무캐시 동적 엔드포인트 (.js 확장자 제외로 Cloudflare Edge 캐시 100% 원천 우회: cf-cache-status: DYNAMIC)
+app.get('/api/jg-ui', (req, res) => {
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.sendFile(path.join(__dirname, 'public', 'js', 'jg-ui.js'));
+});
+
 // 정적 파일 서빙 및 캐시 제어
 app.use(express.static(path.join(__dirname, 'public'), {
     index: false,
