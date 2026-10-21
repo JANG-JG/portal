@@ -15,8 +15,8 @@
     <meta name="color-scheme" content="dark">
     <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
     <link rel="stylesheet" href="/css/pretendard.css">
-    <link rel="stylesheet" href="/css/unified-nav.css?v=20261021_0935">
-    <link rel="stylesheet" href="/css/index.css?v=20261021_1015">
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261021_1435">
+    <link rel="stylesheet" href="/css/index.css?v=20261021_1435">
 </head>
 <body>
     <!-- 🌐 단일 통합 커맨드 내비게이션 바 (Command Center Dark Header) -->
@@ -36,13 +36,10 @@
                     <span>🏠</span><span>대시보드</span>
                 </button>
                 <button type="button" class="portal-tab-btn" data-tab="blood" onclick="switchPortalTab('blood')">
-                    <span>🩸</span><span>혈압·건강</span>
+                    <span>🩸</span><span>혈압·건강·약</span>
                 </button>
                 <button type="button" class="portal-tab-btn" data-tab="asset" onclick="switchPortalTab('asset')">
                     <span>💰</span><span>자산·금융</span>
-                </button>
-                <button type="button" class="portal-tab-btn" data-tab="med" onclick="switchPortalTab('med')">
-                    <span>💊</span><span>약·병원</span>
                 </button>
                 <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
                     <span>📰</span><span>뉴스룸</span>
@@ -123,13 +120,10 @@
                 <span>🏠</span><span>대시보드</span>
             </button>
             <button type="button" class="portal-tab-btn" data-tab="blood" onclick="switchPortalTab('blood')">
-                <span>🩸</span><span>건강</span>
+                <span>🩸</span><span>건강·약</span>
             </button>
             <button type="button" class="portal-tab-btn" data-tab="asset" onclick="switchPortalTab('asset')">
                 <span>💰</span><span>자산</span>
-            </button>
-            <button type="button" class="portal-tab-btn" data-tab="med" onclick="switchPortalTab('med')">
-                <span>💊</span><span>약·병원</span>
             </button>
             <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
                 <span>📰</span><span>뉴스</span>
@@ -222,7 +216,6 @@
                 
                 <!-- Bento 1: 🩸💊 혈압·건강 & 약·병원 일정 통합 카드 (col-span-6) -->
                 <div class="bento-card col-health" id="bento-blood">
-                    <span id="bento-med" style="position:relative; top:-60px; display:block; height:0; width:0; visibility:hidden;"></span>
                     <div>
                         <div class="bento-card-header">
                             <div class="bento-card-title-group">
@@ -903,13 +896,13 @@
     <!-- 🔍 통합 퀵 검색 인터랙션 스크립트 -->
 
     <!-- 🧩 모듈화된 프론트엔드 컴포넌트 스크립트 (500줄 이하 모듈화 헌법 준수) -->
-    <script src="/js/portal-market.js?v=20261021_0904"></script>
+    <script src="/js/portal-market.js?v=20261021_1435"></script>
     <script src="/js/portal-infra.js"></script>
-    <script src="/js/portal-modals.js?v=20261021_0955"></script>
-    <script src="/js/portal-summary.js?v=20261021_0935"></script>
+    <script src="/js/portal-modals.js?v=20261021_1435"></script>
+    <script src="/js/portal-summary.js?v=20261021_1435"></script>
     <script src="/js/portal-main.js"></script>
-    <script src="/js/portal-notification.js?v=20261021_0902"></script>
-    <script src="/js/portal-search.js?v=20261021_0955"></script>
-    <script src="/js/portal-bottom-news.js?v=20261021_0935" defer></script>
+    <script src="/js/portal-notification.js?v=20261021_1435"></script>
+    <script src="/js/portal-search.js?v=20261021_1435"></script>
+    <script src="/js/portal-bottom-news.js?v=20261021_1435" defer></script>
 </body>
 </html>
