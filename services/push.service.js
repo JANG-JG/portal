@@ -123,7 +123,13 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                 if (!userTokensMap.has(uid)) {
                     userTokensMap.set(uid, { mobile: [], desktop: [] });
                 }
-                const isMobile = r.device_type === 'mobile' || (r.user_agent && (r.user_agent.includes('Mobile') || r.user_agent.includes('Android')));
+                const ua = String(r.user_agent || '').toLowerCase();
+                const isMobile = r.device_type === 'mobile' ||
+                                 r.device_type === 'tablet' ||
+                                 r.client_type === 'pwa' ||
+                                 r.client_type === 'apk' ||
+                                 /mobi|iphone|ipod|ipad|android|samsungbrowser|wv/i.test(ua) ||
+                                 (!r.device_id && !ua);
                 if (isMobile) {
                     userTokensMap.get(uid).mobile.push(r);
                 } else {

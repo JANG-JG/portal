@@ -742,14 +742,16 @@
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
                              window.matchMedia('(display-mode: fullscreen)').matches ||
                              window.matchMedia('(display-mode: minimal-ui)').matches ||
-                             window.navigator.standalone === true;
+                             window.navigator.standalone === true ||
+                             document.referrer.includes('android-app://');
         const clientType = isStandalone ? 'pwa' : 'browser';
 
         const ua = navigator.userAgent.toLowerCase();
+        const isTouchMobile = (navigator.maxTouchPoints > 1 && /android|linux|macintosh|iphone|ipad/i.test(ua) && window.screen && Math.min(window.screen.width, window.screen.height) <= 900);
         let deviceType = 'desktop';
-        if (/ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle|playbook|silk/i.test(ua)) {
-            deviceType = 'tablet';
-        } else if (/mobi|iphone|ipod|android/i.test(ua)) {
+        if (/mobi|iphone|ipod|android|samsungbrowser|wv/i.test(ua) || isTouchMobile) {
+            deviceType = 'mobile';
+        } else if (/ipad|tablet|kindle|playbook|silk/i.test(ua)) {
             deviceType = 'mobile';
         }
 
@@ -830,7 +832,7 @@
                 });
             }
 
-            await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
+            const subRes = await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -842,6 +844,12 @@
                     userAgent: meta.userAgent
                 })
             });
+            const subData = await subRes.json().catch(() => ({}));
+            if (subData && subData.skippedBrowser && sub) {
+                try { await sub.unsubscribe(); } catch (e) {}
+                console.log('🧹 [WebPush Guard] 전용 웹앱(PWA) 구독이 활성화되어 있어 일반 브라우저 중복 구독을 자동 해제했습니다.');
+                return;
+            }
             console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
         } catch (e) {
             console.error('[푸시 구독 등록 실패]:', e);

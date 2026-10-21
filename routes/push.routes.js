@@ -9,90 +9,132 @@ router.get('/vapid-key', (req, res) => {
     res.json({ success: true, publicKey: VAPID_PUBLIC_KEY });
 });
 
+// 1-1. 미확인 알림 개수 경량 조회 API
+router.get('/unread-count', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
+    const query = `
+        SELECT COUNT(*) as unread
+        FROM notification_history
+        WHERE (user_id = ? OR user_id = 'admin') AND is_read = 0
+    `;
+    db.get(query, [userId], (err, row) => {
+        if (err) {
+            return res.status(500).json({ success: false, unreadCount: 0 });
+        }
+        res.json({
+            success: true,
+            unreadCount: row ? (row.unread || 0) : 0
+        });
+    });
+});
+
+// 모바일 기기 여부 정밀 판별 헬퍼 (삼성 인터넷 데스크톱 모드 등 포함)
+function isMobileDeviceRecord(deviceType, userAgent) {
+    if (deviceType === 'mobile' || deviceType === 'tablet') return true;
+    const ua = String(userAgent || '').toLowerCase();
+    return /mobi|iphone|ipod|ipad|android|samsungbrowser|wv/i.test(ua);
+}
+
 // 2. 푸시 구독 토큰 등록 API (중복 토큰 스마트 정리)
 router.post('/subscribe', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
-    const { subscription, clientType = 'browser', deviceType = 'desktop', deviceId = '', userAgent = '' } = req.body;
+    const rawUserAgent = req.body.userAgent || req.headers['user-agent'] || '';
+    const clientType = req.body.clientType || 'browser';
+    const deviceId = req.body.deviceId || '';
+    const subscription = req.body.subscription;
+    const isMobile = isMobileDeviceRecord(req.body.deviceType, rawUserAgent);
+    const deviceType = isMobile ? 'mobile' : (req.body.deviceType || 'desktop');
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
         return res.status(400).json({ success: false, message: '유효하지 않은 구독 정보입니다.' });
     }
 
     const { endpoint, keys } = subscription;
-    const query = `
-        INSERT INTO push_subscriptions (user_id, endpoint, keys_p256dh, keys_auth, client_type, device_type, device_id, user_agent, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(endpoint) DO UPDATE SET
-            user_id = excluded.user_id,
-            keys_p256dh = excluded.keys_p256dh,
-            keys_auth = excluded.keys_auth,
-            client_type = excluded.client_type,
-            device_type = excluded.device_type,
-            device_id = excluded.device_id,
-            user_agent = excluded.user_agent,
-            updated_at = CURRENT_TIMESTAMP
-    `;
 
-    db.run(query, [userId, endpoint, keys.p256dh, keys.auth, clientType, deviceType, deviceId, userAgent], function(err) {
-        if (err) {
-            console.error('[WebPush] 포털 구독 토큰 저장 실패:', err);
-            return res.status(500).json({ success: false, message: '구독 토큰 저장 실패' });
-        }
-
-        // 🌟 [중복 방지 스마트 정리]
-        // 1) 모바일 PWA 또는 APK 전용 앱으로 등록된 경우
-        if (deviceType === 'mobile' && (clientType === 'pwa' || clientType === 'apk')) {
-            db.run(
-                `DELETE FROM push_subscriptions 
-                 WHERE user_id = ? AND endpoint != ? AND (
-                     device_type = 'mobile' 
-                     OR user_agent LIKE '%Mobile%' 
-                     OR user_agent LIKE '%Android%'
-                     OR client_type = 'pwa'
-                     OR client_type = 'apk'
-                     OR client_type = 'browser'
-                     OR (device_id = '' OR device_id IS NULL)
-                 )`,
-                [userId, endpoint],
-                function(delErr) {
-                    if (!delErr && this.changes > 0) {
-                        console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 전용 앱(${clientType.toUpperCase()}) 등록에 따라 다른 이전 모바일 토큰 ${this.changes}개 자동 정리 완료`);
-                    }
+    // 🌟 모바일 일반 브라우저(삼성 인터넷 탭 등)에서 구독 요청 시, 이미 전용 웹앱(PWA/APK) 구독이 있으면 저장하지 않고 즉시 차단
+    if (isMobile && clientType === 'browser') {
+        return db.get(
+            `SELECT endpoint FROM push_subscriptions WHERE user_id = ? AND (client_type = 'pwa' OR client_type = 'apk') LIMIT 1`,
+            [userId],
+            (chkErr, appRow) => {
+                if (appRow && appRow.endpoint !== endpoint) {
+                    db.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [endpoint], () => {});
+                    console.log(`🧹 [WebPush Guard] 유저(${userId}) 전용 웹앱(PWA) 구독이 존재하므로 브라우저(${endpoint.slice(-12)}) 중복 등록 원천 차단`);
+                    return res.json({
+                        success: true,
+                        skippedBrowser: true,
+                        message: '전용 웹앱(PWA) 알림이 이미 등록되어 있어 브라우저 중복 알림을 자동으로 차단했습니다.'
+                    });
                 }
-            );
-        }
+                proceedSaveSubscription();
+            }
+        );
+    } else {
+        proceedSaveSubscription();
+    }
 
-        // 2) 모바일 일반 브라우저에서 등록 시도한 경우
-        if (deviceType === 'mobile' && clientType === 'browser') {
-            db.get(
-                `SELECT endpoint FROM push_subscriptions WHERE user_id = ? AND (client_type = 'pwa' OR client_type = 'apk') AND (device_type = 'mobile' OR user_agent LIKE '%Mobile%') LIMIT 1`,
-                [userId],
-                (chkErr, appRow) => {
-                    if (appRow) {
-                        db.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [endpoint], () => {
-                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 모바일 전용 앱 존재하므로 일반 브라우저 토큰 자동 차단 및 삭제`);
-                        });
+    function proceedSaveSubscription() {
+        const query = `
+            INSERT INTO push_subscriptions (user_id, endpoint, keys_p256dh, keys_auth, client_type, device_type, device_id, user_agent, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(endpoint) DO UPDATE SET
+                user_id = excluded.user_id,
+                keys_p256dh = excluded.keys_p256dh,
+                keys_auth = excluded.keys_auth,
+                client_type = excluded.client_type,
+                device_type = excluded.device_type,
+                device_id = excluded.device_id,
+                user_agent = excluded.user_agent,
+                updated_at = CURRENT_TIMESTAMP
+        `;
+
+        db.run(query, [userId, endpoint, keys.p256dh, keys.auth, clientType, deviceType, deviceId, rawUserAgent], function(err) {
+            if (err) {
+                console.error('[WebPush] 포털 구독 토큰 저장 실패:', err);
+                return res.status(500).json({ success: false, message: '구독 토큰 저장 실패' });
+            }
+
+            // 🌟 [중복 방지 스마트 정리]
+            // 1) 모바일 PWA 또는 APK 전용 앱으로 등록된 경우 다른 모든 모바일/미분류 브라우저 토큰 정리
+            if (isMobile && (clientType === 'pwa' || clientType === 'apk')) {
+                db.run(
+                    `DELETE FROM push_subscriptions 
+                     WHERE user_id = ? AND endpoint != ? AND (
+                         device_type = 'mobile' 
+                         OR user_agent LIKE '%Mobile%' 
+                         OR user_agent LIKE '%Android%'
+                         OR user_agent LIKE '%SamsungBrowser%'
+                         OR client_type = 'pwa'
+                         OR client_type = 'apk'
+                         OR client_type = 'browser'
+                         OR (device_id = '' OR device_id IS NULL)
+                     )`,
+                    [userId, endpoint],
+                    function(delErr) {
+                        if (!delErr && this.changes > 0) {
+                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 전용 앱(${clientType.toUpperCase()}) 등록에 따라 다른 이전 토큰 ${this.changes}개 자동 정리 완료`);
+                        }
                     }
-                }
-            );
-        }
+                );
+            }
 
-        // 3) 동일 device_id를 가진 다른 엔드포인트 자동 정리
-        if (deviceId && deviceId !== 'unknown') {
-            db.run(
-                `DELETE FROM push_subscriptions 
-                 WHERE user_id = ? AND endpoint != ? AND device_id = ?`,
-                [userId, endpoint, deviceId],
-                function(delErr) {
-                    if (!delErr && this.changes > 0) {
-                        console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 동일 기기(${deviceId}) 이전 토큰 ${this.changes}개 자동 정리 완료`);
+            // 2) 동일 device_id를 가진 다른 엔드포인트 자동 정리
+            if (deviceId && deviceId !== 'unknown') {
+                db.run(
+                    `DELETE FROM push_subscriptions 
+                     WHERE user_id = ? AND endpoint != ? AND device_id = ?`,
+                    [userId, endpoint, deviceId],
+                    function(delErr) {
+                        if (!delErr && this.changes > 0) {
+                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 동일 기기(${deviceId}) 이전 토큰 ${this.changes}개 자동 정리 완료`);
+                        }
                     }
-                }
-            );
-        }
+                );
+            }
 
-        res.json({ success: true, message: '푸시 알림 구독이 등록되었습니다.' });
-    });
+            res.json({ success: true, message: '푸시 알림 구독이 등록되었습니다.' });
+        });
+    }
 });
 
 // 2-1. 푸시 구독 해제 API
