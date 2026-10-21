@@ -15,8 +15,8 @@
     <meta name="color-scheme" content="dark">
     <link rel="stylesheet" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
     <link rel="stylesheet" href="/css/pretendard.css">
-    <link rel="stylesheet" href="/css/unified-nav.css?v=20261021_0845">
-    <link rel="stylesheet" href="/css/index.css?v=20261021_0845">
+    <link rel="stylesheet" href="/css/unified-nav.css?v=20261021_0935">
+    <link rel="stylesheet" href="/css/index.css?v=20261021_0935">
 </head>
 <body>
     <!-- 🌐 단일 통합 커맨드 내비게이션 바 (Command Center Dark Header) -->
@@ -602,8 +602,8 @@
                     <div class="notif-card-group" style="padding: 0.85rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
                             <div>
-                                <strong style="color: #0f172a; font-size: 0.95rem;">📰 텔레그램 뉴스 브리핑 전송 시간</strong>
-                                <p style="margin: 0.15rem 0 0; font-size: 0.8rem; color: #64748b;">지정한 시각마다 최신 뉴스를 수집하고 AI 요약 브리핑을 텔레그램으로 자동 발송합니다.</p>
+                                <strong style="color: var(--text-primary); font-size: 0.95rem;">📰 텔레그램 뉴스 브리핑 전송 시간</strong>
+                                <p style="margin: 0.15rem 0 0; font-size: 0.8rem; color: var(--text-muted);">지정한 시각마다 최신 뉴스를 수집하고 AI 요약 브리핑을 텔레그램으로 자동 발송합니다.</p>
                             </div>
                         </div>
                         <div class="notif-time-box">
@@ -648,12 +648,12 @@
                                     </label>
                                 </div>
                                 <p>평일 코스피 지수 변동과 실시간 원/달러 환율 브리핑을 웹 푸시로 전송합니다. (휴장일 제외)</p>
-                                <div style="margin-top: 0.5rem; display: flex; gap: 0.85rem; flex-wrap: wrap; background: #f8fafc; padding: 0.45rem 0.65rem; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; color: #334155; cursor: pointer; margin: 0;">
+                                <div style="margin-top: 0.5rem; display: flex; gap: 0.85rem; flex-wrap: wrap; background: var(--bg-subtle); padding: 0.45rem 0.65rem; border-radius: 6px; border: 1px solid var(--border-color);">
+                                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; margin: 0;">
                                         <input type="checkbox" id="notifAssetOpenEnabled" checked onchange="handleAssetSubOptionChange()" style="margin: 0 !important; width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important;">
                                         <span>🔔 개장 브리핑 (09:00)</span>
                                     </label>
-                                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; color: #334155; cursor: pointer; margin: 0;">
+                                    <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; margin: 0;">
                                         <input type="checkbox" id="notifAssetCloseEnabled" checked onchange="handleAssetSubOptionChange()" style="margin: 0 !important; width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important;">
                                         <span>🔔 마감 브리핑 (15:30)</span>
                                     </label>
@@ -695,7 +695,7 @@
                     <!-- 6 & 7. 💊 복약 및 🩸 혈압 측정 정기 시간표 설정 -->
                     <div class="notif-card-group" style="padding: 0.85rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
-                            <strong style="color: #0f172a; font-size: 0.95rem;">⏰ 정기 복약 & 혈압 측정 시간표</strong>
+                            <strong style="color: var(--text-primary); font-size: 0.95rem;">⏰ 정기 복약 & 혈압 측정 시간표</strong>
                             <div class="notif-sub-tabs">
                                 <button type="button" id="notifTabWeekday" class="active" onclick="switchNotifSubTab('weekday')">평일 (월~금)</button>
                                 <button type="button" id="notifTabWeekend" onclick="switchNotifSubTab('weekend')">주말 / 공휴일</button>
@@ -768,8 +768,8 @@
                     </div>
 
                     <!-- 💾 [알림 맞춤 설정 전용] 설정 저장 및 테스트 발송 액션 버튼 -->
-                    <div class="notif-settings-actions" style="margin-top: 1.25rem; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem;">
-                        <div style="font-size: 0.82rem; color: #64748b; font-weight: 600;">⚙️ 맞춤 설정 적용 & 푸시 발송 확인</div>
+                    <div class="notif-settings-actions" style="margin-top: 1.25rem; padding: 1rem; border-radius: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem;">
+                        <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 600;">⚙️ 맞춤 설정 적용 & 푸시 발송 확인</div>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             <button type="button" onclick="saveNotificationSettings()" class="btn-notif-save" style="flex: 2; min-width: 160px;">💾 설정 저장 및 권한 등록</button>
                             <button type="button" onclick="sendTestNotification()" class="btn-notif-test" style="flex: 1; min-width: 120px;">🔔 테스트 발송</button>
@@ -790,7 +790,7 @@
                             <span id="notifHistoryCountLabel" class="notif-count-label">알림 내역</span>
                         </div>
                         <div class="notif-subtoolbar-actions" style="display: flex; gap: 0.35rem; align-items: center; margin-left: auto;">
-                            <button type="button" onclick="markAllNotificationsAsRead()" class="btn-history-tool" style="color: #2563eb; border-color: #bfdbfe; background: #eff6ff; font-weight: 700;">✓ 모두 읽음</button>
+                            <button type="button" onclick="markAllNotificationsAsRead()" class="btn-history-tool" style="color: var(--status-blue); font-weight: 700;">✓ 모두 읽음</button>
                             <button type="button" onclick="refreshNotificationHistory()" class="btn-history-tool">🔄 새로고침</button>
                             <button type="button" onclick="clearAllNotificationHistory()" class="btn-history-tool btn-danger-tool">🗑️ 전체 삭제</button>
                             <div class="notif-info-tooltip-wrapper" id="notifInfoTooltipWrapper">
@@ -804,12 +804,12 @@
 
                     <!-- 알림 카드 목록 컨테이너 -->
                     <div id="notifHistoryList" class="notif-history-scroll">
-                        <div style="text-align: center; color: #94a3b8; padding: 3rem 0; font-size: 0.88rem;">알림 내역을 불러오는 중...</div>
+                        <div style="text-align: center; color: var(--text-muted); padding: 3rem 0; font-size: 0.88rem;">알림 내역을 불러오는 중...</div>
                     </div>
 
                     <!-- 이전 알림 더보기 버튼 박스 -->
-                    <div id="notifLoadMoreBox" style="text-align: center; padding: 0.75rem 1.25rem; background: #ffffff; border-top: 1px solid #e2e8f0; display: none; flex-shrink: 0;">
-                        <button type="button" id="btnNotifLoadMore" onclick="loadMoreNotificationHistory()" class="btn-history-tool" style="width: 100%; padding: 0.65rem; font-size: 0.85rem; background: #ffffff; border-color: #cbd5e1; color: #1e293b; font-weight: 700; border-radius: 8px;">
+                    <div id="notifLoadMoreBox" style="text-align: center; padding: 0.75rem 1.25rem; display: none; flex-shrink: 0;">
+                        <button type="button" id="btnNotifLoadMore" onclick="loadMoreNotificationHistory()" class="btn-history-tool" style="width: 100%; padding: 0.65rem; font-size: 0.85rem; font-weight: 700; border-radius: 8px;">
                             + 이전 알림 더보기
                         </button>
                     </div>
@@ -914,10 +914,10 @@
     <script src="/js/portal-market.js?v=20261021_0904"></script>
     <script src="/js/portal-infra.js"></script>
     <script src="/js/portal-modals.js"></script>
-    <script src="/js/portal-summary.js"></script>
+    <script src="/js/portal-summary.js?v=20261021_0935"></script>
     <script src="/js/portal-main.js"></script>
     <script src="/js/portal-notification.js?v=20261021_0902"></script>
     <script src="/js/portal-search.js"></script>
-    <script src="/js/portal-bottom-news.js?v=20261021_0856" defer></script>
+    <script src="/js/portal-bottom-news.js?v=20261021_0935" defer></script>
 </body>
 </html>

@@ -313,9 +313,13 @@
 
             // 1) 날씨 슬라이드
             if (weather && weather.temp && weather.temp !== '-') {
+                const weatherIconUrl = weather.icon_url || (weather.icon_slug ? `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weather.icon_slug}.svg` : null);
+                const weatherIconHtml = weatherIconUrl
+                    ? `<img src="${weatherIconUrl}" alt="${weather.condition || '날씨'}" style="width:14px; height:14px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`
+                    : (weather.icon || '🌤️');
                 slides.push(`
                     <a href="https://news.j-jg.cc/weather" target="_blank" rel="noopener" class="jg-v-item" title="실시간 날씨 브리핑">
-                        <span>${weather.icon || '🌤️'} ${cityName}</span>
+                        <span style="display:inline-flex; align-items:center; gap:3px;">${weatherIconHtml} ${cityName}</span>
                         <span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>
                         ${weather.condition ? `<span style="color:#a1a1aa; font-size:10.5px;">${weather.condition}</span>` : ''}
                     </a>
