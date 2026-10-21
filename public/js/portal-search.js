@@ -75,7 +75,11 @@
             modal.classList.add('active');
             modal.classList.add('open');
             modal.style.setProperty('display', 'flex', 'important');
-            document.body.style.overflow = 'hidden';
+            if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
+            else {
+                document.documentElement.classList.add('modal-open');
+                document.body.classList.add('modal-open');
+            }
             setTimeout(() => {
                 if (input) {
                     input.focus();
@@ -91,7 +95,11 @@
             modal.classList.remove('active');
             modal.classList.remove('open');
             modal.style.setProperty('display', 'none', 'important');
-            document.body.style.overflow = '';
+            if (typeof window.unlockBodyScroll === 'function') window.unlockBodyScroll();
+            else {
+                document.documentElement.classList.remove('modal-open');
+                document.body.classList.remove('modal-open');
+            }
             qsFocusedIndex = -1;
         }
         window.closeQuickSearchModal = closeQuickSearchModal;

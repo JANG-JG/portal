@@ -180,9 +180,9 @@ function startAssetFading(tickerBox, items) {
         tickerBox.style.opacity = '0';
         setTimeout(() => {
             tickerBox.innerHTML = `
-                <span class="stock-kor-name" title="${stock.name}" style="color:var(--text-primary); font-weight:700;">${stock.name}</span>
-                <span class="stock-price" style="color:var(--text-secondary); margin:0 4px;">${stock.formattedTotal}</span>
-                <span class="stock-diff ${stock.direction}">${dirSymbol} ${stock.diffPercent}</span>
+                <span class="stock-kor-name" title="${stock.name}" style="color:var(--text-primary); font-weight:700; font-size:0.72rem; overflow:hidden; text-overflow:ellipsis;">${stock.name}</span>
+                <span class="stock-price" style="color:var(--text-secondary); font-size:0.72rem; margin:0 2px; flex-shrink:0;">${stock.formattedTotal}</span>
+                <span class="stock-diff ${stock.direction}" style="font-size:0.7rem; flex-shrink:0;">${dirSymbol} ${stock.diffPercent}</span>
             `;
             tickerBox.style.opacity = '1';
         }, 250);
@@ -198,11 +198,13 @@ function bindBreakingTicker(articles) {
     if (!bannerEl || !trackEl) return;
 
     if (!articles || articles.length === 0) {
-        bannerEl.style.display = 'none';
+        bannerEl.classList.remove('has-breaking', 'active');
+        bannerEl.style.setProperty('display', 'none', 'important');
         return;
     }
 
-    bannerEl.style.display = 'flex';
+    bannerEl.classList.add('has-breaking');
+    bannerEl.style.setProperty('display', 'flex', 'important');
     if (dropdownList) {
         dropdownList.innerHTML = articles.map(item => `
             <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="breaking-dropdown-item">

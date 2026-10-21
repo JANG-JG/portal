@@ -6,13 +6,43 @@
 // - PWA 설치 제어
 // ==============================================================================
 
+// 🔒 0. 모달 오픈 시 배경 스크롤 완전 차단 헬퍼 (모바일 html + body 동시 잠금)
+function lockBodyScroll() {
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+}
+window.lockBodyScroll = lockBodyScroll;
+
+function unlockBodyScroll() {
+    const bpOpen = document.getElementById('bpGuideModal')?.classList.contains('active');
+    const qsOpen = document.getElementById('qsModalBackdrop')?.classList.contains('active');
+    const notifOpen = document.getElementById('notificationModal')?.classList.contains('open');
+    if (bpOpen || qsOpen || notifOpen) return;
+    document.documentElement.classList.remove('modal-open');
+    document.body.classList.remove('modal-open');
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+}
+window.unlockBodyScroll = unlockBodyScroll;
+
+// 모바일 터치 스크롤 배경 전파 차단 (모달 내부 스크롤 영역만 허용)
+document.addEventListener('touchmove', (e) => {
+    if (!document.body.classList.contains('modal-open')) return;
+    const scrollable = e.target.closest('.bp-modal-body, .qs-body, .qs-tabs, .notif-modal-scroll, .notif-category-bar');
+    if (!scrollable) {
+        e.preventDefault();
+    }
+}, { passive: false });
+
 // 🩸 1. 대한고혈압학회 판정 기준표 모달
 function openBpGuideModal() {
     const modal = document.getElementById('bpGuideModal');
     if (modal) {
         modal.classList.add('active');
         modal.style.setProperty('display', 'flex', 'important');
-        document.body.style.overflow = 'hidden';
+        lockBodyScroll();
     }
 }
 
@@ -21,7 +51,7 @@ function closeBpGuideModal() {
     if (modal) {
         modal.classList.remove('active');
         modal.style.setProperty('display', 'none', 'important');
-        document.body.style.overflow = '';
+        unlockBodyScroll();
     }
 }
 
@@ -56,7 +86,7 @@ function openQuickSearchModal() {
                 input.select();
             }, 60);
         }
-        document.body.style.overflow = 'hidden';
+        lockBodyScroll();
     }
 }
 
@@ -66,7 +96,7 @@ function closeQuickSearchModal() {
         modal.classList.remove('active');
         modal.classList.remove('open');
         modal.style.setProperty('display', 'none', 'important');
-        document.body.style.overflow = '';
+        unlockBodyScroll();
     }
 }
 
@@ -85,8 +115,9 @@ window.addEventListener('keydown', (e) => {
         closeQuickSearchModal();
         const notifModal = document.getElementById('notificationModal');
         if (notifModal && notifModal.style.display !== 'none') {
+            notifModal.classList.remove('open');
             notifModal.style.display = 'none';
-            document.body.style.overflow = '';
+            unlockBodyScroll();
         }
     }
 });

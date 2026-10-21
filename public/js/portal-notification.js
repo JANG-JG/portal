@@ -30,7 +30,8 @@
         if (!modal) return;
         modal.classList.add('open');
         modal.style.setProperty('display', 'flex', 'important');
-        document.body.style.overflow = 'hidden';
+        if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
+        else { document.documentElement.classList.add('modal-open'); document.body.classList.add('modal-open'); }
         window.switchNotifMainTab('history');
         window.updateBrowserPermissionUI();
         window.fetchNotificationSettings();
@@ -42,7 +43,8 @@
             modal.classList.remove('open');
             modal.style.setProperty('display', 'none', 'important');
         }
-        document.body.style.overflow = '';
+        if (typeof window.unlockBodyScroll === 'function') window.unlockBodyScroll();
+        else { document.documentElement.classList.remove('modal-open'); document.body.classList.remove('modal-open'); }
     };
     document.addEventListener('click', (e) => {
         if (e.target && e.target.id === 'notificationModal') window.closeNotificationModal();

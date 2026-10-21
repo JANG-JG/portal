@@ -132,63 +132,64 @@ let weatherCache = {
         is_day: 1
     }
 };
-let isWeatherFetching = false;
+let weatherFetchPromise = null;
 
 async function refreshWeatherInBackground(rawCity, korCityName) {
-    if (isWeatherFetching) return;
-    isWeatherFetching = true;
-    try {
-        const coords = CITY_COORDS[rawCity] || CITY_COORDS['Gyeryong'] || { lat: 36.3160, lon: 127.2480 };
-        const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,cloud_cover,wind_speed_10m&timezone=Asia%2FTokyo`;
+    if (weatherFetchPromise) return weatherFetchPromise;
+    weatherFetchPromise = (async () => {
+        try {
+            const coords = CITY_COORDS[rawCity] || CITY_COORDS['Gyeryong'] || { lat: 36.3160, lon: 127.2480 };
+            const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,cloud_cover,wind_speed_10m&timezone=Asia%2FTokyo`;
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4000);
-        const resp = await fetch(openMeteoUrl, {
-            headers: { 'User-Agent': 'JG-Portal/1.0' },
-            signal: controller.signal
-        });
-        clearTimeout(timeout);
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
+            const resp = await fetch(openMeteoUrl, {
+                headers: { 'User-Agent': 'JG-Portal/1.0' },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
 
-        if (resp.ok) {
-            const data = await resp.json();
-            const curr = data && data.current ? data.current : null;
-            if (curr) {
-                const tempVal = typeof curr.temperature_2m === 'number' ? curr.temperature_2m : parseFloat(curr.temperature_2m || 0);
-                const feelsVal = typeof curr.apparent_temperature === 'number' ? curr.apparent_temperature : parseFloat(curr.apparent_temperature || 0);
-                const isDay = typeof curr.is_day === 'number' ? curr.is_day : 1;
-                const weatherCode = typeof curr.weather_code === 'number' ? curr.weather_code : 0;
+            if (resp.ok) {
+                const data = await resp.json();
+                const curr = data && data.current ? data.current : null;
+                if (curr) {
+                    const tempVal = typeof curr.temperature_2m === 'number' ? curr.temperature_2m : parseFloat(curr.temperature_2m || 0);
+                    const feelsVal = typeof curr.apparent_temperature === 'number' ? curr.apparent_temperature : parseFloat(curr.apparent_temperature || 0);
+                    const isDay = typeof curr.is_day === 'number' ? curr.is_day : 1;
+                    const weatherCode = typeof curr.weather_code === 'number' ? curr.weather_code : 0;
 
-                const conditionKo = WMO_CODE_KO[weatherCode] || '맑음';
-                const icon = getWeatherIcon(conditionKo, isDay);
-                const iconSlug = getWeatherIconSlug(conditionKo, isDay);
+                    const conditionKo = WMO_CODE_KO[weatherCode] || '맑음';
+                    const icon = getWeatherIcon(conditionKo, isDay);
+                    const iconSlug = getWeatherIconSlug(conditionKo, isDay);
 
-                weatherCache = {
-                    timestamp: Date.now(),
-                    data: {
-                        city: korCityName,
-                        temp: `${tempVal.toFixed(1)}°C`,
-                        condition: conditionKo,
-                        icon: icon,
-                        icon_slug: iconSlug,
-                        icon_url: `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconSlug}.svg`,
-                        is_day: isDay,
-                        feels_like: `${feelsVal.toFixed(1)}°C`,
-                        humidity: `${curr.relative_humidity_2m || 0}%`,
-                        wind_speed: `${curr.wind_speed_10m || 0}km/h`
-                    }
-                };
-                return;
+                    weatherCache = {
+                        timestamp: Date.now(),
+                        data: {
+                            city: korCityName,
+                            temp: `${tempVal.toFixed(1)}°C`,
+                            condition: conditionKo,
+                            icon: icon,
+                            icon_slug: iconSlug,
+                            icon_url: `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconSlug}.svg`,
+                            is_day: isDay,
+                            feels_like: `${feelsVal.toFixed(1)}°C`,
+                            humidity: `${curr.relative_humidity_2m || 0}%`,
+                            wind_speed: `${curr.wind_speed_10m || 0}km/h`
+                        }
+                    };
+                }
             }
+        } catch (e) {
+        } finally {
+            weatherFetchPromise = null;
         }
-    } catch (e) {
-    } finally {
-        isWeatherFetching = false;
-    }
+    })();
+    return weatherFetchPromise;
 }
 
 async function getLiveWeatherData() {
     const now = Date.now();
-    if (weatherCache.data && (now - weatherCache.timestamp < 10 * 60 * 1000)) {
+    if (weatherCache.data && weatherCache.timestamp > 0 && (now - weatherCache.timestamp < 10 * 60 * 1000)) {
         return weatherCache.data;
     }
 
@@ -208,7 +209,7 @@ async function getLiveWeatherData() {
         return weatherCache.data;
     }
 
-    refreshWeatherInBackground(rawCity, korCityName);
+    await refreshWeatherInBackground(rawCity, korCityName);
     return weatherCache.data;
 }
 

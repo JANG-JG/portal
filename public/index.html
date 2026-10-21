@@ -228,11 +228,8 @@
                             <div class="bento-card-title-group">
                                 <span class="cmd-dot-pulse"></span>
                                 <h3 class="bento-card-title">혈압·건강 & 약·병원 일정</h3>
-                                <button type="button" class="btn-bp-guide-inline" onclick="openBpGuideModal()" title="대한고혈압학회 판정 기준표 보기">
-                                    기준표 ℹ️
-                                </button>
                             </div>
-                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.5rem; flex-shrink:0; white-space:nowrap;">
                                 <a href="/go/blood" class="bento-card-link" title="혈압 관리 앱 바로가기">혈압 앱 →</a>
                                 <a href="/calendar" class="bento-card-link" title="캘린더 바로가기">캘린더 →</a>
                             </div>
@@ -277,7 +274,9 @@
                     </div>
 
                     <div class="bento-card-footer">
-                        <span>대한고혈압학회 2022 기준</span>
+                        <button type="button" class="btn-bp-guide-inline" onclick="openBpGuideModal()" title="혈압 판정 기준표 보기">
+                            📋 혈압 기준표 ℹ️
+                        </button>
                         <button type="button" class="btn-quick-med" id="btnQuickMed" onclick="recordQuickMedication()" style="padding:3px 10px; font-size:0.78rem;">
                             💊 약 복용 기록
                         </button>

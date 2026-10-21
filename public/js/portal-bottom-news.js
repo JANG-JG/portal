@@ -179,7 +179,7 @@
             }
             .jg-t-left { font-size: 10.5px !important; gap: 4px !important; }
             .jg-t-right { height: 22px !important; }
-            .jg-v-box { width: 145px !important; height: 22px !important; }
+            .jg-v-box { width: 165px !important; height: 22px !important; }
             .jg-v-item { font-size: 10px !important; gap: 4px !important; padding: 0 4px !important; }
             .jg-t-center { width: 100% !important; height: 24px !important; margin: 0 !important; }
             .jg-t-badge { padding: 1.5px 5px !important; margin-right: 6px !important; font-size: 9.5px !important; }
@@ -311,12 +311,23 @@
 
             const slides = [];
 
-            // 1) 날씨 슬라이드
+            // 1) 날씨 슬라이드 및 상단 내비게이션 날씨 배지 실시간 동기화
             if (weather && weather.temp && weather.temp !== '-') {
                 const weatherIconUrl = weather.icon_url || (weather.icon_slug ? `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weather.icon_slug}.svg` : null);
                 const weatherIconHtml = weatherIconUrl
                     ? `<img src="${weatherIconUrl}" alt="${weather.condition || '날씨'}" style="width:14px; height:14px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`
                     : (weather.icon || '🌤️');
+
+                // 상단 내비게이션 바 날씨 배지(#welcomeWeatherBadge)도 항상 동일하게 동기화
+                const topCityEl = document.getElementById('welcomeWeatherCity');
+                const topTempEl = document.getElementById('welcomeWeatherTemp');
+                const topIconEl = document.getElementById('welcomeWeatherIcon');
+                if (topCityEl) topCityEl.textContent = cityName;
+                if (topTempEl) topTempEl.textContent = weather.temp;
+                if (topIconEl && weatherIconUrl) {
+                    topIconEl.innerHTML = `<img src="${weatherIconUrl}" alt="${weather.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
+                }
+
                 slides.push(`
                     <a href="https://news.j-jg.cc/weather" target="_blank" rel="noopener" class="jg-v-item" title="실시간 날씨 브리핑">
                         <span style="display:inline-flex; align-items:center; gap:3px;">${weatherIconHtml} ${cityName}</span>
