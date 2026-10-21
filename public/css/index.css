@@ -2195,29 +2195,35 @@ body.modal-open {
     align-items: center;
     gap: 0.3rem;
     font-family: var(--font-mono);
-    font-size: 10.5px !important;
+    font-size: 0.75rem !important;
     font-variant-numeric: tabular-nums;
     min-width: 0;
     overflow: hidden;
     white-space: nowrap;
+    transition: opacity 0.25s ease;
+}
+
+.asset-ticker-inline.fade-out {
+    opacity: 0;
 }
 
 .stock-kor-name {
     font-weight: 700;
-    font-size: 10.5px !important;
+    font-size: 0.75rem !important;
     color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .stock-price {
-    font-size: 10.5px !important;
-    color: var(--text-secondary);
+    font-size: 0.75rem !important;
+    color: var(--text-primary);
+    font-weight: 700;
     flex-shrink: 0;
 }
 
 .stock-diff {
-    font-size: 10px !important;
+    font-size: 0.72rem !important;
     flex-shrink: 0;
 }
 

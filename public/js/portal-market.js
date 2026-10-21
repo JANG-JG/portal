@@ -165,10 +165,10 @@ function startMarketFading(market) {
     }, 3500);
 }
 
-// 🔄 2. 보유 자산 종목 페이드 티커 엔진
+// 🔄 2. 보유 자산 종목 페이드 티커 엔진 (증시 현황 롤링 바와 동일한 글씨 크기 및 자연스러운 전환)
 let assetFadeTimer = null;
-function startAssetFading(tickerBox, items) {
-    if (!tickerBox || !items || items.length <= 1) return;
+function startAssetFading(tickerRow, items) {
+    if (!tickerRow || !items || items.length <= 1) return;
     if (assetFadeTimer) clearInterval(assetFadeTimer);
 
     let currentIndex = 0;
@@ -177,16 +177,17 @@ function startAssetFading(tickerBox, items) {
         const stock = items[currentIndex];
         const dirSymbol = stock.direction === 'up' ? '▲' : '▼';
 
-        tickerBox.style.opacity = '0';
+        tickerRow.classList.add('fade-out');
         setTimeout(() => {
-            tickerBox.innerHTML = `
-                <span class="stock-kor-name" title="${stock.name}" style="color:var(--text-primary); font-weight:700; font-size:10.5px; overflow:hidden; text-overflow:ellipsis;">${stock.name}</span>
-                <span class="stock-price" style="color:var(--text-secondary); font-size:10.5px; margin:0 2px; flex-shrink:0;">${stock.formattedTotal}</span>
-                <span class="stock-diff ${stock.direction}" style="font-size:10px; flex-shrink:0;">${dirSymbol} ${stock.diffPercent}</span>
+            const valEl = document.getElementById('assetTickerBox') || tickerRow;
+            valEl.innerHTML = `
+                <span class="stock-kor-name" title="${stock.name}" style="color:var(--text-primary); font-weight:700; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis;">${stock.name}</span>
+                <span class="stock-price" style="color:var(--text-primary); font-weight:700; font-size:0.75rem; flex-shrink:0;">${stock.formattedTotal}</span>
+                <span class="stock-diff ${stock.direction}" style="font-size:0.72rem; flex-shrink:0;">${dirSymbol} ${stock.diffPercent}</span>
             `;
-            tickerBox.style.opacity = '1';
-        }, 250);
-    }, 3500);
+            tickerRow.classList.remove('fade-out');
+        }, 200);
+    }, 3200);
 }
 
 // 🚨 3. 실시간 속보 한줄 티커 바인딩
