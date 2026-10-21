@@ -13,7 +13,7 @@ const {
     NEWS_DB_PATH
 } = require('../config/constants');
 const { db, assetDb, newsDb } = require('../services/db');
-const { getKoreanStockName } = require('../services/market.service');
+const { getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
 const { sendServerTelegram } = require('../services/unifiedNotificationScheduler');
 const {
     getCurrentCpuPercent,
@@ -402,21 +402,23 @@ router.get('/backup/:type', (req, res) => {
     res.status(404).send('해당 DB 백업 파일을 찾을 수 없습니다.');
 });
 
-// 5. 자산 관리 상세 요약
+// 5. 자산 관리 상세 요약 (실시간 시세 및 환율 반영)
 router.get('/asset/summary', async (req, res) => {
     try {
         const accounts = await new Promise(r => assetDb.all('SELECT id, account_name, broker, note FROM accounts', (e, rows) => r(rows || [])));
-        const assets = await new Promise(r => assetDb.all('SELECT id, account_id, symbol, full_name, asset_type, quantity, avg_price, currency FROM assets WHERE quantity > 0', (e, rows) => r(rows || [])));
+        const rawAssets = await new Promise(r => assetDb.all('SELECT id, account_id, symbol, full_name, asset_type, quantity, avg_price, currency FROM assets WHERE quantity > 0 ORDER BY id DESC', (e, rows) => r(rows || [])));
+        const { enrichedAssets, exchangeRate } = await enrichAssetsWithQuotes(rawAssets);
 
-        let totalKrw = 0;
+        let totalUsd = 0;
         const accMap = {};
         accounts.forEach(a => { accMap[a.id] = { ...a, stockCount: 0, total: 0 }; });
 
-        const formattedAssets = assets.map(s => {
-            const isUsd = s.currency === 'USD';
-            const priceInKrw = isUsd ? Math.round(s.avg_price * 1350) : Math.round(s.avg_price);
-            const total = Math.round(s.quantity * priceInKrw);
-            totalKrw += total;
+        const formattedAssets = enrichedAssets.map(s => {
+            const isUsd = (s.currency || '').toUpperCase() === 'USD';
+            const curPrice = (typeof s.currentPrice === 'number' && s.currentPrice > 0) ? s.currentPrice : s.avg_price;
+            const curVal = s.quantity * curPrice;
+            const total = Math.round(isUsd ? (curVal * exchangeRate) : curVal);
+            totalUsd += isUsd ? curVal : (curVal / exchangeRate);
 
             if (accMap[s.account_id]) {
                 accMap[s.account_id].stockCount++;
@@ -429,15 +431,16 @@ router.get('/asset/summary', async (req, res) => {
                 koreanName: getKoreanStockName(s.symbol, s.full_name),
                 asset_type: s.asset_type,
                 quantity: s.quantity,
-                formattedAvg: (isUsd ? '$' : '₩') + s.avg_price.toLocaleString(),
+                formattedAvg: (isUsd ? '$' + Number(s.avg_price).toFixed(2) : '₩' + Math.round(s.avg_price).toLocaleString()),
                 formattedTotal: '₩' + total.toLocaleString(),
                 total
             };
         }).sort((a, b) => b.total - a.total);
 
+        const totalKrw = Math.round(totalUsd * exchangeRate);
         const formattedAccounts = Object.values(accMap).map(a => ({
             ...a,
-            totalFormatted: '₩' + a.total.toLocaleString()
+            totalFormatted: '₩' + Math.round(a.total).toLocaleString()
         }));
 
         res.json({

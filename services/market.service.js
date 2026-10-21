@@ -25,19 +25,259 @@ const KOREAN_STOCK_MAP = {
     'IVV': 'S&P 500 (IVV)'
 };
 
+const axios = require('axios');
+
+const QUOTE_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+};
+
+// 종목명/한글명 -> 야후/네이버 티커 사전 정의 (자산관리 앱과 100% 동일)
+const KNOWN_TICKER_MAP = {
+    'TIGER 미국배당다우존스': '379800.KS',
+    'TIGER 미국S&P500': '360750.KS',
+    'TIGER 미국나스닥100': '133690.KS',
+    'ACE 미국배당다우존스': '402970.KS',
+    'ACE 미국S&P500': '360200.KS',
+    'ACE 미국나스닥100': '367380.KS',
+    'SOL 미국배당다우존스': '446720.KS',
+    'SOL 미국S&P500': '429740.KS',
+    'KODEX 200': '069500.KS',
+    'KODEX 미국나스닥100TR': '379810.KS',
+    'KODEX 미국S&P500TR': '379800.KS',
+    'TIGER 차이나전기차SOLACTIVE': '371460.KS',
+    '삼성전자': '005930.KS',
+    'SK하이닉스': '000660.KS',
+    'NAVER': '035420.KS',
+    '카카오': '035720.KS',
+    '현대차': '005380.KS'
+};
+
+// 메모리 시세 캐시 (유효시간: 90초)
+const quotesCache = new Map();
+const QUOTE_CACHE_TTL_MS = 90 * 1000;
+
+// 환율 캐시 (유효시간: 180초)
+let cachedExchangeRate = {
+    rate: 1350.0,
+    timestamp: 0
+};
+
+/**
+ * 실시간 USD/KRW 환율 조회 (자산관리 앱 quote-service.js와 동일한 180초 캐시 및 소스)
+ */
+async function getExchangeRate() {
+    const now = Date.now();
+    if (now - cachedExchangeRate.timestamp < 180 * 1000 && cachedExchangeRate.rate > 0) {
+        return cachedExchangeRate.rate;
+    }
+
+    try {
+        const resp = await axios.get('https://api.stock.naver.com/marketindex/exchange/FX_USDKRW', {
+            headers: QUOTE_HEADERS,
+            timeout: 3000
+        });
+        if (resp.data && resp.data.exchangeInfo && resp.data.exchangeInfo.closePrice) {
+            const num = parseFloat(String(resp.data.exchangeInfo.closePrice).replace(/,/g, ''));
+            if (!isNaN(num) && num > 500) {
+                cachedExchangeRate = { rate: num, timestamp: now };
+                return num;
+            }
+        }
+    } catch (e) {
+        try {
+            const resp2 = await axios.get('https://open.er-api.com/v6/latest/USD', { timeout: 3000 });
+            if (resp2.data && resp2.data.rates && resp2.data.rates.KRW) {
+                const num = parseFloat(resp2.data.rates.KRW);
+                cachedExchangeRate = { rate: num, timestamp: now };
+                return num;
+            }
+        } catch (e2) {}
+    }
+
+    return cachedExchangeRate.rate || 1350.0;
+}
+
+function resolveQuoteSymbol(symbol, fullName) {
+    if (!symbol) return null;
+    const cleanSym = String(symbol).trim();
+    const cleanUpper = cleanSym.toUpperCase();
+
+    if (KNOWN_TICKER_MAP[cleanSym]) return KNOWN_TICKER_MAP[cleanSym];
+    if (KNOWN_TICKER_MAP[cleanUpper]) return KNOWN_TICKER_MAP[cleanUpper];
+
+    const codeMatch = (String(fullName || '') + ' ' + cleanSym).match(/\b(\d{6})(\.KS|\.KQ)?\b/);
+    if (codeMatch) {
+        return codeMatch[2] ? `${codeMatch[1]}${codeMatch[2]}` : `${codeMatch[1]}.KS`;
+    }
+
+    if (/^\d{6}$/.test(cleanSym)) {
+        return `${cleanSym}.KS`;
+    }
+
+    if (/^[A-Za-z0-9\.\=\-]+$/.test(cleanSym)) {
+        return cleanUpper;
+    }
+
+    return cleanSym;
+}
+
+async function fetchSingleQuote(resolvedSymbol) {
+    if (!resolvedSymbol) return null;
+
+    const now = Date.now();
+    const cached = quotesCache.get(resolvedSymbol);
+    if (cached && (now - cached.timestamp < QUOTE_CACHE_TTL_MS)) {
+        return cached.data;
+    }
+
+    let quote = null;
+
+    // 1순위: 야후 파이낸스 v8 chart
+    try {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolvedSymbol)}?interval=1d&range=2d`;
+        const res = await axios.get(url, { headers: QUOTE_HEADERS, timeout: 3500 });
+        if (res.data && res.data.chart && res.data.chart.result && res.data.chart.result[0]) {
+            const meta = res.data.chart.result[0].meta;
+            const price = parseFloat(meta.regularMarketPrice);
+            const prev = parseFloat(meta.chartPreviousClose || meta.previousClose);
+
+            if (!isNaN(price) && price > 0) {
+                const change = !isNaN(prev) && prev > 0 ? (price - prev) : 0;
+                const changeRate = !isNaN(prev) && prev > 0 ? (change / prev) * 100 : 0;
+                const currency = (meta.currency || (resolvedSymbol.endsWith('.KS') || resolvedSymbol.endsWith('.KQ') ? 'KRW' : 'USD')).toUpperCase();
+
+                quote = {
+                    price,
+                    prevClose: prev || price,
+                    change,
+                    changeRate,
+                    currency,
+                    symbol: resolvedSymbol
+                };
+            }
+        }
+    } catch (err) {}
+
+    // 2순위: 국내 주식의 경우 네이버 증권 폴링 API 백업
+    if (!quote && (resolvedSymbol.endsWith('.KS') || resolvedSymbol.endsWith('.KQ') || /^\d{6}$/.test(resolvedSymbol))) {
+        const code = resolvedSymbol.replace(/\.(KS|KQ)$/i, '');
+        try {
+            const nUrl = `https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`;
+            const nRes = await axios.get(nUrl, { headers: QUOTE_HEADERS, timeout: 3000 });
+            if (nRes.data && nRes.data.datas && nRes.data.datas.length > 0) {
+                const d = nRes.data.datas[0];
+                const price = parseFloat(String(d.closePrice || 0).replace(/,/g, ''));
+                const chg = parseFloat(String(d.compareToPreviousClosePrice || 0).replace(/,/g, ''));
+                const ratio = parseFloat(String(d.fluctuationsRatio || 0).replace(/,/g, ''));
+                const statName = d.compareToPreviousPrice?.name || 'FLAT';
+                const signedChg = (statName === 'FALLING' || statName === 'DOWN') ? -Math.abs(chg) : Math.abs(chg);
+
+                if (!isNaN(price) && price > 0) {
+                    quote = {
+                        price,
+                        prevClose: price - signedChg,
+                        change: signedChg,
+                        changeRate: ratio,
+                        currency: 'KRW',
+                        symbol: resolvedSymbol
+                    };
+                }
+            }
+        } catch (nErr) {}
+    }
+
+    if (quote) {
+        quotesCache.set(resolvedSymbol, { data: quote, timestamp: now });
+    }
+
+    return quote;
+}
+
+/**
+ * 자산 목록(assets)에 실시간 시세 및 등락률 바인딩 (자산관리 앱과 100% 동일)
+ */
+async function enrichAssetsWithQuotes(assets) {
+    if (!Array.isArray(assets) || assets.length === 0) {
+        return { enrichedAssets: [], exchangeRate: 1350.0 };
+    }
+
+    const exchangeRate = await getExchangeRate();
+
+    const quotePromises = assets.map(async (ast, idx) => {
+        const resolvedSym = resolveQuoteSymbol(ast.symbol, ast.full_name);
+        let q = null;
+        if (resolvedSym) {
+            q = await fetchSingleQuote(resolvedSym);
+        }
+        return { key: ast.id !== undefined ? ast.id : idx, quote: q };
+    });
+
+    const quoteResults = await Promise.all(quotePromises);
+    const quoteMap = new Map();
+    quoteResults.forEach(r => {
+        if (r.quote) quoteMap.set(r.key, r.quote);
+    });
+
+    const enrichedAssets = assets.map((ast, idx) => {
+        const key = ast.id !== undefined ? ast.id : idx;
+        const q = quoteMap.get(key);
+        const userCurrency = (ast.currency || 'KRW').toUpperCase();
+
+        if (!q) {
+            return {
+                ...ast,
+                currentPrice: ast.avg_price,
+                rawPrice: ast.avg_price,
+                priceCurrency: userCurrency,
+                dailyChange: 0,
+                dailyChangeRate: 0,
+                prevClose: ast.avg_price,
+                exchangeRate,
+                hasRealtimeQuote: false
+            };
+        }
+
+        const quoteCurrency = q.currency || 'KRW';
+        let compareCurrentPrice = q.price;
+        let compareDailyChange = q.change;
+
+        if (userCurrency === 'KRW' && quoteCurrency === 'USD') {
+            compareCurrentPrice = q.price * exchangeRate;
+            compareDailyChange = q.change * exchangeRate;
+        } else if (userCurrency === 'USD' && quoteCurrency === 'KRW') {
+            compareCurrentPrice = q.price / exchangeRate;
+            compareDailyChange = q.change / exchangeRate;
+        }
+
+        return {
+            ...ast,
+            currentPrice: compareCurrentPrice,
+            rawPrice: q.price,
+            priceCurrency: quoteCurrency,
+            dailyChange: compareDailyChange,
+            dailyChangeRate: q.changeRate,
+            prevClose: q.prevClose,
+            exchangeRate,
+            hasRealtimeQuote: true
+        };
+    });
+
+    return { enrichedAssets, exchangeRate };
+}
+
 function getKoreanStockName(symbol, fullName) {
     if (!symbol) return fullName || '';
     const cleanSym = symbol.trim().toUpperCase();
     if (KOREAN_STOCK_MAP[cleanSym]) {
         return KOREAN_STOCK_MAP[cleanSym];
     }
-    if (/[가-힣]/.test(symbol)) {
-        return symbol;
+    let name = (fullName || symbol || '').trim();
+    name = name.replace(/\s*\([0-9A-Za-z]{6}\.(?:KS|KQ)\)/gi, '');
+    name = name.replace(/\s*\([0-9]{6}\)/g, '');
+    if (/[가-힣]/.test(name)) {
+        return name;
     }
-    if (fullName && /[가-힣]/.test(fullName)) {
-        return fullName;
-    }
-    return symbol;
+    return name || symbol;
 }
 
 // 실시간 증시 및 환율 캐시 (3분 유효)
@@ -161,5 +401,7 @@ module.exports = {
     KOREAN_STOCK_MAP,
     getKoreanStockName,
     getLiveMarketData,
-    refreshMarketInBackground
+    refreshMarketInBackground,
+    getExchangeRate,
+    enrichAssetsWithQuotes
 };

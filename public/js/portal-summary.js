@@ -121,10 +121,10 @@ function loadSummary() {
             const assetTotalMain = document.getElementById('widgetAssetTotalMain');
             const assetCountText = document.getElementById('widgetAssetCountText');
             if (assetTotalMain && ast) {
-                assetTotalMain.textContent = ast.totalKrw || '₩3,891,239';
+                assetTotalMain.textContent = ast.totalKrw || '₩4,354,215';
             }
             if (assetCountText && ast) {
-                assetCountText.textContent = `${ast.count || (ast.items ? ast.items.length : 14)}개 종목`;
+                assetCountText.textContent = `${ast.count || (ast.items ? ast.items.length : 18)}개 종목`;
             }
 
             // 보유 자산 종목 페이드 티커 가동
@@ -222,12 +222,12 @@ function getFallbackSummaryData() {
         medication: { is_today_taken: true, medication_time: new Date().toISOString().slice(0, 16) },
         hospital: { hospitalName: '순천향대 천안병원', nextVisitDDay: 'D-29', remainingPills: 29, reservationOpenDate: '2026-10-25' },
         asset: {
-            totalKrw: '₩3,891,239', count: 14,
+            totalKrw: '₩4,354,215', count: 18,
             items: [
-                { symbol: 'TIGER 미국나스닥100', name: 'TIGER 미국나스닥100', formattedTotal: '₩1,429,080', diffPercent: '-2.8%', direction: 'down' },
-                { symbol: 'QQQM', name: '나스닥 100 (QQQM)', formattedTotal: '₩766,782', diffPercent: '-1.1%', direction: 'down' },
-                { symbol: 'TIGER 미국배당다우존스', name: 'TIGER 미국배당다우존스', formattedTotal: '₩692,310', diffPercent: '+0.6%', direction: 'up' },
-                { symbol: 'TIGER 미국S&P500', name: 'TIGER 미국S&P500', formattedTotal: '₩624,168', diffPercent: '+2.3%', direction: 'up' }
+                { symbol: 'TIGER 미국나스닥100', name: 'TIGER 미국나스닥100', formattedTotal: '₩1,390,600', diffPercent: '-2.7%', direction: 'down' },
+                { symbol: 'TIGER 미국배당다우존스', name: 'TIGER 미국배당다우존스', formattedTotal: '₩1,086,170', diffPercent: '+56.9%', direction: 'up' },
+                { symbol: 'QQQM', name: '나스닥 100 (QQQM)', formattedTotal: '₩836,354', diffPercent: '+9.1%', direction: 'up' },
+                { symbol: 'TIGER 미국S&P500', name: 'TIGER 미국S&P500', formattedTotal: '₩610,200', diffPercent: '-2.2%', direction: 'down' }
             ]
         },
         news: {

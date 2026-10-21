@@ -5,7 +5,7 @@ const { JWT_SECRET } = require('../config/constants');
 const { db, assetDb, newsDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { getLiveWeatherData } = require('../services/weather.service');
-const { getLiveMarketData, getKoreanStockName } = require('../services/market.service');
+const { getLiveMarketData, getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
 const { getCurrentCpuPercent, getRealMemoryInfo, getSecondaryServerStatus, getDiskUsage } = require('../services/systemMonitor.service');
 
 // KST (Asia/Seoul) 기준 현재 또는 오프셋 시각 문자열 생성 헬퍼 (YYYY-MM-DD HH:mm:ss)
@@ -59,22 +59,11 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
                 const sys = Number(row.systolic);
                 const dia = Number(row.diastolic);
                 const grade = classifyBloodPressure(sys, dia) || {
-                    key: 'normal',
-                    label: '정상 혈압 🟢',
-                    name: '정상 혈압',
-                    desc: '수축기 120 미만 그리고 이완기 80 미만',
-                    color: '#059669',
-                    badgeClass: 'bp-badge-normal'
+                    key: 'normal', label: '정상 혈압 🟢', name: '정상 혈압',
+                    desc: '수축기 120 미만 그리고 이완기 80 미만', color: '#059669', badgeClass: 'bp-badge-normal'
                 };
                 const isToday = row.measured_at ? row.measured_at.startsWith(todayKst) : false;
-                resolve({
-                    systolic: sys,
-                    diastolic: dia,
-                    pulse: row.pulse,
-                    measured_at: row.measured_at,
-                    is_today_measured: isToday,
-                    grade: grade
-                });
+                resolve({ systolic: sys, diastolic: dia, pulse: row.pulse, measured_at: row.measured_at, is_today_measured: isToday, grade });
             });
         });
 
@@ -157,9 +146,16 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
             });
         });
 
-        // 4) 자산 보유 종목 Promise
+        // 4) 자산 보유 종목 Promise (실시간 시세 및 환율 반영)
         const assetsPromise = new Promise((resolve) => {
-            assetDb.all('SELECT symbol, full_name, quantity, avg_price, currency FROM assets WHERE quantity > 0', (err, rows) => resolve(rows || []));
+            assetDb.all('SELECT id, account_id, symbol, full_name, quantity, avg_price, currency FROM assets WHERE quantity > 0 ORDER BY id DESC', async (err, rows) => {
+                try {
+                    const result = await enrichAssetsWithQuotes(rows || []);
+                    resolve(result);
+                } catch (e) {
+                    resolve({ enrichedAssets: rows || [], exchangeRate: 1350.0 });
+                }
+            });
         });
 
         // 5) 실시간 날씨 Promise
@@ -217,7 +213,7 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
         // 7) 실시간 시장 지표 Promise
         const marketPromise = getLiveMarketData();
 
-        const [blood, medication, hospital, memoData, assets, weather, newsRecommendation, breakingArticles, marketData] = await Promise.all([
+        const [blood, medication, hospital, memoData, assetQuoteResult, weather, newsRecommendation, breakingArticles, marketData] = await Promise.all([
             bloodPromise,
             medicationPromise,
             hospitalPromise,
@@ -229,14 +225,26 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
             marketPromise
         ]);
 
-        const assetMap = new Map();
-        let totalKrw = 0;
+        const enrichedAssets = (assetQuoteResult && assetQuoteResult.enrichedAssets) ? assetQuoteResult.enrichedAssets : [];
+        const currentRate = (assetQuoteResult && assetQuoteResult.exchangeRate) ? assetQuoteResult.exchangeRate : 1350.0;
 
-        for (const a of assets) {
-            const isUsd = a.currency === 'USD';
-            const priceInKrw = isUsd ? Math.round(a.avg_price * 1350) : Math.round(a.avg_price);
-            const total = Math.round(a.quantity * priceInKrw);
-            totalKrw += total;
+        const assetMap = new Map();
+        let totalUsd = 0;
+
+        for (const a of enrichedAssets) {
+            const curPrice = (typeof a.currentPrice === 'number' && a.currentPrice > 0) ? a.currentPrice : a.avg_price;
+            const curVal = a.quantity * curPrice;
+            const costVal = a.quantity * a.avg_price;
+            const isUsd = (a.currency || '').toUpperCase() === 'USD';
+
+            const curValKrw = isUsd ? (curVal * currentRate) : curVal;
+            const costValKrw = isUsd ? (costVal * currentRate) : costVal;
+
+            if (isUsd) {
+                totalUsd += curVal;
+            } else {
+                totalUsd += (curVal / currentRate);
+            }
 
             const sym = a.symbol.trim();
             const korName = getKoreanStockName(sym, a.full_name);
@@ -244,26 +252,32 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
                 symbol: sym,
                 name: korName,
                 quantity: 0,
-                total: 0
+                total: 0,
+                costTotal: 0
             };
             existing.quantity += a.quantity;
-            existing.total += total;
+            existing.total += curValKrw;
+            existing.costTotal += costValKrw;
             assetMap.set(sym, existing);
         }
+
+        const totalKrw = Math.round(totalUsd * currentRate);
 
         const sortedAssets = Array.from(assetMap.values())
             .filter(item => item.total > 0)
             .sort((a, b) => b.total - a.total);
 
-        const assetItems = sortedAssets.map((item, idx) => {
-            const diff = (((idx * 1.7) % 7.5) - 2.8).toFixed(1);
+        const assetItems = sortedAssets.map((item) => {
+            const profitPct = item.costTotal > 0 ? ((item.total - item.costTotal) / item.costTotal) * 100 : 0;
+            const diffStr = profitPct.toFixed(1);
+            const isUp = profitPct >= 0;
             return {
                 symbol: item.symbol,
                 name: item.name,
                 quantity: item.quantity,
-                formattedTotal: '₩' + item.total.toLocaleString(),
-                diffPercent: (parseFloat(diff) >= 0 ? '+' : '') + diff + '%',
-                direction: parseFloat(diff) >= 0 ? 'up' : 'down'
+                formattedTotal: '₩' + Math.round(item.total).toLocaleString(),
+                diffPercent: (isUp ? '+' : '') + diffStr + '%',
+                direction: isUp ? 'up' : 'down'
             };
         });
 
@@ -330,7 +344,7 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
             weather: weather || null,
             asset: {
                 totalKrw: '₩' + totalKrw.toLocaleString(),
-                count: assetItems.length,
+                count: enrichedAssets.length,
                 items: assetItems
             },
             news: {
