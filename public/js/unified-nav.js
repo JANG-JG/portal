@@ -128,9 +128,28 @@
         }
     }
 
+    // 포털 메인 페이지(index.html) 여부 판별 헬퍼
+    function isPortalMainPage() {
+        const host = window.location.hostname;
+        const path = window.location.pathname;
+        const isPortalHost = (host === 'j-jg.cc' || host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.'));
+        const isMainPath = (path === '/' || path === '/index.html');
+        return (isPortalHost && isMainPath) || !!document.getElementById('portal-tab-bar');
+    }
+
     // 2. 상단 내비게이션 HTML 컴포넌트 비동기 로드 및 마운트 (localStorage SWR 캐싱)
     async function mountUnifiedNav() {
         ensureUnifiedNavCss();
+
+        // 🛡️ 포털 메인(index.html)에서 접속한 경우 상단 통합 내비게이션 바를 표시하지 않음
+        if (isPortalMainPage()) {
+            const existingNav = document.getElementById('unified-nav-root') || document.getElementById('unavRoot') || document.querySelector('header.unav-header');
+            if (existingNav) existingNav.remove();
+            const existingDrawer = document.getElementById('unavDrawer');
+            if (existingDrawer) existingDrawer.remove();
+            initUnifiedNav();
+            return;
+        }
 
         let cachedHtml = null;
         let cachedVer = null;

@@ -705,8 +705,17 @@
 
             const slides = [];
 
-            // 1. 날씨 슬라이드
+            // 1. 날씨 슬라이드 및 상단 내비게이션 날씨 배지 실시간 동기화
             if (weather && weather.temp && weather.temp !== '-') {
+                const topCityEl = document.getElementById('welcomeWeatherCity');
+                const topTempEl = document.getElementById('welcomeWeatherTemp');
+                const topIconEl = document.getElementById('welcomeWeatherIcon');
+                if (topCityEl) topCityEl.textContent = cityName;
+                if (topTempEl) topTempEl.textContent = weather.temp;
+                if (topIconEl && weatherSlug) {
+                    topIconEl.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
+                }
+
                 slides.push(
                     `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="${weatherTitle}">
                         <span style="display:inline-flex; align-items:center; gap:4px;">${weatherIconSvg}<span>${cityName}</span></span>
