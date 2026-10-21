@@ -1,48 +1,41 @@
 /**
  * 🔔 JG 포털 전용 통합 알림 센터 엔진 (portal-notification.js)
  * - 외부 의존성 없이 단독 동작하는 완전한 알림 센터 모달 컨트롤러
- * - 실시간 미확인 배지 카운트 + 알림 수신 내역 + 맞춤 알림 설정 + 브라우저 웹 푸시 연동
- * - 모듈화 표준 (500줄 이하) 준수
+ * - 미확인 배지 + 카테고리 필터링(속보/일정/날씨/금융/건강/시스템) + 텔레그램 브리핑 시간표 + 푸시
+ * - 규칙 3 준수: 파일당 500줄 이하 모듈화
  */
 (function() {
     'use strict';
-
     let portalNotifSettings = {
-        enabled: 1,
-        hospital_push_enabled: 1,
-        breaking_news_enabled: 1,
-        weather_morning_enabled: 1,
-        weather_morning_time: '07:00',
-        asset_report_enabled: 1,
-        asset_open_enabled: 1,
-        asset_close_enabled: 1,
-        bp_reminder_enabled: 1,
-        bp_reminder_time: '21:00',
-        system_alert_enabled: 1,
-        weekday_med_times: ['08:00', '19:00'],
-        weekday_bp_times: ['07:30', '21:30'],
-        weekend_med_times: ['09:00', '19:30'],
-        weekend_bp_times: ['08:30', '22:00']
+        enabled: 1, hospital_push_enabled: 1, breaking_news_enabled: 1,
+        weather_morning_enabled: 1, weather_morning_time: '07:00',
+        asset_report_enabled: 1, asset_open_enabled: 1, asset_close_enabled: 1,
+        bp_reminder_enabled: 1, bp_reminder_time: '21:00', system_alert_enabled: 1,
+        telegram_briefing_times: ['07:30'],
+        weekday_med_times: ['08:00', '19:00'], weekday_bp_times: ['07:30', '21:30'],
+        weekend_med_times: ['09:00', '19:30'], weekend_bp_times: ['08:30', '22:00']
     };
-
-    let notifHistoryOffset = 0;
+    let notifHistoryOffset = 0, notifHistoryTotal = 0, notifHistoryListItems = [], notifSelectedCategory = 'all';
     const NOTIF_HISTORY_LIMIT = 30;
-    let notifHistoryTotal = 0;
-    let notifHistoryListItems = [];
+    const NOTIF_CATEGORIES = [
+        { key: 'all', label: '전체', icon: '🔔' }, { key: 'breaking', label: '속보', icon: '🚨' },
+        { key: 'calendar', label: '일정', icon: '📅' }, { key: 'weather', label: '날씨', icon: '🌤️' },
+        { key: 'finance', label: '금융', icon: '💰' }, { key: 'health', label: '건강', icon: '🩸' },
+        { key: 'system', label: '시스템', icon: '🖥️' }
+    ];
 
-    // 1. 모달 열기 및 닫기
+    // 1. 모달 제어
     window.openNotificationModal = function() {
         const modal = document.getElementById('notificationModal');
         if (!modal) return;
         modal.classList.add('open');
         modal.style.setProperty('display', 'flex', 'important');
         document.body.style.overflow = 'hidden';
-        switchNotifMainTab('history');
-        updateBrowserPermissionUI();
-        fetchNotificationSettings();
-        fetchNotificationHistory(false);
+        window.switchNotifMainTab('history');
+        window.updateBrowserPermissionUI();
+        window.fetchNotificationSettings();
+        window.fetchNotificationHistory(false);
     };
-
     window.closeNotificationModal = function() {
         const modal = document.getElementById('notificationModal');
         if (modal) {
@@ -51,216 +44,187 @@
         }
         document.body.style.overflow = '';
     };
-
-    // 모달 배경 클릭 시 닫기
     document.addEventListener('click', (e) => {
-        if (e.target && e.target.id === 'notificationModal') {
-            window.closeNotificationModal();
-        }
+        if (e.target && e.target.id === 'notificationModal') window.closeNotificationModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') window.closeNotificationModal();
     });
 
-    // 2. 메인 탭 (수신 내역 vs 설정)
+    // 2. 탭 전환
     window.switchNotifMainTab = function(tab) {
-        const isSettings = tab === 'settings';
-        const settingsView = document.getElementById('notifMainViewSettings');
-        const historyView = document.getElementById('notifMainViewHistory');
-        const settingsTab = document.getElementById('notifMainTabSettings');
-        const historyTab = document.getElementById('notifMainTabHistory');
-
-        if (settingsView) settingsView.style.display = isSettings ? 'block' : 'none';
-        if (historyView) historyView.style.display = isSettings ? 'none' : 'block';
-        if (settingsTab) settingsTab.classList.toggle('active', isSettings);
-        if (historyTab) historyTab.classList.toggle('active', !isSettings);
-
-        if (!isSettings) {
-            fetchNotificationHistory(false);
-        }
+        const isSet = tab === 'settings';
+        const sView = document.getElementById('notifMainViewSettings');
+        const hView = document.getElementById('notifMainViewHistory');
+        const sTab = document.getElementById('notifMainTabSettings');
+        const hTab = document.getElementById('notifMainTabHistory');
+        if (sView) sView.style.display = isSet ? 'block' : 'none';
+        if (hView) hView.style.display = isSet ? 'none' : 'flex';
+        if (sTab) sTab.classList.toggle('active', isSet);
+        if (hTab) hTab.classList.toggle('active', !isSet);
+        if (!isSet) window.fetchNotificationHistory(false);
     };
-
-    // 3. 서브 탭 (평일 vs 주말 알림 시간)
     window.switchNotifSubTab = function(type) {
-        const isWeekday = type === 'weekday';
-        const weekdayView = document.getElementById('notifSubTabWeekday');
-        const weekendView = document.getElementById('notifSubTabWeekend');
-        const weekdayTab = document.getElementById('notifTabWeekday');
-        const weekendTab = document.getElementById('notifTabWeekend');
-
-        if (weekdayView) weekdayView.style.display = isWeekday ? 'block' : 'none';
-        if (weekendView) weekendView.style.display = isWeekday ? 'none' : 'block';
-        if (weekdayTab) weekdayTab.classList.toggle('active', isWeekday);
-        if (weekendTab) weekendTab.classList.toggle('active', !isWeekday);
+        const isWk = type === 'weekday';
+        const wView = document.getElementById('notifSubTabWeekday');
+        const eView = document.getElementById('notifSubTabWeekend');
+        const wTab = document.getElementById('notifTabWeekday');
+        const eTab = document.getElementById('notifTabWeekend');
+        if (wView) wView.style.display = isWk ? 'block' : 'none';
+        if (eView) eView.style.display = isWk ? 'none' : 'block';
+        if (wTab) wTab.classList.toggle('active', isWk);
+        if (eTab) eTab.classList.toggle('active', !isWk);
     };
 
-    // 4. 브라우저 알림 권한 UI
+    // 3. 브라우저 푸시 권한
     window.updateBrowserPermissionUI = function() {
-        const textEl = document.getElementById('notifPermissionStatusText');
-        const btnEl = document.getElementById('btnRequestNotifPermission');
+        const tEl = document.getElementById('notifPermissionStatusText');
+        const bEl = document.getElementById('btnRequestNotifPermission');
         if (!('Notification' in window)) {
-            if (textEl) textEl.textContent = '❌ 이 브라우저는 웹 푸시를 지원하지 않습니다.';
-            if (btnEl) btnEl.style.display = 'none';
+            if (tEl) tEl.textContent = '❌ 이 브라우저는 웹 푸시를 지원하지 않습니다.';
+            if (bEl) bEl.style.display = 'none';
             return;
         }
         if (Notification.permission === 'granted') {
-            if (textEl) textEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
-            if (btnEl) btnEl.style.display = 'none';
+            if (tEl) tEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
+            if (bEl) bEl.style.display = 'none';
         } else if (Notification.permission === 'denied') {
-            if (textEl) textEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
-            if (btnEl) btnEl.style.display = 'none';
+            if (tEl) tEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
+            if (bEl) bEl.style.display = 'none';
         } else {
-            if (textEl) textEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
-            if (btnEl) btnEl.style.display = 'inline-block';
+            if (tEl) tEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
+            if (bEl) bEl.style.display = 'inline-block';
         }
     };
-
     window.requestBrowserNotificationPermission = async function() {
-        if (!('Notification' in window)) {
-            alert('현재 브라우저에서는 알림 권한을 지원하지 않습니다.');
-            return;
-        }
+        if (!('Notification' in window)) return alert('현재 브라우저에서는 알림 권한을 지원하지 않습니다.');
         const perm = await Notification.requestPermission();
-        updateBrowserPermissionUI();
+        window.updateBrowserPermissionUI();
         if (perm === 'granted') {
             await registerWebPushSubscription();
-            alert('🎉 알림 권한이 허용되었습니다!');
+            alert('🎉 알림 권한이 성공적으로 허용되었습니다!');
         } else {
             alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
         }
     };
 
-    // 5. 알림 설정 페치 및 저장
+    // 4. 알림 맞춤 설정 & 텔레그램 브리핑 시간표
     window.fetchNotificationSettings = async function() {
         try {
             const res = await fetch('/api/notification/settings');
             if (!res.ok) return;
             const data = await res.json();
             if (data.success && data.settings) {
-                portalNotifSettings = data.settings;
-                const setCheck = (id, val) => {
-                    const el = document.getElementById(id);
-                    if (el) el.checked = Boolean(val !== 0);
-                };
-                setCheck('notifMasterEnabled', portalNotifSettings.enabled);
-                setCheck('notifBreakingNewsEnabled', portalNotifSettings.breaking_news_enabled);
-                setCheck('notifWeatherMorningEnabled', portalNotifSettings.weather_morning_enabled);
-                setCheck('notifAssetReportEnabled', portalNotifSettings.asset_report_enabled);
-                setCheck('notifAssetOpenEnabled', portalNotifSettings.asset_open_enabled !== 0);
-                setCheck('notifAssetCloseEnabled', portalNotifSettings.asset_close_enabled !== 0);
-                setCheck('notifBpReminderEnabled', portalNotifSettings.bp_reminder_enabled);
-                setCheck('notifHospitalPushEnabled', portalNotifSettings.hospital_push_enabled);
-                setCheck('notifSystemAlertEnabled', portalNotifSettings.system_alert_enabled);
-
-                const setVal = (id, val) => {
-                    const el = document.getElementById(id);
-                    if (el && val) el.value = val;
-                };
-                setVal('inputWeatherTime', portalNotifSettings.weather_morning_time || '07:00');
-                setVal('inputBpReminderTime', portalNotifSettings.bp_reminder_time || '21:00');
-
+                portalNotifSettings = Object.assign(portalNotifSettings, data.settings);
+                const setC = (id, val) => { const el = document.getElementById(id); if (el) el.checked = Boolean(val !== 0); };
+                setC('notifMasterEnabled', portalNotifSettings.enabled);
+                setC('notifBreakingNewsEnabled', portalNotifSettings.breaking_news_enabled);
+                setC('notifWeatherMorningEnabled', portalNotifSettings.weather_morning_enabled);
+                setC('notifAssetReportEnabled', portalNotifSettings.asset_report_enabled);
+                setC('notifAssetOpenEnabled', portalNotifSettings.asset_open_enabled !== 0);
+                setC('notifAssetCloseEnabled', portalNotifSettings.asset_close_enabled !== 0);
+                setC('notifBpReminderEnabled', portalNotifSettings.bp_reminder_enabled);
+                setC('notifHospitalPushEnabled', portalNotifSettings.hospital_push_enabled);
+                setC('notifSystemAlertEnabled', portalNotifSettings.system_alert_enabled);
+                const setV = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+                setV('inputWeatherTime', portalNotifSettings.weather_morning_time || '07:00');
+                setV('inputBpReminderTime', portalNotifSettings.bp_reminder_time || '21:00');
                 renderNotifChips();
             }
-        } catch (e) {
-            console.error('[Notification] 설정 조회 실패:', e);
-        }
+        } catch (e) { console.error('[Notification] 설정 조회 실패:', e); }
     };
-
     window.toggleAssetSubOptions = function(checked) {
-        const openEl = document.getElementById('notifAssetOpenEnabled');
-        const closeEl = document.getElementById('notifAssetCloseEnabled');
-        if (openEl) openEl.checked = checked;
-        if (closeEl) closeEl.checked = checked;
+        ['notifAssetOpenEnabled', 'notifAssetCloseEnabled'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.checked = checked;
+        });
     };
-
     window.handleAssetSubOptionChange = function() {
-        const openEl = document.getElementById('notifAssetOpenEnabled');
-        const closeEl = document.getElementById('notifAssetCloseEnabled');
-        const reportEl = document.getElementById('notifAssetReportEnabled');
-        if (reportEl) reportEl.checked = (openEl && openEl.checked) || (closeEl && closeEl.checked);
+        const oEl = document.getElementById('notifAssetOpenEnabled');
+        const cEl = document.getElementById('notifAssetCloseEnabled');
+        const rEl = document.getElementById('notifAssetReportEnabled');
+        if (rEl) rEl.checked = (oEl && oEl.checked) || (cEl && cEl.checked);
     };
-
     window.toggleNotifMaster = function(checked) {
         portalNotifSettings.enabled = checked ? 1 : 0;
         document.querySelectorAll('#notifMainViewSettings input[type="checkbox"]').forEach(cb => {
             if (cb.id !== 'notifMasterEnabled') cb.checked = checked;
         });
     };
-
     function renderNotifChips() {
-        const renderBox = (containerId, arr, key) => {
-            const container = document.getElementById(containerId);
-            if (!container) return;
+        const renderBox = (cId, arr, key) => {
+            const c = document.getElementById(cId);
+            if (!c) return;
             if (!arr || arr.length === 0) {
-                container.innerHTML = '<span style="font-size:0.75rem; color:#71717a;">등록된 시간 없음</span>';
+                c.innerHTML = '<span style="font-size:0.75rem; color:#71717a;">등록된 시간 없음</span>';
                 return;
             }
-            container.innerHTML = arr.map((t, idx) => `
+            c.innerHTML = arr.map((t, idx) => `
                 <span class="notif-time-chip" style="display:inline-flex; align-items:center; gap:4px; background:#18181b; border:1px solid #27272a; border-radius:4px; padding:2px 6px; font-size:0.75rem; color:#f4f4f5; margin-right:4px;">
                     <span>⏰ ${t}</span>
                     <button type="button" onclick="removeNotifTime('${key}', ${idx})" style="background:none; border:none; color:#a1a1aa; cursor:pointer;" title="삭제">✕</button>
                 </span>
             `).join('');
         };
+        renderBox('containerTelegramBriefingTimes', portalNotifSettings.telegram_briefing_times, 'telegram_briefing_times');
         renderBox('containerWeekdayMedTimes', portalNotifSettings.weekday_med_times, 'weekday_med_times');
         renderBox('containerWeekdayBpTimes', portalNotifSettings.weekday_bp_times, 'weekday_bp_times');
         renderBox('containerWeekendMedTimes', portalNotifSettings.weekend_med_times, 'weekend_med_times');
         renderBox('containerWeekendBpTimes', portalNotifSettings.weekend_bp_times, 'weekend_bp_times');
     }
-
-    window.addNotifTime = function(dayType, category) {
-        const inputId = dayType === 'weekday'
-            ? (category === 'med' ? 'inputWeekdayMedTime' : 'inputWeekdayBpTime')
-            : (category === 'med' ? 'inputWeekendMedTime' : 'inputWeekendBpTime');
-        const key = `${dayType}_${category}_times`;
-        const inputEl = document.getElementById(inputId);
-        if (!inputEl || !inputEl.value) { alert('추가할 알림 시간을 먼저 선택해 주세요.'); return; }
-        const val = inputEl.value;
-        if (!portalNotifSettings[key]) portalNotifSettings[key] = [];
-        if (portalNotifSettings[key].includes(val)) { alert('이미 등록된 시간입니다.'); return; }
-        portalNotifSettings[key].push(val);
-        portalNotifSettings[key].sort();
-        inputEl.value = '';
+    window.addTelegramBriefingTime = function() {
+        const el = document.getElementById('inputTelegramBriefingTime');
+        if (!el || !el.value) return alert('추가할 브리핑 발송 시간을 먼저 선택해 주세요.');
+        const val = el.value.trim();
+        if (!/^\d{2}:\d{2}$/.test(val)) return alert('올바른 시간(HH:MM)을 선택해 주세요.');
+        if (!portalNotifSettings.telegram_briefing_times) portalNotifSettings.telegram_briefing_times = [];
+        if (portalNotifSettings.telegram_briefing_times.includes(val)) return alert('이미 등록된 브리핑 시간입니다: ' + val);
+        portalNotifSettings.telegram_briefing_times.push(val);
+        portalNotifSettings.telegram_briefing_times.sort();
+        el.value = '';
         renderNotifChips();
     };
-
-    window.removeNotifTime = function(key, index) {
+    window.addNotifTime = function(dayType, category) {
+        const inputId = dayType === 'weekday' ? (category === 'med' ? 'inputWeekdayMedTime' : 'inputWeekdayBpTime') : (category === 'med' ? 'inputWeekendMedTime' : 'inputWeekendBpTime');
+        const key = `${dayType}_${category}_times`;
+        const el = document.getElementById(inputId);
+        if (!el || !el.value) return alert('추가할 알림 시간을 먼저 선택해 주세요.');
+        const val = el.value;
+        if (!portalNotifSettings[key]) portalNotifSettings[key] = [];
+        if (portalNotifSettings[key].includes(val)) return alert('이미 등록된 시간입니다.');
+        portalNotifSettings[key].push(val);
+        portalNotifSettings[key].sort();
+        el.value = '';
+        renderNotifChips();
+    };
+    window.removeNotifTime = function(key, idx) {
         if (portalNotifSettings[key]) {
-            portalNotifSettings[key].splice(index, 1);
+            portalNotifSettings[key].splice(idx, 1);
             renderNotifChips();
         }
     };
-
     window.saveNotificationSettings = async function() {
-        const getCheck = (id) => {
-            const el = document.getElementById(id);
-            return el ? (el.checked ? 1 : 0) : 1;
-        };
-        const getVal = (id, fallback) => {
-            const el = document.getElementById(id);
-            return (el && el.value.trim()) ? el.value.trim() : fallback;
-        };
-
-        portalNotifSettings.enabled = getCheck('notifMasterEnabled');
-        portalNotifSettings.breaking_news_enabled = getCheck('notifBreakingNewsEnabled');
-        portalNotifSettings.weather_morning_enabled = getCheck('notifWeatherMorningEnabled');
-        portalNotifSettings.weather_morning_time = getVal('inputWeatherTime', '07:00');
-        portalNotifSettings.asset_open_enabled = getCheck('notifAssetOpenEnabled');
-        portalNotifSettings.asset_close_enabled = getCheck('notifAssetCloseEnabled');
-        portalNotifSettings.asset_report_enabled = (portalNotifSettings.asset_open_enabled || portalNotifSettings.asset_close_enabled) ? 1 : getCheck('notifAssetReportEnabled');
-        portalNotifSettings.bp_reminder_enabled = getCheck('notifBpReminderEnabled');
-        portalNotifSettings.bp_reminder_time = getVal('inputBpReminderTime', '21:00');
-        portalNotifSettings.hospital_push_enabled = getCheck('notifHospitalPushEnabled');
-        portalNotifSettings.system_alert_enabled = getCheck('notifSystemAlertEnabled');
-
+        const getC = (id) => { const el = document.getElementById(id); return el ? (el.checked ? 1 : 0) : 1; };
+        const getV = (id, def) => { const el = document.getElementById(id); return (el && el.value.trim()) ? el.value.trim() : def; };
+        portalNotifSettings.enabled = getC('notifMasterEnabled');
+        portalNotifSettings.breaking_news_enabled = getC('notifBreakingNewsEnabled');
+        portalNotifSettings.weather_morning_enabled = getC('notifWeatherMorningEnabled');
+        portalNotifSettings.weather_morning_time = getV('inputWeatherTime', '07:00');
+        portalNotifSettings.asset_open_enabled = getC('notifAssetOpenEnabled');
+        portalNotifSettings.asset_close_enabled = getC('notifAssetCloseEnabled');
+        portalNotifSettings.asset_report_enabled = (portalNotifSettings.asset_open_enabled || portalNotifSettings.asset_close_enabled) ? 1 : getC('notifAssetReportEnabled');
+        portalNotifSettings.bp_reminder_enabled = getC('notifBpReminderEnabled');
+        portalNotifSettings.bp_reminder_time = getV('inputBpReminderTime', '21:00');
+        portalNotifSettings.hospital_push_enabled = getC('notifHospitalPushEnabled');
+        portalNotifSettings.system_alert_enabled = getC('notifSystemAlertEnabled');
         try {
-            const saveRes = await fetch('/api/notification/settings', {
+            const res = await fetch('/api/notification/settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(portalNotifSettings)
             });
-            const result = await saveRes.json();
-            if (portalNotifSettings.enabled) {
-                await registerWebPushSubscription();
-            }
-            updateBrowserPermissionUI();
+            const result = await res.json();
+            if (portalNotifSettings.enabled) await registerWebPushSubscription();
+            window.updateBrowserPermissionUI();
             alert(result.message || '알림 설정이 성공적으로 저장되었습니다.');
             window.closeNotificationModal();
         } catch (err) {
@@ -268,24 +232,138 @@
             alert('알림 설정 저장 중 오류가 발생했습니다.');
         }
     };
+    window.sendTestNotification = async function() {
+        try {
+            const res = await fetch('/api/notification/test', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                alert('🎉 테스트 푸시 알림이 발송되었습니다!\n수신 내역 탭에서도 확인하실 수 있습니다.');
+                setTimeout(() => window.fetchNotificationHistory(false), 500);
+            } else {
+                alert('테스트 알림 발송 실패: ' + (data.message || '서버 오류'));
+            }
+        } catch (e) { alert('테스트 알림 요청 오류: ' + e.message); }
+    };
+    window.toggleNotifInfoTooltip = function(e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        const el = document.getElementById('notifInfoTooltipWrapper');
+        if (el) el.classList.toggle('active');
+    };
 
-    // 6. 알림 수신 내역 조회 & 읽음/삭제 처리
+    // 5. 카테고리 판별 & 필터링 바
+    function getNotificationCategory(item) {
+        const type = (item.type || '').toLowerCase();
+        const full = `${type} ${(item.title || '')} ${(item.body || '')}`.toLowerCase();
+        if (type === 'breaking' || full.includes('속보')) return { key: 'breaking', label: '속보', icon: '🚨', colorClass: 'cat-breaking' };
+        if (type === 'calendar' || full.includes('일정') || full.includes('캘린더')) return { key: 'calendar', label: '일정', icon: '📅', colorClass: 'cat-calendar' };
+        if (type === 'weather' || full.includes('날씨') || full.includes('기온') || full.includes('강수')) return { key: 'weather', label: '날씨', icon: '🌤️', colorClass: 'cat-weather' };
+        if (['asset', 'economy', 'finance', 'stock'].includes(type) || full.includes('증시') || full.includes('환율') || full.includes('코스피')) return { key: 'finance', label: '금융', icon: '💰', colorClass: 'cat-finance' };
+        if (['blood_pressure', 'medication', 'hospital'].includes(type) || full.includes('혈압') || full.includes('복약') || full.includes('병원')) return { key: 'health', label: '건강', icon: '🩸', colorClass: 'cat-health' };
+        if (['system', 'backup', 'server'].includes(type) || full.includes('서버') || full.includes('다운')) return { key: 'system', label: '시스템', icon: '🖥️', colorClass: 'cat-system' };
+        return { key: 'general', label: '일반', icon: '🔔', colorClass: 'cat-general' };
+    }
+    function renderCategoryChips() {
+        const barEl = document.getElementById('notifCategoryBar');
+        if (!barEl) return;
+        const counts = { all: notifHistoryListItems.length }, unreads = { all: 0 };
+        NOTIF_CATEGORIES.forEach(c => { if (c.key !== 'all') { counts[c.key] = 0; unreads[c.key] = 0; } });
+        notifHistoryListItems.forEach(item => {
+            const cat = getNotificationCategory(item);
+            if (counts[cat.key] !== undefined) {
+                counts[cat.key]++;
+                if (item.is_read === 0) unreads[cat.key]++;
+            }
+            if (item.is_read === 0) unreads.all++;
+        });
+        barEl.innerHTML = NOTIF_CATEGORIES.map(cat => {
+            const isActive = notifSelectedCategory === cat.key;
+            const total = counts[cat.key] || 0;
+            const unread = unreads[cat.key] || 0;
+            const dot = unread > 0 ? '<span class="notif-cat-unread-dot"></span>' : '';
+            return `<button type="button" class="notif-cat-chip ${isActive ? 'active' : ''}" onclick="selectNotificationCategory('${cat.key}')"><span>${cat.icon} ${cat.label}</span>${dot}<span class="notif-cat-badge">${total}</span></button>`;
+        }).join('');
+    }
+    window.selectNotificationCategory = function(catKey) {
+        notifSelectedCategory = catKey;
+        renderCategoryChips();
+        renderFilteredNotificationList();
+    };
+    function formatNotificationTime(dateStr) {
+        if (!dateStr) return '';
+        const m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+        if (!m) return String(dateStr).replace('T', ' ').slice(5, 16);
+        const target = new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10), parseInt(m[4], 10), parseInt(m[5], 10));
+        const diffMs = Date.now() - target;
+        if (new Date().toDateString() === target.toDateString()) {
+            if (diffMs < 60000) return '방금 전';
+            const mins = Math.floor(diffMs / 60000);
+            return mins < 60 ? `${mins}분 전` : `${Math.floor(mins / 60)}시간 전`;
+        }
+        return `${m[2]}-${m[3]} ${m[4]}:${m[5]}`;
+    }
+    function renderFilteredNotificationList() {
+        const listEl = document.getElementById('notifHistoryList');
+        const countLabel = document.getElementById('notifHistoryCountLabel');
+        const loadMoreBox = document.getElementById('notifLoadMoreBox');
+        if (!listEl) return;
+        const filtered = notifSelectedCategory === 'all'
+            ? notifHistoryListItems
+            : notifHistoryListItems.filter(item => getNotificationCategory(item).key === notifSelectedCategory);
+        const unreadCount = filtered.filter(i => i.is_read === 0).length;
+        if (countLabel) {
+            const catName = NOTIF_CATEGORIES.find(c => c.key === notifSelectedCategory)?.label || '전체';
+            const unreadTxt = unreadCount > 0 ? `, 미확인 ${unreadCount}건` : '';
+            countLabel.textContent = `${catName} 알림 (${filtered.length}/${notifHistoryTotal}건${unreadTxt})`;
+        }
+        if (filtered.length === 0) {
+            listEl.innerHTML = '<div style="text-align: center; color: #71717a; padding: 3rem 0; font-size: 0.88rem;">해당 분류의 알림 내역이 없습니다.</div>';
+            if (loadMoreBox) loadMoreBox.style.display = 'none';
+            return;
+        }
+        listEl.innerHTML = filtered.map(item => {
+            const cat = getNotificationCategory(item);
+            const timeStr = formatNotificationTime(item.created_at);
+            const linkUrl = item.url || '#';
+            const isUnread = item.is_read === 0;
+            const newBadge = isUnread ? '<span class="notif-badge-new">NEW</span>' : '';
+            const safeUrl = linkUrl.replace(/'/g, "\\'");
+            return `
+                <div class="notif-card-item ${isUnread ? 'is-unread' : 'is-read'}" id="notif-card-${item.id}">
+                    <div class="notif-card-header">
+                        <span class="notif-card-category-badge ${cat.colorClass}">
+                            <span>${cat.icon}</span> <span>${cat.label}</span>
+                        </span>
+                        <div class="notif-card-meta">
+                            <span class="notif-card-time">${timeStr}</span>
+                            ${newBadge}
+                        </div>
+                    </div>
+                    <div class="notif-card-content">
+                        <h4 class="notif-card-title">${escapeHtml(item.title || '알림')}</h4>
+                        <p class="notif-card-body">${escapeHtml(item.body || '')}</p>
+                        <div style="display:flex; align-items:center; gap:0.4rem; margin-top:0.45rem;">
+                            <button type="button" onclick="openAndReadNotification(${item.id}, '${safeUrl}')" class="btn-history-tool" style="padding:2px 8px; font-size:0.75rem;">바로가기 ↗</button>
+                            ${isUnread ? `<button type="button" onclick="markSingleAsRead(${item.id})" class="btn-history-tool" style="padding:2px 8px; font-size:0.75rem;">읽음</button>` : ''}
+                            <button type="button" onclick="deleteNotificationItem(${item.id})" class="btn-history-tool btn-danger-tool" style="padding:2px 8px; font-size:0.75rem; margin-left:auto;">🗑️</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        if (loadMoreBox) loadMoreBox.style.display = notifHistoryListItems.length < notifHistoryTotal ? 'block' : 'none';
+    }
+
+    // 6. 알림 수신 내역 비동기 조회 & 상태 관리
     window.refreshNotificationHistory = function() {
         notifHistoryOffset = 0;
         notifHistoryListItems = [];
-        fetchNotificationHistory(false);
+        window.fetchNotificationHistory(false);
     };
-
     window.loadMoreNotificationHistory = function() {
         notifHistoryOffset += NOTIF_HISTORY_LIMIT;
-        fetchNotificationHistory(true);
+        window.fetchNotificationHistory(true);
     };
-
     window.fetchNotificationHistory = async function(isAppend = false) {
-        const listEl = document.getElementById('notifHistoryList');
-        const loadMoreBox = document.getElementById('notifLoadMoreBox');
-        const countLabel = document.getElementById('notifHistoryCountLabel');
-
         try {
             const res = await fetch(`/api/notification/history?limit=${NOTIF_HISTORY_LIMIT}&offset=${notifHistoryOffset}`);
             if (!res.ok) return;
@@ -293,116 +371,37 @@
             const history = data.history || [];
             const unreadCount = data.unreadCount || 0;
             notifHistoryTotal = data.totalCount || 0;
-
-            // 뱃지 업데이트
             const updateBadge = (id, cnt) => {
                 const b = document.getElementById(id);
-                if (b) {
-                    b.textContent = cnt;
-                    b.style.display = cnt > 0 ? 'inline-block' : 'none';
-                }
+                if (b) { b.textContent = cnt; b.style.display = cnt > 0 ? 'inline-block' : 'none'; }
             };
-            updateBadge('unavNotifBadge', unreadCount);
-            updateBadge('notifHistoryBadge', unreadCount);
-
-            if (isAppend) {
-                notifHistoryListItems = notifHistoryListItems.concat(history);
-            } else {
-                notifHistoryListItems = history;
-            }
-
-            if (countLabel) {
-                countLabel.textContent = `알림 내역 (${notifHistoryListItems.length}/${notifHistoryTotal}건, 미확인 ${unreadCount}건)`;
-            }
-
-            if (!listEl) return;
-            if (notifHistoryListItems.length === 0) {
-                listEl.innerHTML = '<div style="text-align: center; color: #71717a; padding: 2.5rem 0; font-size: 0.88rem;">수신된 푸시 알림 내역이 없습니다.</div>';
-                if (loadMoreBox) loadMoreBox.style.display = 'none';
-                return;
-            }
-
-            const typeIconMap = {
-                'breaking': '🚨', 'weather': '🌤️', 'asset': '💰', 'economy': '💰',
-                'blood_pressure': '🩸', 'medication': '💊', 'hospital': '🏥', 'system': '🖥️', 'test': '🔔'
-            };
-
-            listEl.innerHTML = notifHistoryListItems.map(item => {
-                const icon = typeIconMap[item.type] || '🔔';
-                const timeStr = item.created_at ? item.created_at.replace('T', ' ').slice(5, 16) : '';
-                const linkUrl = item.url || '#';
-                const isUnread = item.is_read === 0;
-                const cardClass = isUnread ? 'notif-history-card is-unread' : 'notif-history-card is-read';
-                const newBadge = isUnread ? '<span class="badge-unread-dot" style="background:#f43f5e; color:#fff; font-size:0.65rem; font-weight:700; padding:1px 5px; border-radius:3px;">NEW</span>' : '';
-
-                return `
-                    <div class="${cardClass}" id="notif-card-${item.id}" style="background:${isUnread ? '#18181b' : '#121215'}; border:1px solid ${isUnread ? '#3f3f46' : '#27272a'}; border-radius:8px; padding:0.75rem 0.85rem; margin-bottom:0.5rem; display:flex; gap:0.65rem; align-items:flex-start;">
-                        <span style="font-size:1.25rem; line-height:1; flex-shrink:0;">${icon}</span>
-                        <div style="flex:1; min-width:0;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                <div style="display:flex; align-items:center; gap:0.35rem; min-width:0;">
-                                    ${newBadge}
-                                    <span style="font-weight:700; font-size:0.85rem; color:#f4f4f5; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${item.title || '알림'}</span>
-                                </div>
-                                <span style="font-size:0.72rem; color:#71717a; flex-shrink:0;">${timeStr}</span>
-                            </div>
-                            <p style="margin:0 0 0.45rem; font-size:0.8rem; color:#a1a1aa; line-height:1.4;">${item.body || ''}</p>
-                            <div style="display:flex; align-items:center; gap:0.4rem;">
-                                <button type="button" onclick="openAndReadNotification(${item.id}, '${linkUrl}')" style="background:#27272a; border:none; border-radius:4px; color:#f4f4f5; font-size:0.72rem; padding:3px 8px; cursor:pointer;">바로가기 ↗</button>
-                                ${isUnread ? `<button type="button" onclick="markSingleAsRead(${item.id})" style="background:#18181b; border:1px solid #27272a; border-radius:4px; color:#a1a1aa; font-size:0.72rem; padding:2px 7px; cursor:pointer;">읽음</button>` : ''}
-                                <button type="button" onclick="deleteNotificationItem(${item.id})" style="background:transparent; border:none; color:#71717a; font-size:0.72rem; padding:2px 5px; cursor:pointer; margin-left:auto;">🗑️</button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            if (loadMoreBox) {
-                loadMoreBox.style.display = notifHistoryListItems.length < notifHistoryTotal ? 'block' : 'none';
-            }
+            ['unavNotifBadge', 'unavMobileNotifBadge', 'notifHistoryBadge'].forEach(id => updateBadge(id, unreadCount));
+            notifHistoryListItems = isAppend ? notifHistoryListItems.concat(history) : history;
+            renderCategoryChips();
+            renderFilteredNotificationList();
         } catch (e) {
             console.error('[Notification] 내역 조회 오류:', e);
-            if (listEl) listEl.innerHTML = '<div style="text-align: center; color: #f43f5e; padding: 2rem 0; font-size: 0.85rem;">알림 내역을 불러오지 못했습니다.</div>';
         }
     };
-
     window.markAllNotificationsAsRead = async function() {
         try {
             const res = await fetch('/api/notification/history/read-all', { method: 'POST' });
             const data = await res.json();
-            if (data.success) {
-                refreshNotificationHistory();
-            }
-        } catch (e) {
-            console.error('전체 읽음 처리 오류:', e);
-        }
+            if (data.success) window.refreshNotificationHistory();
+        } catch (e) { console.error('전체 읽음 처리 오류:', e); }
     };
-
     window.openAndReadNotification = async function(id, url) {
-        try {
-            await fetch(`/api/notification/history/${id}/read`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                keepalive: true
-            });
-        } catch (e) {}
-        if (url && url !== '#') {
-            window.location.href = url;
-        } else {
-            markSingleAsRead(id);
-        }
+        try { await fetch(`/api/notification/history/${id}/read`, { method: 'POST', keepalive: true }); } catch (e) {}
+        if (url && url !== '#') window.location.href = url;
+        else window.markSingleAsRead(id);
     };
-
     window.markSingleAsRead = async function(id) {
         try {
             await fetch(`/api/notification/history/${id}/read`, { method: 'POST' });
-            const card = document.getElementById(`notif-card-${id}`);
-            if (card) {
-                card.style.background = '#121215';
-                card.style.borderColor = '#27272a';
-                const badge = card.querySelector('.badge-unread-dot');
-                if (badge) badge.remove();
-            }
+            const item = notifHistoryListItems.find(i => i.id === id);
+            if (item) item.is_read = 1;
+            renderCategoryChips();
+            renderFilteredNotificationList();
             const b = document.getElementById('unavNotifBadge');
             if (b) {
                 const cur = Math.max(0, parseInt(b.textContent || '1', 10) - 1);
@@ -411,22 +410,20 @@
             }
         } catch (e) {}
     };
-
     window.deleteNotificationItem = async function(id) {
         if (!confirm('이 알림을 삭제하시겠습니까?')) return;
         try {
             const res = await fetch(`/api/notification/history/${id}`, { method: 'DELETE' });
             const data = await res.json();
-            if (data.success) refreshNotificationHistory();
+            if (data.success) window.refreshNotificationHistory();
         } catch (e) { alert('삭제 오류: ' + e.message); }
     };
-
     window.clearAllNotificationHistory = async function() {
         if (!confirm('모든 알림 내역을 삭제하시겠습니까?')) return;
         try {
             const res = await fetch('/api/notification/history/clear/all', { method: 'DELETE' });
             const data = await res.json();
-            if (data.success) refreshNotificationHistory();
+            if (data.success) window.refreshNotificationHistory();
         } catch (e) { alert('전체 삭제 오류: ' + e.message); }
     };
 
@@ -438,62 +435,42 @@
             const keyRes = await fetch('/api/notification/vapid-key');
             const { publicKey } = await keyRes.json();
             if (!publicKey) return;
-
             const reg = await navigator.serviceWorker.ready;
             let sub = await reg.pushManager.getSubscription();
             if (!sub) {
                 const padding = '='.repeat((4 - publicKey.length % 4) % 4);
                 const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
                 const rawData = window.atob(base64);
-                const outputArray = new Uint8Array(rawData.length);
-                for (let i = 0; i < rawData.length; ++i) {
-                    outputArray[i] = rawData.charCodeAt(i);
-                }
-                sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: outputArray
-                });
+                const out = new Uint8Array(rawData.length);
+                for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
+                sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: out });
             }
             await fetch('/api/notification/subscribe', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subscription: sub, userAgent: navigator.userAgent })
+                body: JSON.stringify({ subscription: sub })
             });
-        } catch (e) {
-            console.warn('[Push] 구독 등록 실패:', e);
-        }
+        } catch (e) { console.error('[WebPush] 구독 오류:', e); }
+    }
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    function bindNotifTrigger() {
-        const btn = document.getElementById('btnNotifCenter');
-        if (btn && !btn.dataset.boundClick) {
-            btn.dataset.boundClick = 'true';
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.openNotificationModal();
+    // 8. 뱃지 카운트 초기화 및 60초 주기 갱신
+    async function initUnreadBadge() {
+        try {
+            const res = await fetch('/api/notification/unread-count');
+            if (!res.ok) return;
+            const data = await res.json();
+            const cnt = data.unreadCount || 0;
+            ['unavNotifBadge', 'unavMobileNotifBadge'].forEach(id => {
+                const b = document.getElementById(id);
+                if (b) { b.textContent = cnt; b.style.display = cnt > 0 ? 'inline-block' : 'none'; }
             });
-        }
+        } catch (e) {}
     }
-
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const modal = document.getElementById('notificationModal');
-            if (modal && (modal.classList.contains('open') || modal.style.display === 'flex')) {
-                window.closeNotificationModal();
-            }
-        }
-    });
-
-    // 8. 초기 로드
-    if (document.readyState === 'loading') {
-        window.addEventListener('DOMContentLoaded', () => {
-            bindNotifTrigger();
-            fetchNotificationHistory(false);
-            setTimeout(registerWebPushSubscription, 1500);
-        });
-    } else {
-        bindNotifTrigger();
-        fetchNotificationHistory(false);
-        setTimeout(registerWebPushSubscription, 1500);
-    }
+    const init = () => { initUnreadBadge(); setInterval(initUnreadBadge, 60000); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
 })();
