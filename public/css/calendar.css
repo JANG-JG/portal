@@ -1,364 +1,515 @@
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body {
-            max-width: 100%;
-            overflow-x: hidden;
-        }
-        body {
-            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-            background-color: #f8fafc;
-            color: #0f172a;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .main-container {
-            max-width: 1280px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 1.25rem 1rem 3rem 1rem;
-            flex: 1;
-            box-sizing: border-box;
-        }
-        .card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 1rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            padding: 1.25rem;
-            box-sizing: border-box;
-            overflow: hidden;
-            width: 100%;
-        }
-        .cal-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-        }
-        .cal-title-group {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        .cal-nav-btn {
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            padding: 0.45rem 0.85rem;
-            border-radius: 0.5rem;
-            font-size: 0.85rem;
-            font-weight: 700;
-            cursor: pointer;
-            color: #334155;
-            transition: all 0.15s;
-        }
-        .cal-nav-btn:hover { background: #e2e8f0; color: #0f172a; }
-        .cal-nav-btn.today { background: #4f46e5; color: #ffffff; border-color: #4338ca; }
-        .cal-grid {
-            display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
-            gap: 1px;
-            background-color: #e2e8f0;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.75rem;
-            overflow: hidden;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .cal-day-name {
-            background: #f8fafc;
-            padding: 0.5rem 0.15rem;
-            text-align: center;
-            font-size: 0.75rem;
-            font-weight: 800;
-            color: #64748b;
-            min-width: 0;
-            overflow: hidden;
-        }
-        .cal-day-name.sun { color: #dc2626; }
-        .cal-day-name.sat { color: #2563eb; }
-        .cal-cell {
-            background: #ffffff;
-            min-height: 85px;
-            min-width: 0;
-            padding: 0.3rem 0.25rem;
-            display: flex;
-            flex-direction: column;
-            cursor: pointer;
-            transition: background-color 0.1s;
-            overflow: hidden;
-            box-sizing: border-box;
-        }
-        .cal-cell:hover { background-color: #f8fafc; }
-        .cal-cell.other-month { background-color: #fafbfc; opacity: 0.5; }
-        .cal-cell.today {
-            background-color: #f5f3ff;
-            box-shadow: inset 0 0 0 1.5px #6366f1;
-        }
-        .cal-cell.selected {
-            background-color: #eff6ff;
-            box-shadow: inset 0 0 0 2px #2563eb;
-        }
-        .cal-date-num {
-            font-size: 0.8rem;
-            font-weight: 800;
-            margin-bottom: 0.2rem;
-            color: #334155;
-            line-height: 1;
-        }
-        .cal-cell.sun .cal-date-num { color: #dc2626; }
-        .cal-cell.sat .cal-date-num { color: #2563eb; }
-        .cal-cell.holiday .cal-date-num { color: #dc2626 !important; font-weight: 800; }
-        .event-badge {
-            font-size: 0.68rem;
-            font-weight: 600;
-            padding: 0.15rem 0.25rem;
-            border-radius: 0.3rem;
-            margin-bottom: 0.2rem;
-            white-space: normal;
-            word-break: break-all;
-            overflow-wrap: anywhere;
-            line-height: 1.2;
-            color: #ffffff;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            box-sizing: border-box;
-        }
-        .event-badge.completed {
-            text-decoration: line-through;
-            opacity: 0.6;
-        }
-        .event-more-badge {
-            font-size: 0.62rem;
-            font-weight: 700;
-            color: #64748b;
-            background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.25rem;
-            padding: 0.08rem 0.2rem;
-            text-align: center;
-            line-height: 1.1;
-            display: block;
-            margin-top: 1px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .layout-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1.25rem;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        @media (min-width: 992px) {
-            .layout-grid {
-                grid-template-columns: 2.2fr 1fr;
-            }
-            .cal-cell { min-height: 105px; }
-        }
-        @media (max-width: 640px) {
-            .main-container {
-                padding: 0.75rem 0.4rem 3.5rem 0.4rem;
-            }
-            .card {
-                padding: 0.75rem 0.5rem;
-                border-radius: 0.75rem;
-            }
-            .cal-header {
-                margin-bottom: 0.6rem;
-                gap: 0.4rem;
-            }
-            #calMonthDisplay {
-                font-size: 1.1rem !important;
-            }
-            .cal-nav-btn {
-                padding: 0.35rem 0.55rem;
-                font-size: 0.75rem;
-            }
-            #calRoutineBadge {
-                font-size: 0.68rem !important;
-                padding: 0.15rem 0.45rem !important;
-            }
-            .cal-cell {
-                min-height: 65px;
-                padding: 0.2rem 0.15rem;
-            }
-            .cal-date-num {
-                font-size: 0.72rem;
-                margin-bottom: 0.15rem;
-            }
-            .event-badge {
-                font-size: 0.6rem;
-                padding: 0.1rem 0.15rem;
-                line-height: 1.15;
-                margin-bottom: 0.15rem;
-                border-radius: 0.2rem;
-            }
-            .cal-day-name {
-                padding: 0.4rem 0.1rem;
-                font-size: 0.7rem;
-            }
-        }
-        .btn-add {
-            background: #4f46e5;
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 700;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .btn-add:hover { background: #4338ca; }
-        .event-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.65rem 0.75rem;
-            border: 1px solid #e2e8f0;
-            border-radius: 0.65rem;
-            margin-bottom: 0.5rem;
-            background: #f8fafc;
-            gap: 0.5rem;
-        }
-        .event-item.completed {
-            opacity: 0.6;
-            background: #f1f5f9;
-        }
-        /* 🎨 커스텀 범례 모달 스타일 */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 23, 42, 0.55);
-            backdrop-filter: blur(4px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            padding: 1rem;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease;
-        }
-        .modal-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .modal-card {
-            background: #ffffff;
-            border-radius: 1rem;
-            max-width: 480px;
-            width: 100%;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-            border: 1px solid #e2e8f0;
-            overflow: hidden;
-            transform: scale(0.95);
-            transition: transform 0.2s ease;
-        }
-        .modal-overlay.active .modal-card {
-            transform: scale(1);
-        }
-        .color-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            display: inline-block;
-            flex-shrink: 0;
-        }
-        .color-preset-circle {
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: all 0.15s;
-        }
-        .color-preset-circle:hover {
-            transform: scale(1.15);
-        }
-        .color-preset-circle.selected {
-            border-color: #0f172a;
-            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
-        }
+/* ==============================================================================
+ * 📅 스마트 라이프 캘린더 스타일시트 (calendar.css)
+ * - Benchmark: Google Calendar & Notion Calendar (Clean Modern Slate)
+ * - Mobile-First & Desktop Split View (반응형 2열 레이아웃)
+ * - Mobile Dot Indicator (가로 스크롤 및 텍스트 짤림 원천 방지)
+ * ============================================================================== */
 
-        /* 💡 일정 제목 자동완성 추천 레이어 */
-        .autocomplete-dropdown {
-            position: absolute;
-            top: calc(100% + 4px);
-            left: 0;
-            right: 0;
-            z-index: 100;
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
-            border-radius: 0.65rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-            max-height: 240px;
-            overflow-y: auto;
-            overscroll-behavior: contain;
-        }
-        .autocomplete-header {
-            padding: 0.45rem 0.65rem;
-            background: #f8fafc;
-            border-bottom: 1px solid #f1f5f9;
-            font-size: 0.7rem;
-            font-weight: 700;
-            color: #64748b;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .autocomplete-item {
-            padding: 0.55rem 0.65rem;
-            border-bottom: 1px solid #f8fafc;
-            cursor: pointer;
-            transition: background 0.1s ease;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 0.5rem;
-        }
-        .autocomplete-item:last-child {
-            border-bottom: none;
-        }
-        .autocomplete-item:hover,
-        .autocomplete-item.active {
-            background-color: #f1f5f9;
-        }
-        .autocomplete-item.active {
-            background-color: #eff6ff;
-            border-left: 3px solid #4f46e5;
-        }
-        .autocomplete-title {
-            font-size: 0.82rem;
-            font-weight: 700;
-            color: #1e293b;
-            word-break: keep-all;
-        }
-        .autocomplete-match {
-            color: #4f46e5;
-            background: #eef2ff;
-            border-radius: 2px;
-            padding: 0 2px;
-            font-weight: 800;
-        }
-        .autocomplete-meta {
-            font-size: 0.72rem;
-            color: #64748b;
-            margin-top: 2px;
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-            flex-wrap: wrap;
-        }
-        .autocomplete-badge {
-            font-size: 0.68rem;
-            font-weight: 700;
-            padding: 1px 5px;
-            border-radius: 4px;
-            color: #ffffff;
-        }
+:root {
+    --cal-bg-page: #f8fafc;
+    --cal-bg-card: #ffffff;
+    --cal-bg-subtle: #f1f5f9;
+    --cal-bg-hover: #f8fafc;
+    
+    --cal-border: #e2e8f0;
+    --cal-border-strong: #cbd5e1;
+    --cal-border-focus: #1a73e8;
+
+    --cal-text-primary: #0f172a;
+    --cal-text-secondary: #334155;
+    --cal-text-muted: #64748b;
+
+    --cal-blue: #1a73e8;
+    --cal-blue-hover: #1557b0;
+    --cal-blue-light: #eff6ff;
+
+    --cal-rose: #e11d48;
+    --cal-sky: #0284c7;
+    --cal-emerald: #059669;
+    --cal-amber: #d97706;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    background-color: var(--cal-bg-page) !important;
+    color: var(--cal-text-primary) !important;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    letter-spacing: -0.015em;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 메인 컨테이너 */
+.main-container {
+    max-width: 1360px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 1.25rem 1rem 4rem 1rem;
+    flex: 1;
+    box-sizing: border-box;
+}
+
+/* 2열 데스크탑 / 1열 모바일 반응형 그리드 */
+.layout-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    width: 100%;
+}
+
+@media (min-width: 1024px) {
+    .layout-grid {
+        grid-template-columns: minmax(0, 2.3fr) minmax(360px, 1fr);
+        align-items: start;
+    }
+}
+
+/* 카드 서피스 */
+.card {
+    background: var(--cal-bg-card);
+    border: 1px solid var(--cal-border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    box-sizing: border-box;
+    width: 100%;
+}
+
+/* 캘린더 네비게이션 헤더 */
+.cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.cal-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+#calMonthDisplay {
+    font-size: 1.35rem !important;
+    font-weight: 800 !important;
+    color: var(--cal-text-primary) !important;
+    letter-spacing: -0.03em;
+    margin: 0;
+}
+
+#calRoutineBadge {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    background: #f3e8ff !important;
+    color: #7e22ce !important;
+    border: 1px solid #e9d5ff !important;
+    padding: 0.2rem 0.6rem !important;
+    border-radius: 9999px !important;
+}
+
+/* 네비게이션 버튼 */
+.cal-nav-btn {
+    background: var(--cal-bg-subtle);
+    border: 1px solid var(--cal-border-strong);
+    padding: 0.4rem 0.8rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    color: var(--cal-text-secondary);
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.cal-nav-btn:hover {
+    background: #e2e8f0;
+    color: var(--cal-text-primary);
+}
+
+.cal-nav-btn.today {
+    background: var(--cal-blue);
+    color: #ffffff;
+    border-color: var(--cal-blue);
+}
+
+.cal-nav-btn.today:hover {
+    background: var(--cal-blue-hover);
+}
+
+/* 캘린더 그리드 */
+.cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1px;
+    background-color: var(--cal-border);
+    border: 1px solid var(--cal-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    width: 100%;
+}
+
+/* 요일 헤더 */
+.cal-day-name {
+    background: #f8fafc;
+    padding: 0.55rem 0.25rem;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--cal-text-muted);
+    user-select: none;
+}
+
+.cal-day-name.sun { color: var(--cal-rose); }
+.cal-day-name.sat { color: var(--cal-sky); }
+
+/* 날짜 셀 */
+.cal-cell {
+    background: var(--cal-bg-card);
+    min-height: 98px;
+    min-width: 0;
+    padding: 0.35rem 0.3rem;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+    position: relative;
+    user-select: none;
+}
+
+.cal-cell:hover {
+    background-color: #f8fafc;
+}
+
+.cal-cell.other-month {
+    background-color: #fafbfc;
+    opacity: 0.45;
+}
+
+.cal-cell.selected {
+    background-color: var(--cal-blue-light) !important;
+    box-shadow: inset 0 0 0 2px var(--cal-blue);
+}
+
+/* 날짜 번호 */
+.cal-date-num {
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--cal-text-secondary);
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-cell.sun .cal-date-num { color: var(--cal-rose); }
+.cal-cell.sat .cal-date-num { color: var(--cal-sky); }
+.cal-cell.holiday .cal-date-num { color: var(--cal-rose) !important; font-weight: 800; }
+
+/* 오늘 날짜 (Google Calendar Blue Badge) */
+.cal-cell.today .cal-date-num {
+    background: var(--cal-blue) !important;
+    color: #ffffff !important;
+    font-weight: 800;
+}
+
+/* 이벤트 배지 (데스크탑) */
+.event-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.25;
+    color: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.event-badge.completed {
+    text-decoration: line-through;
+    opacity: 0.55;
+}
+
+.event-more-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--cal-text-muted);
+    background: #f1f5f9;
+    border: 1px solid var(--cal-border);
+    border-radius: 4px;
+    padding: 0.08rem 0.3rem;
+    text-align: center;
+    line-height: 1.1;
+    display: block;
+    margin-top: 1px;
+}
+
+/* 일정 추가 버튼 */
+.btn-add {
+    background: var(--cal-blue);
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.btn-add:hover {
+    background: var(--cal-blue-hover);
+}
+
+/* 개별 일정 항목 카드 */
+.event-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--cal-border);
+    border-radius: var(--radius-md);
+    margin-bottom: 0.5rem;
+    background: #f8fafc;
+    gap: 0.6rem;
+    transition: all 0.15s ease;
+}
+
+.event-item:hover {
+    background: #ffffff;
+    border-color: var(--cal-border-strong);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.event-item.completed {
+    opacity: 0.55;
+    background: #f1f5f9;
+}
+
+/* 범례 & 카테고리 안내 바 (가로 스크롤) */
+.legend-section {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--cal-border);
+}
+
+#legendContainer {
+    display: flex;
+    gap: 0.65rem;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--cal-text-muted);
+    overflow-x: auto;
+    white-space: nowrap;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+}
+
+#legendContainer::-webkit-scrollbar { display: none; }
+
+#legendContainer > span,
+#customLegendsContainer > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #f1f5f9;
+    padding: 0.25rem 0.55rem;
+    border-radius: 9999px;
+    border: 1px solid var(--cal-border);
+    font-weight: 600;
+}
+
+/* 모달 & 바텀시트 */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-card {
+    background: #ffffff;
+    border-radius: var(--radius-lg);
+    max-width: 480px;
+    width: 100%;
+    border: 1px solid var(--cal-border);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    transform: scale(0.96);
+    transition: transform 0.25s ease;
+}
+
+.modal-overlay.active .modal-card {
+    transform: scale(1);
+}
+
+.color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+.color-preset-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s ease;
+}
+
+.color-preset-circle:hover {
+    transform: scale(1.15);
+}
+
+.color-preset-circle.selected {
+    border-color: #0f172a;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9);
+}
+
+/* 자동완성 드롭다운 */
+.autocomplete-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0; right: 0;
+    z-index: 100;
+    background: #ffffff;
+    border: 1px solid var(--cal-border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.12);
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.autocomplete-item {
+    padding: 0.55rem 0.65rem;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.autocomplete-item:hover, .autocomplete-item.active {
+    background-color: var(--cal-blue-light);
+}
+
+.autocomplete-match {
+    color: var(--cal-blue);
+    background: #dbeafe;
+    border-radius: 2px;
+    padding: 0 2px;
+    font-weight: 800;
+}
+
+/* 📱 모바일 최적화 (Dot Indicator & Bottom Sheet) */
+@media (max-width: 640px) {
+    .main-container {
+        padding: 0.75rem 0.4rem 4rem 0.4rem;
+    }
+    .card {
+        padding: 0.85rem 0.65rem;
+        border-radius: var(--radius-md);
+    }
+    .cal-header {
+        margin-bottom: 0.65rem;
+    }
+    #calMonthDisplay {
+        font-size: 1.15rem !important;
+    }
+    .cal-nav-btn {
+        padding: 0.35rem 0.6rem;
+        font-size: 0.78rem;
+    }
+    .cal-cell {
+        min-height: 64px;
+        padding: 0.2rem 0.15rem;
+        align-items: center;
+    }
+    .cal-date-num {
+        font-size: 0.78rem;
+        width: 22px;
+        height: 22px;
+        margin-bottom: 2px;
+    }
+
+    /* 🎯 모바일에서는 긴 텍스트 배지 대신 Google Calendar 식 도트(Dot)로 변환 */
+    .event-badge {
+        width: 7px;
+        height: 7px;
+        min-width: 7px;
+        padding: 0;
+        border-radius: 50%;
+        color: transparent;
+        overflow: hidden;
+        display: inline-block;
+        margin: 1px;
+        box-shadow: none;
+    }
+    .event-more-badge {
+        font-size: 0.6rem;
+        padding: 0 3px;
+        border-radius: 9999px;
+        margin-top: 1px;
+    }
+
+    /* 모바일 바텀시트 모달 변환 */
+    .modal-overlay {
+        align-items: flex-end;
+        padding: 0;
+    }
+    .modal-card {
+        max-width: 100%;
+        border-radius: 1.25rem 1.25rem 0 0;
+        transform: translateY(100%);
+    }
+    .modal-overlay.active .modal-card {
+        transform: translateY(0);
+    }
+}
