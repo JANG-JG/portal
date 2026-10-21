@@ -285,29 +285,89 @@
             }
         }
 
-        function selectDate(dateStr) {
+        function selectDate(dateStr, openModalOnMobile = true) {
             selectedDateStr = dateStr;
+            renderCalendar();
+            renderSelectedDateEvents();
+            if (openModalOnMobile && window.innerWidth <= 1023) {
+                openMobileScheduleModal();
+            }
+        }
+
+        function openMobileScheduleModal() {
+            const card = document.getElementById('scheduleDetailCard');
+            const backdrop = document.getElementById('scheduleModalBackdrop');
+            if (card) card.classList.add('mobile-modal-open');
+            if (backdrop) backdrop.classList.add('active');
+        }
+
+        function closeMobileScheduleModal() {
+            const card = document.getElementById('scheduleDetailCard');
+            const backdrop = document.getElementById('scheduleModalBackdrop');
+            if (card) card.classList.remove('mobile-modal-open');
+            if (backdrop) backdrop.classList.remove('active');
+            cancelEventForm();
+        }
+
+        function formatLocalIsoDate(dateObj) {
+            const y = dateObj.getFullYear();
+            const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const d = String(dateObj.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        // 어제(-1) / 내일(+1) 날짜 이동 (모달 내 버튼 및 좌우 스와이프 연동)
+        function shiftSelectedDate(offsetDays) {
+            const [y, m, d] = selectedDateStr.split('-').map(Number);
+            const target = new Date(y, m - 1, d + offsetDays);
+            const nextDateStr = formatLocalIsoDate(target);
+
+            currentYear = target.getFullYear();
+            currentMonth = target.getMonth();
+            selectedDateStr = nextDateStr;
+
             renderCalendar();
             renderSelectedDateEvents();
         }
 
         function renderSelectedDateEvents() {
             const display = document.getElementById('selectedDateDisplay');
+            const subtext = document.getElementById('selectedDateSubtext');
             const list = document.getElementById('selectedDateEventsList');
             const dateInput = document.getElementById('inputEventDate');
+            const prevBtn = document.getElementById('btnPrevDay');
+            const nextBtn = document.getElementById('btnNextDay');
 
-            const [y, m, d] = selectedDateStr.split('-');
-            display.textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일 일정`;
+            const [y, m, d] = selectedDateStr.split('-').map(Number);
+            const selDateObj = new Date(y, m - 1, d);
+            const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+            const dowName = dayNames[selDateObj.getDay()];
+
+            display.textContent = `${y}년 ${m}월 ${d}일 (${dowName}) 일정`;
+
+            // 어제 / 내일 버튼 라벨에 날짜 표시
+            if (prevBtn && nextBtn) {
+                const prevObj = new Date(y, m - 1, d - 1);
+                const nextObj = new Date(y, m - 1, d + 1);
+                prevBtn.textContent = `‹ 어제 (${prevObj.getMonth() + 1}/${prevObj.getDate()})`;
+                nextBtn.textContent = `내일 (${nextObj.getMonth() + 1}/${nextObj.getDate()}) ›`;
+            }
+
             if (dateInput && !document.getElementById('editingEventId')?.value) {
                 dateInput.value = selectedDateStr;
             }
 
             const dayEvents = allEvents.filter(ev => ev.date === selectedDateStr);
+            if (subtext) {
+                subtext.textContent = dayEvents.length > 0
+                    ? `총 ${dayEvents.length}건의 일정이 있습니다.`
+                    : '일정을 추가하거나 완료 체크하세요.';
+            }
 
             if (dayEvents.length === 0) {
                 list.innerHTML = `
-                    <div style="text-align: center; padding: 2.5rem 1rem; color: #94a3b8; font-size: 0.85rem;">
-                        <span style="font-size: 2rem; display: block; margin-bottom: 0.5rem;">🏖️</span>
+                    <div style="text-align: center; padding: 2.2rem 1rem; color: #94a3b8; font-size: 0.85rem;">
+                        <span style="font-size: 1.85rem; display: block; margin-bottom: 0.45rem;">🏖️</span>
                         등록된 일정이 없습니다. [+ 일정 추가]를 눌러 등록해보세요.
                     </div>
                 `;
@@ -652,8 +712,61 @@
         }
 
 
+        // 모바일 상세 일정 모달 및 달력 좌우 스와이프 제스처 바인딩
+        function initScheduleModalSwipe() {
+            const modalCard = document.getElementById('scheduleDetailCard');
+            if (!modalCard) return;
+
+            let startX = 0;
+            let startY = 0;
+            let isSwiping = false;
+
+            modalCard.addEventListener('touchstart', (e) => {
+                if (e.touches.length !== 1) return;
+                // 입력 폼 컨트롤 위에서 터치한 경우는 스와이프 제외
+                const tag = e.target.tagName;
+                if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') {
+                    isSwiping = false;
+                    return;
+                }
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                isSwiping = true;
+            }, { passive: true });
+
+            modalCard.addEventListener('touchend', (e) => {
+                if (!isSwiping || e.changedTouches.length !== 1) return;
+                isSwiping = false;
+
+                const endX = e.changedTouches[0].clientX;
+                const endY = e.changedTouches[0].clientY;
+                const dx = endX - startX;
+                const dy = endY - startY;
+
+                // 가로 이동 거리가 50px 이상이고 세로 스크롤보다 1.5배 이상 클 때만 어제/내일 전환
+                if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                    if (dx < 0) {
+                        // 왼쪽으로 밀기 -> 내일(+1일) 일정
+                        shiftSelectedDate(1);
+                    } else {
+                        // 오른쪽으로 밀기 -> 어제(-1일) 일정
+                        shiftSelectedDate(-1);
+                    }
+                }
+            }, { passive: true });
+
+            // ESC 키로 모바일 상세 모달 닫기
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modalCard.classList.contains('mobile-modal-open')) {
+                    closeMobileScheduleModal();
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             fetchCategories();
             fetchEvents();
             initTitleAutocomplete();
+            initScheduleModalSwipe();
         });
+

@@ -455,45 +455,104 @@ body {
     font-weight: 800;
 }
 
-/* 📱 모바일 최적화 (Dot Indicator & Bottom Sheet) */
-@media (max-width: 640px) {
-    .main-container {
-        padding: 0.75rem 0.4rem 4rem 0.4rem;
+/* 데스크탑에서는 모바일 모달 전용 UI 요소 숨김 */
+.schedule-modal-backdrop,
+.mobile-modal-handle,
+.mobile-modal-nav {
+    display: none;
+}
+
+.schedule-detail-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* 📱 태블릿·모바일 최적화 (1023px 이하: 달력 위아래 균등 꽉 참 + 날짜 터치 시 상세 일정 모달 팝업) */
+@media (max-width: 1023px) {
+    html, body {
+        height: 100dvh;
+        overflow: hidden;
     }
-    .card {
-        padding: 0.85rem 0.65rem;
+
+    /* 상단 네비바(54px)와 하단 뉴스 티커(약 62px) 사이를 정확히 채움 */
+    .main-container {
+        height: calc(100dvh - 54px);
+        padding: 0.45rem 0.4rem calc(62px + 0.4rem) 0.4rem;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .layout-grid {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+    }
+
+    /* 1. 메인 캘린더 카드: 남은 세로 공간을 100% 채우고 내부 그리드를 위아래 균등 분배 */
+    .cal-main-card {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        padding: 0.65rem 0.55rem;
         border-radius: var(--radius-md);
     }
+
     .cal-header {
-        margin-bottom: 0.65rem;
+        margin-bottom: 0.45rem;
+        gap: 0.4rem;
+        flex-shrink: 0;
     }
+
     #calMonthDisplay {
-        font-size: 1.15rem !important;
+        font-size: 1.12rem !important;
     }
+
+    #calRoutineBadge {
+        font-size: 0.68rem !important;
+        padding: 0.15rem 0.5rem !important;
+    }
+
     .cal-nav-btn {
-        padding: 0.35rem 0.6rem;
-        font-size: 0.78rem;
+        padding: 0.3rem 0.55rem;
+        font-size: 0.75rem;
     }
+
+    /* 달력 격자: 첫 줄(요일 헤더)은 auto, 나머지 주(Week) 행들은 1fr로 위아래 균등 배분 */
+    .cal-grid {
+        flex: 1;
+        min-height: 0;
+        grid-template-rows: auto;
+        grid-auto-rows: minmax(0, 1fr);
+    }
+
     .cal-day-name {
-        padding: 0.35rem 0.1rem;
+        padding: 0.3rem 0.1rem;
         font-size: 0.7rem;
     }
+
     .cal-cell {
-        min-height: 50px;
+        min-height: 0;
+        height: 100%;
         padding: 0.25rem 0.1rem;
         /* 도트를 날짜 아래 가로 한 줄로 배치 */
         flex-direction: row;
         flex-wrap: wrap;
         justify-content: center;
         align-content: flex-start;
-        gap: 2px;
+        gap: 3px;
     }
+
     .cal-date-num {
         font-size: 0.78rem;
         width: 22px;
         height: 22px;
-        /* 날짜 번호가 한 줄을 단독 점유하도록 좌우 여백으로 채움 */
-        margin: 0 calc(50% - 11px) 1px;
+        /* 날짜 번호가 첫 줄을 단독 점유하도록 좌우 여백으로 채움 */
+        margin: 0 calc(50% - 11px) 2px;
     }
 
     /* 🎯 모바일에서는 긴 텍스트 배지 대신 Google Calendar 식 도트(Dot)로 변환 */
@@ -511,6 +570,7 @@ body {
         margin: 0;
         box-shadow: none;
     }
+
     .event-more-badge {
         font-size: 0.58rem;
         padding: 0 2px;
@@ -519,13 +579,132 @@ body {
         line-height: 6px;
         margin: 0;
     }
+
+    /* 하단 일정 분류 & 색상 안내 바 (달력 카드 하단에 고정 포함) */
     .legend-section {
-        margin-top: 0.65rem;
-        padding-top: 0.6rem;
+        margin-top: 0.45rem;
+        padding-top: 0.45rem;
+        flex-shrink: 0;
     }
 
-    /* 모바일 바텀시트 모달 변환 */
+    /* 2. 모바일 상세 일정 모달 팝업 & 배경 딤 */
+    .schedule-modal-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(3px);
+        z-index: 9500;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.22s ease;
+    }
+
+    .schedule-modal-backdrop.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .schedule-detail-card {
+        position: fixed;
+        left: 0.65rem;
+        right: 0.65rem;
+        top: 50%;
+        width: auto;
+        max-height: calc(100dvh - 130px);
+        z-index: 9600;
+        border-radius: 1.15rem;
+        padding: 0.85rem 0.95rem 1rem 0.95rem;
+        box-shadow: 0 22px 45px -10px rgba(15, 23, 42, 0.32);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-46%) scale(0.95);
+        transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        overflow: hidden;
+    }
+
+    .schedule-detail-card.mobile-modal-open {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(-50%) scale(1);
+    }
+
+    .schedule-detail-body {
+        overflow-y: auto;
+        max-height: calc(100dvh - 280px);
+        padding-right: 2px;
+    }
+
+    .mobile-modal-handle {
+        display: block;
+        width: 40px;
+        height: 4px;
+        background: #cbd5e1;
+        border-radius: 9999px;
+        margin: 0 auto 0.55rem auto;
+        flex-shrink: 0;
+    }
+
+    .mobile-modal-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.35rem;
+        margin-bottom: 0.65rem;
+        padding-bottom: 0.55rem;
+        border-bottom: 1px dashed var(--cal-border);
+        flex-shrink: 0;
+    }
+
+    .day-shift-btn {
+        background: var(--cal-bg-subtle);
+        border: 1px solid var(--cal-border-strong);
+        color: var(--cal-text-secondary);
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.32rem 0.6rem;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        white-space: nowrap;
+        user-select: none;
+    }
+
+    .day-shift-btn:active {
+        background: #e2e8f0;
+    }
+
+    .swipe-guide-badge {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: var(--cal-blue);
+        background: var(--cal-blue-light);
+        border: 1px solid #bfdbfe;
+        padding: 0.22rem 0.5rem;
+        border-radius: 9999px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .mobile-modal-close-btn {
+        background: #f8fafc;
+        border: 1px solid var(--cal-border);
+        color: var(--cal-text-muted);
+        width: 28px;
+        height: 28px;
+        border-radius: var(--radius-sm);
+        font-size: 0.9rem;
+        font-weight: 800;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+
+    /* 분류 관리 모달은 상세 일정 모달보다 위에 표시 */
     .modal-overlay {
+        z-index: 9999;
         align-items: flex-end;
         padding: 0;
     }
@@ -538,3 +717,4 @@ body {
         transform: translateY(0);
     }
 }
+
