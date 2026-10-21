@@ -47,10 +47,14 @@ function openQuickSearchModal() {
     const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
     if (modal) {
         modal.classList.add('active');
+        modal.classList.add('open');
         modal.style.setProperty('display', 'flex', 'important');
         const input = document.getElementById('qsInput');
         if (input) {
-            setTimeout(() => input.focus(), 100);
+            setTimeout(() => {
+                input.focus();
+                input.select();
+            }, 60);
         }
         document.body.style.overflow = 'hidden';
     }
@@ -60,6 +64,7 @@ function closeQuickSearchModal() {
     const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
     if (modal) {
         modal.classList.remove('active');
+        modal.classList.remove('open');
         modal.style.setProperty('display', 'none', 'important');
         document.body.style.overflow = '';
     }

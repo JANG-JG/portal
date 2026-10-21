@@ -377,21 +377,32 @@ html, body {
 }
 
 .cmd-nav-logout {
+.cmd-nav-logout {
     display: inline-flex;
     align-items: center;
-    padding: 4px 8px;
-    font-size: 0.75rem;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
     color: var(--text-muted);
     text-decoration: none;
-    border-radius: var(--radius-sm);
-    transition: color 0.12s ease;
+    transition: all 0.12s ease;
+    flex-shrink: 0;
 }
 
 .cmd-nav-logout:hover {
     color: var(--status-rose);
+    border-color: var(--status-rose);
+    background: var(--bg-subtle);
 }
 
-/* 모바일 & 태블릿 반응형 네비게이션 최적화 (9-dot 앱 런처 상시 노출) */
+.cmd-logout-text {
+    display: none !important;
+}
+
+/* 모바일 & 태블릿 반응형 네비게이션 최적화 (날씨, 알림, 로그아웃, 9-dot 앱 런처 상시 노출) */
 @media (max-width: 768px) {
     .cmd-nav-container {
         height: 48px;
@@ -414,15 +425,28 @@ html, body {
     .cmd-nav-right {
         gap: 4px !important;
         flex-shrink: 0 !important;
+        align-items: center;
     }
     .cmd-nav-weather {
-        display: none !important; /* 모바일 네비바 공간 확보 위해 숨김 (헤더/하단바에 이미 노출) */
+        display: inline-flex !important;
+        align-items: center;
+        gap: 2px;
+        padding: 3px 5px;
+        font-size: 0.72rem;
+        flex-shrink: 0;
     }
     .cmd-nav-logout {
-        display: none !important; /* 9-dot 메뉴 및 하단에서 사용하므로 모바일 헤더 숨김 */
+        display: inline-flex !important;
+        width: 30px;
+        height: 30px;
+        flex-shrink: 0 !important;
+    }
+    .cmd-logout-text {
+        display: none !important;
     }
     .cmd-nav-search-btn {
         padding: 4px 6px;
+        flex-shrink: 0 !important;
     }
     .cmd-nav-search-btn .cmd-search-text,
     .cmd-nav-search-btn .cmd-kbd {
@@ -1176,10 +1200,32 @@ html, body {
 }
 
 /* ==============================================================================
- * 1. 🩸 혈압 & 건강 관리 (col-span-4)
+ * 1. 🩸💊 건강 관리 (혈압·약·병원 통합 카드 col-span-6)
  * ============================================================================== */
-.col-blood {
-    grid-column: span 4;
+.col-blood,
+.col-health {
+    grid-column: span 6;
+}
+
+.bento-health-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
+.bento-health-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    .bento-health-grid {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+    }
 }
 
 .bento-stat-3col {
@@ -1234,10 +1280,10 @@ html, body {
 }
 
 /* ==============================================================================
- * 2. 💰 총 자산 포트폴리오 (col-span-4)
+ * 2. 💰 총 자산 포트폴리오 (col-span-6)
  * ============================================================================== */
 .col-asset {
-    grid-column: span 4;
+    grid-column: span 6;
 }
 
 .bento-asset-summary {
@@ -1489,14 +1535,15 @@ html, body {
     background: rgba(0, 0, 0, 0.82) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
-    z-index: 9999 !important;
-    display: none !important;
+    z-index: 10000002 !important;
+    display: none;
     justify-content: center !important;
     align-items: flex-start !important;
     padding: 24px 1rem 2rem !important;
 }
 
-.qs-modal-backdrop.active {
+.qs-modal-backdrop.active,
+.qs-modal-backdrop.open {
     display: flex !important;
 }
 
@@ -1681,7 +1728,7 @@ html, body {
  * 📱 모바일 반응형 (가로 스크롤 완전 0px 보장)
  * ============================================================================== */
 @media (max-width: 1024px) {
-    .col-blood, .col-asset, .col-infra, .col-life, .col-memo {
+    .col-blood, .col-health, .col-asset, .col-infra, .col-life, .col-memo {
         grid-column: span 12 !important;
     }
     .col-news, .col-ops {
@@ -1731,7 +1778,7 @@ html, body {
         gap: 0.75rem;
     }
 
-    .col-blood, .col-asset, .col-infra, .col-news, .col-ops, .col-life, .col-memo {
+    .col-blood, .col-health, .col-asset, .col-infra, .col-news, .col-ops, .col-life, .col-memo {
         grid-column: span 1 !important;
     }
 

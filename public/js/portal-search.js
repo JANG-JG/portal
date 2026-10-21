@@ -73,6 +73,7 @@
             const input = document.getElementById('qsInput');
             if (!modal) return;
             modal.classList.add('active');
+            modal.classList.add('open');
             modal.style.setProperty('display', 'flex', 'important');
             document.body.style.overflow = 'hidden';
             setTimeout(() => {
@@ -82,21 +83,25 @@
                 }
             }, 50);
         }
+        window.openQuickSearchModal = openQuickSearchModal;
 
         function closeQuickSearchModal() {
             const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
             if (!modal) return;
             modal.classList.remove('active');
+            modal.classList.remove('open');
             modal.style.setProperty('display', 'none', 'important');
             document.body.style.overflow = '';
             qsFocusedIndex = -1;
         }
+        window.closeQuickSearchModal = closeQuickSearchModal;
 
         function handleQsBackdropClick(e) {
             if (e.target.id === 'qsModalBackdrop' || e.target.classList.contains('qs-modal-backdrop') || e.target.id === 'quickSearchModal') {
                 closeQuickSearchModal();
             }
         }
+        window.handleQsBackdropClick = handleQsBackdropClick;
 
         function clearQsInput() {
             const input = document.getElementById('qsInput');
@@ -110,6 +115,7 @@
             qsLastResults = null;
             renderQsInitialState();
         }
+        window.clearQsInput = clearQsInput;
 
         function selectQsCategory(cat) {
             currentQsCategory = cat;
