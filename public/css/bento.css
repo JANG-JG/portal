@@ -675,18 +675,15 @@ html, body {
 }
 
 /* ==============================================================================
- * 📱 모바일 반응형 (가로 스크롤 완전 0px 보장)
+ * 📱 데스크톱 중소형 창 & 모바일 반응형 (가로 스크롤 완전 0px 보장)
  * ============================================================================== */
 @media (max-width: 1024px) {
-    .col-blood, .col-asset, .col-memo, .col-admin {
-        grid-column: span 12;
-    }
-    .col-news, .col-schedule {
-        grid-column: span 12;
+    .col-blood, .col-asset, .col-memo, .col-admin, .col-news, .col-schedule {
+        grid-column: span 6;
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 679px) {
     .bento-container {
         padding: 0 0.65rem 2.5rem;
     }

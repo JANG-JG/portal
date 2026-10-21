@@ -1037,9 +1037,14 @@ body.modal-open {
  * ============================================================================== */
 .bento-grid {
     display: grid;
-    grid-template-columns: repeat(12, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.15rem;
     width: 100%;
+    align-items: stretch;
+}
+
+.bento-grid > .bento-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
 }
 
 /* 카드 기본 쉘 */
@@ -1223,17 +1228,17 @@ body.modal-open {
 }
 
 /* ==============================================================================
- * 1. 🩸💊 건강 관리 (혈압·약·병원 통합 카드 col-span-6)
+ * 1. 🩸💊 건강 관리 (혈압·약·병원 통합 카드 2열 동적 배치)
  * ============================================================================== */
 .col-blood,
 .col-health {
-    grid-column: span 6;
+    grid-column: span 1;
 }
 
 .bento-health-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.85rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    gap: 0.75rem;
     margin-bottom: 0.75rem;
 }
 
@@ -1244,7 +1249,7 @@ body.modal-open {
     min-width: 0;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 679px) {
     .bento-health-grid {
         grid-template-columns: 1fr;
         gap: 0.65rem;
@@ -1303,10 +1308,10 @@ body.modal-open {
 }
 
 /* ==============================================================================
- * 2. 💰 총 자산 포트폴리오 (col-span-6)
+ * 2. 💰 총 자산 포트폴리오 (2열 동적 배치)
  * ============================================================================== */
 .col-asset {
-    grid-column: span 6;
+    grid-column: span 1;
 }
 
 .bento-asset-summary {
@@ -1356,10 +1361,10 @@ body.modal-open {
 }
 
 /* ==============================================================================
- * 3. 📅 복약 & 병원 진료 (col-span-4)
+ * 3. 📅 복약 & 병원 진료 (2열 동적 배치)
  * ============================================================================== */
 .col-infra {
-    grid-column: span 4;
+    grid-column: span 1;
 }
 
 .bento-ops-list {
@@ -1398,10 +1403,10 @@ body.modal-open {
 }
 
 /* ==============================================================================
- * 4. 📰 실시간 주요 뉴스 (col-span-7) - 1px 분할 리스트
+ * 4. 📰 실시간 주요 뉴스 (2열 동적 배치) - 1px 분할 리스트
  * ============================================================================== */
 .col-news {
-    grid-column: span 7;
+    grid-column: span 1;
 }
 
 .bento-news-list {
@@ -1482,10 +1487,10 @@ body.modal-open {
 }
 
 /* ==============================================================================
- * 5. 🖥️ 서버 인프라 관제 (col-span-5)
+ * 5. 🖥️ 서버 인프라 관리 (2열 동적 배치)
  * ============================================================================== */
 .col-ops {
-    grid-column: span 5;
+    grid-column: span 1;
 }
 
 .bento-infra-grid {
@@ -1874,14 +1879,15 @@ body.modal-open {
 }
 
 /* ==============================================================================
- * 📱 모바일 반응형 (가로 스크롤 완전 0px 보장)
+ * 📱 데스크톱 중소형 창 & 모바일 반응형 (가로 스크롤 완전 0px 보장)
  * ============================================================================== */
-@media (max-width: 1024px) {
-    .col-blood, .col-health, .col-asset, .col-infra, .col-life, .col-memo {
-        grid-column: span 12 !important;
+@media (min-width: 680px) and (max-width: 960px) {
+    .bento-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.85rem;
     }
-    .col-news, .col-ops {
-        grid-column: span 12 !important;
+    .bento-card {
+        padding: 0.95rem;
     }
 }
 
@@ -1922,6 +1928,16 @@ body.modal-open {
         gap: 0.5rem;
     }
 
+    .bento-stat-val {
+        font-size: 1.25rem;
+    }
+
+    .bento-asset-big-val {
+        font-size: 1.35rem;
+    }
+}
+
+@media (max-width: 679px) {
     .bento-grid {
         grid-template-columns: 1fr;
         gap: 0.75rem;
@@ -1933,14 +1949,6 @@ body.modal-open {
 
     .bento-card {
         padding: 0.95rem;
-    }
-
-    .bento-stat-val {
-        font-size: 1.25rem;
-    }
-
-    .bento-asset-big-val {
-        font-size: 1.35rem;
     }
 }
 
@@ -3086,7 +3094,7 @@ body.modal-open {
 
 .server-dual-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
     gap: 0.5rem;
     margin-bottom: 0.6rem;
     min-width: 0;
@@ -3094,7 +3102,7 @@ body.modal-open {
     box-sizing: border-box;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 679px) {
     .server-dual-grid {
         grid-template-columns: 1fr;
     }

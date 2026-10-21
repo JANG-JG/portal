@@ -1125,7 +1125,7 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* 📜 알림 카드 컨테이너 (좌우 여백 6px로 카드가 화면 거의 꽉 차도록 확장) */
+/* 📜 알림 카드 컨테이너 (좌우 여백 6px로 카드가 화면 거의 꽉 차도록 확장, 데스크톱 2열 동적 배치) */
 .notif-history-scroll {
     flex: 1 !important;
     overflow-y: visible !important;
@@ -1135,6 +1135,50 @@
     flex-direction: column !important;
     gap: 0.6rem !important;
     width: 100% !important;
+}
+
+@media (min-width: 680px) {
+    .notif-history-scroll {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        align-content: start !important;
+        gap: 0.65rem !important;
+        padding: 0.65rem 0.75rem 2rem !important;
+    }
+    .notif-history-scroll > :not(.notif-card-item),
+    .notif-history-scroll > .notif-card-item:only-child {
+        grid-column: 1 / -1 !important;
+    }
+    #notifMainViewSettings[style*="block"],
+    #notifMainViewSettings[style*="grid"] {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.75rem !important;
+        align-items: stretch !important;
+    }
+    #notifMainViewSettings .notif-card-group {
+        margin-bottom: 0 !important;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+    }
+    #notifMainViewSettings #notifPermissionBanner,
+    #notifMainViewSettings .notif-settings-actions,
+    #notifMainViewSettings .notif-card-group:has(.notif-time-box) {
+        grid-column: 1 / -1 !important;
+        margin-bottom: 0 !important;
+    }
+    #notifSubTabWeekday:not([style*="none"]),
+    #notifSubTabWeekend[style*="block"] {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.65rem !important;
+    }
+    #notifSubTabWeekday .notif-time-box,
+    #notifSubTabWeekend .notif-time-box {
+        margin-top: 0 !important;
+    }
 }
 
 /* 📇 모던 알림 카드 아이템 */

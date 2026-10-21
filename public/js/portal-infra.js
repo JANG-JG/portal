@@ -79,7 +79,7 @@ function setServerViewMode(mode) {
         if (unitPri) unitPri.style.display = 'flex';
         if (unitSec) unitSec.style.display = 'flex';
         if (dualGrid) {
-            dualGrid.style.gridTemplateColumns = window.innerWidth <= 640 ? '1fr' : 'repeat(2, 1fr)';
+            dualGrid.style.gridTemplateColumns = '';
         }
     }
 }
