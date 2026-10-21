@@ -133,12 +133,12 @@ function loadSummary() {
                 const first = ast.items[0];
                 const dirSymbol = first.direction === 'up' ? '▲' : '▼';
                 assetEl.innerHTML = `
-                    <div style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; font-size:9px; gap:0.5rem;">
+                    <div style="margin-top:0.4rem; padding-top:0.4rem; border-top:1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; font-size:10.5px; gap:0.5rem;">
                         <span style="color:var(--text-muted); font-size:0.7rem; font-family:var(--font-mono); flex-shrink:0;">보유 종목</span>
-                        <div class="asset-ticker-inline font-mono" id="assetTickerBox" style="margin-left:auto; display:flex; align-items:center; gap:4px; font-size:9px; min-width:0; overflow:hidden; white-space:nowrap;">
-                            <span class="stock-kor-name" style="color:var(--text-primary); font-weight:700; font-size:9px; overflow:hidden; text-overflow:ellipsis;">${first.name}</span>
-                            <span class="stock-price" style="color:var(--text-secondary); font-size:9px; margin:0 2px; flex-shrink:0;">${first.formattedTotal}</span>
-                            <span class="stock-diff ${first.direction}" style="font-size:8.5px; flex-shrink:0;">${dirSymbol} ${first.diffPercent}</span>
+                        <div class="asset-ticker-inline font-mono" id="assetTickerBox" style="margin-left:auto; display:flex; align-items:center; gap:4px; font-size:10.5px; min-width:0; overflow:hidden; white-space:nowrap;">
+                            <span class="stock-kor-name" style="color:var(--text-primary); font-weight:700; font-size:10.5px; overflow:hidden; text-overflow:ellipsis;">${first.name}</span>
+                            <span class="stock-price" style="color:var(--text-secondary); font-size:10.5px; margin:0 2px; flex-shrink:0;">${first.formattedTotal}</span>
+                            <span class="stock-diff ${first.direction}" style="font-size:10px; flex-shrink:0;">${dirSymbol} ${first.diffPercent}</span>
                         </div>
                     </div>
                 `;

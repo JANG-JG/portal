@@ -180,9 +180,9 @@ function startAssetFading(tickerBox, items) {
         tickerBox.style.opacity = '0';
         setTimeout(() => {
             tickerBox.innerHTML = `
-                <span class="stock-kor-name" title="${stock.name}" style="color:var(--text-primary); font-weight:700; font-size:9px; overflow:hidden; text-overflow:ellipsis;">${stock.name}</span>
-                <span class="stock-price" style="color:var(--text-secondary); font-size:9px; margin:0 2px; flex-shrink:0;">${stock.formattedTotal}</span>
-                <span class="stock-diff ${stock.direction}" style="font-size:8.5px; flex-shrink:0;">${dirSymbol} ${stock.diffPercent}</span>
+                <span class="stock-kor-name" title="${stock.name}" style="color:var(--text-primary); font-weight:700; font-size:10.5px; overflow:hidden; text-overflow:ellipsis;">${stock.name}</span>
+                <span class="stock-price" style="color:var(--text-secondary); font-size:10.5px; margin:0 2px; flex-shrink:0;">${stock.formattedTotal}</span>
+                <span class="stock-diff ${stock.direction}" style="font-size:10px; flex-shrink:0;">${dirSymbol} ${stock.diffPercent}</span>
             `;
             tickerBox.style.opacity = '1';
         }, 250);
