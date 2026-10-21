@@ -215,7 +215,12 @@ function bindBreakingTicker(articles) {
     }
 
     let bIdx = 0;
-    trackEl.innerHTML = `<a href="${articles[0].link || 'https://news.j-jg.cc/breaking'}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item"><span class="breaking-item-title">${articles[0].title}</span></a>`;
+    const renderItem = (idx) => {
+        const item = articles[idx];
+        trackEl.style.opacity = '1';
+        trackEl.innerHTML = `<a href="${item.link || 'https://news.j-jg.cc/breaking'}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item"><span class="breaking-item-title">${item.title}</span></a>`;
+    };
+    renderItem(0);
 
     if (!bannerEl.dataset.boundClick) {
         bannerEl.dataset.boundClick = 'true';
@@ -232,11 +237,7 @@ function bindBreakingTicker(articles) {
     if (articles.length > 1) {
         breakingTickerTimer = setInterval(() => {
             bIdx = (bIdx + 1) % articles.length;
-            trackEl.style.opacity = '0';
-            setTimeout(() => {
-                trackEl.innerHTML = `<a href="${articles[bIdx].link || 'https://news.j-jg.cc/breaking'}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item"><span class="breaking-item-title">${articles[bIdx].title}</span></a>`;
-                trackEl.style.opacity = '1';
-            }, 250);
-        }, 4000);
+            renderItem(bIdx);
+        }, 3000);
     }
 }
