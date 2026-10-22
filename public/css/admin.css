@@ -3,16 +3,23 @@
    ========================================================================== */
 
 /* 🚨 관리자 페이지에서는 하단 뉴스 티커, 속보 배너, 중복 바텀 탭바를 영구 숨김 처리 */
+html body #jg-global-ticker-bar,
+html body #jg-global-breaking-bar,
+html body #adminBottomNav,
+html body .admin-bottom-nav,
 #jg-global-ticker-bar,
 #jg-global-breaking-bar,
 #adminBottomNav,
 .admin-bottom-nav {
     display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    pointer-events: none !important;
 }
 
 body {
     background: #f8fafc;
-    padding-bottom: 2.5rem !important;
+    padding-bottom: 2rem !important;
     overflow-x: hidden;
 }
 
@@ -56,7 +63,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex-wrap: wrap;
+    white-space: nowrap;
 }
 
 .admin-header-title h2 {
@@ -68,6 +75,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    white-space: nowrap;
 }
 
 .admin-header-title p {
@@ -1445,20 +1453,56 @@ body {
    ======================================================== */
 @media (max-width: 768px) {
     .admin-main-container {
-        padding: 0.65rem 0.75rem 2.5rem;
+        padding: 0.65rem 0.75rem 2rem;
     }
 
     .admin-header {
-        padding: 0.75rem 0.9rem;
-        gap: 0.55rem;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 0.75rem 0.85rem;
+        gap: 0.6rem;
+    }
+
+    .admin-header-left {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.6rem;
+    }
+
+    .admin-header-title-row {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        white-space: nowrap;
+        width: 100%;
+        justify-content: space-between;
     }
 
     .admin-header-title h2 {
-        font-size: 1.05rem;
+        font-size: 1.05rem !important;
+        white-space: nowrap !important;
     }
 
     .admin-header-title p {
-        display: none; /* 모바일에서는 슬림 1줄 헤더 유지를 위해 부제 생략 */
+        display: none !important; /* 모바일에서는 슬림 1줄 헤더 유지를 위해 부제 생략 */
+    }
+
+    .admin-header-actions {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.4rem;
+    }
+
+    .admin-header-actions .btn-admin {
+        flex: 1;
+        justify-content: center;
+        padding: 0.42rem 0.6rem;
+        font-size: 0.78rem;
+        white-space: nowrap;
     }
 
     .admin-nav-sticky-wrapper {
@@ -1520,22 +1564,29 @@ body {
     /* PM2 프로세스 제어 카드 모바일 컴팩트 정렬 */
     .process-item-card {
         padding: 0.65rem 0.75rem;
-        flex-wrap: wrap;
+        flex-direction: column;
+        align-items: stretch;
         gap: 0.5rem;
     }
 
     .process-info {
-        min-width: 180px;
+        width: 100%;
     }
 
     .process-actions {
-        margin-left: auto;
-        gap: 0.25rem;
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        gap: 0.35rem;
+        margin-left: 0;
     }
 
-    .btn-admin-xs {
-        padding: 0.3rem 0.5rem;
-        font-size: 0.74rem;
+    .process-actions .btn-admin-xs {
+        flex: 1;
+        justify-content: center;
+        padding: 0.35rem 0.45rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
     }
 
     .admin-table th,

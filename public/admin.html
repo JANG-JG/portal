@@ -8,10 +8,10 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="/css/pretendard.css?v=20261022_124139">
-    <link rel="stylesheet" href="/css/style.css?v=20261022_124139">
-    <link rel="stylesheet" href="/css/uPlot.min.css?v=20261022_124139">
-    <link rel="stylesheet" href="/css/admin.css?v=20261022_124139">
+    <link rel="stylesheet" href="/css/pretendard.css?v=20261022_130541">
+    <link rel="stylesheet" href="/css/style.css?v=20261022_130541">
+    <link rel="stylesheet" href="/css/uPlot.min.css?v=20261022_130541">
+    <link rel="stylesheet" href="/css/admin.css?v=20261022_130541">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
@@ -39,10 +39,7 @@
                     <span class="admin-sidebar-parent-chevron">▼</span>
                 </button>
                 <div class="admin-sidebar-sublist">
-                    <button type="button" class="admin-sidebar-sublink active" data-tab="tab-overview" data-sub="all" onclick="switchAdminTabAndSub('tab-overview', 'all')">
-                        <span>📋</span> 전체 보기
-                    </button>
-                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-overview" data-sub="subpane-overview-processes" onclick="switchAdminTabAndSub('tab-overview', 'subpane-overview-processes')">
+                    <button type="button" class="admin-sidebar-sublink active" data-tab="tab-overview" data-sub="subpane-overview-processes" onclick="switchAdminTabAndSub('tab-overview', 'subpane-overview-processes')">
                         <span>🚀</span> 프로세스 & 핵심 리소스
                     </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-overview" data-sub="subpane-overview-logs" onclick="switchAdminTabAndSub('tab-overview', 'subpane-overview-logs')">
@@ -64,9 +61,6 @@
                     <span class="admin-sidebar-parent-chevron">▼</span>
                 </button>
                 <div class="admin-sidebar-sublist">
-                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-blood" data-sub="all" onclick="switchAdminTabAndSub('tab-blood', 'all')">
-                        <span>📋</span> 전체 보기
-                    </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-blood" data-sub="subpane-blood-backup" onclick="switchAdminTabAndSub('tab-blood', 'subpane-blood-backup')">
                         <span>💾</span> 데이터 백업 & CSV 복구
                     </button>
@@ -89,9 +83,6 @@
                     <span class="admin-sidebar-parent-chevron">▼</span>
                 </button>
                 <div class="admin-sidebar-sublist">
-                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-asset" data-sub="all" onclick="switchAdminTabAndSub('tab-asset', 'all')">
-                        <span>📋</span> 전체 보기
-                    </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-asset" data-sub="subpane-asset-summary" onclick="switchAdminTabAndSub('tab-asset', 'subpane-asset-summary')">
                         <span>📊</span> 포트폴리오 & DB 백업
                     </button>
@@ -114,9 +105,6 @@
                     <span class="admin-sidebar-parent-chevron">▼</span>
                 </button>
                 <div class="admin-sidebar-sublist">
-                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-news" data-sub="all" onclick="switchAdminTabAndSub('tab-news', 'all')">
-                        <span>📋</span> 전체 보기
-                    </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-news" data-sub="subpane-news-collect" onclick="switchAdminTabAndSub('tab-news', 'subpane-news-collect')">
                         <span>🚀</span> 즉시 수집 & DB 현황
                     </button>
@@ -139,17 +127,14 @@
                     <span class="admin-sidebar-parent-chevron">▼</span>
                 </button>
                 <div class="admin-sidebar-sublist">
-                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="all" onclick="switchAdminTabAndSub('tab-security', 'all')">
-                        <span>📋</span> 전체 보기
-                    </button>
-                    <button type="button" class="admin-sidebar-sublink" onclick="openAdminPasswordModal(); toggleAdminSidebar(false);">
-                        <span>🔑</span> 마스터 비밀번호 변경 (팝업)
-                    </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-logs" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-logs')">
                         <span>🔒</span> 최근 로그인 시도 이력
                     </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-stack" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-stack')">
                         <span>🛡️</span> SSO & 기술 스택 명세
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" onclick="openAdminPasswordModal(); toggleAdminSidebar(false);">
+                        <span>🔑</span> 마스터 비밀번호 변경 (팝업)
                     </button>
                 </div>
             </div>
@@ -1274,38 +1259,14 @@
     <!-- 플로팅 토스트 알림창 -->
     <div id="adminToast">알림 메시지</div>
 
-    <!-- 📱 모바일 하단 퀵 내비게이션 바 (768px 이하 전용 바텀 탭바) -->
-    <nav class="admin-bottom-nav" id="adminBottomNav" aria-label="모바일 하단 내비게이션">
-        <button type="button" class="admin-bottom-nav-item active" data-tab="tab-overview" onclick="switchAdminTab('tab-overview', this)">
-            <span class="nav-icon">🖥️</span>
-            <span class="nav-label">관제</span>
-        </button>
-        <button type="button" class="admin-bottom-nav-item" data-tab="tab-blood" onclick="switchAdminTab('tab-blood', this)">
-            <span class="nav-icon">🩸</span>
-            <span class="nav-label">혈압</span>
-        </button>
-        <button type="button" class="admin-bottom-nav-item" data-tab="tab-asset" onclick="switchAdminTab('tab-asset', this)">
-            <span class="nav-icon">💰</span>
-            <span class="nav-label">자산</span>
-        </button>
-        <button type="button" class="admin-bottom-nav-item" data-tab="tab-news" onclick="switchAdminTab('tab-news', this)">
-            <span class="nav-icon">📰</span>
-            <span class="nav-label">뉴스</span>
-        </button>
-        <button type="button" class="admin-bottom-nav-item" data-tab="tab-security" onclick="switchAdminTab('tab-security', this)">
-            <span class="nav-icon">🛡️</span>
-            <span class="nav-label">보안</span>
-        </button>
-    </nav>
-
     <!-- 📈 초경량 uPlot (10KB) 시계열 차트 엔진 로컬 로드 -->
-    <script src="/js/uPlot.iife.min.js?v=20261022_124139"></script>
+    <script src="/js/uPlot.iife.min.js?v=20261022_130541"></script>
     <!-- 📦 관리자 모듈화 스크립트 로드 (ETag 표준 캐싱) -->
-    <script src="/js/admin-core.js?v=20261022_124139"></script>
-    <script src="/js/admin-monitor.js?v=20261022_124139"></script>
-    <script src="/js/admin-services.js?v=20261022_124139"></script>
-    <!-- 🚀 JG 통합 UI 런처 (상단 내비바 + 하단 뉴스/속보 티커 자동 로드) -->
-    <script src="/api/jg-ui" defer></script>
+    <script src="/js/admin-core.js?v=20261022_130541"></script>
+    <script src="/js/admin-monitor.js?v=20261022_130541"></script>
+    <script src="/js/admin-services.js?v=20261022_130541"></script>
+    <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
+    <script src="/api/jg-ui" data-ticker="false" defer></script>
 </body>
 </html>
 

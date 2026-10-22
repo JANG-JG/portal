@@ -58,42 +58,37 @@ function fallbackCopyText(text, msg) {
     }
 }
 
-// 5. 🗂️ 대메뉴별 서브메뉴(창) 설정 명세
+// 5. 🗂️ 대메뉴별 서브메뉴(창) 설정 명세 ('전체 보기' 제거 - 개별 서브페이지로 깔끔하게 분리)
 const SUBTABS_CONFIG = {
     'tab-overview': [
-        { id: 'all', label: '전체 보기', icon: '📋' },
         { id: 'subpane-overview-processes', label: '프로세스 & 핵심 자원', icon: '🚀' },
         { id: 'subpane-overview-logs', label: '실시간 시스템 로그', icon: '💻' },
         { id: 'subpane-overview-db', label: '서비스 DB 현황', icon: '🗄️' }
     ],
     'tab-blood': [
-        { id: 'all', label: '전체 보기', icon: '📋' },
         { id: 'subpane-blood-backup', label: '데이터 백업 & CSV 복구', icon: '💾' },
         { id: 'subpane-blood-threshold', label: '위험 기준치 설정', icon: '⚙️' },
         { id: 'subpane-blood-records', label: '최근 혈압 측정 기록', icon: '🩸' }
     ],
     'tab-asset': [
-        { id: 'all', label: '전체 보기', icon: '📋' },
         { id: 'subpane-asset-summary', label: '포트폴리오 & 백업', icon: '📊' },
         { id: 'subpane-asset-accounts', label: '증권 계좌별 현황', icon: '📂' },
         { id: 'subpane-asset-holdings', label: '보유 종목 상세', icon: '💼' }
     ],
     'tab-news': [
-        { id: 'all', label: '전체 보기', icon: '📋' },
         { id: 'subpane-news-collect', label: '즉시 수집 & DB현황', icon: '🚀' },
         { id: 'subpane-news-articles', label: '최근 수집 기사 (10선)', icon: '📑' },
         { id: 'subpane-news-history', label: '수집 이력 & 로그 콘솔', icon: '📋' }
     ],
     'tab-security': [
-        { id: 'all', label: '전체 보기', icon: '📋' },
-        { id: 'action-password-modal', label: '마스터 비밀번호 변경 (팝업)', icon: '🔑', isModal: true },
         { id: 'subpane-security-logs', label: '최근 로그인 시도 이력', icon: '🔒' },
-        { id: 'subpane-security-stack', label: 'SSO & 기술 스택 명세', icon: '🛡️' }
+        { id: 'subpane-security-stack', label: 'SSO & 기술 스택 명세', icon: '🛡️' },
+        { id: 'action-password-modal', label: '마스터 비밀번호 변경 (팝업)', icon: '🔑', isModal: true }
     ]
 };
 
 let currentAdminTab = 'tab-overview';
-let currentAdminSub = 'all';
+let currentAdminSub = 'subpane-overview-processes';
 
 // 6. 관리자 좌측 사이드바 서브메뉴 제어
 function toggleAdminSidebar(show) {
@@ -154,10 +149,11 @@ function handlePasswordModalBackdropClick(e) {
 }
 
 // 9. 2단 서브탭 바 동적 렌더링
-function renderSubTabs(tabId, activeSubId = 'all') {
+function renderSubTabs(tabId, activeSubId = null) {
     const nav = document.getElementById('adminSubtabsNav');
     if (!nav) return;
     const subs = SUBTABS_CONFIG[tabId] || [];
+    const targetId = (activeSubId && activeSubId !== 'all') ? activeSubId : (subs[0] ? subs[0].id : '');
 
     nav.innerHTML = subs.map(sub => {
         if (sub.isModal) {
@@ -167,7 +163,7 @@ function renderSubTabs(tabId, activeSubId = 'all') {
                 </button>
             `;
         }
-        const isActive = (sub.id === activeSubId);
+        const isActive = (sub.id === targetId);
         return `
             <button type="button" class="admin-subtab-btn ${isActive ? 'active' : ''}" data-sub="${sub.id}" onclick="switchAdminSubTab('${sub.id}', this, true)">
                 <span>${sub.icon}</span> <span>${sub.label}</span>
@@ -196,22 +192,22 @@ function switchAdminSubTab(subId, btn, shouldScroll = false) {
     if (shouldScroll) {
         scrollAdminToTop(true);
     }
+    const subs = SUBTABS_CONFIG[currentAdminTab] || [];
+    if (!subId || subId === 'all' || !subs.some(s => s.id === subId)) {
+        subId = subs[0] ? subs[0].id : '';
+    }
     currentAdminSub = subId;
     const currentPane = document.getElementById(currentAdminTab);
     if (!currentPane) return;
 
     const subPanes = currentPane.querySelectorAll('.admin-sub-pane');
-    if (subId === 'all') {
-        subPanes.forEach(pane => pane.classList.remove('hidden-pane'));
-    } else {
-        subPanes.forEach(pane => {
-            if (pane.id === subId) {
-                pane.classList.remove('hidden-pane');
-            } else {
-                pane.classList.add('hidden-pane');
-            }
-        });
-    }
+    subPanes.forEach(pane => {
+        if (pane.id === subId) {
+            pane.classList.remove('hidden-pane');
+        } else {
+            pane.classList.add('hidden-pane');
+        }
+    });
 
     // 상단 서브탭 버튼 active 갱신
     document.querySelectorAll('.admin-subtab-btn').forEach(b => {
@@ -233,10 +229,9 @@ function switchAdminSubTab(subId, btn, shouldScroll = false) {
         }
     });
 
-    // URL 해시 갱신 (강제 #tab-overview 주입 금지: 사용자가 명시적 해시를 사용 중일 때만 갱신)
+    // URL 해시 갱신 (명시적 해시가 있을 때만 갱신)
     if (history.replaceState && window.location.hash) {
-        const hashVal = subId === 'all' ? `#${currentAdminTab}` : `#${currentAdminTab}:${subId}`;
-        history.replaceState(null, '', hashVal);
+        history.replaceState(null, '', `#${currentAdminTab}:${subId}`);
     }
 
     // 마지막 선택 서브탭 저장
@@ -253,7 +248,7 @@ function switchAdminTabAndSub(tabId, subId) {
 }
 
 function switchAdminTabAndClose(tabId) {
-    switchAdminTab(tabId, null, 'all', true);
+    switchAdminTab(tabId, null, null, true);
     toggleAdminSidebar(false);
     scrollAdminToTop(true);
 }
@@ -270,7 +265,7 @@ function updateBottomNavActive(tabId) {
 }
 
 // 12. 대메뉴 탭 전환 핸들러
-function switchAdminTab(tabId, btn, targetSubId = 'all', shouldScroll = true) {
+function switchAdminTab(tabId, btn, targetSubId = null, shouldScroll = true) {
     const pane = document.getElementById(tabId);
     if (!pane) return;
 
@@ -278,13 +273,18 @@ function switchAdminTab(tabId, btn, targetSubId = 'all', shouldScroll = true) {
         scrollAdminToTop(true);
     }
 
+    const subs = SUBTABS_CONFIG[tabId] || [];
+    const validTargetSubId = targetSubId && targetSubId !== 'all' 
+        ? targetSubId 
+        : (subs[0] ? subs[0].id : 'all');
+
     currentAdminTab = tabId;
-    currentAdminSub = targetSubId;
+    currentAdminSub = validTargetSubId;
 
     // 마지막 선택 대메뉴 탭 저장 (자동 오버뷰 강제 초기화 방지)
     try {
         localStorage.setItem('admin_last_tab', tabId);
-        localStorage.setItem('admin_last_sub', targetSubId);
+        localStorage.setItem('admin_last_sub', validTargetSubId);
     } catch (e) {}
 
     // 본문 탭 패널 전환
@@ -300,8 +300,8 @@ function switchAdminTab(tabId, btn, targetSubId = 'all', shouldScroll = true) {
     updateBottomNavActive(tabId);
 
     // 2단 서브탭 렌더링 및 해당 서브메뉴 활성화
-    renderSubTabs(tabId, targetSubId);
-    switchAdminSubTab(targetSubId);
+    renderSubTabs(tabId, validTargetSubId);
+    switchAdminSubTab(validTargetSubId);
 
     // 사이드바 아코디언 동기화
     const groupKey = tabId.replace('tab-', '');
@@ -373,7 +373,7 @@ function handleHashTab() {
 
     const [targetTab, targetSub] = rawHash.split(':');
     if (targetTab && document.getElementById(targetTab)) {
-        switchAdminTab(targetTab, null, targetSub || 'all', false);
+        switchAdminTab(targetTab, null, targetSub && targetSub !== 'all' ? targetSub : null, false);
         return true;
     }
     return false;
@@ -422,14 +422,18 @@ function adjustTickerPosition() {
 
     if (ticker) {
         ticker.style.setProperty('display', 'none', 'important');
+        ticker.style.setProperty('visibility', 'hidden', 'important');
+        ticker.style.setProperty('height', '0px', 'important');
     }
     if (breaking) {
         breaking.style.setProperty('display', 'none', 'important');
+        breaking.style.setProperty('visibility', 'hidden', 'important');
+        breaking.style.setProperty('height', '0px', 'important');
     }
     if (bottomNav) {
         bottomNav.style.setProperty('display', 'none', 'important');
     }
-    document.body.style.setProperty('padding-bottom', '2.5rem', 'important');
+    document.body.style.setProperty('padding-bottom', '1.5rem', 'important');
 }
 
 window.adjustTickerPosition = adjustTickerPosition;
@@ -441,13 +445,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const switchedByHash = handleHashTab();
     if (!switchedByHash) {
         let initialTab = 'tab-overview';
-        let initialSub = 'all';
+        let initialSub = null;
         try {
             const savedTab = localStorage.getItem('admin_last_tab');
             const savedSub = localStorage.getItem('admin_last_sub');
             if (savedTab && document.getElementById(savedTab)) {
                 initialTab = savedTab;
-                if (savedSub) initialSub = savedSub;
+            }
+            if (savedSub && savedSub !== 'all') {
+                initialSub = savedSub;
             }
         } catch (e) {}
         switchAdminTab(initialTab, null, initialSub, false);
