@@ -32,8 +32,8 @@ function initUPlotChart() {
     }
 
     const opts = {
-        width: container.clientWidth || 320,
-        height: 165,
+        width: Math.max(240, container.clientWidth || 320),
+        height: 140,
         scales: {
             x: { time: true },
             y: { range: [0, 100] }
@@ -42,28 +42,28 @@ function initUPlotChart() {
             {},
             {
                 label: "📱 주 CPU",
-                stroke: "#38bdf8",
+                stroke: "#2563eb",
                 width: 2,
-                fill: "rgba(56, 189, 248, 0.08)",
+                fill: "rgba(37, 99, 235, 0.10)",
                 points: { show: false }
             },
             {
                 label: "📱 주 RAM",
-                stroke: "#a78bfa",
+                stroke: "#7c3aed",
                 width: 2,
-                fill: "rgba(167, 139, 250, 0.08)",
+                fill: "rgba(124, 58, 237, 0.08)",
                 points: { show: false }
             },
             {
                 label: "💻 보조 CPU",
-                stroke: "#fbbf24",
+                stroke: "#d97706",
                 width: 1.8,
                 dash: [4, 4],
                 points: { show: false }
             },
             {
                 label: "💻 보조 RAM",
-                stroke: "#34d399",
+                stroke: "#059669",
                 width: 1.8,
                 dash: [4, 4],
                 points: { show: false }
@@ -71,15 +71,15 @@ function initUPlotChart() {
         ],
         axes: [
             {
-                stroke: "#94a3b8",
-                grid: { stroke: "rgba(148, 163, 184, 0.08)", width: 1 },
-                ticks: { stroke: "rgba(148, 163, 184, 0.2)" },
+                stroke: "#64748b",
+                grid: { stroke: "rgba(148, 163, 184, 0.18)", width: 1 },
+                ticks: { stroke: "rgba(148, 163, 184, 0.25)" },
                 font: '10px Pretendard, system-ui'
             },
             {
-                stroke: "#94a3b8",
-                grid: { stroke: "rgba(148, 163, 184, 0.08)", width: 1 },
-                ticks: { stroke: "rgba(148, 163, 184, 0.2)" },
+                stroke: "#64748b",
+                grid: { stroke: "rgba(148, 163, 184, 0.18)", width: 1 },
+                ticks: { stroke: "rgba(148, 163, 184, 0.25)" },
                 values: (u, vals) => vals.map(v => Math.round(v) + "%"),
                 font: '10px Pretendard, system-ui'
             }
@@ -95,14 +95,20 @@ function initUPlotChart() {
         console.warn('uPlot 초기화 보류:', e);
     }
 
-    window.addEventListener('resize', () => {
+    const resizeChart = () => {
         if (uplotChart && container && container.clientWidth > 0) {
             uplotChart.setSize({
                 width: container.clientWidth,
-                height: 165
+                height: 140
             });
         }
-    });
+    };
+
+    window.addEventListener('resize', resizeChart);
+    if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(resizeChart);
+        ro.observe(container);
+    }
 }
 
 function updateUPlotData(pCpu, pRam, sCpu, sRam, sOnline) {

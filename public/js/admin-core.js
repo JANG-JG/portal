@@ -233,11 +233,16 @@ function switchAdminSubTab(subId, btn, shouldScroll = false) {
         }
     });
 
-    // URL 해시 갱신
-    if (history.replaceState) {
+    // URL 해시 갱신 (강제 #tab-overview 주입 금지: 사용자가 명시적 해시를 사용 중일 때만 갱신)
+    if (history.replaceState && window.location.hash) {
         const hashVal = subId === 'all' ? `#${currentAdminTab}` : `#${currentAdminTab}:${subId}`;
         history.replaceState(null, '', hashVal);
     }
+
+    // 마지막 선택 서브탭 저장
+    try {
+        localStorage.setItem('admin_last_sub', subId);
+    } catch (e) {}
 }
 
 // 사이드바에서 대메뉴 & 서브메뉴 동시 전환
@@ -275,6 +280,12 @@ function switchAdminTab(tabId, btn, targetSubId = 'all', shouldScroll = true) {
 
     currentAdminTab = tabId;
     currentAdminSub = targetSubId;
+
+    // 마지막 선택 대메뉴 탭 저장 (자동 오버뷰 강제 초기화 방지)
+    try {
+        localStorage.setItem('admin_last_tab', tabId);
+        localStorage.setItem('admin_last_sub', targetSubId);
+    } catch (e) {}
 
     // 본문 탭 패널 전환
     document.querySelectorAll('.admin-tab-pane').forEach(el => el.classList.remove('active'));
@@ -355,7 +366,7 @@ async function changeAdminPassword(e) {
     }
 }
 
-// 14. URL 해시 기반 자동 탭 및 서브탭 전환
+// 14. URL 해시 기반 탭 전환 (명시적 해시가 있을 때만 동작)
 function handleHashTab() {
     const rawHash = (window.location.hash || '').substring(1);
     if (!rawHash) return false;
@@ -403,46 +414,43 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// 16. 모바일 하단 내비게이션 & 뉴스 티커 겹침 방지 동적 보정
+// 16. 관리자 페이지 전용: 하단 뉴스 티커 & 긴급 속보 배너 숨김 처리
 function adjustTickerPosition() {
-    const isMobile = window.innerWidth <= 768;
     const ticker = document.getElementById('jg-global-ticker-bar');
     const breaking = document.getElementById('jg-global-breaking-bar');
     const bottomNav = document.getElementById('adminBottomNav');
 
-    if (!bottomNav) return;
-
-    if (isMobile) {
-        if (ticker) {
-            ticker.style.setProperty('bottom', '56px', 'important');
-            ticker.style.setProperty('z-index', '999990', 'important');
-        }
-        if (breaking) {
-            breaking.style.setProperty('bottom', '114px', 'important');
-            breaking.style.setProperty('z-index', '999991', 'important');
-        }
-        bottomNav.style.setProperty('bottom', '0px', 'important');
-        bottomNav.style.setProperty('z-index', '1000000', 'important');
-        document.body.style.setProperty('padding-bottom', '125px', 'important');
-    } else {
-        if (ticker) {
-            ticker.style.setProperty('bottom', '0px', 'important');
-        }
-        if (breaking) {
-            breaking.style.setProperty('bottom', '44px', 'important');
-        }
+    if (ticker) {
+        ticker.style.setProperty('display', 'none', 'important');
     }
+    if (breaking) {
+        breaking.style.setProperty('display', 'none', 'important');
+    }
+    if (bottomNav) {
+        bottomNav.style.setProperty('display', 'none', 'important');
+    }
+    document.body.style.setProperty('padding-bottom', '2.5rem', 'important');
 }
 
 window.adjustTickerPosition = adjustTickerPosition;
 window.addEventListener('resize', adjustTickerPosition);
 window.addEventListener('load', adjustTickerPosition);
 
-// 초기 로드
+// 초기 로드: 명시적 해시 -> 마지막 저장된 탭 -> 기본 서버 모니터링 순으로 복원
 document.addEventListener('DOMContentLoaded', () => {
     const switchedByHash = handleHashTab();
     if (!switchedByHash) {
-        switchAdminTab('tab-overview', null, 'all', false);
+        let initialTab = 'tab-overview';
+        let initialSub = 'all';
+        try {
+            const savedTab = localStorage.getItem('admin_last_tab');
+            const savedSub = localStorage.getItem('admin_last_sub');
+            if (savedTab && document.getElementById(savedTab)) {
+                initialTab = savedTab;
+                if (savedSub) initialSub = savedSub;
+            }
+        } catch (e) {}
+        switchAdminTab(initialTab, null, initialSub, false);
     }
 
     // 이전에 선택했던 서버 탭(주 서버 / 보조 서버) 복원
@@ -471,4 +479,5 @@ if (typeof MutationObserver !== 'undefined') {
         tickerObserver.observe(document.body, { childList: true });
     }
 }
+
 
