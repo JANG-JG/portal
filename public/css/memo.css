@@ -3,7 +3,7 @@
    ========================================================================== */
 :root { --memo-bg-page: #f8fafc; --memo-surface: #ffffff; --memo-border: #e2e8f0; --memo-text-main: #0f172a; --memo-text-body: #334155; --memo-text-muted: #64748b; --memo-primary: #2563eb; --memo-primary-hover: #1d4ed8; }
 body { background-color: var(--memo-bg-page); color: var(--memo-text-main); overflow-x: hidden; }
-.memo-app-container { max-width: 1180px; margin: 0 auto; padding: 1.15rem 1rem 5.5rem 1rem; box-sizing: border-box; }
+.memo-app-container { max-width: 1180px; margin: 0 auto; padding: 1.15rem 1rem 9.5rem 1rem; box-sizing: border-box; }
 /* 1. 상단 컴팩트 헤더 & 통합 검색바 */
 .memo-banner { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 0.85rem; }
 .memo-banner-top { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
@@ -75,7 +75,7 @@ body { background-color: var(--memo-bg-page); color: var(--memo-text-main); over
 .memo-action-btn.btn-pin.is-active { background: #fef3c7; border-color: #fde68a; color: #d97706; }
 .memo-card-body { cursor: pointer; flex: 1 1 auto; }
 .memo-card-title { font-size: 1.02rem; font-weight: 800; color: #0f172a; margin-bottom: 0.4rem; line-height: 1.38; letter-spacing: -0.01em; }
-.memo-card-content { font-size: 0.9rem; color: #334155; line-height: 1.58; margin-bottom: 0.65rem; overflow-wrap: break-word; max-height: 155px; overflow: hidden; position: relative; }
+.memo-card-content { font-size: 0.92rem; color: #334155; line-height: 1.62; margin-bottom: 0.75rem; overflow-wrap: break-word; word-break: break-word; }
 .memo-card-content p { margin: 0 0 0.3rem 0; }
 .memo-card-content p:last-child { margin-bottom: 0; }
 .memo-card-content ul,
@@ -92,7 +92,7 @@ body { background-color: var(--memo-bg-page); color: var(--memo-text-main); over
 .memo-card-content li[data-list="unchecked"]::before { content: "☐"; position: absolute; left: 0; top: -1px; color: #64748b; font-size: 1.1rem; font-weight: bold; }
 .memo-card-footer { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: #64748b; padding-top: 0.5rem; border-top: 1px solid #f1f5f9; }
 /* 5. 플로팅 새 메모 버튼 (FAB) */
-.memo-fab-btn { position: fixed; right: 1.25rem; bottom: 4.5rem; z-index: 950; background: var(--memo-primary); color: #ffffff; border: none; border-radius: 9999px; padding: 0.72rem 1.2rem; font-size: 0.92rem; font-weight: 700; box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; }
+.memo-fab-btn { position: fixed; right: 1rem; bottom: 7.2rem; z-index: 950; background: var(--memo-primary); color: #ffffff; border: none; border-radius: 9999px; padding: 0.72rem 1.2rem; font-size: 0.92rem; font-weight: 700; box-shadow: 0 8px 22px rgba(37, 99, 235, 0.35); display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; transition: transform 0.15s ease, background 0.15s ease; }
 .memo-fab-btn:hover { background: var(--memo-primary-hover); transform: translateY(-2px); }
 .memo-fab-plus { font-size: 1.1rem; line-height: 1; }
 /* 6. 메모 작성 / 상세 편집 모달 */
@@ -130,7 +130,7 @@ body { background-color: var(--memo-bg-page); color: var(--memo-text-main); over
 /* 모바일 반응형 최적화 */
 @media (max-width: 768px) {
     .memo-app-container {
-        padding: 0.85rem 0.75rem 5.5rem 0.75rem;
+        padding: 0.85rem 0.75rem 10rem 0.75rem;
     }
     .memo-banner-title p,
     .memo-stats-chips {
