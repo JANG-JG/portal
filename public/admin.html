@@ -8,10 +8,10 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="/css/pretendard.css?v=20261022_135135">
-    <link rel="stylesheet" href="/css/style.css?v=20261022_135135">
-    <link rel="stylesheet" href="/css/uPlot.min.css?v=20261022_135135">
-    <link rel="stylesheet" href="/css/admin.css?v=20261022_135135">
+    <link rel="stylesheet" href="/css/pretendard.css?v=20261022_135738">
+    <link rel="stylesheet" href="/css/style.css?v=20261022_135738">
+    <link rel="stylesheet" href="/css/uPlot.min.css?v=20261022_135738">
+    <link rel="stylesheet" href="/css/admin.css?v=20261022_135738">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
@@ -297,12 +297,14 @@
                 <div class="server-switch-row">
                     <div class="server-tab-container">
                         <button type="button" class="server-tab-btn active" id="serverTabBtnPrimary" onclick="switchServerTab('primary')">
-                            <span>📱</span> <span>주 서버 제어 (노트 9)</span>
-                            <span class="badge-online" style="font-size:0.68rem; padding:1px 6px;">PM2</span>
+                            <span>📱</span>
+                            <span class="server-tab-label">주 서버 (노트 9)</span>
+                            <span class="badge-online server-tab-badge" id="primaryTabBadge" style="font-size:0.68rem; padding:1px 6px;">PM2</span>
                         </button>
                         <button type="button" class="server-tab-btn secondary-btn" id="serverTabBtnSecondary" onclick="switchServerTab('secondary')">
-                            <span>💻</span> <span>보조 서버 제어 (HP)</span>
-                            <span class="badge-online" id="secondaryTabBadge" style="font-size:0.68rem; padding:1px 6px; background:#f3e8ff; color:#7c3aed; border:1px solid #ddd6fe;">백업</span>
+                            <span>💻</span>
+                            <span class="server-tab-label">보조 서버 (HP)</span>
+                            <span class="badge-online server-tab-badge" id="secondaryTabBadge" style="font-size:0.68rem; padding:1px 6px; background:#f3e8ff; color:#7c3aed; border:1px solid #ddd6fe;">백업</span>
                         </button>
                     </div>
                 </div>
@@ -1260,11 +1262,11 @@
     <div id="adminToast">알림 메시지</div>
 
     <!-- 📈 초경량 uPlot (10KB) 시계열 차트 엔진 로컬 로드 -->
-    <script src="/js/uPlot.iife.min.js?v=20261022_135135"></script>
+    <script src="/js/uPlot.iife.min.js?v=20261022_135738"></script>
     <!-- 📦 관리자 모듈화 스크립트 로드 (ETag 표준 캐싱) -->
-    <script src="/js/admin-core.js?v=20261022_135135"></script>
-    <script src="/js/admin-monitor.js?v=20261022_135135"></script>
-    <script src="/js/admin-services.js?v=20261022_135135"></script>
+    <script src="/js/admin-core.js?v=20261022_135738"></script>
+    <script src="/js/admin-monitor.js?v=20261022_135738"></script>
+    <script src="/js/admin-services.js?v=20261022_135738"></script>
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>
 </body>

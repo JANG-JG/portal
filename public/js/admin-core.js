@@ -148,6 +148,32 @@ function handlePasswordModalBackdropClick(e) {
     }
 }
 
+// 9-0. 🧲 탭/서브탭 캡슐 버튼 컨테이너 내부 안전 자석 중앙 정렬 헬퍼
+function scrollTabIntoCenter(container, button, smooth = true) {
+    if (!container || !button) return;
+    
+    // 만약 첫 번째 버튼이면 항상 맨 왼쪽(scrollLeft = 0)으로 고정
+    if (button === container.firstElementChild) {
+        container.scrollTo({ left: 0, behavior: smooth ? 'smooth' : 'auto' });
+        return;
+    }
+    // 만약 마지막 버튼이면 항상 맨 오른쪽 끝으로 스크롤
+    if (button === container.lastElementChild) {
+        container.scrollTo({ left: Math.max(0, container.scrollWidth - container.clientWidth), behavior: smooth ? 'smooth' : 'auto' });
+        return;
+    }
+    // 중간 버튼이면 컨테이너 중심에 정확히 자석 스냅
+    const containerWidth = container.clientWidth;
+    const buttonLeft = button.offsetLeft;
+    const buttonWidth = button.offsetWidth;
+    const targetScrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
+
+    container.scrollTo({
+        left: Math.max(0, targetScrollLeft),
+        behavior: smooth ? 'smooth' : 'auto'
+    });
+}
+
 // 9. 2단 서브탭 바 동적 렌더링
 function renderSubTabs(tabId, activeSubId = null) {
     const nav = document.getElementById('adminSubtabsNav');
@@ -175,9 +201,7 @@ function renderSubTabs(tabId, activeSubId = null) {
     setTimeout(() => {
         const activeSubBtn = nav.querySelector('.admin-subtab-btn.active');
         if (activeSubBtn) {
-            try {
-                activeSubBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            } catch (e) {}
+            scrollTabIntoCenter(nav, activeSubBtn, true);
         }
     }, 40);
 }
@@ -228,12 +252,11 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
     });
 
     // 상단 서브탭 버튼 active 갱신 및 🧲 서브탭 자석 스크롤 효과 (중앙 정렬)
+    const subNav = document.getElementById('adminSubtabsNav');
     document.querySelectorAll('.admin-subtab-btn').forEach(b => {
         if (b.getAttribute('data-sub') === subId) {
             b.classList.add('active');
-            try {
-                b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-            } catch (e) {}
+            if (subNav) scrollTabIntoCenter(subNav, b, true);
         } else {
             b.classList.remove('active');
         }
@@ -317,9 +340,8 @@ function switchAdminTab(tabId, btn, targetSubId = null, shouldScroll = true) {
     const activeBtn = btn || document.querySelector(`.admin-tab-btn[data-tab="${tabId}"]`) || document.querySelector(`.admin-tab-btn[onclick*="${tabId}"]`);
     if (activeBtn) {
         activeBtn.classList.add('active');
-        try {
-            activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        } catch (e) {}
+        const mainNav = document.getElementById('adminTabsNav');
+        if (mainNav) scrollTabIntoCenter(mainNav, activeBtn, true);
     }
 
     // 모바일 하단 내비게이션 바 동기화
@@ -568,14 +590,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // 🧲 초기 진입 시 활성 대메뉴 탭 및 서브탭 자석 중앙 정렬
     setTimeout(() => {
         const activeTab = document.querySelector('.admin-tab-btn.active');
-        if (activeTab) {
-            try { activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch (e) {}
+        const mainNav = document.getElementById('adminTabsNav');
+        if (activeTab && mainNav) {
+            scrollTabIntoCenter(mainNav, activeTab, false);
         }
         const activeSub = document.querySelector('.admin-subtab-btn.active');
-        if (activeSub) {
-            try { activeSub.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch (e) {}
+        const subNav = document.getElementById('adminSubtabsNav');
+        if (activeSub && subNav) {
+            scrollTabIntoCenter(subNav, activeSub, false);
         }
-    }, 150);
+    }, 100);
 
     adjustTickerPosition();
     setTimeout(adjustTickerPosition, 300);
