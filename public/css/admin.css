@@ -1059,6 +1059,8 @@ body {
     padding: 0.1rem 0.1rem 0.35rem 0.1rem;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
 }
 .admin-tabs-nav::-webkit-scrollbar { display: none; }
 
@@ -1079,6 +1081,8 @@ body {
     user-select: none;
     flex-shrink: 0;
     font-family: inherit;
+    scroll-snap-align: center;
+    scroll-snap-stop: normal;
 }
 .admin-tab-btn:hover {
     background: #f1f5f9;
@@ -1099,6 +1103,8 @@ body {
     padding: 0.3rem 0.35rem;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scroll-behavior: smooth;
     background: #ffffff;
     border-radius: 0.6rem;
     border: 1px solid #e2e8f0;
@@ -1122,6 +1128,8 @@ body {
     transition: all 0.15s ease;
     flex-shrink: 0;
     font-family: inherit;
+    scroll-snap-align: center;
+    scroll-snap-stop: normal;
 }
 .admin-subtab-btn:hover {
     background: #f1f5f9;
@@ -1139,9 +1147,41 @@ body {
     display: block;
     animation: fadeIn 0.2s ease-out;
     min-width: 0;
+    will-change: transform, opacity;
 }
 .admin-sub-pane.hidden-pane {
     display: none !important;
+}
+
+/* 서브메뉴 좌우 스와이프 슬라이드 트랜지션 애니메이션 */
+@keyframes subPaneSlideFromRight {
+    from {
+        opacity: 0.55;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes subPaneSlideFromLeft {
+    from {
+        opacity: 0.55;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.admin-sub-pane.slide-from-right {
+    animation: subPaneSlideFromRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.admin-sub-pane.slide-from-left {
+    animation: subPaneSlideFromLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
 /* 🔑 관리자 마스터 비밀번호 변경 전용 팝업 모달 */

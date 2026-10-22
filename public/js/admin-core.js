@@ -170,6 +170,16 @@ function renderSubTabs(tabId, activeSubId = null) {
             </button>
         `;
     }).join('');
+
+    // 🧲 2단 서브탭 렌더링 직후 활성 서브탭 자석 중앙 정렬
+    setTimeout(() => {
+        const activeSubBtn = nav.querySelector('.admin-subtab-btn.active');
+        if (activeSubBtn) {
+            try {
+                activeSubBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } catch (e) {}
+        }
+    }, 40);
 }
 
 // 9-1. 관리자 페이지 상단 스크롤 헬퍼 (모바일/PC 지원)
@@ -188,7 +198,7 @@ function scrollAdminToTop(smooth = true) {
 }
 
 // 10. 서브 창(카드 패널) 전환 핸들러
-function switchAdminSubTab(subId, btn, shouldScroll = false) {
+function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = null) {
     if (shouldScroll) {
         scrollAdminToTop(true);
     }
@@ -202,17 +212,28 @@ function switchAdminSubTab(subId, btn, shouldScroll = false) {
 
     const subPanes = currentPane.querySelectorAll('.admin-sub-pane');
     subPanes.forEach(pane => {
+        pane.classList.remove('slide-from-right', 'slide-from-left');
         if (pane.id === subId) {
             pane.classList.remove('hidden-pane');
+            if (slideDirection === 'right') {
+                void pane.offsetWidth;
+                pane.classList.add('slide-from-right');
+            } else if (slideDirection === 'left') {
+                void pane.offsetWidth;
+                pane.classList.add('slide-from-left');
+            }
         } else {
             pane.classList.add('hidden-pane');
         }
     });
 
-    // 상단 서브탭 버튼 active 갱신
+    // 상단 서브탭 버튼 active 갱신 및 🧲 서브탭 자석 스크롤 효과 (중앙 정렬)
     document.querySelectorAll('.admin-subtab-btn').forEach(b => {
         if (b.getAttribute('data-sub') === subId) {
             b.classList.add('active');
+            try {
+                b.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } catch (e) {}
         } else {
             b.classList.remove('active');
         }
@@ -291,10 +312,15 @@ function switchAdminTab(tabId, btn, targetSubId = null, shouldScroll = true) {
     document.querySelectorAll('.admin-tab-pane').forEach(el => el.classList.remove('active'));
     pane.classList.add('active');
 
-    // 1단 상단 탭 버튼 active 전환
+    // 1단 상단 탭 버튼 active 전환 및 🧲 대메뉴 탭 자석 스크롤 효과 (중앙 정렬)
     document.querySelectorAll('.admin-tab-btn').forEach(el => el.classList.remove('active'));
     const activeBtn = btn || document.querySelector(`.admin-tab-btn[data-tab="${tabId}"]`) || document.querySelector(`.admin-tab-btn[onclick*="${tabId}"]`);
-    if (activeBtn) activeBtn.classList.add('active');
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        try {
+            activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        } catch (e) {}
+    }
 
     // 모바일 하단 내비게이션 바 동기화
     updateBottomNavActive(tabId);
@@ -440,6 +466,71 @@ window.adjustTickerPosition = adjustTickerPosition;
 window.addEventListener('resize', adjustTickerPosition);
 window.addEventListener('load', adjustTickerPosition);
 
+// 17. 📱 서브메뉴 내 좌우 터치 스와이프 제스처 핸들러
+function initAdminSwipeGestures() {
+    const mainContainer = document.querySelector('.admin-main-container');
+    if (!mainContainer) return;
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartTime = 0;
+    let isTouchCancelled = false;
+
+    mainContainer.addEventListener('touchstart', (e) => {
+        if (!e.touches || e.touches.length !== 1) {
+            isTouchCancelled = true;
+            return;
+        }
+
+        const target = e.target;
+        // 테이블, 터미널 콘솔, 상단 탭바, 모달, 사이드바, 폼 입력, 차트 등 내부 터치는 서브탭 스와이프 제외
+        if (target.closest('.admin-table-container, .pm2-console, .admin-nav-sticky-wrapper, .admin-sidebar, .admin-modal-backdrop, pre, code, input, textarea, select, canvas, #uplotPrimary, #secUplot')) {
+            isTouchCancelled = true;
+            return;
+        }
+
+        isTouchCancelled = false;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+    }, { passive: true });
+
+    mainContainer.addEventListener('touchend', (e) => {
+        if (isTouchCancelled || !e.changedTouches || e.changedTouches.length === 0) return;
+
+        const endX = e.changedTouches[0].clientX;
+        const endY = e.changedTouches[0].clientY;
+        const diffX = endX - touchStartX;
+        const diffY = endY - touchStartY;
+        const elapsed = Date.now() - touchStartTime;
+
+        // 600ms 이내의 제스처, 최소 45px 이동, 세로 스크롤보다 1.4배 이상 가로 지배적인 경우만 스와이프
+        if (elapsed < 600 && Math.abs(diffX) >= 45 && Math.abs(diffX) > Math.abs(diffY) * 1.4) {
+            const subs = (SUBTABS_CONFIG[currentAdminTab] || []).filter(s => !s.isModal);
+            if (subs.length <= 1) return;
+
+            const currIdx = subs.findIndex(s => s.id === currentAdminSub);
+            if (currIdx === -1) return;
+
+            if (diffX < 0) {
+                // 👈 왼쪽으로 스와이프: 다음 서브탭으로 이동 (우측에서 슬라이드 진입)
+                if (currIdx < subs.length - 1) {
+                    const nextSub = subs[currIdx + 1];
+                    switchAdminSubTab(nextSub.id, null, false, 'right');
+                }
+            } else {
+                // 👉 오른쪽으로 스와이프: 이전 서브탭으로 이동 (좌측에서 슬라이드 진입)
+                if (currIdx > 0) {
+                    const prevSub = subs[currIdx - 1];
+                    switchAdminSubTab(prevSub.id, null, false, 'left');
+                }
+            }
+        }
+    }, { passive: true });
+}
+
+window.initAdminSwipeGestures = initAdminSwipeGestures;
+
 // 초기 로드: 명시적 해시 -> 마지막 저장된 탭 -> 기본 서버 모니터링 순으로 복원
 document.addEventListener('DOMContentLoaded', () => {
     const switchedByHash = handleHashTab();
@@ -470,6 +561,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof window.startOverviewPolling === 'function') {
         window.startOverviewPolling();
     }
+
+    // 📱 서브메뉴 좌우 스와이프 제스처 활성화
+    initAdminSwipeGestures();
+
+    // 🧲 초기 진입 시 활성 대메뉴 탭 및 서브탭 자석 중앙 정렬
+    setTimeout(() => {
+        const activeTab = document.querySelector('.admin-tab-btn.active');
+        if (activeTab) {
+            try { activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch (e) {}
+        }
+        const activeSub = document.querySelector('.admin-subtab-btn.active');
+        if (activeSub) {
+            try { activeSub.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' }); } catch (e) {}
+        }
+    }, 150);
 
     adjustTickerPosition();
     setTimeout(adjustTickerPosition, 300);
