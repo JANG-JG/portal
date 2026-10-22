@@ -26,84 +26,122 @@
     <div id="unified-nav-root" style="min-height: 54px;"></div>
 
     <main class="memo-app-container">
-        <!-- 1. 헤더 배너 -->
+        <!-- 1. 상단 컴팩트 헤더 배너 -->
         <header class="memo-banner">
-            <div class="memo-banner-title">
-                <h1>💡 아이디어 & 메모장</h1>
-                <p>떠오른 영감, 중요한 할 일 목록, 프로젝트 메모를 서식과 함께 깔끔하게 기록하세요.</p>
+            <div class="memo-banner-top">
+                <div class="memo-banner-title">
+                    <h1>💡 아이디어 & 메모장</h1>
+                    <p>떠오른 영감, 중요한 할 일 목록, 프로젝트 메모를 서식과 함께 깔끔하게 기록하세요.</p>
+                </div>
+                <div class="memo-header-right">
+                    <div class="memo-stats-chips">
+                        <span class="memo-stat-chip">전체 <strong id="statTotalCount">0</strong></span>
+                        <span class="memo-stat-chip">📌 고정 <strong id="statPinnedCount">0</strong></span>
+                        <span class="memo-stat-chip">✅ 할 일 <strong id="statTodoCount">0</strong></span>
+                        <span class="memo-stat-chip">📰 스크랩 <strong id="statScrapCount">0</strong></span>
+                    </div>
+                    <div class="memo-view-toggle" role="group" aria-label="보기 방식 전환">
+                        <button type="button" class="memo-view-btn active" id="btnViewGrid" onclick="setMemoView('grid')" title="그리드 뷰">⊞</button>
+                        <button type="button" class="memo-view-btn" id="btnViewList" onclick="setMemoView('list')" title="리스트 뷰">☰</button>
+                    </div>
+                </div>
             </div>
-            <div class="memo-stats-chips">
-                <span class="memo-stat-chip">전체 <strong id="statTotalCount">0</strong></span>
-                <span class="memo-stat-chip">📌 고정 <strong id="statPinnedCount">0</strong></span>
-                <span class="memo-stat-chip">✅ 할 일 <strong id="statTodoCount">0</strong></span>
-                <span class="memo-stat-chip">📰 뉴스스크랩 <strong id="statScrapCount">0</strong></span>
+
+            <!-- 통합 검색바 -->
+            <div class="memo-search-row">
+                <div class="memo-search-box">
+                    <span class="memo-search-icon">🔍</span>
+                    <input type="text" id="memoSearchInput" class="memo-search-input" placeholder="메모 제목, 내용, 태그 검색..." oninput="handleMemoSearch(this.value)">
+                    <button type="button" id="memoSearchClearBtn" class="memo-search-clear" style="display:none;" onclick="clearMemoSearch()" aria-label="검색어 지우기">✕</button>
+                </div>
             </div>
         </header>
 
-        <!-- 2. 빠른 메모 등록기 (Quill 경량 리치에디터 탑재) -->
-        <section class="memo-composer-card">
-            <input type="text" id="memoInputTitle" class="memo-input-title" placeholder="제목 또는 핵심 키워드 (선택)..." maxlength="100">
-            
-            <!-- Quill 에디터 마운트 영역 -->
-            <div id="memoQuillEditor"></div>
-
-            <div class="memo-composer-toolbar">
-                <div class="memo-options-group">
-                    <!-- 카테고리 선택 칩 -->
-                    <div class="memo-category-chips">
-                        <input type="radio" name="memoCategory" id="catIdea" value="idea" class="memo-chip-input" checked>
-                        <label for="catIdea" class="memo-chip-label">💡 아이디어</label>
-
-                        <input type="radio" name="memoCategory" id="catTodo" value="todo" class="memo-chip-input">
-                        <label for="catTodo" class="memo-chip-label">✅ 할 일</label>
-
-                        <input type="radio" name="memoCategory" id="catMemo" value="memo" class="memo-chip-input">
-                        <label for="catMemo" class="memo-chip-label">📝 일반</label>
-
-                        <input type="radio" name="memoCategory" id="catImportant" value="important" class="memo-chip-input">
-                        <label for="catImportant" class="memo-chip-label">⭐ 중요</label>
-
-                        <input type="radio" name="memoCategory" id="catScrap" value="scrap" class="memo-chip-input">
-                        <label for="catScrap" class="memo-chip-label">📰 뉴스스크랩</label>
-                    </div>
-
-                    <!-- 포스트잇 색상 선택 -->
-                    <div class="memo-color-picker">
-                        <input type="radio" name="memoColor" id="colorYellow" value="#fef3c7" class="memo-color-input" checked>
-                        <label for="colorYellow" class="memo-color-dot" style="background:#fef3c7;" title="기본 노랑"></label>
-
-                        <input type="radio" name="memoColor" id="colorBlue" value="#e0f2fe" class="memo-color-input">
-                        <label for="colorBlue" class="memo-color-dot" style="background:#e0f2fe;" title="하늘색"></label>
-
-                        <input type="radio" name="memoColor" id="colorGreen" value="#dcfce7" class="memo-color-input">
-                        <label for="colorGreen" class="memo-color-dot" style="background:#dcfce7;" title="연초록"></label>
-
-                        <input type="radio" name="memoColor" id="colorPurple" value="#f3e8ff" class="memo-color-input">
-                        <label for="colorPurple" class="memo-color-dot" style="background:#f3e8ff;" title="연보라"></label>
-
-                        <input type="radio" name="memoColor" id="colorRed" value="#fee2e2" class="memo-color-input">
-                        <label for="colorRed" class="memo-color-dot" style="background:#fee2e2;" title="연분홍"></label>
-                    </div>
-
-                    <!-- 상단 고정 체크 -->
-                    <label class="memo-pin-check-label">
-                        <input type="checkbox" id="memoPinCheck">
-                        <span>📌 상단 고정</span>
-                    </label>
+        <!-- 2. 스마트 접이식 메모 등록기 (평소에는 1줄 슬림 바, 클릭 시 펼침 / 모바일은 모달 연동) -->
+        <section id="memoComposerCard" class="memo-composer-card is-collapsed">
+            <!-- 접혀 있을 때 보이는 1줄 빠른 기록 바 -->
+            <div id="memoQuickBar" class="memo-quick-bar" onclick="handleQuickBarClick(event)">
+                <div class="memo-quick-placeholder">
+                    <span class="memo-quick-pen">✏️</span>
+                    <span>떠오른 아이디어나 할 일을 빠르게 기록하세요...</span>
                 </div>
+                <div class="memo-quick-actions">
+                    <button type="button" class="memo-quick-icon-btn" onclick="handleQuickBarClick(event, 'todo')" title="할 일 체크리스트 작성">☑️</button>
+                    <button type="button" class="memo-quick-icon-btn" onclick="handleQuickBarClick(event, 'idea')" title="아이디어 작성">💡</button>
+                </div>
+            </div>
 
-                <button type="button" class="btn-memo-submit" onclick="submitNewMemo()">
-                    <span>✨</span>
-                    <span>메모 등록</span>
-                </button>
+            <!-- 펼쳐졌을 때 보이는 전체 작성 에디터 (데스크톱 인라인 작성용) -->
+            <div id="memoComposerExpanded" class="memo-composer-expanded">
+                <div class="memo-composer-header-row">
+                    <input type="text" id="memoInputTitle" class="memo-input-title" placeholder="제목 또는 핵심 키워드 (선택)..." maxlength="100">
+                    <button type="button" class="memo-composer-collapse-btn" onclick="collapseInlineComposer()" title="작성창 접기">접기 ▲</button>
+                </div>
+                
+                <!-- Quill 에디터 마운트 영역 -->
+                <div id="memoQuillEditor"></div>
+
+                <div class="memo-composer-toolbar">
+                    <div class="memo-options-group">
+                        <!-- 카테고리 선택 칩 -->
+                        <div class="memo-category-chips">
+                            <input type="radio" name="memoCategory" id="catIdea" value="idea" class="memo-chip-input" checked>
+                            <label for="catIdea" class="memo-chip-label">💡 아이디어</label>
+
+                            <input type="radio" name="memoCategory" id="catTodo" value="todo" class="memo-chip-input">
+                            <label for="catTodo" class="memo-chip-label">✅ 할 일</label>
+
+                            <input type="radio" name="memoCategory" id="catMemo" value="memo" class="memo-chip-input">
+                            <label for="catMemo" class="memo-chip-label">📝 일반</label>
+
+                            <input type="radio" name="memoCategory" id="catImportant" value="important" class="memo-chip-input">
+                            <label for="catImportant" class="memo-chip-label">⭐ 중요</label>
+
+                            <input type="radio" name="memoCategory" id="catScrap" value="scrap" class="memo-chip-input">
+                            <label for="catScrap" class="memo-chip-label">📰 뉴스스크랩</label>
+                        </div>
+
+                        <!-- 색상 액센트 선택 -->
+                        <div class="memo-color-picker">
+                            <input type="radio" name="memoColor" id="colorYellow" value="#fef3c7" class="memo-color-input" checked>
+                            <label for="colorYellow" class="memo-color-dot" style="background:#fcd34d;" title="노랑 포인트"></label>
+
+                            <input type="radio" name="memoColor" id="colorBlue" value="#e0f2fe" class="memo-color-input">
+                            <label for="colorBlue" class="memo-color-dot" style="background:#60a5fa;" title="파랑 포인트"></label>
+
+                            <input type="radio" name="memoColor" id="colorGreen" value="#dcfce7" class="memo-color-input">
+                            <label for="colorGreen" class="memo-color-dot" style="background:#34d399;" title="초록 포인트"></label>
+
+                            <input type="radio" name="memoColor" id="colorPurple" value="#f3e8ff" class="memo-color-input">
+                            <label for="colorPurple" class="memo-color-dot" style="background:#c084fc;" title="보라 포인트"></label>
+
+                            <input type="radio" name="memoColor" id="colorRed" value="#fee2e2" class="memo-color-input">
+                            <label for="colorRed" class="memo-color-dot" style="background:#fb7185;" title="분홍 포인트"></label>
+                        </div>
+
+                        <!-- 상단 고정 체크 -->
+                        <label class="memo-pin-check-label">
+                            <input type="checkbox" id="memoPinCheck">
+                            <span>📌 상단 고정</span>
+                        </label>
+                    </div>
+
+                    <div class="memo-submit-group">
+                        <button type="button" class="btn-memo-cancel-inline" onclick="collapseInlineComposer()">취소</button>
+                        <button type="button" class="btn-memo-submit" onclick="submitNewMemo()">
+                            <span>✨</span>
+                            <span>메모 등록</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- 3. 컨트롤 바 (필터 탭 + 검색 + 뷰 토글) -->
+        <!-- 3. 가로 스크롤 카테고리 필터 칩 바 -->
         <div class="memo-controls-bar">
             <div class="memo-filter-tabs">
                 <button type="button" class="memo-tab-btn active" onclick="filterMemos('all', this)">
-                    <span>전체보기</span>
+                    <span>전체</span>
                     <span class="memo-tab-count" id="countAll">0</span>
                 </button>
                 <button type="button" class="memo-tab-btn" onclick="filterMemos('pinned', this)">
@@ -131,17 +169,6 @@
                     <span class="memo-tab-count" id="countScrap">0</span>
                 </button>
             </div>
-
-            <div class="memo-tools-group">
-                <div class="memo-search-box">
-                    <span>🔍</span>
-                    <input type="text" id="memoSearchInput" class="memo-search-input" placeholder="메모 검색..." oninput="handleMemoSearch(this.value)">
-                </div>
-                <div class="memo-view-toggle">
-                    <button type="button" class="memo-view-btn active" id="btnViewGrid" onclick="setMemoView('grid')" title="그리드 뷰">⊞</button>
-                    <button type="button" class="memo-view-btn" id="btnViewList" onclick="setMemoView('list')" title="리스트 뷰">☰</button>
-                </div>
-            </div>
         </div>
 
         <!-- 4. 메모 카드 그리드 / 리스트 -->
@@ -154,79 +181,91 @@
         </div>
     </main>
 
+    <!-- ➕ 모바일 & 데스크톱 플로팅 새 메모 작성 버튼 (FAB) -->
+    <button type="button" id="memoFabBtn" class="memo-fab-btn" onclick="openCreateMemoModal()" aria-label="새 메모 작성">
+        <span class="memo-fab-plus">＋</span>
+        <span class="memo-fab-label">새 메모</span>
+    </button>
+
     <!-- ========================================== -->
-    <!-- ✏️ 메모 수정 모달 (Quill 에디터 탑재) -->
+    <!-- ✏️ 메모 작성 / 상세 편집 모달 (Quill 에디터 탑재) -->
     <!-- ========================================== -->
     <div id="memoEditModal" class="memo-modal-backdrop" style="display: none;" onclick="if(event.target===this) closeEditMemoModal();">
         <div class="memo-modal-dialog">
             <div class="memo-modal-header">
-                <h3>✏️ 메모 수정</h3>
+                <h3 id="memoModalHeaderTitle">✏️ 메모 작성 / 상세 편집</h3>
                 <button type="button" class="memo-modal-close-btn" onclick="closeEditMemoModal()" aria-label="닫기">✕</button>
             </div>
 
             <div class="memo-modal-body">
                 <input type="hidden" id="editMemoId">
                 
-                <div style="margin-bottom: 0.85rem;">
-                    <label style="font-size: 0.82rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.35rem;">제목 (선택)</label>
-                    <input type="text" id="editMemoTitle" class="memo-input-title" style="border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.5rem 0.75rem; background: #fff; font-size: 0.95rem; width: 100%; box-sizing: border-box;" placeholder="제목을 입력하세요..." maxlength="100">
+                <div class="memo-modal-title-wrap">
+                    <input type="text" id="editMemoTitle" class="memo-modal-title-input" placeholder="제목을 입력하세요 (선택)..." maxlength="100">
                 </div>
 
-                <div style="margin-bottom: 0.85rem;">
-                    <label style="font-size: 0.82rem; font-weight: 700; color: #475569; display: block; margin-bottom: 0.35rem;">내용</label>
-                    <!-- 수정용 Quill 에디터 마운트 -->
+                <div class="memo-modal-editor-wrap">
+                    <!-- 수정/작성용 Quill 에디터 마운트 -->
                     <div id="editMemoQuill"></div>
                 </div>
 
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid #f1f5f9;">
-                    <!-- 카테고리 -->
-                    <div class="memo-category-chips">
-                        <input type="radio" name="editMemoCategory" id="editCatIdea" value="idea" class="memo-chip-input">
-                        <label for="editCatIdea" class="memo-chip-label">💡 아이디어</label>
+                <div class="memo-modal-meta-section">
+                    <div class="memo-modal-meta-group">
+                        <span class="memo-modal-meta-label">카테고리</span>
+                        <div class="memo-category-chips">
+                            <input type="radio" name="editMemoCategory" id="editCatIdea" value="idea" class="memo-chip-input">
+                            <label for="editCatIdea" class="memo-chip-label">💡 아이디어</label>
 
-                        <input type="radio" name="editMemoCategory" id="editCatTodo" value="todo" class="memo-chip-input">
-                        <label for="editCatTodo" class="memo-chip-label">✅ 할 일</label>
+                            <input type="radio" name="editMemoCategory" id="editCatTodo" value="todo" class="memo-chip-input">
+                            <label for="editCatTodo" class="memo-chip-label">✅ 할 일</label>
 
-                        <input type="radio" name="editMemoCategory" id="editCatMemo" value="memo" class="memo-chip-input">
-                        <label for="editCatMemo" class="memo-chip-label">📝 일반</label>
+                            <input type="radio" name="editMemoCategory" id="editCatMemo" value="memo" class="memo-chip-input">
+                            <label for="editCatMemo" class="memo-chip-label">📝 일반</label>
 
-                        <input type="radio" name="editMemoCategory" id="editCatImportant" value="important" class="memo-chip-input">
-                        <label for="editCatImportant" class="memo-chip-label">⭐ 중요</label>
+                            <input type="radio" name="editMemoCategory" id="editCatImportant" value="important" class="memo-chip-input">
+                            <label for="editCatImportant" class="memo-chip-label">⭐ 중요</label>
 
-                        <input type="radio" name="editMemoCategory" id="editCatScrap" value="scrap" class="memo-chip-input">
-                        <label for="editCatScrap" class="memo-chip-label">📰 뉴스스크랩</label>
+                            <input type="radio" name="editMemoCategory" id="editCatScrap" value="scrap" class="memo-chip-input">
+                            <label for="editCatScrap" class="memo-chip-label">📰 뉴스스크랩</label>
+                        </div>
                     </div>
 
-                    <!-- 색상 -->
-                    <div class="memo-color-picker">
-                        <input type="radio" name="editMemoColor" id="editColorYellow" value="#fef3c7" class="memo-color-input">
-                        <label for="editColorYellow" class="memo-color-dot" style="background:#fef3c7;"></label>
+                    <div class="memo-modal-meta-row">
+                        <div class="memo-modal-meta-group">
+                            <span class="memo-modal-meta-label">카드 포인트 색상</span>
+                            <div class="memo-color-picker">
+                                <input type="radio" name="editMemoColor" id="editColorYellow" value="#fef3c7" class="memo-color-input">
+                                <label for="editColorYellow" class="memo-color-dot" style="background:#fcd34d;" title="노랑 포인트"></label>
 
-                        <input type="radio" name="editMemoColor" id="editColorBlue" value="#e0f2fe" class="memo-color-input">
-                        <label for="editColorBlue" class="memo-color-dot" style="background:#e0f2fe;"></label>
+                                <input type="radio" name="editMemoColor" id="editColorBlue" value="#e0f2fe" class="memo-color-input">
+                                <label for="editColorBlue" class="memo-color-dot" style="background:#60a5fa;" title="파랑 포인트"></label>
 
-                        <input type="radio" name="editMemoColor" id="editColorGreen" value="#dcfce7" class="memo-color-input">
-                        <label for="editColorGreen" class="memo-color-dot" style="background:#dcfce7;"></label>
+                                <input type="radio" name="editMemoColor" id="editColorGreen" value="#dcfce7" class="memo-color-input">
+                                <label for="editColorGreen" class="memo-color-dot" style="background:#34d399;" title="초록 포인트"></label>
 
-                        <input type="radio" name="editMemoColor" id="editColorPurple" value="#f3e8ff" class="memo-color-input">
-                        <label for="editColorPurple" class="memo-color-dot" style="background:#f3e8ff;"></label>
+                                <input type="radio" name="editMemoColor" id="editColorPurple" value="#f3e8ff" class="memo-color-input">
+                                <label for="editColorPurple" class="memo-color-dot" style="background:#c084fc;" title="보라 포인트"></label>
 
-                        <input type="radio" name="editMemoColor" id="editColorRed" value="#fee2e2" class="memo-color-input">
-                        <label for="editColorRed" class="memo-color-dot" style="background:#fee2e2;"></label>
+                                <input type="radio" name="editMemoColor" id="editColorRed" value="#fee2e2" class="memo-color-input">
+                                <label for="editColorRed" class="memo-color-dot" style="background:#fb7185;" title="분홍 포인트"></label>
+                            </div>
+                        </div>
+
+                        <label class="memo-pin-switch-wrap">
+                            <span class="memo-pin-switch-text">📌 상단 고정</span>
+                            <input type="checkbox" id="editMemoPinCheck" class="memo-pin-switch-input">
+                            <span class="memo-pin-switch-slider"></span>
+                        </label>
                     </div>
-                </div>
-
-                <div style="margin-top: 0.85rem;">
-                    <label class="memo-pin-check-label">
-                        <input type="checkbox" id="editMemoPinCheck">
-                        <span>📌 상단 고정</span>
-                    </label>
                 </div>
             </div>
 
             <div class="memo-modal-footer">
-                <button type="button" class="memo-modal-btn cancel" onclick="closeEditMemoModal()">취소</button>
-                <button type="button" class="memo-modal-btn save" onclick="submitEditMemo()">저장 완료</button>
+                <button type="button" id="memoModalDeleteBtn" class="memo-modal-btn delete" style="display: none;" onclick="deleteMemoFromModal()">🗑️ 삭제</button>
+                <div class="memo-modal-footer-right">
+                    <button type="button" class="memo-modal-btn cancel" onclick="closeEditMemoModal()">취소</button>
+                    <button type="button" id="memoModalSaveBtn" class="memo-modal-btn save" onclick="submitEditMemo()">저장 완료</button>
+                </div>
             </div>
         </div>
     </div>
