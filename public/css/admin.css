@@ -155,6 +155,7 @@ body {
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    word-break: keep-all;
 }
 
 /* 📊 듀얼 서버 2열 한눈 비교 그리드 */
@@ -409,8 +410,10 @@ body {
 /* 테이블 스타일 */
 .admin-table-container {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
     border: 1px solid #e2e8f0;
     border-radius: 0.75rem;
+    background: #ffffff;
 }
 
 .admin-table {
@@ -426,12 +429,29 @@ body {
     font-weight: 700;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap !important;
 }
 
 .admin-table td {
     padding: 0.75rem 1rem;
     border-bottom: 1px solid #f1f5f9;
     color: #1e293b;
+    vertical-align: middle;
+}
+
+.admin-table th:not(.col-desc),
+.admin-table td:not(.col-desc) {
+    white-space: nowrap;
+}
+
+/* 설명 및 상세 텍스트 열 줄바꿈 최적화 (단어 단위 한글 줄바꿈) */
+.admin-table .col-desc {
+    min-width: 220px;
+    max-width: 360px;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: break-word;
+    line-height: 1.5;
 }
 
 .admin-table tr:hover td {
@@ -1603,7 +1623,15 @@ body {
     }
 
     .admin-table {
-        min-width: 480px;
+        min-width: 600px;
+    }
+
+    .admin-table .col-desc {
+        min-width: 190px;
+        max-width: 260px;
+        white-space: normal !important;
+        word-break: keep-all !important;
+        line-height: 1.45;
     }
 
     /* 뉴스 통계 카드 2x2 모바일 그리드 */

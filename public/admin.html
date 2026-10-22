@@ -8,10 +8,10 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <meta name="color-scheme" content="light">
-    <link rel="stylesheet" href="/css/pretendard.css?v=20261022_130541">
-    <link rel="stylesheet" href="/css/style.css?v=20261022_130541">
-    <link rel="stylesheet" href="/css/uPlot.min.css?v=20261022_130541">
-    <link rel="stylesheet" href="/css/admin.css?v=20261022_130541">
+    <link rel="stylesheet" href="/css/pretendard.css?v=20261022_134632">
+    <link rel="stylesheet" href="/css/style.css?v=20261022_134632">
+    <link rel="stylesheet" href="/css/uPlot.min.css?v=20261022_134632">
+    <link rel="stylesheet" href="/css/admin.css?v=20261022_134632">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
@@ -499,52 +499,52 @@
                             <table class="admin-table">
                                 <thead>
                                     <tr>
-                                        <th style="width:45px;">순번</th>
-                                        <th style="width:140px;">서비스명</th>
-                                        <th style="width:130px;">파일명</th>
-                                        <th>설명 및 중요도</th>
-                                        <th style="width:120px; text-align:center;">동기화 방식</th>
-                                        <th style="width:140px; text-align:center;">무결성 검증</th>
+                                        <th style="width:44px; text-align:center;">순번</th>
+                                        <th>서비스명</th>
+                                        <th>파일명</th>
+                                        <th class="col-desc">설명 및 중요도</th>
+                                        <th style="text-align:center;">동기화 방식</th>
+                                        <th style="text-align:center;">무결성 검증</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b;">1</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">1</td>
                                         <td style="font-weight:700; color:#0f172a;">🩸 혈압 관리</td>
                                         <td><code>health.db</code></td>
-                                        <td style="color:#475569;">혈압, 맥박, 복약 일지, 병원 진료 기록</td>
+                                        <td class="col-desc" style="color:#475569;">혈압, 맥박, 복약 일지, 병원 진료 기록</td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
                                         <td style="text-align:center;" id="secDbHealth"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
                                     </tr>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b;">2</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">2</td>
                                         <td style="font-weight:700; color:#0f172a;">💰 자산 관리</td>
                                         <td><code>asset.db</code></td>
-                                        <td style="color:#475569;">증권 계좌 잔고, 주식 포트폴리오, 입출금 이력</td>
+                                        <td class="col-desc" style="color:#475569;">증권 계좌 잔고, 주식 포트폴리오, 입출금 이력</td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
                                         <td style="text-align:center;" id="secDbAsset"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
                                     </tr>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b;">3</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">3</td>
                                         <td style="font-weight:700; color:#0f172a;">📰 AI 뉴스 브리핑</td>
                                         <td><code>briefing.db</code></td>
-                                        <td style="color:#475569;">뉴스 브리핑, 속보 수집 및 텔레그램 발송 이력</td>
+                                        <td class="col-desc" style="color:#475569;">뉴스 브리핑, 속보 수집 및 텔레그램 발송 이력</td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
                                         <td style="text-align:center;" id="secDbBriefing"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
                                     </tr>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b;">4</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">4</td>
                                         <td style="font-weight:700; color:#0f172a;">🚀 PM2 실행 로그</td>
                                         <td><code>logs/pm2/*</code></td>
-                                        <td style="color:#475569;">포털, 혈압, 자산, 뉴스, 터널 프로세스 로그 아카이브</td>
+                                        <td class="col-desc" style="color:#475569;">포털, 혈압, 자산, 뉴스, 터널 프로세스 로그 아카이브</td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">증분 전송</span></td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">자동 동기화</span></td>
                                     </tr>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b;">5</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">5</td>
                                         <td style="font-weight:700; color:#0f172a;">⏱️ 뉴스 크롤러 로그</td>
                                         <td><code>logs/news/*</code></td>
-                                        <td style="color:#475569;">AI 뉴스 수집기 및 스케줄러 실행 상세 로그</td>
+                                        <td class="col-desc" style="color:#475569;">AI 뉴스 수집기 및 스케줄러 실행 상세 로그</td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">증분 전송</span></td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">자동 동기화</span></td>
                                     </tr>
@@ -1260,11 +1260,11 @@
     <div id="adminToast">알림 메시지</div>
 
     <!-- 📈 초경량 uPlot (10KB) 시계열 차트 엔진 로컬 로드 -->
-    <script src="/js/uPlot.iife.min.js?v=20261022_130541"></script>
+    <script src="/js/uPlot.iife.min.js?v=20261022_134632"></script>
     <!-- 📦 관리자 모듈화 스크립트 로드 (ETag 표준 캐싱) -->
-    <script src="/js/admin-core.js?v=20261022_130541"></script>
-    <script src="/js/admin-monitor.js?v=20261022_130541"></script>
-    <script src="/js/admin-services.js?v=20261022_130541"></script>
+    <script src="/js/admin-core.js?v=20261022_134632"></script>
+    <script src="/js/admin-monitor.js?v=20261022_134632"></script>
+    <script src="/js/admin-services.js?v=20261022_134632"></script>
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>
 </body>
