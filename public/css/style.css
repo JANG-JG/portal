@@ -571,7 +571,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    background: #09090b;
 }
 
 .login-card {
