@@ -1,5 +1,10 @@
 node_modules/
-.env
+.env*
 *.log
-*.db
-*.sqlite
+*.db*
+*.sqlite*
+*.bak*
+*backup*
+*_bak*
+*.pem
+*.key

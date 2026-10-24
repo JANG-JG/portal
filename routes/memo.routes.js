@@ -117,10 +117,10 @@ router.put('/:id', authenticateToken, (req, res) => {
     const query = `
         UPDATE user_memos 
         SET title = ?, content = ?, category = ?, color = ?, is_pinned = ?, updated_at = datetime('now', 'localtime')
-        WHERE id = ? AND (user_id = ? OR user_id = 'admin')
+        WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')
     `;
 
-    db.run(query, [cleanTitle, cleanContent, validCategory, validColor, is_pinned ? 1 : 0, memoId, userId], function(err) {
+    db.run(query, [cleanTitle, cleanContent, validCategory, validColor, is_pinned ? 1 : 0, memoId, userId, userId, userId], function(err) {
         if (err) {
             console.error('[Memo 수정 실패]:', err.message);
             return res.status(500).json({ success: false, message: '메모 수정 실패' });
@@ -140,8 +140,8 @@ router.patch('/:id/pin', authenticateToken, (req, res) => {
     db.run(`
         UPDATE user_memos 
         SET is_pinned = CASE WHEN is_pinned = 1 THEN 0 ELSE 1 END, updated_at = datetime('now', 'localtime')
-        WHERE id = ? AND (user_id = ? OR user_id = 'admin')
-    `, [memoId, userId], function(err) {
+        WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')
+    `, [memoId, userId, userId, userId], function(err) {
         if (err) {
             console.error('[Memo 핀 토글 실패]:', err.message);
             return res.status(500).json({ success: false, message: '상단 고정 토글 실패' });
@@ -158,7 +158,7 @@ router.delete('/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const memoId = req.params.id;
 
-    db.run("DELETE FROM user_memos WHERE id = ? AND (user_id = ? OR user_id = 'admin')", [memoId, userId], function(err) {
+    db.run("DELETE FROM user_memos WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')", [memoId, userId, userId, userId], function(err) {
         if (err) {
             console.error('[Memo 삭제 실패]:', err.message);
             return res.status(500).json({ success: false, message: '메모 삭제 실패' });

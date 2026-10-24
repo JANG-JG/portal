@@ -1,7 +1,10 @@
 const express = require('express');
+const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { db, newsDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
+const { JWT_SECRET, ADMIN_USERS } = require('../config/constants');
 const { VAPID_PUBLIC_KEY, sendUnifiedPushNotification } = require('../services/push.service');
 
 // 1. VAPID 공개키 조회
@@ -137,11 +140,12 @@ router.post('/subscribe', authenticateToken, (req, res) => {
     }
 });
 
-// 2-1. 푸시 구독 해제 API
-router.post('/unsubscribe', (req, res) => {
+// 2-1. 푸시 구독 해제 API (인증 및 본인 소유 확인 필수)
+router.post('/unsubscribe', authenticateToken, (req, res) => {
+    const userId = req.user.username || 'admin';
     const { endpoint } = req.body;
     if (endpoint) {
-        db.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [endpoint], function(delErr) {
+        db.run(`DELETE FROM push_subscriptions WHERE endpoint = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')`, [endpoint, userId, userId, userId], function(delErr) {
             if (!delErr && this.changes > 0) {
                 console.log(`🧹 [WebPush Unsubscribe] 푸시 구독 해제 완료 (${endpoint.slice(0, 40)}...)`);
             }
@@ -283,7 +287,7 @@ router.post('/settings', authenticateToken, (req, res) => {
             return res.status(500).json({ success: false, message: '알림 설정 저장 실패' });
         }
 
-        if (newsDb) {
+        if (newsDb && ADMIN_USERS.includes(userId)) {
             newsDb.run(`
                 INSERT INTO system_settings (key, value, updated_at)
                 VALUES ('telegram_briefing_times', ?, datetime('now', '+9 hours'))
@@ -343,8 +347,8 @@ router.get('/history', authenticateToken, (req, res) => {
 // 5-1. 전체 알림 읽음 처리 API
 router.post('/history/read-all', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
-    const query = `UPDATE notification_history SET is_read = 1 WHERE user_id = ? OR user_id = 'admin'`;
-    db.run(query, [userId], function(err) {
+    const query = `UPDATE notification_history SET is_read = 1 WHERE user_id = ? OR ? = 'admin' OR ? = 'upt0731'`;
+    db.run(query, [userId, userId, userId], function(err) {
         if (err) {
             console.error('[WebPush] 전체 읽음 처리 오류:', err);
             return res.status(500).json({ success: false, message: '전체 읽음 처리 실패' });
@@ -357,7 +361,7 @@ router.post('/history/read-all', authenticateToken, (req, res) => {
 router.post('/history/:id/read', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const id = req.params.id;
-    const query = `UPDATE notification_history SET is_read = 1 WHERE id = ? AND (user_id = ? OR user_id = 'admin' OR ? = 'admin' OR ? = 'upt0731')`;
+    const query = `UPDATE notification_history SET is_read = 1 WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')`;
     db.run(query, [id, userId, userId, userId], function(err) {
         if (err) {
             console.error('[WebPush] 개별 읽음 처리 오류:', err);
@@ -367,20 +371,20 @@ router.post('/history/:id/read', authenticateToken, (req, res) => {
     });
 });
 
-// 6. 알림 수신 내역 개별 삭제 API
+// 6. 알림 수신 내역 개별 삭제 API (소유자 또는 관리자 권한 검증)
 router.delete('/history/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const id = req.params.id;
-    db.run("DELETE FROM notification_history WHERE id = ? AND (user_id = ? OR user_id = 'admin')", [id, userId], (err) => {
+    db.run("DELETE FROM notification_history WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')", [id, userId, userId, userId], (err) => {
         if (err) return res.status(500).json({ success: false, message: '알림 삭제 실패' });
         res.json({ success: true, message: '알림이 삭제되었습니다.' });
     });
 });
 
-// 7. 알림 수신 내역 전체 삭제 API
+// 7. 알림 수신 내역 전체 삭제 API (소유자 또는 관리자 권한 검증)
 router.delete('/history/clear/all', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
-    db.run("DELETE FROM notification_history WHERE user_id = ? OR user_id = 'admin'", [userId], (err) => {
+    db.run("DELETE FROM notification_history WHERE user_id = ? OR ? = 'admin' OR ? = 'upt0731'", [userId, userId, userId], (err) => {
         if (err) return res.status(500).json({ success: false, message: '전체 알림 삭제 실패' });
         res.json({ success: true, message: '모든 알림 내역이 삭제되었습니다.' });
     });
@@ -403,14 +407,29 @@ router.post('/test', authenticateToken, async (req, res) => {
     }
 });
 
-// 9. 통합 포털 단일 알림 브로드캐스트 엔진 API
+// 9. 통합 포털 단일 알림 브로드캐스트 엔진 API (내부 시크릿 헤더 또는 관리자 JWT 서명 필수 검증)
 router.post('/broadcast', async (req, res) => {
-    const isLocal = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1';
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    const hasCookie = req.cookies && req.cookies.portal_token;
+    const internalSecret = req.headers['x-internal-secret'];
+    const isInternalValid =
+        typeof JWT_SECRET === 'string' &&
+        JWT_SECRET.length > 0 &&
+        typeof internalSecret === 'string' &&
+        internalSecret.length === JWT_SECRET.length &&
+        crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(JWT_SECRET));
 
-    if (!isLocal && !token && !hasCookie) {
+    let isAdminTokenValid = false;
+    const authHeader = req.headers['authorization'];
+    const rawToken = (authHeader && authHeader.split(' ')[1]) || (req.cookies && req.cookies.portal_token);
+    if (!isInternalValid && rawToken) {
+        try {
+            const decoded = jwt.verify(rawToken, JWT_SECRET, { algorithms: ['HS256'] });
+            if (decoded && decoded.username && ADMIN_USERS.includes(decoded.username)) {
+                isAdminTokenValid = true;
+            }
+        } catch (err) {}
+    }
+
+    if (!isInternalValid && !isAdminTokenValid) {
         return res.status(401).json({ success: false, message: '알림 발송 권한이 필요합니다.' });
     }
 

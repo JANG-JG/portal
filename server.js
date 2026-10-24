@@ -81,12 +81,13 @@ app.get('/api/jg-ui', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'js', 'jg-ui.js'));
 });
 
-// 정적 파일 서빙 및 캐시 제어
+// 정적 파일 서빙 및 캐시 제어 (.well-known 디지털 자산 링크만 예외 허용하고 일반 dotfiles 차단)
+app.use('/.well-known', express.static(path.join(__dirname, 'public', '.well-known')));
 app.use(express.static(path.join(__dirname, 'public'), {
     index: false,
     etag: true,
     lastModified: true,
-    dotfiles: 'allow',
+    dotfiles: 'ignore',
     setHeaders: (res, filePath) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');

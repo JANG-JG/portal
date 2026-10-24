@@ -238,7 +238,7 @@ router.post('/categories', authenticateToken, (req, res) => {
 router.delete('/categories/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const catId = req.params.id;
-    db.run("DELETE FROM calendar_categories WHERE id = ? AND (user_id = ? OR user_id = 'admin')", [catId, userId], function(err) {
+    db.run("DELETE FROM calendar_categories WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')", [catId, userId, userId, userId], function(err) {
         if (err) {
             return res.status(500).json({ success: false, message: '범례 삭제 실패' });
         }
@@ -319,7 +319,7 @@ router.put('/events/:id', authenticateToken, (req, res) => {
         UPDATE calendar_events
         SET title = ?, event_date = ?, event_time = ?, category = ?, color = ?, memo = ?,
             is_all_day = ?, notify_timing = ?, notify_repeat = ?, notify_sent_count = 0
-        WHERE id = ? AND (user_id = ? OR user_id = 'admin')
+        WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')
     `;
     db.run(query, [
         title.trim(),
@@ -332,6 +332,8 @@ router.put('/events/:id', authenticateToken, (req, res) => {
         notify_timing || 'exact',
         parseInt(notify_repeat, 10) || 1,
         eventId,
+        userId,
+        userId,
         userId
     ], function(err) {
         if (err) {
@@ -347,7 +349,7 @@ router.delete('/events/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const eventId = req.params.id;
 
-    db.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR user_id = 'admin')", [eventId, userId], function(err) {
+    db.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')", [eventId, userId, userId, userId], function(err) {
         if (err) return res.status(500).json({ success: false, message: '일정 삭제 실패' });
         res.json({ success: true, message: '일정이 삭제되었습니다.' });
     });
@@ -361,8 +363,8 @@ router.patch('/events/:id/toggle', authenticateToken, (req, res) => {
     db.run(`
         UPDATE calendar_events 
         SET is_completed = CASE WHEN is_completed = 1 THEN 0 ELSE 1 END
-        WHERE id = ? AND (user_id = ? OR user_id = 'admin')
-    `, [eventId, userId], function(err) {
+        WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')
+    `, [eventId, userId, userId, userId], function(err) {
         if (err) return res.status(500).json({ success: false, message: '완료 토글 실패' });
         res.json({ success: true, message: '일정 상태가 변경되었습니다.' });
     });

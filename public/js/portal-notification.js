@@ -349,15 +349,15 @@
             const linkUrl = item.url || '#';
             const isUnread = item.is_read === 0;
             const newBadge = isUnread ? '<span class="notif-badge-new">NEW</span>' : '';
-            const safeUrl = linkUrl.replace(/'/g, "\\'");
+            const safeUrlAttr = escapeHtml(linkUrl);
             return `
-                <div class="notif-card-item ${isUnread ? 'is-unread' : 'is-read'}" id="notif-card-${item.id}" onclick="openAndReadNotification(${item.id}, '${safeUrl}')">
+                <div class="notif-card-item ${isUnread ? 'is-unread' : 'is-read'}" id="notif-card-${item.id}" data-url="${safeUrlAttr}" onclick="openAndReadNotification(${item.id}, this.getAttribute('data-url'))">
                     <div class="notif-card-header">
                         <span class="notif-card-category-badge ${cat.colorClass}">
                             <span>${cat.icon}</span> <span>${cat.label}</span>
                         </span>
                         <div class="notif-card-meta">
-                            <span class="notif-card-time" title="${item.created_at || ''}">${timeStr}</span>
+                            <span class="notif-card-time" title="${escapeHtml(item.created_at || '')}">${timeStr}</span>
                             ${newBadge}
                         </div>
                     </div>
@@ -445,10 +445,11 @@
             initUnreadBadge();
         } catch (e) {}
         const item = notifHistoryListItems.find(i => i.id === id);
-        const targetUrl = (url && url !== '#' && !url.startsWith('javascript:')) ? url : (item && item.url && item.url !== '#' ? item.url : '');
-        if (targetUrl) {
+        const rawUrl = (url && url !== '#') ? url : (item && item.url && item.url !== '#' ? item.url : '');
+        const isSafeUrl = rawUrl && (/^https?:\/\//i.test(rawUrl) || rawUrl.startsWith('/'));
+        if (isSafeUrl) {
             window.closeNotificationModal();
-            window.location.href = targetUrl;
+            window.location.href = rawUrl;
         }
     };
     window.deleteNotificationItem = async function(id) {

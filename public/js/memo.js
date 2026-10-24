@@ -1,22 +1,38 @@
-// 🛡️ XSS 방어 살균 함수 (DOMPurify + Fallback Parser)
+// 🛡️ XSS 방어 살균 함수 (Allowlist 기반 DOMParser 살균기)
 function sanitizeMemoHtml(dirty) {
     if (!dirty) return '';
+    const allowedTags = new Set(['p', 'div', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'span', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'blockquote', 'code', 'pre']);
+    const allowedAttrs = new Set(['href', 'target', 'rel', 'class', 'data-list', 'style']);
     if (window.DOMPurify) {
-        return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: ['p', 'div', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'span', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'blockquote', 'code', 'pre'], ALLOWED_ATTR: ['href', 'target', 'rel', 'class', 'data-list', 'style'] });
+        return DOMPurify.sanitize(dirty, { ALLOWED_TAGS: Array.from(allowedTags), ALLOWED_ATTR: Array.from(allowedAttrs) });
     }
     try {
         const parser = new DOMParser();
         const doc = parser.parseFromString(dirty, 'text/html');
-        const forbidden = ['script', 'object', 'embed', 'link', 'iframe', 'form', 'input', 'button', 'svg', 'math'];
-        forbidden.forEach(tag => { doc.querySelectorAll(tag).forEach(el => el.remove()); });
-        doc.querySelectorAll('*').forEach(el => {
+        const allElements = Array.from(doc.body.querySelectorAll('*'));
+        for (const el of allElements) {
+            const tag = el.tagName.toLowerCase();
+            if (!allowedTags.has(tag)) {
+                el.remove();
+                continue;
+            }
             for (let i = el.attributes.length - 1; i >= 0; i--) {
                 const attr = el.attributes[i];
-                if (attr.name.toLowerCase().startsWith('on')) { el.removeAttribute(attr.name); } else if (attr.name.toLowerCase() === 'href' || attr.name.toLowerCase() === 'src') {
-                    if (/^\s*javascript:/i.test(attr.value) || /^\s*data:/i.test(attr.value)) { el.removeAttribute(attr.name); }
+                const name = attr.name.toLowerCase();
+                const val = attr.value || '';
+                if (!allowedAttrs.has(name)) {
+                    el.removeAttribute(attr.name);
+                } else if (name === 'href') {
+                    if (!/^(https?:\/\/|mailto:|\/)/i.test(val.trim()) || val.trim().startsWith('//')) {
+                        el.removeAttribute(attr.name);
+                    }
+                } else if (name === 'style') {
+                    if (/expression|url\s*\(|javascript:/i.test(val)) {
+                        el.removeAttribute(attr.name);
+                    }
                 }
             }
-        });
+        }
         return doc.body.innerHTML;
     } catch (e) { return escapeHtml(dirty).replace(/\n/g, '<br>'); }
 }
