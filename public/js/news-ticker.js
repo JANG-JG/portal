@@ -492,7 +492,7 @@
             <div id="jg-breaking-track" class="jg-breaking-track"></div>
         </div>
         <div class="jg-breaking-actions">
-            <a href="https://news.j-jg.cc/breaking" class="jg-breaking-more" title="실시간 속보 브리핑 바로가기">
+            <a href="https://j-jg.cc/go/news?path=/breaking" class="jg-breaking-more" title="실시간 속보 브리핑 바로가기">
                 속보 브리핑 ❯
             </a>
             <button type="button" class="jg-breaking-close-btn" onclick="window.jgDismissBreaking()" title="속보 닫고 기존 뉴스만 보기">
@@ -535,12 +535,12 @@
         <div class="jg-ticker-news-row">
             <div class="jg-ticker-badge">
                 <span class="jg-ticker-dot"></span>
-                <span class="jg-badge-text-full">뉴스 브리핑</span>
+                <span class="jg-badge-text-full">뉴스룸</span>
                 <span class="jg-badge-text-mobile" style="display:none;">뉴스</span>
             </div>
             <div class="jg-ticker-scroll-area">
                 <div id="jg-track" class="jg-ticker-track">
-                    <span class="jg-ticker-link">최신 뉴스 브리핑을 준비 중입니다...</span>
+                    <span class="jg-ticker-link">실시간 최신 뉴스를 준비 중입니다...</span>
                 </div>
             </div>
         </div>
@@ -738,7 +738,7 @@
                 }
 
                 slides.push(
-                    `<a href="https://news.j-jg.cc/weather" class="jg-v-item" title="${weatherTitle}">
+                    `<a href="https://j-jg.cc/go/news?path=/weather" class="jg-v-item" title="${weatherTitle}">
                         <span style="display:inline-flex; align-items:center; gap:4px;">${weatherIconSvg}<span>${cityName}</span></span>
                         <span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>
                         ${conditionBadge}
@@ -749,7 +749,7 @@
             // 2. 코스피 슬라이드
             if (kospi && kospi.price && kospi.price !== '-') {
                 slides.push(
-                    `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 코스피 증시 브리핑 바로가기">
+                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 코스피 증시 브리핑 바로가기">
                         <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스피</span>
                         <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kospi.price}</span>
                         <span style="color:${kospi.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kospi.direction === 'up' ? '▲' : '▼'}${kospiRatio}</span>
@@ -760,7 +760,7 @@
             // 3. 코스닥 슬라이드
             if (kosdaq && kosdaq.price && kosdaq.price !== '-') {
                 slides.push(
-                    `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 코스닥 증시 브리핑 바로가기">
+                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 코스닥 증시 브리핑 바로가기">
                         <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스닥</span>
                         <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kosdaq.price}</span>
                         <span style="color:${kosdaq.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kosdaq.direction === 'up' ? '▲' : '▼'}${kosdaqRatio}</span>
@@ -771,7 +771,7 @@
             // 4. 달러 슬라이드
             if (usd && usd.price && usd.price !== '-' && !usdPriceText.includes('-')) {
                 slides.push(
-                    `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 달러 환율 브리핑 바로가기 (USD/KRW)">
+                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 달러 환율 브리핑 바로가기 (USD/KRW)">
                         <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">달러</span>
                         <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${usdPriceText}</span>
                         <span style="color:${usd.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${usd.direction === 'up' ? '▲' : '▼'}${usdRatio}</span>
@@ -784,7 +784,7 @@
                 const jpy = market.jpy_krw;
                 const jpyRatio = jpy.ratio && jpy.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${jpy.ratio}</span>` : '';
                 slides.push(
-                    `<a href="https://news.j-jg.cc/economy" class="jg-v-item" title="실시간 엔화 환율 브리핑 바로가기 (JPY/KRW)">
+                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 엔화 환율 브리핑 바로가기 (JPY/KRW)">
                         <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">100엔</span>
                         <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${jpy.price}</span>
                         <span style="color:${jpy.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${jpy.direction === 'up' ? '▲' : '▼'}${jpyRatio}</span>
@@ -821,7 +821,7 @@
             // 만약 캐시도 없고 첫 로드 실패인 경우에만 안내 표시
             const track = document.getElementById('jg-track');
             if (track && track.textContent.includes('준비 중')) {
-                track.innerHTML = '<span class="jg-ticker-link" style="color:#94a3b8;">최신 뉴스 브리핑을 불러오는 중입니다...</span>';
+                track.innerHTML = '<span class="jg-ticker-link" style="color:#94a3b8;">실시간 최신 뉴스를 불러오는 중입니다...</span>';
             }
         }
     }

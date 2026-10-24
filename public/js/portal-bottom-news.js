@@ -225,12 +225,12 @@
         <div class="jg-t-center">
             <div class="jg-t-badge">
                 <span class="jg-t-pulse"></span>
-                <span class="jg-badge-full">뉴스 브리핑</span>
+                <span class="jg-badge-full">뉴스룸</span>
                 <span class="jg-badge-mobile">뉴스</span>
             </div>
             <div class="jg-t-scroll-area">
                 <div id="jgNewsTrack" class="jg-t-track">
-                    <span class="jg-t-link">최신 뉴스 브리핑을 준비 중입니다...</span>
+                    <span class="jg-t-link">실시간 최신 뉴스를 준비 중입니다...</span>
                 </div>
             </div>
         </div>

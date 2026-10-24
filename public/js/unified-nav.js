@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261024_122006';
+    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261024_131848';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
@@ -162,6 +162,9 @@
             const isLegacyContent = cachedHtml && (
                 !cachedHtml.includes('notif-category-bar') ||
                 !cachedHtml.includes('/go/blood') ||
+                !cachedHtml.includes('혈압·건강·약') ||
+                !cachedHtml.includes('자산·금융') ||
+                !cachedHtml.includes('서버 인프라') ||
                 cachedHtml.includes('병원 일정 상세 관리') ||
                 cachedHtml.includes('혈압 관리 메인 페이지') ||
                 cachedHtml.includes('실시간 뉴스 대시보드')
