@@ -152,6 +152,7 @@ function openLogoutModal(event) {
     }
     const modal = document.getElementById('logoutModal');
     if (modal) {
+        if (modal.classList.contains('active')) return;
         modal.classList.add('active');
         modal.classList.add('open');
         modal.style.display = 'flex';
