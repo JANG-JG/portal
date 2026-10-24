@@ -122,11 +122,6 @@ app.get(['/', '/index.html'], authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// 1-0. 신규 클린 Bento Grid 대시보드 화면 (안전 사전 검증용 독립 라우트)
-app.get(['/bento', '/bento.html', '/v2'], authenticateToken, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'bento.html'));
-});
-
 // 1-1. 통합 관리자 센터 화면 (관리자 전용 접근 제어)
 app.get(['/admin', '/admin.html'], authenticateToken, requireAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
@@ -190,10 +185,11 @@ app.get('/health', (req, res) => {
 // ⏰ [통합 포털 단일 알림 스케줄러 기동]
 // ==========================================
 const isDevInstance = PORT == 3005 || process.env.IS_DEV === 'true';
-if (!isDevInstance) {
+const isPrimaryWorker = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
+if (!isDevInstance && isPrimaryWorker) {
     initUnifiedNotificationScheduler(db, sendUnifiedPushNotification, getLiveWeatherData, getLiveMarketData);
 } else {
-    console.log('🧪 [portal-dev] 테스트 인스턴스: 알림 중복 발송 방지를 위해 백그라운드 푸시 스케줄러 비활성화');
+    console.log('🧪 [portal] 보조 워커 또는 테스트 인스턴스: 알림 중복 발송 방지를 위해 백그라운드 푸시 스케줄러 비활성화');
 }
 
 // 서버 기동
