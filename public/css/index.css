@@ -1780,16 +1780,17 @@ body.modal-open {
 
 .qs-item {
     display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0.65rem !important;
-    padding: 0.6rem 0.65rem !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.35rem !important;
+    padding: 0.65rem 0.75rem !important;
     text-decoration: none !important;
     cursor: pointer !important;
     background: var(--bg-surface) !important;
     color: var(--text-primary) !important;
     border-bottom: 1px solid var(--border-subtle) !important;
     transition: background 0.1s ease !important;
+    border-radius: var(--radius-sm) !important;
 }
 
 .qs-item:hover, .qs-item.focused {
@@ -1797,10 +1798,30 @@ body.modal-open {
     color: #ffffff !important;
 }
 
+.qs-item-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+}
+
 .qs-item-title {
     color: var(--text-primary) !important;
     font-weight: 600 !important;
-    font-size: 0.86rem !important;
+    font-size: 0.88rem !important;
+    line-height: 1.35 !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+    word-break: break-word !important;
+}
+
+.qs-item-badge {
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    padding: 0.15rem 0.45rem !important;
+    border-radius: 4px !important;
+    flex-shrink: 0 !important;
 }
 
 .qs-item:hover .qs-item-title, .qs-item.focused .qs-item-title {
@@ -1809,13 +1830,24 @@ body.modal-open {
 
 .qs-item-desc {
     color: var(--text-secondary) !important;
-    font-size: 0.78rem !important;
+    font-size: 0.8rem !important;
+    line-height: 1.4 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    word-break: break-word !important;
 }
 
 .qs-item-meta {
     color: var(--text-muted) !important;
-    font-size: 0.72rem !important;
-    flex-shrink: 0 !important;
+    font-size: 0.73rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    flex-wrap: wrap !important;
+    margin-top: 0.15rem !important;
 }
 
 .qs-highlight {

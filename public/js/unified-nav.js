@@ -504,6 +504,58 @@
         window.openNotificationModal();
     };
 
+    // 🎨 사이트 특성(포털 메인, 다크 모드, 메타태그 등) 능동 감지 및 다크징크 테마 적용 엔진
+    function applyNotifAdaptiveTheme(modal) {
+        if (!modal) modal = document.getElementById('notificationModal');
+        if (!modal) return;
+
+        const htmlEl = document.documentElement;
+        const bodyEl = document.body;
+
+        // 1. 포털 메인 대시보드 판별 (포털 메인은 항상 다크징크)
+        const isPortalMain = window.location.pathname === '/' || 
+                             window.location.pathname === '/index.html' ||
+                             document.querySelector('.cmd-navbar') !== null ||
+                             document.getElementById('portal-tab-bar') !== null;
+
+        // 2. 클래스 및 data-theme 감지
+        const hasDarkClass = htmlEl.classList.contains('dark') || 
+                              bodyEl.classList.contains('dark') ||
+                              htmlEl.getAttribute('data-theme') === 'dark' ||
+                              bodyEl.getAttribute('data-theme') === 'dark';
+
+        // 3. 메타 태그 감지 (color-scheme, theme-color)
+        const hasDarkMeta = !!document.querySelector('meta[name="color-scheme"][content*="dark"]') ||
+                            (function() {
+                                const metaTheme = document.querySelector('meta[name="theme-color"]');
+                                if (!metaTheme) return false;
+                                const content = (metaTheme.getAttribute('content') || '').toLowerCase();
+                                return ['#09090b', '#000000', '#121215', '#18181b', '#1e1e24'].includes(content);
+                            })();
+
+        // 4. 배경색 명도(Luminance) 능동 측정
+        let isDarkBg = false;
+        try {
+            if (bodyEl) {
+                const bg = window.getComputedStyle(bodyEl).backgroundColor;
+                const rgb = bg.match(/\d+/g);
+                if (rgb && rgb.length >= 3) {
+                    const brightness = (Number(rgb[0]) * 299 + Number(rgb[1]) * 587 + Number(rgb[2]) * 114) / 1000;
+                    if (brightness < 128) isDarkBg = true;
+                }
+            }
+        } catch (e) {}
+
+        const isDark = isPortalMain || hasDarkClass || hasDarkMeta || isDarkBg;
+
+        if (isDark) {
+            modal.classList.add('dark-zinc', 'theme-dark');
+        } else {
+            modal.classList.remove('dark-zinc', 'theme-dark');
+        }
+    }
+    window.applyNotifAdaptiveTheme = applyNotifAdaptiveTheme;
+
     // 알림 모달 열기 (미발견 또는 구버전 시 자동 마운트 Self-Healing 보장)
     window.openNotificationModal = async function() {
         let modal = document.getElementById('notificationModal');
@@ -558,6 +610,7 @@
             console.warn('[UnifiedNav] notificationModal 요소를 찾을 수 없습니다.');
             return;
         }
+        applyNotifAdaptiveTheme(modal);
         modal.classList.add('open');
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';

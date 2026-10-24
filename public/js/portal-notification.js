@@ -24,10 +24,53 @@
         { key: 'system', label: '시스템', icon: '🖥️' }
     ];
 
+    // 🎨 사이트 특성(포털 메인, 다크 모드 등) 능동 감지 및 다크징크 테마 적용 엔진
+    function applyNotifAdaptiveTheme(modal) {
+        if (!modal) modal = document.getElementById('notificationModal');
+        if (!modal) return;
+        const htmlEl = document.documentElement;
+        const bodyEl = document.body;
+        const isPortalMain = window.location.pathname === '/' || 
+                             window.location.pathname === '/index.html' ||
+                             document.querySelector('.cmd-navbar') !== null ||
+                             document.getElementById('portal-tab-bar') !== null;
+        const hasDarkClass = htmlEl.classList.contains('dark') || 
+                              bodyEl.classList.contains('dark') ||
+                              htmlEl.getAttribute('data-theme') === 'dark' ||
+                              bodyEl.getAttribute('data-theme') === 'dark';
+        const hasDarkMeta = !!document.querySelector('meta[name="color-scheme"][content*="dark"]') ||
+                            (function() {
+                                const metaTheme = document.querySelector('meta[name="theme-color"]');
+                                if (!metaTheme) return false;
+                                const content = (metaTheme.getAttribute('content') || '').toLowerCase();
+                                return ['#09090b', '#000000', '#121215', '#18181b', '#1e1e24'].includes(content);
+                            })();
+        let isDarkBg = false;
+        try {
+            if (bodyEl) {
+                const bg = window.getComputedStyle(bodyEl).backgroundColor;
+                const rgb = bg.match(/\d+/g);
+                if (rgb && rgb.length >= 3) {
+                    const brightness = (Number(rgb[0]) * 299 + Number(rgb[1]) * 587 + Number(rgb[2]) * 114) / 1000;
+                    if (brightness < 128) isDarkBg = true;
+                }
+            }
+        } catch (e) {}
+
+        const isDark = isPortalMain || hasDarkClass || hasDarkMeta || isDarkBg;
+        if (isDark) {
+            modal.classList.add('dark-zinc', 'theme-dark');
+        } else {
+            modal.classList.remove('dark-zinc', 'theme-dark');
+        }
+    }
+    window.applyNotifAdaptiveTheme = applyNotifAdaptiveTheme;
+
     // 1. 모달 제어
     window.openNotificationModal = function() {
         const modal = document.getElementById('notificationModal');
         if (!modal) return;
+        applyNotifAdaptiveTheme(modal);
         modal.classList.add('open');
         modal.style.setProperty('display', 'flex', 'important');
         if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();

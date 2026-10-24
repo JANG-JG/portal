@@ -1396,5 +1396,529 @@
     font-weight: 700 !important;
 }
 
+/* ==============================================================================
+ * 🌙 [전 사이트 공통 통합 알림 센터 능동형 다크징크 테마] (Dark Zinc Adaptive Theme)
+ * - 발동 기준: #notificationModal.dark-zinc, #notificationModal.theme-dark,
+ *             body.dark #notificationModal, html[data-theme="dark"] #notificationModal,
+ *             html[data-color-scheme="dark"] #notificationModal,
+ *             :root:has(meta[name="color-scheme"][content*="dark"]) #notificationModal
+ * - 컬러 토큰: Zinc-950 (#09090b), Surface (#121215), Card (#18181b), Border (#27272a)
+ * ============================================================================== */
+#notificationModal.dark-zinc,
+#notificationModal.theme-dark,
+body.dark #notificationModal,
+html[data-theme="dark"] #notificationModal,
+html[data-color-scheme="dark"] #notificationModal {
+    background: rgba(0, 0, 0, 0.85) !important;
+}
+
+#notificationModal.dark-zinc .notif-modal-dialog,
+#notificationModal.theme-dark .notif-modal-dialog,
+body.dark #notificationModal .notif-modal-dialog,
+html[data-theme="dark"] #notificationModal .notif-modal-dialog,
+html[data-color-scheme="dark"] #notificationModal .notif-modal-dialog {
+    background: #09090b !important;
+    border: 1px solid #27272a !important;
+    color: #f4f4f5 !important;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.8) !important;
+}
+
+#notificationModal.dark-zinc .notif-modal-header,
+#notificationModal.theme-dark .notif-modal-header,
+body.dark #notificationModal .notif-modal-header,
+html[data-theme="dark"] #notificationModal .notif-modal-header,
+html[data-color-scheme="dark"] #notificationModal .notif-modal-header {
+    background: #121215 !important;
+    border-bottom: 1px solid #27272a !important;
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .notif-header-title,
+#notificationModal.theme-dark .notif-header-title,
+body.dark #notificationModal .notif-header-title {
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .notif-master-toggle-label,
+#notificationModal.theme-dark .notif-master-toggle-label,
+body.dark #notificationModal .notif-master-toggle-label {
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .notif-close-x,
+#notificationModal.theme-dark .notif-close-x,
+body.dark #notificationModal .notif-close-x {
+    background: #18181b !important;
+    border: 1px solid #27272a !important;
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .notif-close-x:hover,
+#notificationModal.theme-dark .notif-close-x:hover,
+body.dark #notificationModal .notif-close-x:hover {
+    background: #27272a !important;
+    color: #ffffff !important;
+    border-color: #3f3f46 !important;
+}
+
+#notificationModal.dark-zinc .notif-main-tabs,
+#notificationModal.theme-dark .notif-main-tabs,
+body.dark #notificationModal .notif-main-tabs {
+    background: #121215 !important;
+    border-bottom: 1px solid #27272a !important;
+}
+
+#notificationModal.dark-zinc .notif-tab-item,
+#notificationModal.theme-dark .notif-tab-item,
+body.dark #notificationModal .notif-tab-item {
+    color: #71717a !important;
+    background: transparent !important;
+}
+
+#notificationModal.dark-zinc .notif-tab-item.active,
+#notificationModal.theme-dark .notif-tab-item.active,
+body.dark #notificationModal .notif-tab-item.active {
+    color: #f4f4f5 !important;
+    background: #18181b !important;
+    border-bottom-color: #3b82f6 !important;
+}
+
+#notificationModal.dark-zinc .notif-modal-scroll,
+#notificationModal.theme-dark .notif-modal-scroll,
+body.dark #notificationModal .notif-modal-scroll {
+    background: #09090b !important;
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .notif-category-bar,
+#notificationModal.theme-dark .notif-category-bar,
+body.dark #notificationModal .notif-category-bar {
+    background: #121215 !important;
+    border-bottom: 1px solid #27272a !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+#notificationModal.dark-zinc .notif-cat-chip,
+#notificationModal.theme-dark .notif-cat-chip,
+body.dark #notificationModal .notif-cat-chip {
+    background: #18181b !important;
+    border: 1px solid #27272a !important;
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .notif-cat-chip:hover,
+#notificationModal.theme-dark .notif-cat-chip:hover,
+body.dark #notificationModal .notif-cat-chip:hover {
+    background: #27272a !important;
+    color: #f4f4f5 !important;
+    border-color: #3f3f46 !important;
+}
+
+#notificationModal.dark-zinc .notif-cat-chip.active,
+#notificationModal.theme-dark .notif-cat-chip.active,
+body.dark #notificationModal .notif-cat-chip.active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #3b82f6 !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35) !important;
+}
+
+#notificationModal.dark-zinc .notif-cat-badge,
+#notificationModal.theme-dark .notif-cat-badge,
+body.dark #notificationModal .notif-cat-badge {
+    background: #27272a !important;
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .notif-cat-chip.active .notif-cat-badge,
+#notificationModal.theme-dark .notif-cat-chip.active .notif-cat-badge,
+body.dark #notificationModal .notif-cat-chip.active .notif-cat-badge {
+    background: rgba(255, 255, 255, 0.25) !important;
+    color: #ffffff !important;
+}
+
+#notificationModal.dark-zinc .notif-subtoolbar,
+#notificationModal.theme-dark .notif-subtoolbar,
+body.dark #notificationModal .notif-subtoolbar {
+    background: #121215 !important;
+    border-bottom: 1px solid #27272a !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+#notificationModal.dark-zinc #notifHistoryCountLabel,
+#notificationModal.dark-zinc .notif-count-label,
+#notificationModal.theme-dark #notifHistoryCountLabel,
+#notificationModal.theme-dark .notif-count-label,
+body.dark #notificationModal .notif-count-label {
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .btn-history-tool,
+#notificationModal.theme-dark .btn-history-tool,
+body.dark #notificationModal .btn-history-tool {
+    background: #18181b !important;
+    border: 1px solid #27272a !important;
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .btn-history-tool:hover,
+#notificationModal.theme-dark .btn-history-tool:hover,
+body.dark #notificationModal .btn-history-tool:hover {
+    background: #27272a !important;
+    border-color: #3f3f46 !important;
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .btn-danger-tool,
+#notificationModal.theme-dark .btn-danger-tool,
+body.dark #notificationModal .btn-danger-tool {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    color: #f87171 !important;
+}
+
+#notificationModal.dark-zinc .btn-danger-tool:hover,
+#notificationModal.theme-dark .btn-danger-tool:hover,
+body.dark #notificationModal .btn-danger-tool:hover {
+    background: rgba(239, 68, 68, 0.25) !important;
+    color: #fca5a5 !important;
+}
+
+#notificationModal.dark-zinc .notif-info-btn,
+#notificationModal.theme-dark .notif-info-btn,
+body.dark #notificationModal .notif-info-btn {
+    border: 1.5px solid #71717a !important;
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .notif-info-btn:hover,
+#notificationModal.theme-dark .notif-info-btn:hover,
+body.dark #notificationModal .notif-info-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .notif-info-tooltip,
+#notificationModal.theme-dark .notif-info-tooltip,
+body.dark #notificationModal .notif-info-tooltip {
+    background: #18181b !important;
+    border: 1px solid #3f3f46 !important;
+    color: #e4e4e7 !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5) !important;
+}
+
+#notificationModal.dark-zinc .notif-info-tooltip::before,
+#notificationModal.theme-dark .notif-info-tooltip::before,
+body.dark #notificationModal .notif-info-tooltip::before {
+    border-bottom-color: #18181b !important;
+}
+
+#notificationModal.dark-zinc .notif-card-item,
+#notificationModal.theme-dark .notif-card-item,
+body.dark #notificationModal .notif-card-item {
+    background: #121215 !important;
+    border: 1px solid #27272a !important;
+    color: #f4f4f5 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+#notificationModal.dark-zinc .notif-card-item:hover,
+#notificationModal.theme-dark .notif-card-item:hover,
+body.dark #notificationModal .notif-card-item:hover {
+    border-color: #3b82f6 !important;
+    background: #16161a !important;
+}
+
+#notificationModal.dark-zinc .notif-card-item.is-unread,
+#notificationModal.theme-dark .notif-card-item.is-unread,
+body.dark #notificationModal .notif-card-item.is-unread {
+    background: #18181b !important;
+    border-color: #3f3f46 !important;
+    border-left: 4px solid #3b82f6 !important;
+}
+
+#notificationModal.dark-zinc .notif-card-item.is-read,
+#notificationModal.theme-dark .notif-card-item.is-read,
+body.dark #notificationModal .notif-card-item.is-read {
+    background: #121215 !important;
+    border-color: #1f1f23 !important;
+    opacity: 0.72 !important;
+}
+
+#notificationModal.dark-zinc .notif-card-title,
+#notificationModal.theme-dark .notif-card-title,
+body.dark #notificationModal .notif-card-title {
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .notif-card-body,
+#notificationModal.theme-dark .notif-card-body,
+body.dark #notificationModal .notif-card-body {
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .notif-card-time,
+#notificationModal.theme-dark .notif-card-time,
+body.dark #notificationModal .notif-card-time {
+    color: #71717a !important;
+}
+
+#notificationModal.dark-zinc .btn-notif-more,
+#notificationModal.theme-dark .btn-notif-more,
+body.dark #notificationModal .btn-notif-more {
+    color: #71717a !important;
+}
+
+#notificationModal.dark-zinc .btn-notif-more:hover,
+#notificationModal.theme-dark .btn-notif-more:hover,
+body.dark #notificationModal .btn-notif-more:hover {
+    background: #27272a !important;
+    color: #f4f4f5 !important;
+}
+
+/* 카테고리 뱃지 다크 테마 고대비 */
+#notificationModal.dark-zinc .cat-breaking,
+#notificationModal.theme-dark .cat-breaking,
+body.dark #notificationModal .cat-breaking {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #f87171 !important;
+}
+
+#notificationModal.dark-zinc .cat-calendar,
+#notificationModal.theme-dark .cat-calendar,
+body.dark #notificationModal .cat-calendar {
+    background: rgba(99, 102, 241, 0.2) !important;
+    color: #a5b4fc !important;
+}
+
+#notificationModal.dark-zinc .cat-weather,
+#notificationModal.theme-dark .cat-weather,
+body.dark #notificationModal .cat-weather {
+    background: rgba(14, 165, 233, 0.2) !important;
+    color: #7dd3fc !important;
+}
+
+#notificationModal.dark-zinc .cat-finance,
+#notificationModal.theme-dark .cat-finance,
+body.dark #notificationModal .cat-finance {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: #fcd34d !important;
+}
+
+#notificationModal.dark-zinc .cat-health,
+#notificationModal.theme-dark .cat-health,
+body.dark #notificationModal .cat-health {
+    background: rgba(236, 72, 153, 0.2) !important;
+    color: #f472b6 !important;
+}
+
+#notificationModal.dark-zinc .cat-system,
+#notificationModal.theme-dark .cat-system,
+body.dark #notificationModal .cat-system {
+    background: rgba(168, 85, 247, 0.2) !important;
+    color: #d8b4fe !important;
+}
+
+#notificationModal.dark-zinc .cat-general,
+#notificationModal.theme-dark .cat-general,
+body.dark #notificationModal .cat-general {
+    background: #27272a !important;
+    color: #a1a1aa !important;
+}
+
+/* 더보기 메뉴 드롭다운 */
+#notificationModal.dark-zinc .notif-dropdown-menu,
+#notificationModal.theme-dark .notif-dropdown-menu,
+body.dark #notificationModal .notif-dropdown-menu {
+    background: #18181b !important;
+    border: 1px solid #27272a !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6) !important;
+}
+
+#notificationModal.dark-zinc .notif-dropdown-btn,
+#notificationModal.theme-dark .notif-dropdown-btn,
+body.dark #notificationModal .notif-dropdown-btn {
+    color: #d4d4d8 !important;
+}
+
+#notificationModal.dark-zinc .notif-dropdown-btn:hover,
+#notificationModal.theme-dark .notif-dropdown-btn:hover,
+body.dark #notificationModal .notif-dropdown-btn:hover {
+    background: #27272a !important;
+    color: #ffffff !important;
+}
+
+#notificationModal.dark-zinc .notif-dropdown-btn.btn-action-delete:hover,
+#notificationModal.theme-dark .notif-dropdown-btn.btn-action-delete:hover,
+body.dark #notificationModal .notif-dropdown-btn.btn-action-delete:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: #f87171 !important;
+}
+
+#notificationModal.dark-zinc .notif-dropdown-btn.btn-action-mute:hover,
+#notificationModal.theme-dark .notif-dropdown-btn.btn-action-mute:hover,
+body.dark #notificationModal .notif-dropdown-btn.btn-action-mute:hover {
+    background: rgba(245, 158, 11, 0.2) !important;
+    color: #fcd34d !important;
+}
+
+/* 목록 끝 안내 블록 */
+#notificationModal.dark-zinc .notif-list-end-notice,
+#notificationModal.theme-dark .notif-list-end-notice,
+body.dark #notificationModal .notif-list-end-notice {
+    background: #121215 !important;
+    border: 1px dashed #27272a !important;
+}
+
+#notificationModal.dark-zinc .notif-end-text,
+#notificationModal.theme-dark .notif-end-text,
+body.dark #notificationModal .notif-end-text {
+    color: #a1a1aa !important;
+}
+
+#notificationModal.dark-zinc .notif-end-sub,
+#notificationModal.theme-dark .notif-end-sub,
+body.dark #notificationModal .notif-end-sub {
+    color: #71717a !important;
+}
+
+/* 설정 뷰 */
+#notificationModal.dark-zinc .notif-perm-banner,
+#notificationModal.theme-dark .notif-perm-banner,
+body.dark #notificationModal .notif-perm-banner {
+    background: rgba(37, 99, 235, 0.12) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    color: #93c5fd !important;
+}
+
+#notificationModal.dark-zinc .notif-card-group,
+#notificationModal.theme-dark .notif-card-group,
+body.dark #notificationModal .notif-card-group {
+    background: #121215 !important;
+    border: 1px solid #27272a !important;
+    color: #f4f4f5 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+#notificationModal.dark-zinc .notif-card-group.admin-only-section,
+#notificationModal.theme-dark .notif-card-group.admin-only-section,
+body.dark #notificationModal .notif-card-group.admin-only-section {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+#notificationModal.dark-zinc .notif-toggle-content strong,
+#notificationModal.theme-dark .notif-toggle-content strong,
+body.dark #notificationModal .notif-toggle-content strong,
+#notificationModal.dark-zinc .notif-card-group strong,
+#notificationModal.theme-dark .notif-card-group strong {
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .notif-toggle-content p,
+#notificationModal.theme-dark .notif-toggle-content p,
+body.dark #notificationModal .notif-toggle-content p,
+#notificationModal.dark-zinc .notif-card-group p,
+#notificationModal.theme-dark .notif-card-group p {
+    color: #71717a !important;
+}
+
+#notificationModal.dark-zinc .notif-inline-time,
+#notificationModal.theme-dark .notif-inline-time,
+body.dark #notificationModal .notif-inline-time {
+    background: #18181b !important;
+    color: #a1a1aa !important;
+    border: 1px solid #27272a !important;
+}
+
+#notificationModal.dark-zinc input[type="time"],
+#notificationModal.theme-dark input[type="time"],
+body.dark #notificationModal input[type="time"] {
+    background: #18181b !important;
+    border: 1px solid #3f3f46 !important;
+    color: #f4f4f5 !important;
+    color-scheme: dark !important;
+}
+
+#notificationModal.dark-zinc .notif-time-box,
+#notificationModal.theme-dark .notif-time-box,
+body.dark #notificationModal .notif-time-box {
+    background: #18181b !important;
+    border: 1px solid #27272a !important;
+}
+
+#notificationModal.dark-zinc .notif-time-chip,
+#notificationModal.theme-dark .notif-time-chip,
+body.dark #notificationModal .notif-time-chip {
+    background: #27272a !important;
+    border: 1px solid #3f3f46 !important;
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .notif-time-chip button,
+#notificationModal.theme-dark .notif-time-chip button,
+body.dark #notificationModal .notif-time-chip button {
+    color: #71717a !important;
+}
+
+#notificationModal.dark-zinc .notif-time-chip button:hover,
+#notificationModal.theme-dark .notif-time-chip button:hover,
+body.dark #notificationModal .notif-time-chip button:hover {
+    color: #f87171 !important;
+}
+
+#notificationModal.dark-zinc .notif-sub-tabs,
+#notificationModal.theme-dark .notif-sub-tabs,
+body.dark #notificationModal .notif-sub-tabs {
+    background: #18181b !important;
+}
+
+#notificationModal.dark-zinc .notif-sub-tabs button,
+#notificationModal.theme-dark .notif-sub-tabs button,
+body.dark #notificationModal .notif-sub-tabs button {
+    color: #71717a !important;
+}
+
+#notificationModal.dark-zinc .notif-sub-tabs button.active,
+#notificationModal.theme-dark .notif-sub-tabs button.active,
+body.dark #notificationModal .notif-sub-tabs button.active {
+    background: #27272a !important;
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .notif-sub-option-box,
+#notificationModal.theme-dark .notif-sub-option-box,
+body.dark #notificationModal .notif-sub-option-box {
+    background: #18181b !important;
+    border: 1px solid #27272a !important;
+}
+
+#notificationModal.dark-zinc .notif-sub-option-box label,
+#notificationModal.theme-dark .notif-sub-option-box label,
+body.dark #notificationModal .notif-sub-option-box label {
+    color: #a1a1aa !important;
+}
+
+/* 모달 푸터 */
+#notificationModal.dark-zinc .notif-modal-footer,
+#notificationModal.theme-dark .notif-modal-footer,
+body.dark #notificationModal .notif-modal-footer {
+    background: #121215 !important;
+    border-top: 1px solid #27272a !important;
+}
+
+#notificationModal.dark-zinc .btn-notif-close,
+#notificationModal.theme-dark .btn-notif-close,
+body.dark #notificationModal .btn-notif-close {
+    background: #27272a !important;
+    color: #f4f4f5 !important;
+}
+
+#notificationModal.dark-zinc .btn-notif-close:hover,
+#notificationModal.theme-dark .btn-notif-close:hover,
+body.dark #notificationModal .btn-notif-close:hover {
+    background: #3f3f46 !important;
+}
+
 
 

@@ -202,6 +202,15 @@
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
+        // HTML 태그 제거 및 순수 텍스트 정제 헬퍼
+        function stripHtmlTags(html) {
+            if (!html) return '';
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            const text = tmp.textContent || tmp.innerText || '';
+            return text.replace(/\s+/g, ' ').trim();
+        }
+
         function highlightMatch(text, query) {
             if (!text || !query) return (text || '');
             const safeText = String(text)
@@ -240,7 +249,9 @@
                     const catMap = { idea: '아이디어', todo: '할 일', memo: '메모', important: '중요' };
                     const catName = catMap[m.category] || '메모';
                     const titleHtml = highlightMatch(m.title || '(제목 없음)', query);
-                    const contentHtml = highlightMatch(m.content || '', query);
+                    const cleanPlainContent = stripHtmlTags(m.content || '');
+                    const contentSnippet = cleanPlainContent.length > 140 ? cleanPlainContent.slice(0, 140) + '...' : cleanPlainContent;
+                    const contentHtml = highlightMatch(contentSnippet, query);
                     const dateStr = (m.updated_at || '').slice(0, 16);
 
                     item.innerHTML = `
