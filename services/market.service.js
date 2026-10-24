@@ -121,21 +121,20 @@ function resolveQuoteSymbol(symbol, fullName) {
     return cleanSym;
 }
 
-async function fetchSingleQuote(resolvedSymbol) {
+// 백그라운드 중복 조회 방지 Set
+const inFlightFetches = new Set();
+
+/**
+ * 실제 네트워크를 통한 단일 종목 시세 조회 (타임아웃 2.5초)
+ */
+async function _fetchSingleQuoteNetwork(resolvedSymbol) {
     if (!resolvedSymbol) return null;
-
-    const now = Date.now();
-    const cached = quotesCache.get(resolvedSymbol);
-    if (cached && (now - cached.timestamp < QUOTE_CACHE_TTL_MS)) {
-        return cached.data;
-    }
-
     let quote = null;
 
     // 1순위: 야후 파이낸스 v8 chart
     try {
         const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(resolvedSymbol)}?interval=1d&range=2d`;
-        const res = await axios.get(url, { headers: QUOTE_HEADERS, timeout: 3500 });
+        const res = await axios.get(url, { headers: QUOTE_HEADERS, timeout: 2500 });
         if (res.data && res.data.chart && res.data.chart.result && res.data.chart.result[0]) {
             const meta = res.data.chart.result[0].meta;
             const price = parseFloat(meta.regularMarketPrice);
@@ -163,7 +162,7 @@ async function fetchSingleQuote(resolvedSymbol) {
         const code = resolvedSymbol.replace(/\.(KS|KQ)$/i, '');
         try {
             const nUrl = `https://polling.finance.naver.com/api/realtime/domestic/stock/${code}`;
-            const nRes = await axios.get(nUrl, { headers: QUOTE_HEADERS, timeout: 3000 });
+            const nRes = await axios.get(nUrl, { headers: QUOTE_HEADERS, timeout: 2000 });
             if (nRes.data && nRes.data.datas && nRes.data.datas.length > 0) {
                 const d = nRes.data.datas[0];
                 const price = parseFloat(String(d.closePrice || 0).replace(/,/g, ''));
@@ -187,22 +186,50 @@ async function fetchSingleQuote(resolvedSymbol) {
     }
 
     if (quote) {
-        quotesCache.set(resolvedSymbol, { data: quote, timestamp: now });
+        quotesCache.set(resolvedSymbol, { data: quote, timestamp: Date.now() });
     }
-
     return quote;
 }
 
 /**
- * 자산 목록(assets)에 실시간 시세 및 등락률 바인딩 (자산관리 앱과 100% 동일)
+ * 단일 종목 시세 조회 (SWR: 캐시 만료 시에도 직전 데이터 0ms 즉시 반환 + 백그라운드 갱신)
  */
-async function enrichAssetsWithQuotes(assets) {
-    if (!Array.isArray(assets) || assets.length === 0) {
-        return { enrichedAssets: [], exchangeRate: 1350.0 };
+async function fetchSingleQuote(resolvedSymbol) {
+    if (!resolvedSymbol) return null;
+
+    const now = Date.now();
+    const cached = quotesCache.get(resolvedSymbol);
+
+    // 1. 유효한 신선한 캐시가 있으면 즉시 반환
+    if (cached && (now - cached.timestamp < QUOTE_CACHE_TTL_MS)) {
+        return cached.data;
     }
 
-    const exchangeRate = await getExchangeRate();
+    // 2. 만료되었지만 기존 캐시가 있는 경우 -> 즉시 기존 데이터 반환하고 백그라운드 비동기 갱신
+    if (cached && cached.data) {
+        if (!inFlightFetches.has(resolvedSymbol)) {
+            inFlightFetches.add(resolvedSymbol);
+            _fetchSingleQuoteNetwork(resolvedSymbol).finally(() => inFlightFetches.delete(resolvedSymbol));
+        }
+        return cached.data;
+    }
 
+    // 3. 캐시가 전혀 없는 최초 1회 요청 종목
+    if (!inFlightFetches.has(resolvedSymbol)) {
+        inFlightFetches.add(resolvedSymbol);
+        const promise = _fetchSingleQuoteNetwork(resolvedSymbol).finally(() => inFlightFetches.delete(resolvedSymbol));
+        return await promise;
+    }
+
+    return null;
+}
+
+// 전체 자산 시세 스냅샷 캐시 (SWR 지원)
+let lastPortalEnrichedSnapshot = null;
+let lastPortalEnrichedTimestamp = 0;
+let isPortalRefreshingAssets = false;
+
+async function _recalculatePortalEnrichedAssets(assets, exchangeRate) {
     const quotePromises = assets.map(async (ast, idx) => {
         const resolvedSym = resolveQuoteSymbol(ast.symbol, ast.full_name);
         let q = null;
@@ -263,6 +290,44 @@ async function enrichAssetsWithQuotes(assets) {
     });
 
     return { enrichedAssets, exchangeRate };
+}
+
+/**
+ * 자산 목록(assets)에 실시간 시세 및 등락률 바인딩 (SWR 기반 0ms 즉시 응답)
+ */
+async function enrichAssetsWithQuotes(assets) {
+    if (!Array.isArray(assets) || assets.length === 0) {
+        return { enrichedAssets: [], exchangeRate: 1350.0 };
+    }
+
+    const now = Date.now();
+    const exchangeRate = await getExchangeRate();
+
+    // 1. 직전 스냅샷이 있고 60초 이내라면 즉시 반환
+    if (lastPortalEnrichedSnapshot && (now - lastPortalEnrichedTimestamp < 60 * 1000)) {
+        return lastPortalEnrichedSnapshot;
+    }
+
+    // 2. 만료되었지만 기존 스냅샷이 있는 경우 -> 직전 스냅샷을 0ms 즉시 반환하고 백그라운드 갱신
+    if (lastPortalEnrichedSnapshot) {
+        if (!isPortalRefreshingAssets) {
+            isPortalRefreshingAssets = true;
+            _recalculatePortalEnrichedAssets(assets, exchangeRate)
+                .then(result => {
+                    lastPortalEnrichedSnapshot = result;
+                    lastPortalEnrichedTimestamp = Date.now();
+                })
+                .catch(() => {})
+                .finally(() => { isPortalRefreshingAssets = false; });
+        }
+        return lastPortalEnrichedSnapshot;
+    }
+
+    // 3. 서버 시작 후 최초 1회 요청 시 동기 계산 및 스냅샷 보관
+    const result = await _recalculatePortalEnrichedAssets(assets, exchangeRate);
+    lastPortalEnrichedSnapshot = result;
+    lastPortalEnrichedTimestamp = now;
+    return result;
 }
 
 function getKoreanStockName(symbol, fullName) {
