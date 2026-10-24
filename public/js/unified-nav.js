@@ -199,11 +199,12 @@
         const hasValidCache = cachedHtml && cachedVer === UNAV_VERSION;
         if (hasValidCache) {
             applyHtml(cachedHtml);
+            optimizeInternalNavLinks();
             highlightActiveMenu();
             initUnifiedNav();
         }
 
-        // 2) 캐시가 없거나, 버전이 변경되었거나, TTL(30분)이 만료된 경우에만 백그라운드 갱신
+        // 2) 캐시가 없거나, 버전이 변경되었거나, TTL이 만료된 경우에만 백그라운드 갱신
         const isStale = !hasValidCache || (Date.now() - cachedTime > STALE_CHECK_INTERVAL);
         if (isStale) {
             try {
@@ -220,6 +221,7 @@
 
                     if (html !== cachedHtml || !cachedHtml) {
                         applyHtml(html);
+                        optimizeInternalNavLinks();
                         highlightActiveMenu();
                         initUnifiedNav();
                     }
@@ -229,11 +231,36 @@
             }
         }
 
-        // 현재 서비스/경로에 따른 활성 탭 자동 하이라이트
+        // 스마트 컨텍스트 네비게이션 및 현재 서비스/경로에 따른 활성 탭 자동 하이라이트
+        optimizeInternalNavLinks();
         highlightActiveMenu();
 
         // 햄버거 메뉴, 드로어, 알림 연동 초기화
         initUnifiedNav();
+    }
+
+    // 🌟 [스마트 컨텍스트 네비게이션 최적화]
+    // 현재 접속 중인 서비스 내부 링크는 외부 게이트웨이(/go/...) 왕복 없이 상대 경로/해시로 즉시 전환 (0ms 딜레이 & 해시 보존)
+    function optimizeInternalNavLinks() {
+        const host = window.location.hostname;
+        let currentService = '';
+        if (host.includes('blood')) currentService = 'blood';
+        else if (host.includes('asset')) currentService = 'asset';
+        else if (host.includes('news')) currentService = 'news';
+
+        if (!currentService) return;
+
+        document.querySelectorAll(`.unav-header a[href*="/go/${currentService}"]`).forEach(link => {
+            try {
+                const u = new URL(link.href, window.location.origin);
+                const targetPath = u.searchParams.get('path');
+                if (targetPath) {
+                    link.href = targetPath; // 예: /hospital.html 또는 #tab-analytics
+                } else {
+                    link.href = '/';
+                }
+            } catch (e) {}
+        });
     }
 
     // 3. 현재 접속 페이지에 따른 메뉴 하이라이트 및 모바일 아코디언 자동 열림
@@ -321,10 +348,12 @@
                 drawer.classList.remove('open');
                 btn.classList.remove('open');
                 btn.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
             } else {
                 drawer.classList.add('open');
                 btn.classList.add('open');
                 btn.setAttribute('aria-expanded', 'true');
+                document.body.style.overflow = 'hidden';
             }
         };
 
@@ -1631,6 +1660,7 @@
             btn.classList.remove('open');
             btn.setAttribute('aria-expanded', 'false');
         }
+        document.body.style.overflow = '';
     };
 
     // 모바일 아코디언 서브메뉴 토글 함수 (전역 노출)

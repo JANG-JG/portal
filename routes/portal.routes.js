@@ -476,7 +476,13 @@ router.get('/api/ticker', (req, res) => {
 const crypto = require('crypto');
 router.get('/go/:service', authenticateToken, (req, res) => {
     const service = req.params.service;
-    const targetPath = req.query.path || '';
+    let targetPath = (req.query.path || '').trim();
+    // 🛡️ 오픈 리다이렉트 및 프로토콜 탈출 차단 가드 (//, /\, http:, https:, javascript:, 백슬래시 등 차단)
+    if (targetPath) {
+        if (/^\/\//.test(targetPath) || /^\/\\/.test(targetPath) || /^[a-zA-Z]+:/.test(targetPath) || targetPath.includes('\\')) {
+            targetPath = '';
+        }
+    }
     const jti = crypto.randomBytes(16).toString('hex');
     const ticket = jwt.sign(
         { username: req.user.username, jti, purpose: 'sso_ticket' },
