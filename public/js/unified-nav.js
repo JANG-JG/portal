@@ -1596,17 +1596,21 @@
             .catch(() => {});
     }
 
-    // URL 쿼리스트링에 notif_id가 있을 경우 즉시 읽음 처리 및 주소창 정리
+    // URL 쿼리스트링에 notif_id 또는 일회용 SSO token이 있을 경우 주소창에서 즉시 클렌징
     function handleNotifIdFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
         const notifId = urlParams.get('notif_id');
-        if (notifId) {
-            // 🌟 주소창에 알림 ID 파라미터가 노출되지 않도록 동기적으로 즉시 제거
+        const hasSsoToken = urlParams.has('token');
+        if (notifId || hasSsoToken) {
+            // 🌟 주소창 및 방문 기록에 민감한 토큰이나 알림 ID가 남지 않도록 동기적으로 즉시 제거
             urlParams.delete('notif_id');
+            urlParams.delete('token');
             const newQuery = urlParams.toString() ? '?' + urlParams.toString() : '';
             const newUrl = window.location.pathname + newQuery + window.location.hash;
             window.history.replaceState({}, document.title, newUrl);
+        }
 
+        if (notifId) {
             const apiUrl = `${NOTIF_BASE_URL}/api/notification/history/${notifId}/read`;
             fetch(apiUrl, {
                 method: 'POST',

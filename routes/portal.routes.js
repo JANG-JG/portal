@@ -472,11 +472,20 @@ router.get('/api/ticker', (req, res) => {
     );
 });
 
-// 4. OAuth 방식 SSO 게이트웨이 (딥링크 및 타겟 경로 완벽 지원)
+// 4. OAuth 방식 SSO 게이트웨이 (15초 초단기 + jti 1회용 Nonce + 딥링크 지원)
+const crypto = require('crypto');
 router.get('/go/:service', authenticateToken, (req, res) => {
     const service = req.params.service;
     const targetPath = req.query.path || '';
-    const ticket = jwt.sign({ username: req.user.username }, JWT_SECRET, { expiresIn: '5m' });
+    const jti = crypto.randomBytes(16).toString('hex');
+    const ticket = jwt.sign(
+        { username: req.user.username, jti, purpose: 'sso_ticket' },
+        JWT_SECRET,
+        { expiresIn: '15s' }
+    );
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
 
     let baseUrl = '';
     if (service === 'news') baseUrl = 'https://news.j-jg.cc';
