@@ -27,11 +27,11 @@
         }
     };
 
-    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261020_v11';
+    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261024_114500';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
-    const STALE_CHECK_INTERVAL = 30 * 60 * 1000; // 30분 동안은 재요청 없이 로컬 캐시 즉시 사용
+    const STALE_CHECK_INTERVAL = 5 * 60 * 1000; // 5분 주기로 신속한 백그라운드 갱신
 
     // ========================================================
     // 🛡️ [Android WebAPK / App Links 가로채기 방지 가드]
@@ -158,8 +158,15 @@
             cachedHtml = localStorage.getItem(CACHE_KEY_HTML);
             cachedVer = localStorage.getItem(CACHE_KEY_VER);
             cachedTime = parseInt(localStorage.getItem(CACHE_KEY_TIME) || '0', 10);
-            // 구버전 캐시 또는 카테고리 바가 없는 구형 모달 캐시 정리
-            if (cachedVer !== UNAV_VERSION || (cachedHtml && !cachedHtml.includes('notif-category-bar'))) {
+            // 구버전 캐시, 카테고리 바 누락 또는 구형 서브메뉴/비SSO 링크 포함 시 즉시 캐시 강제 정리 (자가 치유)
+            const isLegacyContent = cachedHtml && (
+                !cachedHtml.includes('notif-category-bar') ||
+                !cachedHtml.includes('/go/blood') ||
+                cachedHtml.includes('병원 일정 상세 관리') ||
+                cachedHtml.includes('혈압 관리 메인 페이지') ||
+                cachedHtml.includes('실시간 뉴스 대시보드')
+            );
+            if (cachedVer !== UNAV_VERSION || isLegacyContent) {
                 localStorage.removeItem(CACHE_KEY_HTML);
                 localStorage.removeItem(CACHE_KEY_VER);
                 localStorage.removeItem(CACHE_KEY_TIME);

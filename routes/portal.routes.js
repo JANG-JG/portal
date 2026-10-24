@@ -472,19 +472,35 @@ router.get('/api/ticker', (req, res) => {
     );
 });
 
-// 4. OAuth 방식 SSO 게이트웨이
+// 4. OAuth 방식 SSO 게이트웨이 (딥링크 및 타겟 경로 완벽 지원)
 router.get('/go/:service', authenticateToken, (req, res) => {
     const service = req.params.service;
+    const targetPath = req.query.path || '';
     const ticket = jwt.sign({ username: req.user.username }, JWT_SECRET, { expiresIn: '5m' });
 
-    if (service === 'news') {
-        return res.redirect(`https://news.j-jg.cc/?token=${ticket}`);
-    } else if (service === 'economy') {
-        return res.redirect(`https://news.j-jg.cc/economy?token=${ticket}`);
-    } else if (service === 'asset') {
-        return res.redirect(`https://asset.j-jg.cc/?token=${ticket}`);
-    } else if (service === 'blood') {
-        return res.redirect(`https://blood.j-jg.cc/?token=${ticket}`);
+    let baseUrl = '';
+    if (service === 'news') baseUrl = 'https://news.j-jg.cc';
+    else if (service === 'economy') baseUrl = 'https://news.j-jg.cc/economy';
+    else if (service === 'asset') baseUrl = 'https://asset.j-jg.cc';
+    else if (service === 'blood') baseUrl = 'https://blood.j-jg.cc';
+
+    if (baseUrl) {
+        let destUrl = baseUrl;
+        let hash = '';
+        if (targetPath) {
+            const hashIdx = targetPath.indexOf('#');
+            let cleanPath = targetPath;
+            if (hashIdx !== -1) {
+                hash = targetPath.slice(hashIdx);
+                cleanPath = targetPath.slice(0, hashIdx);
+            }
+            if (cleanPath && !cleanPath.startsWith('/') && !cleanPath.startsWith('?')) {
+                cleanPath = '/' + cleanPath;
+            }
+            destUrl = baseUrl.replace(/\/+$/, '') + cleanPath;
+        }
+        const sep = destUrl.includes('?') ? '&' : '?';
+        return res.redirect(`${destUrl}${sep}token=${ticket}${hash}`);
     }
     res.redirect('/');
 });
