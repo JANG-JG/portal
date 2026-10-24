@@ -51,7 +51,7 @@
 
             <!-- 3. 우측 컨트롤 (날씨 + 검색 + 로그아웃 + 9-dot 서브 앱 런처) -->
             <div class="cmd-nav-right">
-                <a href="https://news.j-jg.cc/weather" class="cmd-nav-weather font-mono" id="welcomeWeatherBadge" title="실시간 날씨 브리핑 바로가기">
+                <a href="https://news.j-jg.cc/weather" class="cmd-nav-weather font-mono" id="welcomeWeatherBadge" title="실시간 날씨 바로가기">
                     <span id="welcomeWeatherIcon">🌤️</span>
                     <span id="welcomeWeatherCity">계룡</span>
                     <span id="welcomeWeatherTemp" class="weather-compact-temp font-mono">-</span>
@@ -165,9 +165,9 @@
                         <span class="cmd-strip-icon">💰</span>
                         <span>자산 분석</span>
                     </a>
-                    <a href="/go/news" class="cmd-strip-btn" title="뉴스 브리핑">
+                    <a href="/go/news" class="cmd-strip-btn" title="뉴스룸">
                         <span class="cmd-strip-icon">📰</span>
-                        <span>뉴스 브리핑</span>
+                        <span>뉴스룸</span>
                     </a>
                     <a href="/calendar" class="cmd-strip-btn" title="스마트 라이프 캘린더">
                         <span class="cmd-strip-icon">📅</span>
@@ -194,15 +194,15 @@
                         </div>
                     </div>
                 </div>
-                <a href="https://news.j-jg.cc/breaking" class="breaking-more-btn" title="속보 브리핑 바로가기">
-                    <span class="breaking-more-text-full">속보 브리핑</span>
-                    <span class="breaking-more-text-mobile" style="display:none;">브리핑</span>
+                <a href="https://news.j-jg.cc/breaking" class="breaking-more-btn" title="속보 바로가기">
+                    <span class="breaking-more-text-full">속보</span>
+                    <span class="breaking-more-text-mobile" style="display:none;">속보</span>
                     <span class="breaking-arrow">›</span>
                 </a>
 
                 <div class="breaking-dropdown-panel" id="breakingDropdownPanel">
                     <div class="breaking-dropdown-top">
-                        <span class="breaking-dropdown-title">🚨 실시간 주요 속보 브리핑</span>
+                        <span class="breaking-dropdown-title">🚨 실시간 주요 속보</span>
                         <a href="https://news.j-jg.cc/breaking" class="breaking-dropdown-link">속보 페이지 열기 ↗</a>
                     </div>
                     <div class="breaking-dropdown-items" id="breakingDropdownItems">
@@ -311,7 +311,7 @@
                     </div>
 
                     <div class="bento-card-footer">
-                        <a href="/go/economy" style="color:inherit; text-decoration:none; font-family:var(--font-mono);">📈 증시·환율 브리핑 ↗</a>
+                        <a href="/go/economy" style="color:inherit; text-decoration:none; font-family:var(--font-mono);">📈 경제 & 증시 ↗</a>
                         <span>15:30 정규장 마감</span>
                     </div>
                 </div>
@@ -332,14 +332,14 @@
 
                         <!-- 실시간 시장 지표 미니 칩 바 -->
                         <div class="news-market-bar" id="newsMarketBar">
-                            <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 브리핑 바로가기">
+                            <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 바로가기">
                                 <div class="market-name" id="marketIndexName">코스피</div>
                                 <div class="market-val-row" id="marketIndexBox">
                                     <span class="market-price font-mono" id="kospiPrice">-</span>
                                     <span class="market-diff font-mono" id="kospiDiff">-</span>
                                 </div>
                             </a>
-                            <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 브리핑 바로가기">
+                            <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 바로가기">
                                 <div class="market-name" id="marketFxName">USD/KRW</div>
                                 <div class="market-val-row" id="marketFxBox">
                                     <span class="market-price font-mono" id="fxPrice">-</span>
@@ -356,7 +356,7 @@
 
                     <div class="bento-card-footer">
                         <span>실시간 자동 수집 엔진</span>
-                        <a href="https://news.j-jg.cc/breaking" style="color:var(--text-muted); text-decoration:none;">🚨 속보 브리핑 ↗</a>
+                        <a href="https://news.j-jg.cc/breaking" style="color:var(--text-muted); text-decoration:none;">🚨 실시간 속보 ↗</a>
                     </div>
                 </div>
 
@@ -597,12 +597,12 @@
                         <button type="button" id="btnRequestNotifPermission" onclick="requestBrowserNotificationPermission()">권한 허용</button>
                     </div>
 
-                    <!-- 1. 🚨 실시간 속보 브리핑 알림 -->
+                    <!-- 1. 🚨 실시간 속보 알림 -->
                     <div class="notif-card-group">
                         <label class="notif-toggle-row">
                             <input type="checkbox" id="notifBreakingNewsEnabled" checked>
                             <div class="notif-toggle-content">
-                                <strong>🚨 실시간 속보 브리핑 알림</strong>
+                                <strong>🚨 실시간 속보 알림</strong>
                                 <p>주요 언론사의 실시간 긴급 속보 발생 시 10분 주기 자동 수집하여 웹앱 푸시를 발송합니다.</p>
                             </div>
                         </label>
@@ -877,7 +877,7 @@
                         </a>
                         <a href="/go/economy" class="qs-quick-btn">
                             <span class="qs-quick-icon">📈</span>
-                            <span class="qs-quick-label">증시·환율 브리핑</span>
+                            <span class="qs-quick-label">경제 & 증시</span>
                         </a>
                         <a href="https://blood.j-jg.cc/hospital.html" class="qs-quick-btn">
                             <span class="qs-quick-icon">🏥</span>

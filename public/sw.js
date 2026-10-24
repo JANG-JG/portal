@@ -5,8 +5,6 @@ const PRECACHE_ASSETS = [
     '/offline.html',
     '/css/pretendard.css',
     '/css/unified-nav.css',
-    '/js/unified-nav.js',
-    '/js/news-ticker.js',
     '/fonts/Pretendard-Regular.subset.woff2',
     '/fonts/Pretendard-Medium.subset.woff2',
     '/fonts/Pretendard-SemiBold.subset.woff2',
@@ -57,9 +55,19 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 1-1. 중앙 UI 런처(jg-ui.js): 항상 실시간 네트워크 직통 (Network-Only, 무캐싱)
-    if (url.pathname.endsWith('/js/jg-ui.js')) {
-        event.respondWith(fetch(req).catch(() => caches.match(req)));
+    // 1-1. 중앙 UI 런처 및 공통 내비게이션/티커: 항상 실시간 네트워크 직통 우선 (Network-First)
+    if (url.pathname.endsWith('/js/jg-ui.js') || url.pathname.includes('unified-nav') || url.pathname.includes('news-ticker')) {
+        event.respondWith(
+            fetch(req)
+                .then((res) => {
+                    if (res && res.status === 200) {
+                        const clone = res.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+                    }
+                    return res;
+                })
+                .catch(() => caches.match(req))
+        );
         return;
     }
 

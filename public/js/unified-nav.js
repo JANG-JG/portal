@@ -167,7 +167,12 @@
                 !cachedHtml.includes('서버 인프라') ||
                 cachedHtml.includes('병원 일정 상세 관리') ||
                 cachedHtml.includes('혈압 관리 메인 페이지') ||
-                cachedHtml.includes('실시간 뉴스 대시보드')
+                cachedHtml.includes('실시간 뉴스 대시보드') ||
+                cachedHtml.includes('실시간 속보 브리핑') ||
+                cachedHtml.includes('경제 & 증시 브리핑') ||
+                cachedHtml.includes('날씨 브리핑') ||
+                cachedHtml.includes('진료 리포트 보기') ||
+                cachedHtml.includes('혈압 관리 대시보드')
             );
             if (cachedVer !== UNAV_VERSION || isLegacyContent) {
                 localStorage.removeItem(CACHE_KEY_HTML);

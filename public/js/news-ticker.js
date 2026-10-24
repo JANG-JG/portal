@@ -492,8 +492,8 @@
             <div id="jg-breaking-track" class="jg-breaking-track"></div>
         </div>
         <div class="jg-breaking-actions">
-            <a href="https://j-jg.cc/go/news?path=/breaking" class="jg-breaking-more" title="실시간 속보 브리핑 바로가기">
-                속보 브리핑 ❯
+            <a href="https://j-jg.cc/go/news?path=/breaking" class="jg-breaking-more" title="실시간 속보 바로가기">
+                속보 ❯
             </a>
             <button type="button" class="jg-breaking-close-btn" onclick="window.jgDismissBreaking()" title="속보 닫고 기존 뉴스만 보기">
                 <span>✕</span> <span>닫기</span>
@@ -717,7 +717,7 @@
             const weatherSlug = weather.icon_slug || getBasmiliusSlug(weather.condition, weatherIsDay);
             const weatherIconSvg = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:16px; height:16px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
 
-            const weatherTitle = `실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''}) - 클릭 시 날씨 브리핑 이동`;
+            const weatherTitle = `실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''}) - 클릭 시 날씨 안내 이동`;
             const conditionBadge = weather.condition ? `<span style="color:#cbd5e1; font-size:10.5px; margin-left:3px; font-weight:500;">${weather.condition}</span>` : '';
 
             const kospiRatio = kospi.ratio && kospi.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kospi.ratio}</span>` : '';
@@ -749,7 +749,7 @@
             // 2. 코스피 슬라이드
             if (kospi && kospi.price && kospi.price !== '-') {
                 slides.push(
-                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 코스피 증시 브리핑 바로가기">
+                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 코스피 증시 바로가기">
                         <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스피</span>
                         <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kospi.price}</span>
                         <span style="color:${kospi.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kospi.direction === 'up' ? '▲' : '▼'}${kospiRatio}</span>
@@ -760,10 +760,10 @@
             // 3. 코스닥 슬라이드
             if (kosdaq && kosdaq.price && kosdaq.price !== '-') {
                 slides.push(
-                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 코스닥 증시 브리핑 바로가기">
+                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 코스닥 증시 바로가기">
                         <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">코스닥</span>
                         <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${kosdaq.price}</span>
-                        <span style="color:${kosdaq.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kosdaq.direction === 'up' ? '▲' : '▼'}${kosdaqRatio}</span>
+                        <span style="color:${kospi.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${kosdaq.direction === 'up' ? '▲' : '▼'}${kosdaqRatio}</span>
                     </a>`
                 );
             }
@@ -771,7 +771,7 @@
             // 4. 달러 슬라이드
             if (usd && usd.price && usd.price !== '-' && !usdPriceText.includes('-')) {
                 slides.push(
-                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 달러 환율 브리핑 바로가기 (USD/KRW)">
+                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 달러 환율 바로가기 (USD/KRW)">
                         <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">달러</span>
                         <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${usdPriceText}</span>
                         <span style="color:${usd.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${usd.direction === 'up' ? '▲' : '▼'}${usdRatio}</span>
@@ -784,7 +784,7 @@
                 const jpy = market.jpy_krw;
                 const jpyRatio = jpy.ratio && jpy.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${jpy.ratio}</span>` : '';
                 slides.push(
-                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 엔화 환율 브리핑 바로가기 (JPY/KRW)">
+                    `<a href="https://j-jg.cc/go/news?path=/economy" class="jg-v-item" title="실시간 엔화 환율 바로가기 (JPY/KRW)">
                         <span style="color:#94a3b8; font-size:10.5px; font-weight:700;">100엔</span>
                         <span style="color:#ffffff; font-weight:700; letter-spacing:-0.2px;">${jpy.price}</span>
                         <span style="color:${jpy.direction === 'up' ? '#f43f5e' : '#3b82f6'}; font-size:10.5px; font-weight:700; display:inline-flex; align-items:center;">${jpy.direction === 'up' ? '▲' : '▼'}${jpyRatio}</span>
