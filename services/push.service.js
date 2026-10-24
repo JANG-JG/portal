@@ -3,10 +3,11 @@ const { db } = require('./db');
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || (process.env.EMAIL_USER ? `mailto:${process.env.EMAIL_USER}` : 'mailto:admin@j-jg.cc');
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     webPush.setVapidDetails(
-        'mailto:upt0731@gmail.com',
+        VAPID_SUBJECT,
         VAPID_PUBLIC_KEY,
         VAPID_PRIVATE_KEY
     );
@@ -87,7 +88,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
         if (userId) {
             userCondition = `AND ps.user_id = '${userId}'`;
         } else if (adminOnly) {
-            userCondition = "AND ps.user_id IN ('upt0731', 'admin')";
+            userCondition = "AND (ps.user_id = 'admin' OR ps.user_id IN (SELECT username FROM users WHERE role = 'admin' OR rowid = 1))";
         }
 
         let categoryCondition = '';

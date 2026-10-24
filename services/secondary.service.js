@@ -38,7 +38,7 @@ let secondaryServerCache = {
     storage: {
         capacity: '500 GB',
         type: '2.5" SATA HDD',
-        mountPath: '/home/upt0731/backups/jg_server',
+        mountPath: '~/backups/jg_server',
         policy: '매일 04:00 rsync 자동 증분 동기화 (30일 보존 후 자동 롤오버)',
         retentionDays: 30
     },
@@ -103,13 +103,14 @@ async function performSecondaryServerCheck() {
                 'echo "___SEC_UPTIME_RAW___" && (cat /proc/uptime 2>/dev/null || echo "NA")',
                 'echo "___SEC_UPTIME___" && uptime',
                 'echo "___SEC_FREE___" && free -m',
-                'echo "___SEC_DF___" && (df -m /home/upt0731 2>/dev/null || df -m /)',
+                'echo "___SEC_DF___" && (df -m ~ 2>/dev/null || df -m /)',
                 'echo "___SEC_TEMP___" && (sensors -j 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "NA")',
-                'echo "___SEC_DBS___" && ((cat /home/upt0731/backups/jg_server/integrity_status.json 2>/dev/null && echo "") || ls -lh /home/upt0731/backups/jg_server/current_dbs/*.db 2>/dev/null || ls -lh /home/upt0731/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null || echo "NA")',
-                'echo "___SEC_BACKUPS___" && (cd /home/upt0731/backups/jg_server 2>/dev/null && ls -lh jg_backup_*.tar.gz 2>/dev/null | tail -n 8 || echo "NA")'
+                'echo "___SEC_DBS___" && ((cat ~/backups/jg_server/integrity_status.json 2>/dev/null && echo "") || ls -lh ~/backups/jg_server/current_dbs/*.db 2>/dev/null || ls -lh ~/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null || echo "NA")',
+                'echo "___SEC_BACKUPS___" && (cd ~/backups/jg_server 2>/dev/null && ls -lh jg_backup_*.tar.gz 2>/dev/null | tail -n 8 || echo "NA")'
             ].join(' && ');
 
-            const sshCmd = `ssh -p 22 -o ConnectTimeout=2 -o BatchMode=yes -o StrictHostKeyChecking=accept-new upt0731@192.168.50.75 "${remoteScript}"`;
+            const sshUser = process.env.SECONDARY_USER || os.userInfo().username;
+            const sshCmd = `ssh -p 22 -o ConnectTimeout=2 -o BatchMode=yes -o StrictHostKeyChecking=accept-new ${sshUser}@192.168.50.75 "${remoteScript}"`;
 
             exec(sshCmd, { timeout: 4000 }, (sshErr, stdout) => {
                 isUpdatingSecondary = false;
@@ -277,8 +278,9 @@ async function performSecondaryServerCheck() {
                         }
 
                         let backupLogTail = '';
-                        const localBackupLog = fs.existsSync('/home/upt0731/scripts/backup.log')
-                            ? '/home/upt0731/scripts/backup.log'
+                        const homeLogPath = path.join(os.homedir(), 'scripts', 'backup.log');
+                        const localBackupLog = fs.existsSync(homeLogPath)
+                            ? homeLogPath
                             : path.resolve(WORKSPACE_ROOT, 'scripts', 'backup.log');
                         if (fs.existsSync(localBackupLog)) {
                             try {
@@ -300,7 +302,7 @@ async function performSecondaryServerCheck() {
                             secStorageList || '보조 서버에 백업 아카이브가 아직 없습니다.',
                             '',
                             '========================================================================',
-                            '📋 [정기 핫 백업 및 무결성 검증 실행 상세 로그 (/home/upt0731/scripts/backup.log)]',
+                            '📋 [정기 핫 백업 및 무결성 검증 실행 상세 로그 (~/scripts/backup.log)]',
                             '========================================================================',
                             backupLogTail || '기록된 백업 실행 로그가 없습니다.'
                         ].join('\n');
@@ -340,8 +342,9 @@ async function performSecondaryServerCheck() {
             socket.destroy();
 
             let backupLogTail = '';
-            const localBackupLog = fs.existsSync('/home/upt0731/scripts/backup.log')
-                ? '/home/upt0731/scripts/backup.log'
+            const homeLogPath = path.join(os.homedir(), 'scripts', 'backup.log');
+            const localBackupLog = fs.existsSync(homeLogPath)
+                ? homeLogPath
                 : path.resolve(WORKSPACE_ROOT, 'scripts', 'backup.log');
             if (fs.existsSync(localBackupLog)) {
                 try {

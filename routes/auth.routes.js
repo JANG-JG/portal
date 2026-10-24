@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { JWT_SECRET, COOKIE_DOMAIN } = require('../config/constants');
+const { JWT_SECRET, COOKIE_DOMAIN, ADMIN_USERS } = require('../config/constants');
 const { db } = require('../services/db');
 const {
     authenticateToken,
@@ -35,7 +35,7 @@ router.post('/api/login', (req, res) => {
         return res.status(400).json({ success: false, message: '아이디와 비밀번호를 입력해주세요.' });
     }
 
-    db.get('SELECT * FROM users WHERE username = ?', [username], async (err, user) => {
+    db.get('SELECT rowid, * FROM users WHERE username = ?', [username], async (err, user) => {
         if (err || !user) {
             recordLoginFailure(clientIp);
             recordLoginLog(username, clientIp, 'FAILED');
@@ -54,9 +54,14 @@ router.post('/api/login', (req, res) => {
             recordLoginSuccess(clientIp);
             recordLoginLog(user.username, clientIp, 'SUCCESS');
 
+            const userRole = user.role || (user.rowid === 1 || ADMIN_USERS.has(user.username) ? 'admin' : 'family');
+            if (userRole === 'admin') {
+                ADMIN_USERS.add(user.username);
+            }
+
             const isRemember = rememberMe === true || rememberMe === 'true';
             const expiresIn = isRemember ? '7d' : '1d';
-            const token = jwt.sign({ username: user.username }, JWT_SECRET, { expiresIn });
+            const token = jwt.sign({ username: user.username, role: userRole }, JWT_SECRET, { expiresIn });
 
             const reqHost = (req.hostname || req.headers.host || '').split(':')[0];
             const isJjgDomain = reqHost === 'j-jg.cc' || reqHost.endsWith('.j-jg.cc');

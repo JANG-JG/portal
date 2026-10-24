@@ -1,6 +1,7 @@
 require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 const PORT = process.env.PORT || 3004;
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -10,11 +11,12 @@ if (!JWT_SECRET) {
 }
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.j-jg.cc';
 
-// 서브 프로젝트 기본 경로 자동 탐색 (환경 변수 -> 상위 폴더 상대경로 -> 노트9 workspace)
+// 서브 프로젝트 기본 경로 자동 탐색 (환경 변수 -> 상위 폴더 상대경로 -> 홈 workspace)
 const WORKSPACE_ROOT = process.env.WORKSPACE_ROOT || path.resolve(__dirname, '../..');
-const BLOOD_DIR = process.env.BLOOD_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'blood-pressure-app')) ? path.join(WORKSPACE_ROOT, 'blood-pressure-app') : '/home/upt0731/workspace/blood-pressure-app');
-const ASSET_DIR = process.env.ASSET_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'asset')) ? path.join(WORKSPACE_ROOT, 'asset') : '/home/upt0731/workspace/asset');
-const NEWS_DIR = process.env.NEWS_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'news-dashboard')) ? path.join(WORKSPACE_ROOT, 'news-dashboard') : '/home/upt0731/workspace/news-dashboard');
+const HOME_WORKSPACE = path.join(os.homedir(), 'workspace');
+const BLOOD_DIR = process.env.BLOOD_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'blood-pressure-app')) ? path.join(WORKSPACE_ROOT, 'blood-pressure-app') : path.join(HOME_WORKSPACE, 'blood-pressure-app'));
+const ASSET_DIR = process.env.ASSET_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'asset')) ? path.join(WORKSPACE_ROOT, 'asset') : path.join(HOME_WORKSPACE, 'asset'));
+const NEWS_DIR = process.env.NEWS_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'news-dashboard')) ? path.join(WORKSPACE_ROOT, 'news-dashboard') : path.join(HOME_WORKSPACE, 'news-dashboard'));
 
 const BLOOD_DB_PATH = process.env.DB_PATH || path.join(BLOOD_DIR, 'health.db');
 const ASSET_DB_PATH = process.env.ASSET_DB_PATH || path.join(ASSET_DIR, 'asset.db');
@@ -22,10 +24,10 @@ const NEWS_DB_PATH = process.env.NEWS_DB_PATH || path.join(NEWS_DIR, 'briefing.d
 
 const ADMIN_USERS = new Set([
     'admin',
-    'upt0731',
     process.env.ADMIN_USER,
     ...(process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(s => s.trim()) : [])
 ].filter(Boolean));
+ADMIN_USERS.includes = (u) => ADMIN_USERS.has(u);
 
 const ALLOWED_ORIGINS = [
     'https://j-jg.cc',

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db, newsDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
+const { ADMIN_USERS } = require('../config/constants');
 
 // 📅 대한민국 주요 공휴일 (2026년)
 const KOREAN_HOLIDAYS_2026 = [
@@ -29,6 +30,7 @@ const KOREAN_HOLIDAYS_2026 = [
 // 1. 전체 일정 목록 조회 (개인 일정, 병원, 복약, 공휴일, 브리핑 시간 통합)
 router.get('/events', authenticateToken, async (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const events = [];
 
     // 1) 캘린더 등록 개인 일정
@@ -59,7 +61,7 @@ router.get('/events', authenticateToken, async (req, res) => {
 
     // 2) 병원 진료 예약일, 방문일, 다음 예정일 및 처방약 소진일 (health.db)
     const hospitalPromise = new Promise((resolve) => {
-        db.all("SELECT id, visit_date, prescription_days, next_visit_date, reservation_open_date, hospital_name, department, memo FROM hospital_visits WHERE user_id = ? OR user_id = 'admin' OR user_id = 'upt0731'", [userId], (err, rows) => {
+        db.all("SELECT id, visit_date, prescription_days, next_visit_date, reservation_open_date, hospital_name, department, memo FROM hospital_visits WHERE user_id = ? OR ? = 1", [userId, isAdmin], (err, rows) => {
             if (!err && rows) {
                 rows.forEach(h => {
                     const hospName = h.hospital_name || '병원';
@@ -237,8 +239,9 @@ router.post('/categories', authenticateToken, (req, res) => {
 // 4. 커스텀 범례 삭제
 router.delete('/categories/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const catId = req.params.id;
-    db.run("DELETE FROM calendar_categories WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')", [catId, userId, userId, userId], function(err) {
+    db.run("DELETE FROM calendar_categories WHERE id = ? AND (user_id = ? OR ? = 1)", [catId, userId, isAdmin], function(err) {
         if (err) {
             return res.status(500).json({ success: false, message: '범례 삭제 실패' });
         }
@@ -295,6 +298,7 @@ router.post('/events', authenticateToken, (req, res) => {
 // 6. 기존 일정 수정
 router.put('/events/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const eventId = req.params.id;
     const {
         title,
@@ -319,7 +323,7 @@ router.put('/events/:id', authenticateToken, (req, res) => {
         UPDATE calendar_events
         SET title = ?, event_date = ?, event_time = ?, category = ?, color = ?, memo = ?,
             is_all_day = ?, notify_timing = ?, notify_repeat = ?, notify_sent_count = 0
-        WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')
+        WHERE id = ? AND (user_id = ? OR ? = 1)
     `;
     db.run(query, [
         title.trim(),
@@ -333,8 +337,7 @@ router.put('/events/:id', authenticateToken, (req, res) => {
         parseInt(notify_repeat, 10) || 1,
         eventId,
         userId,
-        userId,
-        userId
+        isAdmin
     ], function(err) {
         if (err) {
             console.error('[Calendar 일정 수정 실패]:', err.message);
@@ -347,9 +350,10 @@ router.put('/events/:id', authenticateToken, (req, res) => {
 // 7. 일정 삭제
 router.delete('/events/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const eventId = req.params.id;
 
-    db.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')", [eventId, userId, userId, userId], function(err) {
+    db.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR ? = 1)", [eventId, userId, isAdmin], function(err) {
         if (err) return res.status(500).json({ success: false, message: '일정 삭제 실패' });
         res.json({ success: true, message: '일정이 삭제되었습니다.' });
     });
@@ -358,13 +362,14 @@ router.delete('/events/:id', authenticateToken, (req, res) => {
 // 8. 일정 완료 토글
 router.patch('/events/:id/toggle', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const eventId = req.params.id;
 
     db.run(`
         UPDATE calendar_events 
         SET is_completed = CASE WHEN is_completed = 1 THEN 0 ELSE 1 END
-        WHERE id = ? AND (user_id = ? OR ? = 'admin' OR ? = 'upt0731')
-    `, [eventId, userId, userId, userId], function(err) {
+        WHERE id = ? AND (user_id = ? OR ? = 1)
+    `, [eventId, userId, isAdmin], function(err) {
         if (err) return res.status(500).json({ success: false, message: '완료 토글 실패' });
         res.json({ success: true, message: '일정 상태가 변경되었습니다.' });
     });

@@ -189,7 +189,7 @@ router.post('/secondary/backup-now', (req, res) => {
 
     let scriptPath = path.resolve(WORKSPACE_ROOT, 'scripts', 'backup-to-secondary.sh');
     if (!fs.existsSync(scriptPath)) {
-        const altPath = '/home/upt0731/scripts/backup-to-secondary.sh';
+        const altPath = path.join(os.homedir(), 'scripts', 'backup-to-secondary.sh');
         if (fs.existsSync(altPath)) scriptPath = altPath;
     }
 

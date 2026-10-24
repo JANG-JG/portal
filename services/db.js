@@ -1,5 +1,5 @@
 const sqlite3 = require('sqlite3').verbose();
-const { BLOOD_DB_PATH, ASSET_DB_PATH, NEWS_DB_PATH } = require('../config/constants');
+const { BLOOD_DB_PATH, ASSET_DB_PATH, NEWS_DB_PATH, ADMIN_USERS } = require('../config/constants');
 
 // 마스터 계정 DB 연결 (혈압 앱 health.db)
 const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
@@ -11,6 +11,21 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run('PRAGMA synchronous = NORMAL;');
             db.run('PRAGMA busy_timeout = 5000;');
             db.run('PRAGMA temp_store = MEMORY;');
+
+            // 🛡️ 통합 계정(RBAC) 컬럼 마이그레이션 및 관리자 동적 로드 (하드코딩 제거)
+            db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'family'`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN allowed_services TEXT DEFAULT '["album","news"]'`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN nickname TEXT DEFAULT ''`, () => {});
+            db.run(`UPDATE users SET role = 'admin', allowed_services = '["all"]' WHERE rowid = 1 OR role IS NULL`, () => {
+                db.all(`SELECT username FROM users WHERE role = 'admin' OR rowid = 1`, (uErr, uRows) => {
+                    if (!uErr && Array.isArray(uRows)) {
+                        uRows.forEach(r => {
+                            if (r && r.username) ADMIN_USERS.add(r.username);
+                        });
+                    }
+                });
+            });
+
             db.run(`CREATE TABLE IF NOT EXISTS login_logs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT,

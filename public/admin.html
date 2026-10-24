@@ -564,17 +564,17 @@
                         <div style="font-size:0.85rem; color:#475569; line-height:1.6;">
                             <div><strong>1. 수동 백업 즉시 실행</strong> (주 서버 터미널에서 실행):</div>
                             <div style="margin:0.4rem 0 0.8rem; background:#0f172a; color:#f8fafc; padding:0.6rem 0.85rem; border-radius:0.4rem; font-family:monospace; font-size:0.82rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-                                <code>bash /home/upt0731/scripts/backup-to-secondary.sh</code>
-                                <button class="btn-admin-xs" style="background:#334155; color:#f8fafc; border:none; padding:3px 8px; border-radius:4px; cursor:pointer;" onclick="copyText('bash /home/upt0731/scripts/backup-to-secondary.sh', '백업 스크립트 명령어 복사 완료!')">복사</button>
+                                <code>bash ~/scripts/backup-to-secondary.sh</code>
+                                <button class="btn-admin-xs" style="background:#334155; color:#f8fafc; border:none; padding:3px 8px; border-radius:4px; cursor:pointer;" onclick="copyText('bash ~/scripts/backup-to-secondary.sh', '백업 스크립트 명령어 복사 완료!')">복사</button>
                             </div>
 
                             <div style="margin-top:0.75rem;"><strong>2. 보조 서버 SSH 공개키 1초 등록</strong> (HP 노트북 터미널에서 최초 1회 붙여넣기 시 실제 OS 수치 100% 실시간 연동):</div>
                             <div style="margin:0.4rem 0; background:#1e1b4b; color:#e0e7ff; padding:0.6rem 0.85rem; border-radius:0.4rem; font-family:monospace; font-size:0.78rem; word-break:break-all; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-                                <code id="secSshRegisterCmd">mkdir -p ~/.ssh && echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHDSTfnXOjSxy+v/fS564BvpR2067rqgWw8J+Zxo9w4Y upt0731@localhost" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys</code>
+                                <code id="secSshRegisterCmd">mkdir -p ~/.ssh && echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHDSTfnXOjSxy+v/fS564BvpR2067rqgWw8J+Zxo9w4Y jg-server@localhost" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys</code>
                                 <button class="btn-admin-xs" style="background:#4338ca; color:#f8fafc; border:none; padding:3px 8px; border-radius:4px; cursor:pointer; white-space:nowrap;" onclick="copyText(document.getElementById('secSshRegisterCmd').innerText, 'SSH 등록 명령어가 복사되었습니다!')">명령어 복사</button>
                             </div>
                             <div style="font-size:0.8rem; color:#64748b; margin-top:0.5rem;">
-                                &bull; 백업 실행 로그: <code>/home/upt0731/scripts/backup.log</code> | &bull; 보조 서버 대상 경로: <code>upt0731@192.168.50.75:~/backups/jg_server</code>
+                                &bull; 백업 실행 로그: <code>~/scripts/backup.log</code> | &bull; 보조 서버 대상 경로: <code>192.168.50.75:~/backups/jg_server</code>
                             </div>
                         </div>
                     </div>

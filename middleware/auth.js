@@ -54,7 +54,7 @@ function authenticateToken(req, res, next) {
 
 // 🛡️ [보안 강화] 관리자 권한(RBAC) 검증 미들웨어
 function requireAdmin(req, res, next) {
-    if (!req.user || !req.user.username || !ADMIN_USERS.has(req.user.username)) {
+    if (!req.user || !req.user.username || (req.user.role !== 'admin' && !ADMIN_USERS.has(req.user.username))) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(403).json({ success: false, message: '관리자 전용 기능입니다. 접근 권한이 없습니다.' });
         }

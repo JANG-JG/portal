@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db, assetDb, newsDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
+const { ADMIN_USERS } = require('../config/constants');
 
 // ==============================================================================
 // 🔍 [한글 초성 검색 및 통합 퀵 검색 (Ctrl+K)]
@@ -39,6 +40,7 @@ router.get('/unified', authenticateToken, async (req, res) => {
     }
 
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const isChosung = isChosungOnly(rawQuery);
     const cleanChosungQuery = rawQuery.replace(/\s+/g, '').toLowerCase();
     const term = `%${rawQuery}%`;
@@ -46,7 +48,7 @@ router.get('/unified', authenticateToken, async (req, res) => {
     // 1) 메모 검색 (일반 or 초성)
     const memoPromise = new Promise((resolve) => {
         if (isChosung) {
-            db.all("SELECT id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731') ORDER BY is_pinned DESC, updated_at DESC LIMIT 50", [userId], (err, rows) => {
+            db.all("SELECT id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE (user_id = ? OR ? = 1) ORDER BY is_pinned DESC, updated_at DESC LIMIT 50", [userId, isAdmin], (err, rows) => {
                 if (err || !rows) return resolve([]);
                 const filtered = rows.filter(r => extractChosung(r.title).includes(cleanChosungQuery) || extractChosung(r.content).includes(cleanChosungQuery)).slice(0, 8);
                 resolve(filtered);
@@ -55,12 +57,12 @@ router.get('/unified', authenticateToken, async (req, res) => {
             const sql = `
                 SELECT id, title, content, category, color, is_pinned, updated_at
                 FROM user_memos
-                WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731')
+                WHERE (user_id = ? OR ? = 1)
                   AND (title LIKE ? OR content LIKE ?)
                 ORDER BY is_pinned DESC, updated_at DESC
                 LIMIT 8
             `;
-            db.all(sql, [userId, term, term], (err, rows) => resolve(rows || []));
+            db.all(sql, [userId, isAdmin, term, term], (err, rows) => resolve(rows || []));
         }
     });
 
@@ -87,7 +89,7 @@ router.get('/unified', authenticateToken, async (req, res) => {
     // 3) 병원 진료 일정 검색
     const hospitalPromise = new Promise((resolve) => {
         if (isChosung) {
-            db.all("SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date FROM hospital_visits WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731') ORDER BY visit_date DESC LIMIT 50", [userId], (err, rows) => {
+            db.all("SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date FROM hospital_visits WHERE (user_id = ? OR ? = 1) ORDER BY visit_date DESC LIMIT 50", [userId, isAdmin], (err, rows) => {
                 if (err || !rows) return resolve([]);
                 const filtered = rows.filter(r => extractChosung(r.hospital_name).includes(cleanChosungQuery) || extractChosung(r.department).includes(cleanChosungQuery)).slice(0, 8);
                 resolve(filtered);
@@ -96,17 +98,18 @@ router.get('/unified', authenticateToken, async (req, res) => {
             const sql = `
                 SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date
                 FROM hospital_visits
-                WHERE (user_id = ? OR user_id = 'admin' OR user_id = 'upt0731')
+                WHERE (user_id = ? OR ? = 1)
                   AND (hospital_name LIKE ? OR department LIKE ? OR memo LIKE ?)
                 ORDER BY visit_date DESC
                 LIMIT 8
             `;
-            db.all(sql, [userId, term, term, term], (err, rows) => resolve(rows || []));
+            db.all(sql, [userId, isAdmin, term, term, term], (err, rows) => resolve(rows || []));
         }
     });
 
-    // 4) 자산/보유 종목 검색
+    // 4) 자산/보유 종목 검색 (관리자 전용)
     const assetPromise = new Promise((resolve) => {
+        if (!isAdmin) return resolve([]);
         if (isChosung) {
             assetDb.all("SELECT id, symbol, full_name, asset_type, quantity, avg_price, currency FROM assets LIMIT 50", (err, rows) => {
                 if (err || !rows) return resolve([]);

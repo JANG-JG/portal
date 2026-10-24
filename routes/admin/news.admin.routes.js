@@ -140,10 +140,11 @@ router.get('/file-logs', (req, res) => {
     }
 
     const logFile = logType === 'scheduler' ? 'scheduler.log' : 'collector.log';
+    const homeDir = require('os').homedir();
     const candidatePaths = [
         path.join(NEWS_DIR, 'logs', logFile),
-        path.join('/home/upt0731/workspace/news-dashboard/logs', logFile),
-        path.join('/home/upt0731/news-dashboard/logs', logFile)
+        path.join(homeDir, 'workspace/news-dashboard/logs', logFile),
+        path.join(homeDir, 'news-dashboard/logs', logFile)
     ];
 
     const filePath = candidatePaths.find(p => fs.existsSync(p));
@@ -167,10 +168,11 @@ router.post('/trigger', (req, res) => {
     const isBriefing = mode === 'briefing';
     const flag = isBriefing ? '--run-briefing-now' : '--run-collect-now';
     
+    const homeDir = require('os').homedir();
     const pyCandidates = [
         path.join(NEWS_DIR, 'venv/bin/python3'),
         path.join(NEWS_DIR, 'venv/bin/python'),
-        '/home/upt0731/workspace/news-dashboard/venv/bin/python3',
+        path.join(homeDir, 'workspace/news-dashboard/venv/bin/python3'),
         'python3'
     ];
     const pyPath = pyCandidates.find(p => fs.existsSync(p)) || 'python3';
