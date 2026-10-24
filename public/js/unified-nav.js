@@ -342,6 +342,19 @@
             });
         });
 
+        // 🚪 로그아웃 버튼 클릭 시 확인 알림
+        document.addEventListener('click', function(e) {
+            const logoutLink = e.target.closest('.unav-logout-btn, .unav-m-logout-btn');
+            if (logoutLink) {
+                e.preventDefault();
+                if (typeof window.openLogoutModal === 'function' && document.getElementById('logoutModal')) {
+                    window.openLogoutModal(e);
+                } else if (confirm('정말 로그아웃 할까요?')) {
+                    window.location.href = logoutLink.href || '/logout';
+                }
+            }
+        });
+
         // 모달 배경 클릭 시 닫기 이벤트
         document.addEventListener('click', function(e) {
             if (e.target && e.target.id === 'notificationModal') {

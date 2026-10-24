@@ -19,7 +19,8 @@ function unlockBodyScroll() {
     const bpOpen = document.getElementById('bpGuideModal')?.classList.contains('active');
     const qsOpen = document.getElementById('qsModalBackdrop')?.classList.contains('active');
     const notifOpen = document.getElementById('notificationModal')?.classList.contains('open');
-    if (bpOpen || qsOpen || notifOpen) return;
+    const logoutOpen = document.getElementById('logoutModal')?.classList.contains('active') || document.getElementById('logoutModal')?.classList.contains('open');
+    if (bpOpen || qsOpen || notifOpen || logoutOpen) return;
     document.documentElement.classList.remove('modal-open');
     document.body.classList.remove('modal-open');
     document.documentElement.style.overflow = '';
@@ -113,6 +114,7 @@ window.addEventListener('keydown', (e) => {
     } else if (e.key === 'Escape') {
         closeBpGuideModal();
         closeQuickSearchModal();
+        closeLogoutModal();
         const notifModal = document.getElementById('notificationModal');
         if (notifModal && notifModal.style.display !== 'none') {
             notifModal.classList.remove('open');
@@ -141,3 +143,58 @@ function triggerPwaInstall() {
         alert('브라우저 설정(⋮)에서 [앱 설치] 또는 [홈 화면에 추가]를 눌러 바로 설치할 수 있습니다. 📲');
     }
 }
+
+// 🚪 5. 로그아웃 확인 모달 제어
+function openLogoutModal(event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    const modal = document.getElementById('logoutModal');
+    if (modal) {
+        modal.classList.add('active');
+        modal.classList.add('open');
+        modal.style.display = 'flex';
+        lockBodyScroll();
+    }
+}
+window.openLogoutModal = openLogoutModal;
+
+function closeLogoutModal() {
+    const modal = document.getElementById('logoutModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.classList.remove('open');
+        modal.style.display = 'none';
+        unlockBodyScroll();
+    }
+}
+window.closeLogoutModal = closeLogoutModal;
+
+function executeLogout() {
+    const confirmBtn = document.getElementById('btnConfirmLogout');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '로그아웃 중...';
+    }
+    window.location.href = '/logout';
+}
+window.executeLogout = executeLogout;
+
+// 네비게이션 로그아웃 버튼 이벤트 바인딩
+function initLogoutButton() {
+    const logoutBtn = document.getElementById('btnNavLogout');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            openLogoutModal(e);
+        });
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLogoutButton);
+} else {
+    initLogoutButton();
+}
+

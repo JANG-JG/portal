@@ -3423,4 +3423,190 @@ body.modal-open {
     }
 }
 
+/* ==============================================================================
+ * 🚪 로그아웃 확인 모달 (Logout Confirmation Modal)
+ * - Benchmark: Linear / Raycast Confirm Dialog
+ * - Color: Zinc-950 (#09090b), Surface (#121215), Border (#27272a)
+ * ============================================================================== */
+.logout-modal-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.78) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    z-index: 10000005 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1rem !important;
+    box-sizing: border-box !important;
+}
+
+.logout-modal-backdrop.active,
+.logout-modal-backdrop.open {
+    display: flex !important;
+    animation: logoutFadeIn 0.15s ease-out;
+}
+
+.logout-modal-dialog {
+    background: var(--bg-surface, #121215) !important;
+    border: 1px solid var(--border-color, #27272a) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.75) !important;
+    color: var(--text-primary, #f4f4f5) !important;
+    width: 100% !important;
+    max-width: 380px !important;
+    box-sizing: border-box !important;
+    padding: 1.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.15rem !important;
+    transform: scale(0.98);
+    animation: logoutScaleIn 0.15s ease-out forwards;
+}
+
+.logout-modal-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.logout-modal-icon-badge {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(244, 63, 94, 0.12);
+    border: 1px solid rgba(244, 63, 94, 0.25);
+    color: #f43f5e;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.logout-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted, #71717a);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+    line-height: 1;
+}
+
+.logout-modal-close:hover {
+    color: var(--text-primary, #f4f4f5);
+    background: var(--bg-hover, #222226);
+}
+
+.logout-modal-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.35rem !important;
+}
+
+.logout-modal-title {
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    margin: 0 !important;
+    line-height: 1.35 !important;
+    letter-spacing: -0.02em !important;
+}
+
+.logout-modal-desc {
+    font-size: 0.88rem !important;
+    color: var(--text-secondary, #a1a1aa) !important;
+    margin: 0 !important;
+    line-height: 1.5 !important;
+    word-break: keep-all !important;
+}
+
+.logout-modal-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    margin-top: 0.25rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+.logout-btn-cancel {
+    flex: 1 !important;
+    height: 44px !important;
+    background: var(--bg-subtle, #18181b) !important;
+    border: 1px solid var(--border-color, #27272a) !important;
+    border-radius: 8px !important;
+    color: var(--text-primary, #f4f4f5) !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    font-family: inherit !important;
+    cursor: pointer !important;
+    transition: background 0.15s, border-color 0.15s !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 1rem !important;
+    box-sizing: border-box !important;
+}
+
+.logout-btn-cancel:hover {
+    background: var(--bg-hover, #222226) !important;
+    border-color: var(--border-strong, #3f3f46) !important;
+}
+
+.logout-btn-confirm {
+    flex: 1 !important;
+    height: 44px !important;
+    background: #e11d48 !important;
+    border: 1px solid #f43f5e !important;
+    border-radius: 8px !important;
+    color: #ffffff !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    font-family: inherit !important;
+    cursor: pointer !important;
+    transition: background 0.15s, transform 0.05s !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 1rem !important;
+    box-sizing: border-box !important;
+}
+
+.logout-btn-confirm:hover {
+    background: #be123c !important;
+    border-color: #e11d48 !important;
+}
+
+.logout-btn-confirm:active {
+    transform: scale(0.98);
+}
+
+@keyframes logoutFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes logoutScaleIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 420px) {
+    .logout-modal-dialog {
+        padding: 1.25rem !important;
+        max-width: 100% !important;
+    }
+    .logout-modal-title {
+        font-size: 1.1rem !important;
+    }
+    .logout-modal-desc {
+        font-size: 0.84rem !important;
+    }
+}
+
+
 
