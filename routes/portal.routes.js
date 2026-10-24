@@ -574,6 +574,7 @@ router.get('/go/:service', authenticateToken, (req, res) => {
     else if (service === 'economy') baseUrl = 'https://news.j-jg.cc/economy';
     else if (service === 'asset') baseUrl = 'https://asset.j-jg.cc';
     else if (service === 'blood') baseUrl = 'https://blood.j-jg.cc';
+    else if (service === 'album') baseUrl = 'https://album.j-jg.cc';
 
     if (baseUrl) {
         let destUrl = baseUrl;
