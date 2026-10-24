@@ -36,12 +36,12 @@ function authenticateToken(req, res, next) {
 
     let user = null;
     try {
-        user = jwt.verify(token, JWT_SECRET);
+        user = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     } catch (err) {
         user = null;
     }
 
-    if (!user || !user.username) {
+    if (!user || !user.username || user.purpose === 'sso_ticket') {
         res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(401).json({ success: false, message: '인증이 만료되었습니다.' });

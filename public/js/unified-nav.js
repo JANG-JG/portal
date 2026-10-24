@@ -257,9 +257,24 @@
                 if (targetPath) {
                     link.href = targetPath; // 예: /hospital.html 또는 #tab-analytics
                 } else {
-                    link.href = '/';
+                    link.href = (currentService === 'asset') ? '#tab-home' : '/';
                 }
             } catch (e) {}
+        });
+
+        // 해시(#tab-...) 링크 클릭 시 주소창 해시가 이미 동일하더라도 즉시 탭 전환 실행 보장
+        document.querySelectorAll('.unav-header a[href^="#tab-"]').forEach(link => {
+            if (link.__unavHashBound) return;
+            link.__unavHashBound = true;
+            link.addEventListener('click', function() {
+                const targetHash = this.getAttribute('href');
+                if (targetHash && targetHash.startsWith('#')) {
+                    const tabId = targetHash.slice(1);
+                    if (typeof window.switchTab === 'function') {
+                        setTimeout(() => window.switchTab(tabId), 0);
+                    }
+                }
+            });
         });
     }
 
