@@ -319,6 +319,8 @@
         const error = params.get('error');
 
         if (inviteToken) {
+            // 주소창에서 긴 토큰 난수 즉시 클렌징 (깨끗한 주소창 유지)
+            window.history.replaceState({}, document.title, window.location.pathname);
             openPinChangeModal(
                 inviteToken,
                 username,
