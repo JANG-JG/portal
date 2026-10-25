@@ -77,7 +77,7 @@ router.get('/members', (req, res) => {
                 allowedServices,
                 pinResetRequired: Boolean(row.pin_reset_required),
                 inviteToken,
-                inviteUrl: inviteToken ? `https://j-jg.cc/login?invite=${inviteToken}` : '',
+                inviteUrl: inviteToken ? `https://j-jg.cc/invite/${inviteToken}` : '',
                 failedAttempts: row.failed_pin_attempts || 0,
                 isLocked,
                 lockedUntil: row.locked_until,
@@ -165,7 +165,7 @@ router.post('/members', async (req, res) => {
                             username,
                             nickname,
                             inviteToken,
-                            inviteUrl: `https://j-jg.cc/login?invite=${inviteToken}`
+                            inviteUrl: `https://j-jg.cc/invite/${inviteToken}`
                         }
                     });
                 }

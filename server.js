@@ -140,13 +140,21 @@ app.get(['/calendar', '/calendar.html'], authenticateToken, (req, res) => {
 
 // 2. 로그인 페이지
 app.get(['/login', '/login.html'], (req, res) => {
-    const token = req.cookies.portal_token;
-    if (token) {
-        if (!revokedTokens.has(token)) {
-            return jwt.verify(token, JWT_SECRET, (err) => {
-                if (!err) return res.redirect('/');
-                res.sendFile(path.join(__dirname, 'public', 'login.html'));
-            });
+    // 🔗 구버전/URL 파라미터형 초대 링크(?invite=...) 감지 시 초대 처리 엔드포인트로 즉시 전달
+    if (req.query.invite) {
+        return res.redirect(`/invite/${encodeURIComponent(req.query.invite)}`);
+    }
+
+    // 신규 초대 링크(invite_token)로 진입한 경우 기존 관리자/가족 세션이 있더라도 새 PIN 설정을 위해 로그인 페이지 렌더링
+    if (!req.query.invite_token) {
+        const token = req.cookies.portal_token;
+        if (token) {
+            if (!revokedTokens.has(token)) {
+                return jwt.verify(token, JWT_SECRET, (err) => {
+                    if (!err) return res.redirect('/');
+                    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+                });
+            }
         }
     }
     res.sendFile(path.join(__dirname, 'public', 'login.html'));

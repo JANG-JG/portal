@@ -62,21 +62,36 @@
         const tabBtnFamily = document.getElementById('tabBtnFamily');
 
         try {
-            const deviceToken = localStorage.getItem('jg_family_device');
+            let deviceToken = null;
+            try {
+                deviceToken = localStorage.getItem('jg_family_device');
+            } catch (e) {}
+
+            if (!deviceToken) {
+                const urlParams = new URLSearchParams(window.location.search);
+                deviceToken = urlParams.get('device_token');
+                if (deviceToken) {
+                    try { localStorage.setItem('jg_family_device', deviceToken); } catch (e) {}
+                }
+            }
+
             const headers = {};
             if (deviceToken) headers['x-family-device'] = deviceToken;
 
-            const res = await fetch('/api/auth/family-members', { headers });
+            const res = await fetch('/api/auth/family-members', { headers, credentials: 'include' });
             const data = await res.json();
 
             // 🛡️ [보안 강화] 인증된 가족 기기가 아니면 가족 탭을 완전히 숨기고 관리자 로그인 화면 유지
             if (!data.hasDevice || !data.members || data.members.length === 0) {
                 if (loginTabs) loginTabs.style.display = 'none';
-                switchLoginMode('admin');
-                const title = document.getElementById('loginTitle');
-                const sub = document.getElementById('loginSubtitle');
-                if (title) title.textContent = 'JG 통합 포털';
-                if (sub) sub.textContent = '단일 계정으로 모든 서비스를 안전하게 이용하세요';
+                const hasInviteToken = new URLSearchParams(window.location.search).get('invite_token') || currentTempToken;
+                if (!hasInviteToken) {
+                    switchLoginMode('admin');
+                    const title = document.getElementById('loginTitle');
+                    const sub = document.getElementById('loginSubtitle');
+                    if (title) title.textContent = 'JG 통합 포털';
+                    if (sub) sub.textContent = '단일 계정으로 모든 서비스를 안전하게 이용하세요';
+                }
                 return;
             }
 
@@ -249,19 +264,20 @@
     // 6. 나만의 6자리 PIN 설정 모달
     function openPinChangeModal(tempToken, username, nickname, desc) {
         currentTempToken = tempToken;
+        const modal = document.getElementById('pinChangeModal');
         const titleEl = document.getElementById('pinChangeTitle');
         const descEl = document.getElementById('pinChangeDesc');
         const newPinInput = document.getElementById('newPinInput');
         const confirmPinInput = document.getElementById('confirmPinInput');
 
-        if (titleEl) titleEl.textContent = `${nickname || username}님의 6자리 PIN 설정`;
+        if (titleEl) titleEl.textContent = `${nickname || username || '가족'}님의 6자리 PIN 설정`;
         if (descEl && desc) descEl.textContent = desc;
         if (newPinInput) newPinInput.value = '';
         if (confirmPinInput) confirmPinInput.value = '';
         if (pinChangeError) pinChangeError.style.display = 'none';
 
-        if (pinChangeModal) pinChangeModal.style.display = 'flex';
-        if (newPinInput) setTimeout(() => newPinInput.focus(), 150);
+        if (modal) modal.style.display = 'flex';
+        if (newPinInput) setTimeout(() => newPinInput.focus(), 200);
     }
 
     async function submitNewPin() {
@@ -331,24 +347,29 @@
     // 7. URL 파라미터 확인 (초대 토큰 등)
     function handleUrlParameters() {
         const params = new URLSearchParams(window.location.search);
+        const legacyInvite = params.get('invite');
         const inviteToken = params.get('invite_token');
         const deviceToken = params.get('device_token');
         const username = params.get('username');
         const nickname = params.get('nickname');
         const error = params.get('error');
 
+        // 혹시 클라이언트 측에서 ?invite=...로 직접 진입한 경우 서버 초대 처리 라우트로 즉시 이동
+        if (legacyInvite && !inviteToken) {
+            window.location.replace(`/invite/${encodeURIComponent(legacyInvite)}`);
+            return;
+        }
+
         if (deviceToken) {
-            localStorage.setItem('jg_family_device', deviceToken);
+            try { localStorage.setItem('jg_family_device', deviceToken); } catch (e) {}
         }
 
         if (inviteToken) {
-            // 주소창에서 긴 토큰 난수 즉시 클렌징 (깨끗한 주소창 유지)
-            window.history.replaceState({}, document.title, window.location.pathname);
             openPinChangeModal(
                 inviteToken,
                 username,
                 nickname,
-                `반갑습니다, ${nickname || username}님! 앞으로 사용하실 나만의 숫자 6자리 PIN을 설정해 주세요.`
+                `반갑습니다, ${nickname || username || '가족'}님! 앞으로 사용하실 나만의 숫자 6자리 PIN을 설정해 주세요.`
             );
         } else if (error === 'invalid_invite') {
             if (familyErrorMsg) {
@@ -444,9 +465,9 @@
 
     // 초기화
     document.addEventListener('DOMContentLoaded', () => {
+        handleUrlParameters();
         loadFamilyMembers();
         initNumpad();
-        handleUrlParameters();
         initAdminLoginForm();
         syncSingleSignOut();
         registerServiceWorker();
