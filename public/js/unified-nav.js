@@ -27,7 +27,7 @@
         }
     };
 
-    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261025_202838';
+    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261025_203334';
     const CACHE_KEY_HTML = 'jg_unav_html';
     const CACHE_KEY_VER = 'jg_unav_ver';
     const CACHE_KEY_TIME = 'jg_unav_time';
