@@ -15,11 +15,10 @@ router.get('/vapid-key', (req, res) => {
 // 1-1. 미확인 알림 개수 경량 조회 API
 router.get('/unread-count', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
-    const query = `
-        SELECT COUNT(*) as unread
-        FROM notification_history
-        WHERE (user_id = ? OR user_id = 'admin') AND is_read = 0
-    `;
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
+    const query = isAdmin
+        ? "SELECT COUNT(*) as unread FROM notification_history WHERE (user_id = ? OR user_id = 'admin') AND is_read = 0"
+        : "SELECT COUNT(*) as unread FROM notification_history WHERE user_id = ? AND type != 'system' AND is_read = 0";
     db.get(query, [userId], (err, row) => {
         if (err) {
             return res.status(500).json({ success: false, unreadCount: 0 });
@@ -160,29 +159,39 @@ router.post('/unsubscribe', authenticateToken, (req, res) => {
 // 3. 알림 맞춤 설정 조회 API
 router.get('/settings', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
 
-    db.get("SELECT * FROM notification_settings WHERE user_id = ? OR user_id = 'admin' ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END LIMIT 1", [userId, userId], (err, row) => {
+    const query = isAdmin
+        ? "SELECT * FROM notification_settings WHERE user_id = ? OR user_id = 'admin' ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END LIMIT 1"
+        : "SELECT * FROM notification_settings WHERE user_id = ? LIMIT 1";
+
+    db.get(query, isAdmin ? [userId, userId] : [userId], (err, row) => {
         if (err) return res.status(500).json({ success: false, message: '알림 설정 조회 실패' });
 
         const safeParse = (str, fallback) => {
             try { return JSON.parse(str) || fallback; } catch (e) { return fallback; }
         };
 
+        // 기본 알림 설정: 가족 계정은 앨범만 기본 ON, 관리자는 전체 기본 ON
         if (!row) {
             return res.json({
                 success: true,
                 settings: {
                     enabled: 1,
-                    hospital_push_enabled: 1,
-                    breaking_news_enabled: 1,
-                    weather_morning_enabled: 1,
+                    album_push_enabled: 1,
+                    album_new_photo_enabled: 1,
+                    album_comment_enabled: 1,
+                    album_mention_enabled: 1,
+                    hospital_push_enabled: isAdmin ? 1 : 0,
+                    breaking_news_enabled: isAdmin ? 1 : 0,
+                    weather_morning_enabled: isAdmin ? 1 : 0,
                     weather_morning_time: '07:00',
-                    asset_report_enabled: 1,
-                    asset_open_enabled: 1,
-                    asset_close_enabled: 1,
-                    bp_reminder_enabled: 1,
+                    asset_report_enabled: isAdmin ? 1 : 0,
+                    asset_open_enabled: isAdmin ? 1 : 0,
+                    asset_close_enabled: isAdmin ? 1 : 0,
+                    bp_reminder_enabled: isAdmin ? 1 : 0,
                     bp_reminder_time: '21:00',
-                    system_alert_enabled: 1,
+                    system_alert_enabled: isAdmin ? 1 : 0,
                     telegram_briefing_times: ['07:30'],
                     weekday_med_times: ['08:00', '19:00'],
                     weekday_bp_times: ['07:30', '21:30'],
@@ -196,16 +205,20 @@ router.get('/settings', authenticateToken, (req, res) => {
             success: true,
             settings: {
                 enabled: row.enabled !== undefined ? row.enabled : 1,
-                hospital_push_enabled: row.hospital_push_enabled !== undefined ? row.hospital_push_enabled : 1,
-                breaking_news_enabled: row.breaking_news_enabled !== undefined ? row.breaking_news_enabled : 1,
-                weather_morning_enabled: row.weather_morning_enabled !== undefined ? row.weather_morning_enabled : 1,
+                album_push_enabled: row.album_push_enabled !== undefined ? row.album_push_enabled : 1,
+                album_new_photo_enabled: row.album_new_photo_enabled !== undefined ? row.album_new_photo_enabled : 1,
+                album_comment_enabled: row.album_comment_enabled !== undefined ? row.album_comment_enabled : 1,
+                album_mention_enabled: row.album_mention_enabled !== undefined ? row.album_mention_enabled : 1,
+                hospital_push_enabled: row.hospital_push_enabled !== undefined ? row.hospital_push_enabled : (isAdmin ? 1 : 0),
+                breaking_news_enabled: row.breaking_news_enabled !== undefined ? row.breaking_news_enabled : (isAdmin ? 1 : 0),
+                weather_morning_enabled: row.weather_morning_enabled !== undefined ? row.weather_morning_enabled : (isAdmin ? 1 : 0),
                 weather_morning_time: row.weather_morning_time || '07:00',
-                asset_report_enabled: row.asset_report_enabled !== undefined ? row.asset_report_enabled : 1,
-                asset_open_enabled: row.asset_open_enabled !== undefined ? row.asset_open_enabled : (row.asset_report_enabled !== undefined ? row.asset_report_enabled : 1),
-                asset_close_enabled: row.asset_close_enabled !== undefined ? row.asset_close_enabled : (row.asset_report_enabled !== undefined ? row.asset_report_enabled : 1),
-                bp_reminder_enabled: row.bp_reminder_enabled !== undefined ? row.bp_reminder_enabled : 1,
+                asset_report_enabled: row.asset_report_enabled !== undefined ? row.asset_report_enabled : (isAdmin ? 1 : 0),
+                asset_open_enabled: row.asset_open_enabled !== undefined ? row.asset_open_enabled : (row.asset_report_enabled !== undefined ? row.asset_report_enabled : (isAdmin ? 1 : 0)),
+                asset_close_enabled: row.asset_close_enabled !== undefined ? row.asset_close_enabled : (row.asset_report_enabled !== undefined ? row.asset_report_enabled : (isAdmin ? 1 : 0)),
+                bp_reminder_enabled: row.bp_reminder_enabled !== undefined ? row.bp_reminder_enabled : (isAdmin ? 1 : 0),
                 bp_reminder_time: row.bp_reminder_time || '21:00',
-                system_alert_enabled: row.system_alert_enabled !== undefined ? row.system_alert_enabled : 1,
+                system_alert_enabled: row.system_alert_enabled !== undefined ? row.system_alert_enabled : (isAdmin ? 1 : 0),
                 telegram_briefing_times: safeParse(row.telegram_briefing_times, ['07:30']),
                 weekday_med_times: safeParse(row.weekday_med_times, ['08:00', '19:00']),
                 weekday_bp_times: safeParse(row.weekday_bp_times, ['07:30', '21:30']),
@@ -219,8 +232,11 @@ router.get('/settings', authenticateToken, (req, res) => {
 // 4. 알림 맞춤 설정 저장 API
 router.post('/settings', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const {
-        enabled, hospital_push_enabled, breaking_news_enabled,
+        enabled,
+        album_push_enabled, album_new_photo_enabled, album_comment_enabled, album_mention_enabled,
+        hospital_push_enabled, breaking_news_enabled,
         weather_morning_enabled, weather_morning_time,
         asset_report_enabled, asset_open_enabled, asset_close_enabled,
         bp_reminder_enabled, bp_reminder_time,
@@ -232,31 +248,34 @@ router.post('/settings', authenticateToken, (req, res) => {
 
     const query = `
         INSERT INTO notification_settings 
-        (user_id, enabled, hospital_push_enabled, breaking_news_enabled, weather_morning_enabled, weather_morning_time, asset_report_enabled, asset_open_enabled, asset_close_enabled, bp_reminder_enabled, bp_reminder_time, system_alert_enabled, telegram_briefing_times, weekday_med_times, weekday_bp_times, weekend_med_times, weekend_bp_times)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, enabled, album_push_enabled, album_new_photo_enabled, album_comment_enabled, album_mention_enabled, hospital_push_enabled, breaking_news_enabled, weather_morning_enabled, weather_morning_time, asset_report_enabled, asset_open_enabled, asset_close_enabled, bp_reminder_enabled, bp_reminder_time, system_alert_enabled, telegram_briefing_times, weekday_med_times, weekday_bp_times, weekend_med_times, weekend_bp_times)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
-            enabled = excluded.enabled,
-            hospital_push_enabled = excluded.hospital_push_enabled,
-            breaking_news_enabled = excluded.breaking_news_enabled,
-            weather_morning_enabled = excluded.weather_morning_enabled,
-            weather_morning_time = excluded.weather_morning_time,
-            asset_report_enabled = excluded.asset_report_enabled,
-            asset_open_enabled = excluded.asset_open_enabled,
-            asset_close_enabled = excluded.asset_close_enabled,
-            bp_reminder_enabled = excluded.bp_reminder_enabled,
-            bp_reminder_time = excluded.bp_reminder_time,
-            system_alert_enabled = excluded.system_alert_enabled,
-            telegram_briefing_times = excluded.telegram_briefing_times,
-            weekday_med_times = excluded.weekday_med_times,
-            weekday_bp_times = excluded.weekday_bp_times,
-            weekend_med_times = excluded.weekend_med_times,
-            weekend_bp_times = excluded.weekend_bp_times,
+            enabled = excluded.enabled, album_push_enabled = excluded.album_push_enabled,
+            album_new_photo_enabled = excluded.album_new_photo_enabled, album_comment_enabled = excluded.album_comment_enabled,
+            album_mention_enabled = excluded.album_mention_enabled, hospital_push_enabled = excluded.hospital_push_enabled,
+            breaking_news_enabled = excluded.breaking_news_enabled, weather_morning_enabled = excluded.weather_morning_enabled,
+            weather_morning_time = excluded.weather_morning_time, asset_report_enabled = excluded.asset_report_enabled,
+            asset_open_enabled = excluded.asset_open_enabled, asset_close_enabled = excluded.asset_close_enabled,
+            bp_reminder_enabled = excluded.bp_reminder_enabled, bp_reminder_time = excluded.bp_reminder_time,
+            system_alert_enabled = excluded.system_alert_enabled, telegram_briefing_times = excluded.telegram_briefing_times,
+            weekday_med_times = excluded.weekday_med_times, weekday_bp_times = excluded.weekday_bp_times,
+            weekend_med_times = excluded.weekend_med_times, weekend_bp_times = excluded.weekend_bp_times,
             updated_at = CURRENT_TIMESTAMP
     `;
 
-    const openVal = asset_open_enabled !== undefined ? (asset_open_enabled ? 1 : 0) : 1;
-    const closeVal = asset_close_enabled !== undefined ? (asset_close_enabled ? 1 : 0) : 1;
-    const reportVal = (openVal || closeVal) ? 1 : (asset_report_enabled !== undefined ? (asset_report_enabled ? 1 : 0) : 1);
+    const albumPushVal = album_push_enabled !== undefined ? (album_push_enabled ? 1 : 0) : 1;
+    const albumPhotoVal = album_new_photo_enabled !== undefined ? (album_new_photo_enabled ? 1 : 0) : 1;
+    const albumCommentVal = album_comment_enabled !== undefined ? (album_comment_enabled ? 1 : 0) : 1;
+    const albumMentionVal = album_mention_enabled !== undefined ? (album_mention_enabled ? 1 : 0) : 1;
+
+    const openVal = asset_open_enabled !== undefined ? (asset_open_enabled ? 1 : 0) : (isAdmin ? 1 : 0);
+    const closeVal = asset_close_enabled !== undefined ? (asset_close_enabled ? 1 : 0) : (isAdmin ? 1 : 0);
+    const reportVal = (openVal || closeVal) ? 1 : (asset_report_enabled !== undefined ? (asset_report_enabled ? 1 : 0) : (isAdmin ? 1 : 0));
+
+    const hospVal = isAdmin ? (hospital_push_enabled !== undefined ? (hospital_push_enabled ? 1 : 0) : 1) : 0;
+    const bpVal = isAdmin ? (bp_reminder_enabled !== undefined ? (bp_reminder_enabled ? 1 : 0) : 1) : 0;
+    const sysVal = isAdmin ? (system_alert_enabled !== undefined ? (system_alert_enabled ? 1 : 0) : 1) : 0;
 
     let cleanBriefingTimes = Array.isArray(telegram_briefing_times)
         ? telegram_briefing_times.filter(t => typeof t === 'string' && /^\d{2}:\d{2}$/.test(t.trim())).map(t => t.trim())
@@ -267,16 +286,20 @@ router.post('/settings', authenticateToken, (req, res) => {
     db.run(query, [
         userId,
         enabled !== undefined ? (enabled ? 1 : 0) : 1,
-        hospital_push_enabled !== undefined ? (hospital_push_enabled ? 1 : 0) : 1,
-        breaking_news_enabled !== undefined ? (breaking_news_enabled ? 1 : 0) : 1,
-        weather_morning_enabled !== undefined ? (weather_morning_enabled ? 1 : 0) : 1,
+        albumPushVal,
+        albumPhotoVal,
+        albumCommentVal,
+        albumMentionVal,
+        hospVal,
+        breaking_news_enabled !== undefined ? (breaking_news_enabled ? 1 : 0) : (isAdmin ? 1 : 0),
+        weather_morning_enabled !== undefined ? (weather_morning_enabled ? 1 : 0) : (isAdmin ? 1 : 0),
         (weather_morning_time || '07:00').trim(),
         reportVal,
         openVal,
         closeVal,
-        bp_reminder_enabled !== undefined ? (bp_reminder_enabled ? 1 : 0) : 1,
+        bpVal,
         (bp_reminder_time || '21:00').trim(),
-        system_alert_enabled !== undefined ? (system_alert_enabled ? 1 : 0) : 1,
+        sysVal,
         JSON.stringify(cleanBriefingTimes),
         JSON.stringify(Array.isArray(weekday_med_times) ? weekday_med_times : ['08:00', '19:00']),
         JSON.stringify(Array.isArray(weekday_bp_times) ? weekday_bp_times : ['07:30', '21:30']),
@@ -288,7 +311,7 @@ router.post('/settings', authenticateToken, (req, res) => {
             return res.status(500).json({ success: false, message: '알림 설정 저장 실패' });
         }
 
-        if (newsDb && ADMIN_USERS.includes(userId)) {
+        if (newsDb && isAdmin) {
             newsDb.run(`
                 INSERT INTO system_settings (key, value, updated_at)
                 VALUES ('telegram_briefing_times', ?, datetime('now', '+9 hours'))
@@ -299,23 +322,28 @@ router.post('/settings', authenticateToken, (req, res) => {
             });
         }
 
-        res.json({ success: true, message: '포털 통합 알림 설정 및 뉴스 브리핑 시각이 저장되었습니다.' });
+        res.json({ success: true, message: '포털 통합 알림 설정이 저장되었습니다.' });
     });
 });
 
 // 5. 알림 수신 내역 조회 API
 router.get('/history', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 30, 1), 100);
     const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
-    const countQuery = `
-        SELECT 
+    const countQuery = isAdmin
+        ? `SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread
         FROM notification_history 
-        WHERE user_id = ? OR user_id = 'admin'
-    `;
+        WHERE user_id = ? OR user_id = 'admin'`
+        : `SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread
+        FROM notification_history 
+        WHERE user_id = ? AND type != 'system'`;
 
     db.get(countQuery, [userId], (cntErr, counts) => {
         if (cntErr) {
@@ -323,13 +351,17 @@ router.get('/history', authenticateToken, (req, res) => {
             return res.status(500).json({ success: false, message: '알림 카운트 조회 실패' });
         }
 
-        const dataQuery = `
-            SELECT id, user_id, type, title, body, icon, url, is_read, created_at 
+        const dataQuery = isAdmin
+            ? `SELECT id, user_id, type, title, body, icon, url, is_read, created_at 
             FROM notification_history 
             WHERE user_id = ? OR user_id = 'admin'
             ORDER BY id DESC 
-            LIMIT ? OFFSET ?
-        `;
+            LIMIT ? OFFSET ?`
+            : `SELECT id, user_id, type, title, body, icon, url, is_read, created_at 
+            FROM notification_history 
+            WHERE user_id = ? AND type != 'system'
+            ORDER BY id DESC 
+            LIMIT ? OFFSET ?`;
 
         db.all(dataQuery, [userId, limit, offset], (err, rows) => {
             if (err) return res.status(500).json({ success: false, message: '알림 내역 조회 실패' });
@@ -349,8 +381,10 @@ router.get('/history', authenticateToken, (req, res) => {
 router.post('/history/read-all', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
-    const query = `UPDATE notification_history SET is_read = 1 WHERE user_id = ? OR ? = 1`;
-    db.run(query, [userId, isAdmin], function(err) {
+    const query = isAdmin
+        ? `UPDATE notification_history SET is_read = 1 WHERE user_id = ? OR user_id = 'admin'`
+        : `UPDATE notification_history SET is_read = 1 WHERE user_id = ? AND type != 'system'`;
+    db.run(query, [userId], function(err) {
         if (err) {
             console.error('[WebPush] 전체 읽음 처리 오류:', err);
             return res.status(500).json({ success: false, message: '전체 읽음 처리 실패' });
@@ -364,8 +398,10 @@ router.post('/history/:id/read', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const id = req.params.id;
-    const query = `UPDATE notification_history SET is_read = 1 WHERE id = ? AND (user_id = ? OR ? = 1)`;
-    db.run(query, [id, userId, isAdmin], function(err) {
+    const query = isAdmin
+        ? `UPDATE notification_history SET is_read = 1 WHERE id = ? AND (user_id = ? OR user_id = 'admin')`
+        : `UPDATE notification_history SET is_read = 1 WHERE id = ? AND user_id = ? AND type != 'system'`;
+    db.run(query, [id, userId], function(err) {
         if (err) {
             console.error('[WebPush] 개별 읽음 처리 오류:', err);
             return res.status(500).json({ success: false, message: '개별 읽음 처리 실패' });
@@ -379,7 +415,10 @@ router.delete('/history/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const id = req.params.id;
-    db.run("DELETE FROM notification_history WHERE id = ? AND (user_id = ? OR ? = 1)", [id, userId, isAdmin], (err) => {
+    const query = isAdmin
+        ? "DELETE FROM notification_history WHERE id = ? AND (user_id = ? OR user_id = 'admin')"
+        : "DELETE FROM notification_history WHERE id = ? AND user_id = ? AND type != 'system'";
+    db.run(query, [id, userId], (err) => {
         if (err) return res.status(500).json({ success: false, message: '알림 삭제 실패' });
         res.json({ success: true, message: '알림이 삭제되었습니다.' });
     });
@@ -389,7 +428,10 @@ router.delete('/history/:id', authenticateToken, (req, res) => {
 router.delete('/history/clear/all', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
-    db.run("DELETE FROM notification_history WHERE user_id = ? OR ? = 1", [userId, isAdmin], (err) => {
+    const query = isAdmin
+        ? "DELETE FROM notification_history WHERE user_id = ? OR user_id = 'admin'"
+        : "DELETE FROM notification_history WHERE user_id = ? AND type != 'system'";
+    db.run(query, [userId], (err) => {
         if (err) return res.status(500).json({ success: false, message: '전체 알림 삭제 실패' });
         res.json({ success: true, message: '모든 알림 내역이 삭제되었습니다.' });
     });

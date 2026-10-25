@@ -7,7 +7,9 @@
 (function() {
     'use strict';
     let portalNotifSettings = {
-        enabled: 1, hospital_push_enabled: 1, breaking_news_enabled: 1,
+        enabled: 1,
+        album_push_enabled: 1, album_new_photo_enabled: 1, album_comment_enabled: 1, album_mention_enabled: 1,
+        hospital_push_enabled: 1, breaking_news_enabled: 1,
         weather_morning_enabled: 1, weather_morning_time: '07:00',
         asset_report_enabled: 1, asset_open_enabled: 1, asset_close_enabled: 1,
         bp_reminder_enabled: 1, bp_reminder_time: '21:00', system_alert_enabled: 1,
@@ -18,9 +20,13 @@
     let notifHistoryOffset = 0, notifHistoryTotal = 0, notifHistoryListItems = [], notifSelectedCategory = 'all';
     const NOTIF_HISTORY_LIMIT = 30;
     const NOTIF_CATEGORIES = [
-        { key: 'all', label: '전체', icon: '🔔' }, { key: 'breaking', label: '속보', icon: '🚨' },
-        { key: 'calendar', label: '일정', icon: '📅' }, { key: 'weather', label: '날씨', icon: '🌤️' },
-        { key: 'finance', label: '금융', icon: '💰' }, { key: 'health', label: '건강', icon: '🩸' },
+        { key: 'all', label: '전체', icon: '🔔' },
+        { key: 'album', label: '가족앨범', icon: '📸' },
+        { key: 'breaking', label: '속보', icon: '🚨' },
+        { key: 'calendar', label: '일정', icon: '📅' },
+        { key: 'weather', label: '날씨', icon: '🌤️' },
+        { key: 'finance', label: '금융', icon: '💰' },
+        { key: 'health', label: '건강', icon: '🩸' },
         { key: 'system', label: '시스템', icon: '🖥️' }
     ];
 
@@ -168,6 +174,10 @@
                 portalNotifSettings = Object.assign(portalNotifSettings, data.settings);
                 const setC = (id, val) => { const el = document.getElementById(id); if (el) el.checked = Boolean(val !== 0); };
                 setC('notifMasterEnabled', portalNotifSettings.enabled);
+                setC('notifAlbumPushEnabled', portalNotifSettings.album_push_enabled);
+                setC('notifAlbumNewPhotoEnabled', portalNotifSettings.album_new_photo_enabled);
+                setC('notifAlbumCommentEnabled', portalNotifSettings.album_comment_enabled);
+                setC('notifAlbumMentionEnabled', portalNotifSettings.album_mention_enabled);
                 setC('notifBreakingNewsEnabled', portalNotifSettings.breaking_news_enabled);
                 setC('notifWeatherMorningEnabled', portalNotifSettings.weather_morning_enabled);
                 setC('notifAssetReportEnabled', portalNotifSettings.asset_report_enabled);
@@ -184,6 +194,18 @@
                 window.renderNotifChips();
             }
         } catch (e) { console.error('[Notification] 설정 조회 실패:', e); }
+    };
+    window.toggleAlbumSubOptions = function(checked) {
+        ['notifAlbumNewPhotoEnabled', 'notifAlbumCommentEnabled', 'notifAlbumMentionEnabled'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.checked = checked;
+        });
+    };
+    window.handleAlbumSubOptionChange = function() {
+        const pEl = document.getElementById('notifAlbumNewPhotoEnabled');
+        const cEl = document.getElementById('notifAlbumCommentEnabled');
+        const mEl = document.getElementById('notifAlbumMentionEnabled');
+        const aEl = document.getElementById('notifAlbumPushEnabled');
+        if (aEl) aEl.checked = (pEl && pEl.checked) || (cEl && cEl.checked) || (mEl && mEl.checked);
     };
     window.toggleAssetSubOptions = function(checked) {
         ['notifAssetOpenEnabled', 'notifAssetCloseEnabled'].forEach(id => {
@@ -264,6 +286,10 @@
         const getC = (id) => { const el = document.getElementById(id); return el ? (el.checked ? 1 : 0) : 1; };
         const getV = (id, def) => { const el = document.getElementById(id); return (el && el.value.trim()) ? el.value.trim() : def; };
         portalNotifSettings.enabled = getC('notifMasterEnabled');
+        portalNotifSettings.album_new_photo_enabled = getC('notifAlbumNewPhotoEnabled');
+        portalNotifSettings.album_comment_enabled = getC('notifAlbumCommentEnabled');
+        portalNotifSettings.album_mention_enabled = getC('notifAlbumMentionEnabled');
+        portalNotifSettings.album_push_enabled = (portalNotifSettings.album_new_photo_enabled || portalNotifSettings.album_comment_enabled || portalNotifSettings.album_mention_enabled) ? 1 : getC('notifAlbumPushEnabled');
         portalNotifSettings.breaking_news_enabled = getC('notifBreakingNewsEnabled');
         portalNotifSettings.weather_morning_enabled = getC('notifWeatherMorningEnabled');
         portalNotifSettings.weather_morning_time = getV('inputWeatherTime', '07:00');
@@ -312,6 +338,7 @@
     function getNotificationCategory(item) {
         const type = (item.type || '').toLowerCase();
         const full = `${type} ${(item.title || '')} ${(item.body || '')}`.toLowerCase();
+        if (type === 'album' || full.includes('가족앨범') || full.includes('앨범') || full.includes('새 사진') || full.includes('댓글이 등록') || full.includes('회원님을 언급')) return { key: 'album', label: '가족앨범', icon: '📸', colorClass: 'cat-album' };
         if (type === 'breaking' || full.includes('속보')) return { key: 'breaking', label: '속보', icon: '🚨', colorClass: 'cat-breaking' };
         if (type === 'calendar' || full.includes('일정') || full.includes('캘린더')) return { key: 'calendar', label: '일정', icon: '📅', colorClass: 'cat-calendar' };
         if (type === 'weather' || full.includes('날씨') || full.includes('기온') || full.includes('미세먼지') || full.includes('강수')) return { key: 'weather', label: '날씨', icon: '🌤️', colorClass: 'cat-weather' };
@@ -323,8 +350,12 @@
     function renderCategoryChips() {
         const barEl = document.getElementById('notifCategoryBar');
         if (!barEl) return;
+        const isFamily = document.documentElement.classList.contains('role-family');
+        const visibleCats = isFamily
+            ? NOTIF_CATEGORIES.filter(c => !['system', 'health'].includes(c.key))
+            : NOTIF_CATEGORIES;
         const counts = { all: notifHistoryListItems.length }, unreads = { all: 0 };
-        NOTIF_CATEGORIES.forEach(c => { if (c.key !== 'all') { counts[c.key] = 0; unreads[c.key] = 0; } });
+        visibleCats.forEach(c => { if (c.key !== 'all') { counts[c.key] = 0; unreads[c.key] = 0; } });
         notifHistoryListItems.forEach(item => {
             const cat = getNotificationCategory(item);
             if (counts[cat.key] !== undefined) {
@@ -333,7 +364,7 @@
             }
             if (item.is_read === 0) unreads.all++;
         });
-        barEl.innerHTML = NOTIF_CATEGORIES.map(cat => {
+        barEl.innerHTML = visibleCats.map(cat => {
             const isActive = notifSelectedCategory === cat.key;
             const total = counts[cat.key] || 0;
             const unread = unreads[cat.key] || 0;
@@ -543,7 +574,16 @@
         const label = catLabel || '해당';
         if (!confirm(`'${label}' 관련 알림을 끄시겠습니까?\n('알림 맞춤 설정' 탭에서 언제든지 다시 켤 수 있습니다.)`)) return;
         const setC = (id, val) => { const el = document.getElementById(id); if (el) el.checked = val; };
-        if (catKey === 'breaking') { portalNotifSettings.breaking_news_enabled = 0; setC('notifBreakingNewsEnabled', false); }
+        if (catKey === 'album') {
+            portalNotifSettings.album_push_enabled = 0;
+            portalNotifSettings.album_new_photo_enabled = 0;
+            portalNotifSettings.album_comment_enabled = 0;
+            portalNotifSettings.album_mention_enabled = 0;
+            setC('notifAlbumPushEnabled', false);
+            setC('notifAlbumNewPhotoEnabled', false);
+            setC('notifAlbumCommentEnabled', false);
+            setC('notifAlbumMentionEnabled', false);
+        } else if (catKey === 'breaking') { portalNotifSettings.breaking_news_enabled = 0; setC('notifBreakingNewsEnabled', false); }
         else if (catKey === 'calendar') { portalNotifSettings.hospital_push_enabled = 0; setC('notifHospitalPushEnabled', false); }
         else if (catKey === 'weather') { portalNotifSettings.weather_morning_enabled = 0; setC('notifWeatherMorningEnabled', false); }
         else if (catKey === 'finance') {

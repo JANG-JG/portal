@@ -721,6 +721,13 @@
     background: #fffbeb !important;
     border-color: #fde68a !important;
 }
+html.role-family .notif-card-group.admin-only-section,
+html.role-family .admin-only-section,
+html.role-family [data-role="admin"],
+html.role-family [data-family-hidden="true"],
+html.role-pending .admin-only-section {
+    display: none !important;
+}
 .notif-toggle-row {
     display: flex !important;
     align-items: flex-start !important;
@@ -1227,6 +1234,7 @@
     border-radius: 6px !important;
     letter-spacing: -0.2px !important;
 }
+.cat-album    { background: #fce7f3 !important; color: #db2777 !important; }
 .cat-breaking { background: #fee2e2 !important; color: #dc2626 !important; }
 .cat-calendar { background: #e0e7ff !important; color: #4338ca !important; }
 .cat-weather  { background: #e0f2fe !important; color: #0369a1 !important; }
@@ -1677,6 +1685,13 @@ body.dark #notificationModal .btn-notif-more:hover {
 }
 
 /* 카테고리 뱃지 다크 테마 고대비 */
+#notificationModal.dark-zinc .cat-album,
+#notificationModal.theme-dark .cat-album,
+body.dark #notificationModal .cat-album {
+    background: rgba(236, 72, 153, 0.2) !important;
+    color: #f472b6 !important;
+}
+
 #notificationModal.dark-zinc .cat-breaking,
 #notificationModal.theme-dark .cat-breaking,
 body.dark #notificationModal .cat-breaking {

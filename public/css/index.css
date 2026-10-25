@@ -96,6 +96,10 @@ body.modal-open {
 html.hide-blood [data-service="blood"],
 html.hide-asset [data-service="asset"],
 html.hide-ops [data-service="ops"],
+html.role-family .admin-only-section,
+html.role-family [data-role="admin"],
+html.role-family [data-family-hidden="true"],
+html.role-pending .admin-only-section,
 html.role-pending [data-service="blood"],
 html.role-pending [data-service="asset"],
 html.role-pending [data-service="ops"] {
@@ -1533,6 +1537,12 @@ html.role-pending [data-service="ops"] {
     font-weight: 700;
     white-space: nowrap;
     flex-shrink: 0;
+}
+
+.cat-album {
+    background: rgba(236, 72, 153, 0.15) !important;
+    color: #f472b6 !important;
+    border: 1px solid rgba(236, 72, 153, 0.3) !important;
 }
 
 .cat-breaking {

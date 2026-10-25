@@ -539,6 +539,10 @@
 
     let portalNotifSettings = {
         enabled: 1,
+        album_push_enabled: 1,
+        album_new_photo_enabled: 1,
+        album_comment_enabled: 1,
+        album_mention_enabled: 1,
         hospital_push_enabled: 1,
         breaking_news_enabled: 1,
         weather_morning_enabled: 1,
@@ -779,6 +783,10 @@
                     if (el) el.checked = Boolean(val !== 0);
                 };
                 setCheck('notifMasterEnabled', portalNotifSettings.enabled);
+                setCheck('notifAlbumPushEnabled', portalNotifSettings.album_push_enabled);
+                setCheck('notifAlbumNewPhotoEnabled', portalNotifSettings.album_new_photo_enabled);
+                setCheck('notifAlbumCommentEnabled', portalNotifSettings.album_comment_enabled);
+                setCheck('notifAlbumMentionEnabled', portalNotifSettings.album_mention_enabled);
                 setCheck('notifBreakingNewsEnabled', portalNotifSettings.breaking_news_enabled);
                 setCheck('notifWeatherMorningEnabled', portalNotifSettings.weather_morning_enabled);
                 setCheck('notifAssetReportEnabled', portalNotifSettings.asset_report_enabled);
@@ -802,6 +810,22 @@
         } catch (e) {
             console.error('[포털 알림 설정 조회 실패]:', e);
         }
+    };
+
+    // 가족 앨범 상위 토글 시 하위 새 사진/댓글/멘션 일괄 토글
+    window.toggleAlbumSubOptions = function(checked) {
+        ['notifAlbumNewPhotoEnabled', 'notifAlbumCommentEnabled', 'notifAlbumMentionEnabled'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.checked = checked;
+        });
+    };
+
+    // 가족 앨범 서브 옵션 변경 시 상위 토글 동기화
+    window.handleAlbumSubOptionChange = function() {
+        const pEl = document.getElementById('notifAlbumNewPhotoEnabled');
+        const cEl = document.getElementById('notifAlbumCommentEnabled');
+        const mEl = document.getElementById('notifAlbumMentionEnabled');
+        const aEl = document.getElementById('notifAlbumPushEnabled');
+        if (aEl) aEl.checked = (pEl && pEl.checked) || (cEl && cEl.checked) || (mEl && mEl.checked);
     };
 
     // 증시/환율 상위 토글 시 하위 개장/마감 일괄 토글
@@ -914,6 +938,10 @@
         };
 
         portalNotifSettings.enabled = getCheck('notifMasterEnabled');
+        portalNotifSettings.album_new_photo_enabled = getCheck('notifAlbumNewPhotoEnabled');
+        portalNotifSettings.album_comment_enabled = getCheck('notifAlbumCommentEnabled');
+        portalNotifSettings.album_mention_enabled = getCheck('notifAlbumMentionEnabled');
+        portalNotifSettings.album_push_enabled = (portalNotifSettings.album_new_photo_enabled || portalNotifSettings.album_comment_enabled || portalNotifSettings.album_mention_enabled) ? 1 : getCheck('notifAlbumPushEnabled');
         portalNotifSettings.breaking_news_enabled = getCheck('notifBreakingNewsEnabled');
         portalNotifSettings.weather_morning_enabled = getCheck('notifWeatherMorningEnabled');
         portalNotifSettings.weather_morning_time = getVal('inputWeatherTime', '07:00');
@@ -1200,6 +1228,7 @@
     // 🏷️ 알림 카테고리 메타 정의
     const NOTIF_CATEGORIES = [
         { key: 'all', label: '전체', icon: '🔔' },
+        { key: 'album', label: '가족앨범', icon: '📸' },
         { key: 'breaking', label: '속보', icon: '🚨' },
         { key: 'calendar', label: '일정', icon: '📅' },
         { key: 'weather', label: '날씨', icon: '🌤️' },
@@ -1216,6 +1245,9 @@
         const body = (item.body || '').toLowerCase();
         const full = `${type} ${title} ${body}`;
 
+        if (type === 'album' || full.includes('가족앨범') || full.includes('앨범') || full.includes('새 사진') || full.includes('댓글이 등록') || full.includes('회원님을 언급')) {
+            return { key: 'album', label: '가족앨범', icon: '📸', colorClass: 'cat-album' };
+        }
         if (type === 'breaking' || full.includes('속보')) {
             return { key: 'breaking', label: '속보', icon: '🚨', colorClass: 'cat-breaking' };
         }
@@ -1241,9 +1273,14 @@
         const barEl = document.getElementById('notifCategoryBar');
         if (!barEl) return;
 
+        const isFamily = document.documentElement.classList.contains('role-family');
+        const visibleCats = isFamily
+            ? NOTIF_CATEGORIES.filter(c => !['system', 'health'].includes(c.key))
+            : NOTIF_CATEGORIES;
+
         const counts = { all: notifHistoryListItems.length };
         const unreads = { all: 0 };
-        NOTIF_CATEGORIES.forEach(c => {
+        visibleCats.forEach(c => {
             if (c.key !== 'all') {
                 counts[c.key] = 0;
                 unreads[c.key] = 0;
@@ -1259,7 +1296,7 @@
             if (item.is_read === 0) unreads.all++;
         });
 
-        barEl.innerHTML = NOTIF_CATEGORIES.map(cat => {
+        barEl.innerHTML = visibleCats.map(cat => {
             const isActive = notifSelectedCategory === cat.key;
             const total = counts[cat.key] || 0;
             const unread = unreads[cat.key] || 0;

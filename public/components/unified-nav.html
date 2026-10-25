@@ -397,6 +397,35 @@
                     <button type="button" id="btnRequestNotifPermission" onclick="requestBrowserNotificationPermission()">권한 허용</button>
                 </div>
 
+                <!-- 0. 📸 가족 앨범 알림 -->
+                <div class="notif-card-group" id="notifGroupAlbum">
+                    <div class="notif-toggle-row">
+                        <input type="checkbox" id="notifAlbumPushEnabled" checked onchange="toggleAlbumSubOptions(this.checked)">
+                        <div class="notif-toggle-content">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.25rem;">
+                                <label for="notifAlbumPushEnabled" style="cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
+                                    <strong>📸 가족 앨범 알림</strong>
+                                </label>
+                            </div>
+                            <p>가족 앨범에 새 사진이 등록되거나 댓글, 멘션(@호출) 시 실시간 웹 푸시를 받습니다.</p>
+                            <div class="notif-sub-option-box" style="margin-top: 0.5rem; display: flex; gap: 0.85rem; flex-wrap: wrap; padding: 0.45rem 0.65rem; border-radius: 6px;">
+                                <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; margin: 0;">
+                                    <input type="checkbox" id="notifAlbumNewPhotoEnabled" checked onchange="handleAlbumSubOptionChange()" style="margin: 0 !important; width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important;">
+                                    <span>📷 새 사진</span>
+                                </label>
+                                <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; margin: 0;">
+                                    <input type="checkbox" id="notifAlbumCommentEnabled" checked onchange="handleAlbumSubOptionChange()" style="margin: 0 !important; width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important;">
+                                    <span>💬 새 댓글</span>
+                                </label>
+                                <label style="display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; margin: 0;">
+                                    <input type="checkbox" id="notifAlbumMentionEnabled" checked onchange="handleAlbumSubOptionChange()" style="margin: 0 !important; width: 16px !important; height: 16px !important; min-width: 16px !important; min-height: 16px !important;">
+                                    <span>📢 멘션(@호출)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 1. 🚨 실시간 속보 알림 -->
                 <div class="notif-card-group">
                     <label class="notif-toggle-row">
@@ -409,7 +438,7 @@
                 </div>
 
                 <!-- 1-2. 📰 뉴스 텔레그램 브리핑 전송 시간표 설정 -->
-                <div class="notif-card-group" style="padding: 0.85rem;">
+                <div class="notif-card-group admin-only-section" data-role="admin" style="padding: 0.85rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.45rem;">
                         <div>
                             <strong style="font-size: 0.95rem;">📰 텔레그램 뉴스 브리핑 전송 시간</strong>
@@ -473,7 +502,7 @@
                 </div>
 
                 <!-- 4. 🎯 혈압 리마인드 -->
-                <div class="notif-card-group">
+                <div class="notif-card-group admin-only-section" data-service="blood">
                     <div class="notif-toggle-row">
                         <input type="checkbox" id="notifBpReminderEnabled" checked>
                         <div class="notif-toggle-content">
@@ -492,7 +521,7 @@
                 </div>
 
                 <!-- 5. 🏥 병원 진료 예약 오픈 알림 -->
-                <div class="notif-card-group">
+                <div class="notif-card-group admin-only-section" data-service="blood">
                     <label class="notif-toggle-row">
                         <input type="checkbox" id="notifHospitalPushEnabled" checked>
                         <div class="notif-toggle-content">
@@ -503,7 +532,7 @@
                 </div>
 
                 <!-- 6 & 7. 💊 복약 및 🩸 혈압 측정 정기 시간표 설정 -->
-                <div class="notif-card-group" style="padding: 0.85rem;">
+                <div class="notif-card-group admin-only-section" data-service="blood" style="padding: 0.85rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.65rem;">
                         <strong style="color: #0f172a; font-size: 0.95rem;">⏰ 정기 복약 & 혈압 측정 시간표</strong>
                         <div class="notif-sub-tabs">
@@ -564,7 +593,7 @@
                 </div>
 
                 <!-- 8. 🖥️ 서버 경보 (관리자 전용) -->
-                <div class="notif-card-group admin-only-section">
+                <div class="notif-card-group admin-only-section" data-role="admin">
                     <label class="notif-toggle-row">
                         <input type="checkbox" id="notifSystemAlertEnabled" checked>
                         <div class="notif-toggle-content">

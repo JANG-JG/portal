@@ -113,6 +113,10 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE notification_settings ADD COLUMN telegram_briefing_times TEXT DEFAULT '["07:30"]'`, () => {});
+            db.run(`ALTER TABLE notification_settings ADD COLUMN album_push_enabled INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE notification_settings ADD COLUMN album_new_photo_enabled INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE notification_settings ADD COLUMN album_comment_enabled INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE notification_settings ADD COLUMN album_mention_enabled INTEGER DEFAULT 1`, () => {});
             // 🔔 푸시 알림 중복 방지용 디바이스/클라이언트 메타데이터 컬럼
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN client_type TEXT DEFAULT 'browser'`, () => {});
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN device_type TEXT DEFAULT 'desktop'`, () => {});
