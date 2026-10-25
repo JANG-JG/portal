@@ -261,6 +261,11 @@ body {
     background: linear-gradient(90deg, #10b981, #34d399);
     transition: width 0.3s ease;
 }
+.gauge-bar-sec-ssd {
+    height: 100%;
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+    transition: width 0.3s ease;
+}
 
 /* 프로세스 헬스 상태 카드 (컴팩트 1줄/반응형 리스트) */
 .process-list-grid {

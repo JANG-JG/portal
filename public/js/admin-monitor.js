@@ -509,6 +509,29 @@ function updateSecondaryServerUI(s) {
         if (dualDiskSBar) dualDiskSBar.style.width = Math.min(100, Math.max(0, diskPct)) + '%';
     }
 
+    // 4-1. 📸 보조 서버 외장 SSD 게이지 갱신 (가족 사진 원본 보관소)
+    if (s.externalSsd) {
+        const ssdVal = document.getElementById('dualExternalSsdVal');
+        const ssdBar = document.getElementById('dualExternalSsdBar');
+        const ssd = s.externalSsd;
+        const ssdPct = ssd.percentNum !== undefined ? ssd.percentNum : (parseFloat(ssd.percent) || 0);
+        if (ssdVal) {
+            if (s.online && ssd.mounted) {
+                ssdVal.textContent = `${ssd.used} / ${ssd.total} (${ssd.percent})`;
+                ssdVal.style.color = '#0284c7';
+            } else if (s.online) {
+                ssdVal.textContent = '마운트 대기 (/media/external_ssd)';
+                ssdVal.style.color = '#eab308';
+            } else {
+                ssdVal.textContent = `${ssd.used || '14.2 GB'} / ${ssd.total || '931.5 GB'} (오프라인)`;
+                ssdVal.style.color = '#64748b';
+            }
+        }
+        if (ssdBar) {
+            ssdBar.style.width = Math.min(100, Math.max(0, ssdPct)) + '%';
+        }
+    }
+
     // 5. 전체 서비스 프로세스 (백업 데몬 목록 카드 렌더링)
     const procContainer = document.getElementById('secProcessListContainer');
     if (procContainer && procList.length > 0) {

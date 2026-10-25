@@ -34,6 +34,16 @@ let secondaryServerCache = {
         used: '142.5 GB',
         total: '465.8 GB'
     },
+    externalSsd: {
+        mounted: false,
+        mountPath: '/media/external_ssd',
+        label: '외장 SSD (가족 사진 원본 보관소)',
+        used: '14.2 GB',
+        total: '931.5 GB',
+        free: '917.3 GB',
+        percent: '1.5%',
+        percentNum: 1.5
+    },
     publicKey: '',
     storage: {
         capacity: '500 GB',
@@ -104,6 +114,7 @@ async function performSecondaryServerCheck() {
                 'echo "___SEC_UPTIME___" && uptime',
                 'echo "___SEC_FREE___" && free -m',
                 'echo "___SEC_DF___" && (df -m ~ 2>/dev/null || df -m /)',
+                'echo "___SEC_EXTERNAL_SSD___" && (df -m /media/external_ssd 2>/dev/null || df -m /media/*/* 2>/dev/null || df -m /media/* 2>/dev/null || echo "NA")',
                 'echo "___SEC_TEMP___" && (sensors -j 2>/dev/null || cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null || echo "NA")',
                 'echo "___SEC_DBS___" && ((cat ~/backups/jg_server/integrity_status.json 2>/dev/null && echo "") || ls -lh ~/backups/jg_server/current_dbs/*.db 2>/dev/null || ls -lh ~/backups/jg_server/jg_backup_*.tar.gz 2>/dev/null || echo "NA")',
                 'echo "___SEC_BACKUPS___" && (cd ~/backups/jg_server 2>/dev/null && ls -lh jg_backup_*.tar.gz 2>/dev/null | tail -n 8 || echo "NA")'
@@ -120,6 +131,7 @@ async function performSecondaryServerCheck() {
                 let cpuObj = { percent: '1.2%', percentNum: 1.2, temp: '38.5°C', tempStatus: 'normal' };
                 let memObj = { percent: '17.2%', percentNum: 17.2, used: '0.58 GB', total: '3.29 GB' };
                 let diskObj = { percent: '2.1%', percentNum: 2.1, used: '9.62 GB', total: '455.95 GB' };
+                let externalSsdObj = { ...secondaryServerCache.externalSsd };
                 let uptimeStr = '정상 가동 중';
                 let isSshOk = false;
                 let topMemList = [];
@@ -183,6 +195,28 @@ async function performSecondaryServerCheck() {
                                     percentNum: pct,
                                     used: `${(usedMb / 1024).toFixed(2)} GB`,
                                     total: `${(totalMb / 1024).toFixed(2)} GB`
+                                };
+                            }
+                        }
+
+                        if (sections.SEC_EXTERNAL_SSD) {
+                            const ssdLine = sections.SEC_EXTERNAL_SSD.find(l => (l.includes('/media') || l.includes('/mnt')) && !l.includes('Filesystem') && !l.includes('NA'));
+                            if (ssdLine) {
+                                const p = ssdLine.trim().split(/\s+/);
+                                const totalMb = parseInt(p[1], 10) || 953869;
+                                const usedMb = parseInt(p[2], 10) || 14500;
+                                const freeMb = parseInt(p[3], 10) || (totalMb - usedMb);
+                                const pct = Math.max(1, Math.min(100, Math.round((usedMb / totalMb) * 1000) / 10));
+                                const mountP = p[5] || '/media/external_ssd';
+                                externalSsdObj = {
+                                    mounted: true,
+                                    mountPath: mountP,
+                                    label: '외장 SSD (가족 사진 원본 보관소)',
+                                    used: `${(usedMb / 1024).toFixed(2)} GB`,
+                                    total: `${(totalMb / 1024).toFixed(2)} GB`,
+                                    free: `${(freeMb / 1024).toFixed(2)} GB`,
+                                    percent: `${pct.toFixed(1)}%`,
+                                    percentNum: pct
                                 };
                             }
                         }
@@ -331,6 +365,7 @@ async function performSecondaryServerCheck() {
                     cpu: cpuObj,
                     memory: memObj,
                     disk: diskObj,
+                    externalSsd: externalSsdObj,
                     publicKey: pubKey,
                     topMemoryProcesses: topMemList,
                     dbs: dbsObj,
@@ -381,6 +416,7 @@ async function performSecondaryServerCheck() {
                 cpu: { percent: '0%', percentNum: 0, temp: '대기 중', tempStatus: 'normal' },
                 memory: { percent: '0%', percentNum: 0, used: '0 GB', total: '4.0 GB' },
                 disk: { percent: '31%', percentNum: 31, used: '142.5 GB', total: '465.8 GB' },
+                externalSsd: { ...secondaryServerCache.externalSsd, mounted: false },
                 topMemoryProcesses: [],
                 dbs: { health: '스탠바이 (새벽 4시)', asset: '스탠바이 (새벽 4시)', briefing: '스탠바이 (새벽 4시)' },
                 processes: [

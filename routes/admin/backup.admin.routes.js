@@ -118,7 +118,8 @@ router.get('/status', async (req, res) => {
             secondary_server: {
                 host: statusData?.secondary_host || '192.168.50.75',
                 port: statusData?.secondary_port || 22,
-                online: !!secondaryStatus.online
+                online: !!secondaryStatus.online,
+                external_ssd: secondaryStatus.externalSsd || null
             },
             archives: archives.slice(0, 10),
             total_archives: archives.length

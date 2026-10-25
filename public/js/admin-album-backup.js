@@ -221,6 +221,18 @@ async function loadBackupAdminStatus() {
                 }
             }
 
+            const elSsd = document.getElementById('backupStatExternalSsd');
+            if (elSsd) {
+                const ext = sec.external_ssd || s.external_ssd;
+                if (sec.online && ext && ext.mounted) {
+                    elSsd.innerHTML = `<span class="admin-badge admin-badge-success" title="${ext.mountPath} (${ext.used}/${ext.total})">정상 보관 (SSD)</span>`;
+                } else if (sec.online) {
+                    elSsd.innerHTML = '<span class="admin-badge admin-badge-success" title="HP 보조 서버 외장 SSD 연결됨">정상 연동 (HP)</span>';
+                } else {
+                    elSsd.innerHTML = '<span class="admin-badge admin-badge-warning" title="/media/external_ssd (새벽 04:00 자동 동기화)">새벽 동기화</span>';
+                }
+            }
+
             // 아카이브 목록 테이블 렌더링
             const tbody = document.getElementById('backupArchivesTableBody');
             if (tbody) {
