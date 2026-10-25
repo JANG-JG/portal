@@ -3,9 +3,11 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const path = require('path');
+const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261025_163833';
 const {
     PORT,
     JWT_SECRET,
@@ -126,27 +128,48 @@ app.use((req, res, next) => {
 });
 
 // ==========================================
-// 📄 [HTML 웹 화면 라우팅]
+// 📄 [HTML 웹 화면 라우팅 - 무하드코딩 동적 버전 주입]
 // ==========================================
+
+function sendHtml(res, fileName) {
+    const filePath = path.join(__dirname, 'public', fileName);
+    try {
+        let html = fs.readFileSync(filePath, 'utf8');
+        // 정적 자원(/css/, /js/) 링크에 서버 동적 버전 자동 주입 (HTML 파일 자체는 항상 100% 클린한 상태 유지)
+        html = html.replace(/(href="\/css\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+                   .replace(/(src="\/js\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.type('html').send(html);
+    } catch (e) {
+        res.sendFile(filePath);
+    }
+}
 
 // 1. 메인 포털 홈 화면
 app.get(['/', '/index.html'], authenticateToken, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    sendHtml(res, 'index.html');
 });
 
 // 1-1. 통합 관리자 센터 화면 (관리자 전용 접근 제어)
 app.get(['/admin', '/admin.html'], authenticateToken, requireAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+    sendHtml(res, 'admin.html');
 });
 
 // 1-2. 아이디어 & 메모장 전용 화면
 app.get(['/memo', '/memo.html', '/memos'], authenticateToken, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'memo.html'));
+    sendHtml(res, 'memo.html');
 });
 
 // 1-3. 스마트 라이프 캘린더 화면
 app.get(['/calendar', '/calendar.html'], authenticateToken, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'calendar.html'));
+    sendHtml(res, 'calendar.html');
+});
+
+// 1-4. 오프라인 대체 화면
+app.get('/offline.html', (req, res) => {
+    sendHtml(res, 'offline.html');
 });
 
 // 2. 로그인 페이지
@@ -163,12 +186,12 @@ app.get(['/login', '/login.html'], (req, res) => {
             if (!revokedTokens.has(token)) {
                 return jwt.verify(token, JWT_SECRET, (err) => {
                     if (!err) return res.redirect('/');
-                    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+                    sendHtml(res, 'login.html');
                 });
             }
         }
     }
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    sendHtml(res, 'login.html');
 });
 
 // ==========================================

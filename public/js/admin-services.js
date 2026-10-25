@@ -1,8 +1,7 @@
 /**
  * JG Portal 통합 관리자 센터 - 서브 서비스(혈압/자산/뉴스/보안) 제어 모듈
- * admin-services.js (v20261017_v2)
+ * admin-services.js
  */
-const ADMIN_SERVICES_VERSION = '20261017_v2';
 
 
 // ========================================================
