@@ -144,9 +144,20 @@ function getAuthorizedDeviceUsername(req) {
 
 // 1. 로그인 화면용 가족 구성원 목록 (🛡️ 인증된 가족 기기만 조회 가능, 외부인 일체 비노출)
 router.get('/api/auth/family-members', (req, res) => {
-    const authorizedUsername = getAuthorizedDeviceUsername(req);
+    let authorizedUsername = getAuthorizedDeviceUsername(req);
 
-    // 인증된 기기가 아니면 가족 정보 일체 비노출 (0건 반환)
+    // 새 기기 초대 링크로 진입한 경우(PIN 검증 대기 상태) 해당 가족 1명만 임시 노출하여 PIN 입력 유도
+    if (!authorizedUsername && (req.headers['x-invite-verify'] || req.query?.verify_invite)) {
+        const verifyToken = req.headers['x-invite-verify'] || req.query?.verify_invite;
+        try {
+            const decoded = jwt.verify(verifyToken, JWT_SECRET);
+            if (decoded && decoded.username && decoded.purpose === 'invite_verify') {
+                authorizedUsername = decoded.username;
+            }
+        } catch (e) {}
+    }
+
+    // 인증된 기기나 유효한 초대 검증이 아니면 가족 정보 일체 비노출 (0건 반환)
     if (!authorizedUsername) {
         return res.json({ success: true, hasDevice: false, members: [] });
     }
@@ -384,32 +395,13 @@ router.get('/invite/:token', (req, res) => {
             return res.redirect(`/login?invite_token=${encodeURIComponent(tempToken)}&username=${encodeURIComponent(user.username)}&nickname=${encodeURIComponent(user.nickname || '')}`);
         }
 
-        // 이미 PIN 설정이 완료된 가족이면 기기 인증 쿠키 및 포털 세션 발급 후 포털로 안내
-        const deviceToken = jwt.sign(
-            { username: user.username, role: user.role || 'family', purpose: 'family_device' },
+        // 이미 PIN 설정이 완료된 가족인 경우: PIN 검증을 거쳐야만 기기 인증이 완료되도록 일회용 검증 토큰 발급
+        const verifyToken = jwt.sign(
+            { username: user.username, role: user.role || 'family', purpose: 'invite_verify' },
             JWT_SECRET,
-            { expiresIn: '3650d' }
+            { expiresIn: '30m' }
         );
-        sendDeviceCookie(res, req, deviceToken);
-
-        let allowedServices = ['album', 'news'];
-        try {
-            if (user.allowed_services) allowedServices = JSON.parse(user.allowed_services);
-        } catch (e) {}
-
-        const token = jwt.sign(
-            {
-                username: user.username,
-                role: user.role || 'family',
-                nickname: user.nickname || user.username,
-                allowed_services: allowedServices
-            },
-            JWT_SECRET,
-            { expiresIn: '365d' }
-        );
-
-        sendPortalAuthCookie(res, req, token, 365);
-        res.redirect('/?welcome=family');
+        return res.redirect(`/login?verify_invite=${encodeURIComponent(verifyToken)}&username=${encodeURIComponent(user.username)}&nickname=${encodeURIComponent(user.nickname || '')}`);
     });
 });
 

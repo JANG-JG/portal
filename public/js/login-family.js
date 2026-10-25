@@ -70,13 +70,17 @@
             const headers = {};
             if (deviceToken) headers['x-family-device'] = deviceToken;
 
+            const urlParams = new URLSearchParams(window.location.search);
+            const verifyInvite = urlParams.get('verify_invite');
+            if (verifyInvite) headers['x-invite-verify'] = verifyInvite;
+
             const res = await fetch('/api/auth/family-members', { headers, credentials: 'include' });
             const data = await res.json();
 
             // 🛡️ [보안 강화] 인증된 가족 기기가 아니면 가족 탭을 완전히 숨기고 관리자 로그인 화면 유지
-            if (!data.hasDevice || !data.members || data.members.length === 0) {
+            if (!data.hasDevice && !verifyInvite || !data.members || data.members.length === 0) {
                 if (loginTabs) loginTabs.style.display = 'none';
-                const hasInviteToken = new URLSearchParams(window.location.search).get('invite_token') || currentTempToken;
+                const hasInviteToken = urlParams.get('invite_token') || currentTempToken;
                 if (!hasInviteToken) {
                     switchLoginMode('admin');
                     const title = document.getElementById('loginTitle');
@@ -109,6 +113,10 @@
             // 해당 가족 기기에 등록된 계정이 1개인 경우 즉시 PIN 패드 활성화
             if (data.members.length === 1) {
                 selectFamilyMember(data.members[0]);
+                if (verifyInvite) {
+                    const sub = document.getElementById('loginSubtitle');
+                    if (sub) sub.textContent = '새 기기 등록: 6자리 PIN을 입력해 주세요';
+                }
             }
         } catch (err) {
             console.error('가족 기기 인증 확인 실패:', err);
