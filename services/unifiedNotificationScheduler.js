@@ -5,6 +5,7 @@ const cron = require('node-cron');
 const axios = require('axios');
 const nodemailer = require('nodemailer');
 const { exec } = require('child_process');
+const { decryptCalendarText } = require('./crypto.service');
 
 // 🌐 Node.js 18+ IPv6 바인딩 지연/타임아웃(ETIMEDOUT / ENETUNREACH) 방지 전용 IPv4 HTTPS 에이전트
 const ipv4HttpsAgent = new https.Agent({
@@ -588,11 +589,11 @@ function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBr
 
 // 📅 개인 일정 푸시 알림 조건 검사 및 발송 (종일/시간지정, 사전/정시, 다회 알림)
 function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush) {
-    // 오늘 및 내일 일정 검색 (사전 알림 1일 전 대응을 위해 +1일까지 조회)
+    // 오늘 및 내일 일정 검색 (본인 일정 또는 가족 공유 일정)
     const query = `
-        SELECT id, title, event_date, event_time, memo, is_all_day, notify_timing, notify_repeat, notify_sent_count
+        SELECT id, user_id, title, event_date, event_time, memo, is_all_day, is_family, notify_timing, notify_repeat, notify_sent_count
         FROM calendar_events
-        WHERE (user_id = ? OR user_id = 'admin')
+        WHERE (user_id = ? OR is_family = 1)
           AND is_completed = 0
           AND notify_timing != 'none'
           AND event_date >= date(?, '-1 day')
@@ -603,6 +604,10 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
         if (err || !rows || rows.length === 0) return;
 
         rows.forEach(ev => {
+            const isFam = Boolean(ev.is_family);
+            ev.title = decryptCalendarText(ev.title, ev.user_id || userId, isFam);
+            ev.memo = decryptCalendarText(ev.memo, ev.user_id || userId, isFam);
+
             const isAllDay = !!ev.is_all_day;
             const timing = ev.notify_timing || 'exact'; // 'exact', '10m', '30m', '1h', '1d'
             const maxRepeat = ev.notify_repeat || 1;

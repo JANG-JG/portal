@@ -3,6 +3,7 @@ const router = express.Router();
 const { db, newsDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { ADMIN_USERS } = require('../config/constants');
+const { encryptCalendarText, decryptCalendarText } = require('../services/crypto.service');
 
 // 📅 대한민국 주요 공휴일 (2026년)
 const KOREAN_HOLIDAYS_2026 = [
@@ -45,20 +46,23 @@ router.get('/events', authenticateToken, async (req, res) => {
         db.all(query, params, (err, rows) => {
             if (!err && rows) {
                 rows.forEach(r => {
+                    const isFam = !!r.is_family || r.category === '가족';
+                    const decTitle = decryptCalendarText(r.title, r.user_id, isFam);
+                    const decMemo = decryptCalendarText(r.memo, r.user_id, isFam);
                     events.push({
                         id: `cal-${r.id}`,
                         dbId: r.id,
                         userId: r.user_id,
-                        title: r.title,
+                        title: decTitle,
                         date: r.event_date,
                         time: r.event_time,
                         type: 'personal',
                         category: r.category || '일반',
                         color: r.color || '#6366f1',
-                        memo: r.memo,
+                        memo: decMemo,
                         isCompleted: !!r.is_completed,
                         isAllDay: !!r.is_all_day,
-                        isFamily: !!r.is_family || r.category === '가족',
+                        isFamily: isFam,
                         notifyTiming: r.notify_timing || 'exact',
                         notifyRepeat: r.notify_repeat !== undefined ? r.notify_repeat : 1
                     });
@@ -296,18 +300,21 @@ router.post('/events', authenticateToken, (req, res) => {
     const isFamilyVal = (is_family || category === '가족') ? 1 : 0;
     const timeVal = isAllDayVal ? '' : (event_time || '').trim();
 
+    const encryptedTitle = encryptCalendarText(title.trim(), userId, isFamilyVal);
+    const encryptedMemo = encryptCalendarText((memo || '').trim(), userId, isFamilyVal);
+
     const query = `
         INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, is_family, notify_timing, notify_repeat)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     db.run(query, [
         userId,
-        title.trim(),
+        encryptedTitle,
         event_date.trim(),
         timeVal,
         category.trim(),
         color.trim(),
-        (memo || '').trim(),
+        encryptedMemo,
         isAllDayVal,
         isFamilyVal,
         notify_timing || 'exact',
@@ -347,6 +354,9 @@ router.put('/events/:id', authenticateToken, (req, res) => {
     const isFamilyVal = (is_family || category === '가족') ? 1 : 0;
     const timeVal = isAllDayVal ? '' : (event_time || '').trim();
 
+    const encryptedTitle = encryptCalendarText(title.trim(), userId, isFamilyVal);
+    const encryptedMemo = encryptCalendarText((memo || '').trim(), userId, isFamilyVal);
+
     const query = `
         UPDATE calendar_events
         SET title = ?, event_date = ?, event_time = ?, category = ?, color = ?, memo = ?,
@@ -354,12 +364,12 @@ router.put('/events/:id', authenticateToken, (req, res) => {
         WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))
     `;
     db.run(query, [
-        title.trim(),
+        encryptedTitle,
         event_date.trim(),
         timeVal,
         category.trim(),
         color.trim(),
-        (memo || '').trim(),
+        encryptedMemo,
         isAllDayVal,
         isFamilyVal,
         notify_timing || 'exact',
