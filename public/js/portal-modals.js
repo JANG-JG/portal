@@ -199,8 +199,23 @@ if (document.readyState === 'loading') {
     initLogoutButton();
 }
 
-// 🌤️ 5. 날씨 지역 설정 모달 제어
+// 🌤️ 5. 날씨 지역 설정 모달 제어 (실시간 지역 검색 및 100% 자동 연동)
 let currentSelectedWeatherCity = 'Seoul';
+let allWeatherCitiesList = [];
+
+// 빠른 선택 주요 도시 프리셋
+const QUICK_WEATHER_PRESETS = [
+    { code: 'Seoul', name: '서울' },
+    { code: 'Gyeryong', name: '계룡' },
+    { code: 'Daejeon', name: '대전' },
+    { code: 'Sejong', name: '세종' },
+    { code: 'Busan', name: '부산' },
+    { code: 'Incheon', name: '인천' },
+    { code: 'Daegu', name: '대구' },
+    { code: 'Gwangju', name: '광주' },
+    { code: 'Suwon', name: '수원' },
+    { code: 'Jeju', name: '제주' }
+];
 
 function openWeatherCityModal(e) {
     if (e) {
@@ -213,9 +228,20 @@ function openWeatherCityModal(e) {
     modal.style.display = 'flex';
     lockBodyScroll();
 
+    // 검색창 초기화
+    const searchInput = document.getElementById('weatherCitySearchInput');
+    const clearBtn = document.getElementById('weatherCitySearchClear');
+    if (searchInput) {
+        searchInput.value = '';
+        setTimeout(() => searchInput.focus(), 80);
+    }
+    if (clearBtn) clearBtn.style.display = 'none';
+
+    renderQuickCityChips();
+
     const grid = document.getElementById('weatherCityGrid');
     if (grid) {
-        grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 20px 0;">지역 목록을 불러오는 중...</div>';
+        grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 20px 0;">전국 지역 목록을 불러오는 중...</div>';
     }
 
     fetch('/api/portal/user/weather-city')
@@ -223,7 +249,9 @@ function openWeatherCityModal(e) {
         .then(data => {
             if (data && data.success) {
                 currentSelectedWeatherCity = data.current_city || 'Seoul';
-                renderWeatherCityGrid(currentSelectedWeatherCity, data.cities || []);
+                allWeatherCitiesList = data.cities || [];
+                renderQuickCityChips();
+                renderWeatherCityGrid(currentSelectedWeatherCity, allWeatherCitiesList);
             }
         })
         .catch(() => {
@@ -243,9 +271,25 @@ function closeWeatherCityModal() {
 }
 window.closeWeatherCityModal = closeWeatherCityModal;
 
+function renderQuickCityChips() {
+    const container = document.getElementById('weatherQuickChips');
+    if (!container) return;
+    container.innerHTML = QUICK_WEATHER_PRESETS.map(p => `
+        <button type="button" class="weather-quick-chip ${p.code === currentSelectedWeatherCity ? 'active' : ''}" onclick="selectWeatherCity('${p.code}', this)">
+            ${p.name}
+        </button>
+    `).join('');
+}
+window.renderQuickCityChips = renderQuickCityChips;
+
 function renderWeatherCityGrid(currentCity, cities) {
     const grid = document.getElementById('weatherCityGrid');
     if (!grid) return;
+
+    if (!cities || cities.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 20px 0;">일치하는 지역이 없습니다.</div>';
+        return;
+    }
 
     grid.innerHTML = '';
     cities.forEach(c => {
@@ -259,7 +303,43 @@ function renderWeatherCityGrid(currentCity, cities) {
     });
 }
 
+// 🔍 실시간 지역 검색 필터링 함수
+function filterWeatherCities(query) {
+    const q = (query || '').trim().toLowerCase();
+    const clearBtn = document.getElementById('weatherCitySearchClear');
+    if (clearBtn) {
+        clearBtn.style.display = q ? 'flex' : 'none';
+    }
+
+    if (!q) {
+        renderWeatherCityGrid(currentSelectedWeatherCity, allWeatherCitiesList);
+        return;
+    }
+
+    const filtered = allWeatherCitiesList.filter(c => {
+        const nameMatch = c.name && c.name.toLowerCase().includes(q);
+        const codeMatch = c.code && c.code.toLowerCase().includes(q);
+        return nameMatch || codeMatch;
+    });
+
+    renderWeatherCityGrid(currentSelectedWeatherCity, filtered);
+}
+window.filterWeatherCities = filterWeatherCities;
+
+function clearWeatherCitySearch() {
+    const searchInput = document.getElementById('weatherCitySearchInput');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+    }
+    filterWeatherCities('');
+}
+window.clearWeatherCitySearch = clearWeatherCitySearch;
+
 function selectWeatherCity(cityCode, buttonEl) {
+    currentSelectedWeatherCity = cityCode;
+    renderQuickCityChips();
+
     const grid = document.getElementById('weatherCityGrid');
     if (grid) {
         const allItems = grid.querySelectorAll('.weather-city-item');
@@ -281,6 +361,18 @@ function selectWeatherCity(cityCode, buttonEl) {
             if (data.weather && typeof window.updateWeatherBadge === 'function') {
                 window.updateWeatherBadge(data.weather);
             }
+
+            // 하단 뉴스바 날씨도 즉시 동기화
+            const tickerCity = document.getElementById('tickerWeatherCity');
+            if (tickerCity && data.weather) {
+                tickerCity.textContent = data.weather.city || cityCode;
+            }
+
+            if (typeof showToast === 'function') {
+                const cityName = data.weather ? data.weather.city : cityCode;
+                showToast(`📍 날씨 지역이 '${cityName}'(으)로 변경되었습니다. (포털·뉴스바·브리핑 연동)`);
+            }
+
             setTimeout(() => {
                 closeWeatherCityModal();
             }, 250);

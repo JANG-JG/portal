@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/constants');
 const { db, assetDb, newsDb, portalDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
-const { getLiveWeatherData, CITY_LIST, normalizeCityCode } = require('../services/weather.service');
+const { getLiveWeatherData, CITY_LIST, normalizeCityCode, getDefaultWeatherCity } = require('../services/weather.service');
 const { getLiveMarketData, getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
 const { getCurrentCpuPercent, getRealMemoryInfo, getSecondaryServerStatus, getDiskUsage } = require('../services/systemMonitor.service');
 
@@ -392,15 +392,19 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
         async function attachUserWeather(baseSummary) {
             if (!baseSummary) return baseSummary;
             const username = req.user ? req.user.username : 'admin';
-            let userCity = 'Seoul';
+            let userCity = null;
             try {
                 const userRow = await new Promise((resUser) => {
                     db.get("SELECT weather_city FROM users WHERE username = ?", [username], (uErr, row) => resUser(row || null));
                 });
-                if (userRow && userRow.weather_city) {
+                if (userRow && userRow.weather_city && userRow.weather_city !== 'Seoul') {
                     userCity = userRow.weather_city;
                 }
             } catch (e) {}
+
+            if (!userCity) {
+                userCity = await getDefaultWeatherCity();
+            }
 
             const userWeather = await getLiveWeatherData(userCity);
             return {
@@ -495,8 +499,9 @@ function fetchTickerFromDb() {
                     [breakingThreshold],
                     async (bErr, breakingRows) => {
                         try {
+                            const defaultCity = await getDefaultWeatherCity();
                             const [weather, market] = await Promise.all([
-                                getLiveWeatherData(),
+                                getLiveWeatherData(defaultCity),
                                 getLiveMarketData()
                             ]);
 
@@ -649,30 +654,54 @@ router.get('/go/:service', authenticateToken, (req, res) => {
 });
 
 // 6. 사용자 날씨 지역 조회 API
-router.get('/api/portal/user/weather-city', authenticateToken, (req, res) => {
-    const username = req.user ? req.user.username : 'admin';
-    db.get("SELECT weather_city FROM users WHERE username = ?", [username], (err, row) => {
-        const currentCity = row && row.weather_city ? row.weather_city : 'Seoul';
-        res.json({
-            success: true,
-            current_city: currentCity,
-            cities: CITY_LIST
+router.get('/api/portal/user/weather-city', authenticateToken, async (req, res) => {
+    try {
+        const username = req.user ? req.user.username : 'admin';
+        const defaultCity = await getDefaultWeatherCity();
+        db.get("SELECT weather_city FROM users WHERE username = ?", [username], (err, row) => {
+            const currentCity = (row && row.weather_city && row.weather_city !== 'Seoul') ? row.weather_city : defaultCity;
+            res.json({
+                success: true,
+                current_city: currentCity,
+                cities: CITY_LIST
+            });
         });
-    });
+    } catch (e) {
+        res.json({ success: true, current_city: 'Seoul', cities: CITY_LIST });
+    }
 });
 
-// 7. 사용자 날씨 지역 변경 저장 API
+// 7. 사용자 날씨 지역 변경 저장 API (포털, 하단 뉴스바, 날씨 브리핑 100% 자동 연동)
 router.post('/api/portal/user/weather-city', authenticateToken, async (req, res) => {
     try {
         const username = req.user ? req.user.username : 'admin';
         const rawCity = (req.body && req.body.city) ? req.body.city : 'Seoul';
         const cityCode = normalizeCityCode(rawCity);
 
+        // 1) health.db users 테이블에 저장
         db.run("UPDATE users SET weather_city = ? WHERE username = ?", [cityCode, username], async function(err) {
             if (err) {
                 console.error('날씨 지역 변경 실패:', err);
                 return res.status(500).json({ success: false, message: '지역 설정 저장에 실패했습니다.' });
             }
+
+            // 2) briefing.db(newsDb) system_settings 테이블에도 즉시 동기화 저장 (날씨 브리핑과 100% 자동 연동)
+            if (newsDb) {
+                try {
+                    newsDb.run(
+                        "INSERT INTO system_settings (key, value, updated_at) VALUES ('weather_city', ?, datetime('now', '+9 hours')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+                        [cityCode]
+                    );
+                } catch (dbErr) {
+                    console.warn('newsDb system_settings 동기화 경고:', dbErr.message);
+                }
+            }
+
+            // 3) 캐시 즉시 무효화 (하단 뉴스바 및 메인 화면 즉시 갱신)
+            tickerMemoryCache.payload = null;
+            tickerMemoryCache.timestamp = 0;
+            summaryCache = null;
+
             const updatedWeather = await getLiveWeatherData(cityCode);
             res.json({
                 success: true,

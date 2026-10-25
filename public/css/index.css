@@ -249,66 +249,33 @@ html.role-pending [data-service="ops"] {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 8px;
+    padding: 3px 8px;
     border-radius: var(--radius-sm);
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
-    font-size: 0.75rem;
+    font-size: 0.76rem;
     font-family: var(--font-mono);
     text-decoration: none;
-    transition: border-color 0.12s ease;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    user-select: none;
 }
 
 .cmd-nav-weather:hover {
-    border-color: var(--border-strong);
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.08);
     color: var(--text-primary);
+}
+
+.cmd-nav-weather #welcomeWeatherCity {
+    font-weight: 700;
+    color: #38bdf8;
 }
 
 .weather-nav-container {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    padding: 2px 4px 2px 6px;
-    transition: border-color 0.12s ease;
-}
-
-.weather-nav-container:hover {
-    border-color: var(--border-strong);
-}
-
-.weather-nav-container .cmd-nav-weather {
-    border: none;
-    background: transparent;
-    padding: 2px 2px;
-}
-
-.weather-city-setting-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 4px;
-    border: none;
-    background: transparent;
-    cursor: pointer;
-    font-size: 0.82rem;
-    padding: 0;
-    color: var(--text-secondary);
-    transition: background 0.15s ease, transform 0.1s ease;
-}
-
-.weather-city-setting-btn:hover {
-    background: rgba(0, 0, 0, 0.06);
-    transform: scale(1.08);
-}
-
-.weather-city-setting-btn:active {
-    transform: scale(0.95);
 }
 
 /* 🌤️ 날씨 지역 설정 모달 */
@@ -417,6 +384,139 @@ html.role-pending [data-service="ops"] {
     border-color: #0284c7;
     color: #ffffff;
     box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);
+}
+
+/* 🔍 날씨 지역 실시간 검색창 스타일 */
+.weather-search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    width: 100%;
+}
+
+.weather-search-icon {
+    position: absolute;
+    left: 10px;
+    font-size: 0.9rem;
+    color: #64748b;
+    pointer-events: none;
+}
+
+.weather-search-input {
+    width: 100%;
+    height: 38px;
+    padding: 0 32px 0 34px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #0f172a;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.15s ease;
+    box-sizing: border-box;
+}
+
+.weather-search-input:focus {
+    background: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.weather-search-clear {
+    position: absolute;
+    right: 8px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    border: none;
+    color: #64748b;
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+/* 자주 찾는 주요 도시 칩 그룹 */
+.weather-quick-chips-wrap {
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.weather-quick-chips-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.weather-quick-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.weather-quick-chip {
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.weather-quick-chip:hover {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0369a1;
+}
+
+.weather-quick-chip.active {
+    background: #0284c7;
+    border-color: #0284c7;
+    color: #ffffff;
+}
+
+.weather-city-grid-wrap {
+    margin-bottom: 12px;
+}
+
+.weather-modal-footer {
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.btn-weather-briefing-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #0284c7;
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    transition: all 0.15s ease;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.btn-weather-briefing-link:hover {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0369a1;
 }
 
 .cmd-nav-search-btn {
@@ -714,11 +814,17 @@ html.role-pending [data-service="ops"] {
         padding: 2px 4px !important;
     }
     .cmd-nav-weather {
-        padding: 2px 4px !important;
-        gap: 1px !important;
+        padding: 2px 6px !important;
+        gap: 3px !important;
     }
     .cmd-nav-weather #welcomeWeatherCity {
-        display: none !important; /* 360px 화면: 도시명 숨김(아이콘+온도만 표시하여 폭 절약) */
+        display: inline-block !important; /* 모바일에서도 지역명 상시 노출 */
+        font-weight: 700 !important;
+        color: #38bdf8 !important;
+        max-width: 48px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     .cmd-nav-right {
         gap: 2px !important;
