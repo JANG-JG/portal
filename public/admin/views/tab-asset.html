@@ -1,0 +1,89 @@
+
+        <!-- ==========================================
+             탭 3: 자산 관리 제어
+             ========================================== -->
+        <div id="tab-asset" class="admin-tab-pane">
+            <!-- 서브 1: 포트폴리오 요약 & DB 백업 -->
+            <div id="subpane-asset-summary" class="admin-sub-pane">
+                <div class="admin-grid-2">
+                    <!-- 1. 자산 데이터 백업 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>📥 자산 DB 백업</h3>
+                        </div>
+                        <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                            보유 종목, 증권 계좌, 매수 기록이 포함된 asset.db 원본 파일을 백업합니다.
+                        </p>
+                        <a href="/api/admin/backup/asset" class="btn-admin btn-admin-primary">
+                            💾 asset.db 파일 다운로드
+                        </a>
+                    </div>
+
+                    <!-- 2. 자산 요약 요약 카드 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>📊 포트폴리오 요약</h3>
+                            <a href="/go/asset" class="btn-admin btn-admin-outline btn-admin-sm">자산 앱 열기 →</a>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                            <span style="color:#64748b;">원화 환산 총 자산</span>
+                            <strong style="color:#059669; font-size:1.25rem;" id="assetAdminTotalKrw">-</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+                            <span style="color:#64748b;">등록된 증권 계좌</span>
+                            <strong id="assetAdminAccountCount">-</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 2: 등록 증권 계좌 현황 -->
+            <div id="subpane-asset-accounts" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📂 증권 계좌별 현황</h3>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>계좌명</th>
+                                    <th>증권사</th>
+                                    <th>보유 종목 수</th>
+                                    <th>합산 평가액</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assetAccountsTableBody">
+                                <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">계좌 정보 로딩 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 3: 전체 보유 종목 상세 (한글 종목명) -->
+            <div id="subpane-asset-holdings" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>💼 전체 보유 종목 상세 (한글명 매핑)</h3>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>종목명 (한글)</th>
+                                    <th>티커</th>
+                                    <th>분류</th>
+                                    <th>보유 수량</th>
+                                    <th>평균 단가</th>
+                                    <th>평가 금액</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assetStocksTableBody">
+                                <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">종목 정보 로딩 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>

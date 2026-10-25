@@ -1,0 +1,116 @@
+
+        <!-- ========================================== -->
+        <!-- 📸 [탭 6] 우리 가족 사진첩 제어 (tab-album) -->
+        <!-- ========================================== -->
+        <div id="tab-album" class="admin-tab-pane">
+            <div id="subpane-album-summary" class="admin-sub-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <div class="admin-card-title">
+                            <span>📸</span>
+                            <span>우리 가족 사진첩 현황 & 스토리지 요약</span>
+                        </div>
+                        <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAlbumAdminStats()">
+                            🔄 새로고침
+                        </button>
+                    </div>
+                    <div class="admin-card-body">
+                        <!-- 통계 벤토 그리드 -->
+                        <div class="admin-overview-grid" style="margin-bottom:1.5rem;">
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#e0e7ff; color:#4338ca;">🖼️</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">등록된 사진</div>
+                                    <div class="admin-stat-val" id="albumStatPhotos">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#fce7f3; color:#db2777;">💬</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">가족 한 줄 댓글</div>
+                                    <div class="admin-stat-val" id="albumStatComments">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#fee2e2; color:#dc2626;">❤️</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">하트 리액션</div>
+                                    <div class="admin-stat-val" id="albumStatReactions">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#ecfdf5; color:#059669;">💾</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">스토리지 사용량</div>
+                                    <div class="admin-stat-val" id="albumStatStorage">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:1rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem;">
+                            <div>
+                                <div style="font-weight:700; color:#1e293b; font-size:0.95rem;">우리 가족 전용 사진첩 바로가기</div>
+                                <div style="font-size:0.8rem; color:#64748b; margin-top:2px;">가족 구성원들과 소중한 추억을 공유하고 감상하세요.</div>
+                            </div>
+                            <a href="https://album.j-jg.cc" target="_blank" rel="noopener" class="btn-admin btn-admin-primary btn-admin-sm" style="text-decoration:none;">
+                                🚀 사진첩 열기 ↗
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="subpane-album-photos" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <div class="admin-card-title">
+                            <span>🖼️</span>
+                            <span>최근 업로드 사진 관리 및 검수</span>
+                        </div>
+                        <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAlbumAdminPhotos()">
+                            🔄 목록 갱신
+                        </button>
+                    </div>
+                    <div class="admin-card-body">
+                        <div id="albumPhotosContainer" class="admin-album-grid">
+                            <div style="grid-column:1/-1; text-align:center; padding:3rem 0; color:#94a3b8;">
+                                사진 목록을 불러오는 중...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="subpane-album-members" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <div class="admin-card-title">
+                            <span>👥</span>
+                            <span>가족 사진첩 구성원 활동 현황</span>
+                        </div>
+                        <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAlbumAdminMembers()">
+                            🔄 새로고침
+                        </button>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="table-responsive">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>구성원</th>
+                                        <th>아이디</th>
+                                        <th>권한</th>
+                                        <th>등록 사진 수</th>
+                                        <th>작성 댓글 수</th>
+                                        <th>상태</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="albumMembersTableBody">
+                                    <tr><td colspan="6" style="text-align:center; padding:2rem 0; color:#94a3b8;">구성원 데이터를 불러오는 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

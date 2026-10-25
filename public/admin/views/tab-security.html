@@ -1,0 +1,187 @@
+
+        <!-- ==========================================
+             탭 5: 보안 및 마스터 계정
+             ========================================== -->
+        <div id="tab-security" class="admin-tab-pane">
+            <!-- 서브 1: 우리 가족 구성원 및 접근 권한(RBAC) 관리 -->
+            <div id="subpane-security-family" class="admin-sub-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3>👨‍👩‍👧‍👦 우리 가족 구성원 및 권한(RBAC) 관리</h3>
+                            <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
+                                가족 계정을 등록하고 서비스별 접근 권한(가족 앨범, 뉴스·날씨)과 6자리 PIN을 안전하게 관리합니다.
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <button class="btn-admin btn-admin-primary btn-admin-sm" onclick="openAddFamilyModal()">
+                                ➕ 가족 초대 링크 생성
+                            </button>
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadFamilyMembers()">🔄 새로고침</button>
+                        </div>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>관리 명칭 / 프로필명</th>
+                                    <th>아이디</th>
+                                    <th>이메일 / 생년월일</th>
+                                    <th>이용 가능한 서비스</th>
+                                    <th>PIN 인증 상태</th>
+                                    <th>최근 접속일</th>
+                                    <th>관리 및 초대</th>
+                                </tr>
+                            </thead>
+                            <tbody id="familyMembersTableBody">
+                                <tr><td colspan="7" style="text-align:center; padding:1.5rem; color:#64748b;">가족 목록을 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 2: 최근 로그인 시도 이력 (최근 50건) -->
+            <div id="subpane-security-logs" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>🔒 최근 로그인 시도 이력 (최근 50건)</h3>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <button class="btn-admin btn-admin-primary btn-admin-sm" onclick="openAdminPasswordModal()">
+                                🔑 마스터 비밀번호 변경
+                            </button>
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadSecurityLogs()">🔄 새로고침</button>
+                        </div>
+                    </div>
+                    <!-- ⏱️ Tabler 스타일 보안 감사 타임라인 피드 -->
+                    <div id="securityTimelineFeed" class="admin-timeline">
+                        <div style="text-align:center; padding:1.5rem; color:#64748b;">감사 로그를 불러오는 중입니다...</div>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top: 1.25rem;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>일시</th>
+                                    <th>시도 계정</th>
+                                    <th>접속 IP</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody id="securityLogsTableBody">
+                                <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">로그 로딩 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 2: SSO 보안 및 시스템 기술 스택 -->
+            <div id="subpane-security-stack" class="admin-sub-pane hidden-pane">
+                <!-- 1. 포털 SSO 보안 정책 정보 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>🛡️ SSO 세션 및 쿠키 보안 체계</h3>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.85rem; font-size:0.9rem;">
+                        <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="color:#64748b;">공유 쿠키 도메인</span>
+                            <strong>.j-jg.cc (전체 서브도메인)</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="color:#64748b;">쿠키 보안 플래그</span>
+                            <strong style="color:#059669;">Secure, HttpOnly, Lax</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding-bottom:0.5rem; border-bottom:1px solid #f1f5f9;">
+                            <span style="color:#64748b;">단기 SSO 서명 티켓</span>
+                            <strong>JWT 5분 유효 (OAuth 게이트웨이)</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between;">
+                            <span style="color:#64748b;">로그아웃 처리 방식</span>
+                            <strong>3중 프론트채널 쿠키 일괄 파기</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 서버 환경 및 보안 기술 스택 (Tech Stack) -->
+                <div class="admin-card" style="margin-bottom:1.5rem;">
+                    <div class="admin-card-header">
+                        <h3>💻 서버 환경 및 보안 기술 스택 (System & Architecture)</h3>
+                        <span style="font-size:0.85rem; color:#64748b;">통합 기술 명세</span>
+                    </div>
+                    <p style="font-size:0.875rem; color:#64748b; margin-bottom:1.25rem;">
+                        JG 통합 포털 서버의 런타임, 프론트엔드/백엔드 프레임워크, 독립 데이터베이스 및 네트워크 보안 환경 명세입니다.
+                    </p>
+                    <div class="admin-grid-2" style="gap:0.85rem; margin-bottom:0;">
+                        <!-- 1. 백엔드 & 런타임 -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.1rem;">
+                            <div style="font-weight:700; color:#0f172a; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+                                <span>⚙️ 백엔드 & 런타임</span>
+                            </div>
+                            <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
+                                <li><strong>Node.js v20 LTS (Express)</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">포털(:3004), 혈압(:3000), 자산(:3003)</div>
+                                </li>
+                                <li><strong>Python 3.11 (Flask & Gunicorn)</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">실시간 뉴스(:5050) & 스케줄러</div>
+                                </li>
+                                <li><strong>PM2 Production Process Manager</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">4개 핵심 서비스 프로세스 자가 회복/관리</div>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <!-- 2. 프론트엔드 & UI -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.1rem;">
+                            <div style="font-weight:700; color:#0f172a; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+                                <span>🎨 프론트엔드 & UI 스택</span>
+                            </div>
+                            <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
+                                <li><strong>HTML5 Semantic Markup</strong></li>
+                                <li><strong>Modern CSS3 (Flexbox & CSS Grid)</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">모바일 반응형 & 통합 내비게이션 바</div>
+                                </li>
+                                <li><strong>Pure Vanilla JavaScript (ES6+)</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">무거운 프레임워크 없는 제로 종속성 렌더링</div>
+                                </li>
+                                <li><strong>PWA Web App (Service Worker v2)</strong></li>
+                                <li><strong>Chart.js (반응형 캔버스 시각화)</strong></li>
+                            </ul>
+                        </div>
+
+                        <!-- 3. 데이터베이스 -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.1rem;">
+                            <div style="font-weight:700; color:#0f172a; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+                                <span>🗄️ 데이터베이스 스택</span>
+                            </div>
+                            <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
+                                <li><strong>SQLite 3 독립 5대 DB 아키텍처</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>portal.db</code> (포털 일정·개인 메모·시스템 설정)</div>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>health.db</code> (혈압·약 복용·병원 진료·마스터 계정)</div>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>asset.db</code> (증권 계좌·주식 포트폴리오·실시간 시세)</div>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>briefing.db</code> (AI 모닝 뉴스·실시간 기상·수집 로그)</div>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>album.db</code> (가족 사진첩·댓글·하트 리액션)</div>
+                                </li>
+                                <li><strong>실시간 WAL 저널 & 원클릭 백업 지원</strong></li>
+                            </ul>
+                        </div>
+
+                        <!-- 4. 네트워크 & 인프라 보안 -->
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.1rem;">
+                            <div style="font-weight:700; color:#0f172a; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; font-size:0.95rem;">
+                                <span>🛡️ 네트워크 & 보안 인프라</span>
+                            </div>
+                            <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
+                                <li><strong>Cloudflare Zero Trust Tunnel</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">외부 직접 포트 노출 차단 암호화 터널링</div>
+                                </li>
+                                <li><strong>Nginx Reverse Proxy & SSL (TLS 1.3)</strong></li>
+                                <li><strong>Cross-Subdomain JWT SSO Session</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">SameSite=Lax, HttpOnly, Secure 쿠키</div>
+                                </li>
+                                <li><strong>Helmet CSP (Content Security Policy)</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

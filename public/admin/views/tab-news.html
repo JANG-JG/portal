@@ -1,0 +1,180 @@
+
+        <!-- ==========================================
+             탭 4: 뉴스 브리핑 제어
+             ========================================== -->
+        <div id="tab-news" class="admin-tab-pane">
+            <!-- 서브 1: 즉시 수집 & DB 현황 -->
+            <div id="subpane-news-collect" class="admin-sub-pane">
+                <div class="admin-grid-2">
+                    <!-- 1. 뉴스 수집 마스터 제어 바 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>🚀 즉시 뉴스 수집 마스터 제어</h3>
+                        </div>
+                        <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                            정기 스케줄과 별개로 관리자가 직접 즉시 뉴스 크롤링 및 AI 요약을 실행합니다.
+                        </p>
+                        <div style="display:flex; flex-direction:column; gap:0.6rem; margin-bottom:1.5rem;">
+                            <button class="btn-admin btn-admin-primary" style="width:100%;" onclick="triggerNewsCollection('briefing')">
+                                📢 뉴스 수집 + 텔레그램 브리핑 즉시 발송
+                            </button>
+                            <button class="btn-admin btn-admin-outline" style="width:100%;" onclick="triggerNewsCollection('collect')">
+                                📥 최신 기사만 즉시 수집 (DB 최신화 전용)
+                            </button>
+                        </div>
+
+                        <!-- 텔레그램 브리핑 전송 시각 설정 영역 -->
+                        <div style="border-top:1px solid #e2e8f0; padding-top:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
+                                <strong style="font-size:0.92rem; color:#0f172a;">⏰ 텔레그램 브리핑 전송 시간표</strong>
+                                <button type="button" class="btn-admin btn-admin-success btn-admin-sm" onclick="saveAdminBriefingTimes()">💾 시간표 저장</button>
+                            </div>
+                            <p style="font-size:0.8rem; color:#64748b; margin-bottom:0.75rem;">
+                                지정한 시각에 자동으로 최신 뉴스를 수집하고 AI 브리핑을 텔레그램으로 전송합니다.
+                            </p>
+                            <div style="display:flex; gap:0.4rem; align-items:center; margin-bottom:0.6rem;">
+                                <input type="time" id="adminInputBriefingTime" value="07:30" style="padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; font-size:0.88rem;">
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="addAdminBriefingTime()">추가 +</button>
+                            </div>
+                            <div id="adminBriefingChipsContainer" style="display:flex; flex-wrap:wrap; gap:0.4rem; min-height:36px; padding:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; align-items:center;">
+                                <span style="font-size:0.8rem; color:#94a3b8;">등록된 브리핑 시간이 없습니다.</span>
+                            </div>
+                        </div>
+
+                        <!-- 수집 제외 키워드 필터 설정 영역 -->
+                        <div style="border-top:1px solid #e2e8f0; padding-top:1rem; margin-top:1rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.4rem; flex-wrap:wrap; gap:0.4rem;">
+                                <strong style="font-size:0.92rem; color:#0f172a;">🚫 수집 제외 키워드 필터</strong>
+                                <button type="button" class="btn-admin btn-admin-success btn-admin-sm" onclick="saveAdminExcludeKeywords()">💾 제외 키워드 저장</button>
+                            </div>
+                            <p style="font-size:0.8rem; color:#64748b; margin-bottom:0.75rem;">
+                                기사 제목, 언론사, 요약문에 해당 단어가 포함된 경우 수집 단계에서 즉시 차단합니다.
+                            </p>
+                            <div style="display:flex; gap:0.4rem; align-items:center; margin-bottom:0.6rem;">
+                                <input type="text" id="adminInputExcludeKeyword" placeholder="제외할 단어 입력 후 [추가] 또는 엔터" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addAdminExcludeKeyword(); }" style="flex:1; padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; font-size:0.88rem;">
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="addAdminExcludeKeyword()">추가 +</button>
+                            </div>
+                            <div id="adminExcludeChipsContainer" style="display:flex; flex-wrap:wrap; gap:0.4rem; min-height:36px; padding:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; align-items:center;">
+                                <span style="font-size:0.8rem; color:#94a3b8;">등록된 제외 키워드가 없습니다.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. 뉴스 DB 백업 및 통계 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>📰 뉴스 데이터 현황</h3>
+                            <a href="/go/news" class="btn-admin btn-admin-outline btn-admin-sm">뉴스 앱 열기 →</a>
+                        </div>
+                        <div class="news-stat-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.6rem; margin-bottom: 0.85rem;">
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.6rem 0.5rem; text-align:center;">
+                                <div style="font-size:0.72rem; color:#64748b; font-weight:600;">총 저장 기사</div>
+                                <div style="font-size:1.15rem; font-weight:800; color:#2563eb; margin-top:0.2rem;" id="newsTotalCount">-</div>
+                            </div>
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.6rem 0.5rem; text-align:center;">
+                                <div style="font-size:0.72rem; color:#64748b; font-weight:600;">총 수집 이력</div>
+                                <div style="font-size:1.15rem; font-weight:800; color:#0f172a; margin-top:0.2rem;" id="newsLogsTotalCount">-</div>
+                            </div>
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.6rem 0.5rem; text-align:center;">
+                                <div style="font-size:0.72rem; color:#64748b; font-weight:600;">DB 파일 용량</div>
+                                <div style="font-size:1.15rem; font-weight:800; color:#059669; margin-top:0.2rem;" id="newsDbSize">-</div>
+                            </div>
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.6rem 0.5rem; text-align:center;">
+                                <div style="font-size:0.72rem; color:#64748b; font-weight:600;">자동 수집 상태</div>
+                                <div style="font-size:0.85rem; font-weight:700; margin-top:0.3rem;" id="newsStatusBadge"><span class="badge badge-success">조회 중</span></div>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.75rem; background:#f1f5f9; border-radius:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+                            <span style="color:#64748b; font-size:0.82rem;"><span id="newsWeatherIcon">🌤️</span> <span id="newsWeatherCity">계룡</span> 날씨: <strong id="newsTodayWeather" style="color:#1e293b;">-</strong></span>
+                            <a href="/api/admin/backup/briefing" class="btn-admin btn-admin-success btn-admin-sm">
+                                💾 briefing.db 다운로드
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 2: 최근 수집된 헤드라인 10선 -->
+            <div id="subpane-news-articles" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📑 최근 수집 뉴스 기사 (최신 10선)</h3>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>분야</th>
+                                    <th>언론사</th>
+                                    <th>기사 제목</th>
+                                    <th>수집/발행 일시</th>
+                                    <th>원문</th>
+                                </tr>
+                            </thead>
+                            <tbody id="newsArticlesTableBody">
+                                <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">기사 목록 로딩 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 3: 수집 이력 & 로그 콘솔 -->
+            <div id="subpane-news-history" class="admin-sub-pane hidden-pane">
+                <!-- 4. 자동 수집 및 텔레그램 발송 이력 (최근 50회) -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📋 뉴스 수집 및 텔레그램 발송 이력 (최근 50회)</h3>
+                        <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadNewsLogs()">🔄 새로고침</button>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>실행 일시</th>
+                                    <th>상태</th>
+                                    <th>수집 / 저장</th>
+                                    <th>텔레그램</th>
+                                    <th>날씨</th>
+                                    <th>상세 내용</th>
+                                </tr>
+                            </thead>
+                            <tbody id="newsLogsTableBody">
+                                <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">로그 로딩 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 5. 뉴스 수집기 및 스케줄러 실시간 파일 로그 콘솔 -->
+                <div class="admin-card" style="padding: 1.25rem;">
+                    <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                        <h3>📜 뉴스 수집기 및 스케줄러 상세 파일 로그 (최근 120줄)</h3>
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                            <select id="newsLogTypeSelect" onchange="fetchNewsFileLogs()" style="padding:0.35rem 0.65rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600; color:#334155; cursor:pointer;">
+                                <option value="collector">🤖 수집기 로그 (collector.log)</option>
+                                <option value="scheduler">⏱️ 스케줄러 로그 (scheduler.log)</option>
+                            </select>
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="fetchNewsFileLogs()">
+                                🔄 로그 새로고침
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <div class="terminal-title-bar">
+                                <div class="terminal-dots">
+                                    <span class="terminal-dot dot-red"></span>
+                                    <span class="terminal-dot dot-yellow"></span>
+                                    <span class="terminal-dot dot-green"></span>
+                                </div>
+                                <span class="terminal-title" id="newsTerminalTitle">tail -n 120 news-dashboard/logs/collector.log</span>
+                            </div>
+                            <span style="font-size:0.7rem; color:#64748b; font-family:monospace;">tail -n 120 (live)</span>
+                        </div>
+                        <pre id="newsLogConsole" class="pm2-console">뉴스 로그 로딩 중...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>

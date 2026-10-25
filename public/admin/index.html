@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JG 통합 관리자 센터</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <meta name="color-scheme" content="light">
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/uPlot.min.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <!-- 🌐 JG 통합 상단 내비게이션 바 (unified-nav.js 동적 주입) -->
+    <div id="unified-nav-root" style="min-height: 54px;"></div>
+
+    <!-- 🗂️ 관리자 좌측 슬라이드인 사이드바 & 오버레이 -->
+    <div class="admin-sidebar-overlay" id="adminSidebarOverlay" onclick="toggleAdminSidebar(false)"></div>
+    <aside class="admin-sidebar" id="adminSidebar" aria-label="관리자 메뉴">
+        <div class="admin-sidebar-header">
+            <div class="admin-sidebar-header-title">
+                <span>⚙️ 관리자 제어 센터</span>
+            </div>
+            <button type="button" class="admin-sidebar-close-btn" onclick="toggleAdminSidebar(false)" title="메뉴 닫기">✕</button>
+        </div>
+        <nav class="admin-sidebar-nav">
+            <div class="admin-sidebar-section-label">기능별 관리 설정</div>
+
+            <!-- 그룹 1: 전체 모니터링 -->
+            <div class="admin-sidebar-group expanded" id="sidebar-group-overview">
+                <button type="button" class="admin-sidebar-parent active" onclick="toggleSidebarGroup('overview')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>🖥️</span>
+                        <span>전체 모니터링</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink active" data-tab="tab-overview" data-sub="subpane-overview-processes" onclick="switchAdminTabAndSub('tab-overview', 'subpane-overview-processes')">
+                        <span>🚀</span> 프로세스 & 핵심 리소스
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-overview" data-sub="subpane-overview-logs" onclick="switchAdminTabAndSub('tab-overview', 'subpane-overview-logs')">
+                        <span>💻</span> 실시간 서버 시스템 로그
+                    </button>
+                </div>
+            </div>
+
+            <!-- 그룹 2: 혈압 관리 -->
+            <div class="admin-sidebar-group" id="sidebar-group-blood">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('blood')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>🩸</span>
+                        <span>혈압 관리 제어</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-blood" data-sub="subpane-blood-backup" onclick="switchAdminTabAndSub('tab-blood', 'subpane-blood-backup')">
+                        <span>💾</span> 데이터 백업 & CSV 복구
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-blood" data-sub="subpane-blood-threshold" onclick="switchAdminTabAndSub('tab-blood', 'subpane-blood-threshold')">
+                        <span>⚙️</span> 혈압 위험 기준치 설정
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-blood" data-sub="subpane-blood-records" onclick="switchAdminTabAndSub('tab-blood', 'subpane-blood-records')">
+                        <span>🩸</span> 최근 혈압 측정 기록
+                    </button>
+                </div>
+            </div>
+
+            <!-- 그룹 3: 자산 관리 -->
+            <div class="admin-sidebar-group" id="sidebar-group-asset">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('asset')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>💰</span>
+                        <span>자산 관리 제어</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-asset" data-sub="subpane-asset-summary" onclick="switchAdminTabAndSub('tab-asset', 'subpane-asset-summary')">
+                        <span>📊</span> 포트폴리오 & DB 백업
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-asset" data-sub="subpane-asset-accounts" onclick="switchAdminTabAndSub('tab-asset', 'subpane-asset-accounts')">
+                        <span>📂</span> 증권 계좌별 현황
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-asset" data-sub="subpane-asset-holdings" onclick="switchAdminTabAndSub('tab-asset', 'subpane-asset-holdings')">
+                        <span>💼</span> 보유 종목 상세 (한글명)
+                    </button>
+                </div>
+            </div>
+
+            <!-- 그룹 4: 뉴스 브리핑 -->
+            <div class="admin-sidebar-group" id="sidebar-group-news">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('news')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>📰</span>
+                        <span>뉴스 브리핑 제어</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-news" data-sub="subpane-news-collect" onclick="switchAdminTabAndSub('tab-news', 'subpane-news-collect')">
+                        <span>🚀</span> 즉시 수집 & DB 현황
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-news" data-sub="subpane-news-articles" onclick="switchAdminTabAndSub('tab-news', 'subpane-news-articles')">
+                        <span>📑</span> 최근 수집 기사 (10선)
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-news" data-sub="subpane-news-history" onclick="switchAdminTabAndSub('tab-news', 'subpane-news-history')">
+                        <span>📋</span> 수집 이력 & 로그 콘솔
+                    </button>
+                </div>
+            </div>
+
+            <!-- 그룹 5: 가족 사진첩 -->
+            <div class="admin-sidebar-group" id="sidebar-group-album">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('album')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>📸</span>
+                        <span>가족 사진첩 제어</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-album" data-sub="subpane-album-summary" onclick="switchAdminTabAndSub('tab-album', 'subpane-album-summary')">
+                        <span>📊</span> 사진첩 통계 & 스토리지
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-album" data-sub="subpane-album-photos" onclick="switchAdminTabAndSub('tab-album', 'subpane-album-photos')">
+                        <span>🖼️</span> 최근 업로드 사진 관리
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-album" data-sub="subpane-album-members" onclick="switchAdminTabAndSub('tab-album', 'subpane-album-members')">
+                        <span>👥</span> 가족 구성원 활동 현황
+                    </button>
+                </div>
+            </div>
+
+            <!-- 그룹 6: 통합 백업 센터 -->
+            <div class="admin-sidebar-group" id="sidebar-group-backup">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('backup')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>💾</span>
+                        <span>통합 백업 센터</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-backup" data-sub="subpane-backup-status" onclick="switchAdminTabAndSub('tab-backup', 'subpane-backup-status')">
+                        <span>📦</span> 정기 백업 & 즉시 실행
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-backup" data-sub="subpane-backup-logs" onclick="switchAdminTabAndSub('tab-backup', 'subpane-backup-logs')">
+                        <span>📋</span> 실시간 백업 로그 콘솔
+                    </button>
+                </div>
+            </div>
+
+            <!-- 그룹 7: 데이터베이스 관리자 (SQLite) -->
+            <div class="admin-sidebar-group" id="sidebar-group-database">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('database')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>🗄️</span>
+                        <span>데이터베이스 관리자</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-database" data-sub="subpane-db-browse" onclick="switchAdminTabAndSub('tab-database', 'subpane-db-browse')">
+                        <span>📋</span> 데이터 브라우징 & 관리
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-database" data-sub="subpane-db-query" onclick="switchAdminTabAndSub('tab-database', 'subpane-db-query')">
+                        <span>⚡</span> SQL 쿼리 콘솔
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-database" data-sub="subpane-db-schema" onclick="switchAdminTabAndSub('tab-database', 'subpane-db-schema')">
+                        <span>📐</span> 테이블 구조 명세
+                    </button>
+                </div>
+            </div>
+
+            <!-- 그룹 8: 보안 및 계정 -->
+            <div class="admin-sidebar-group" id="sidebar-group-security">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('security')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>👤</span>
+                        <span>보안 및 마스터 계정</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-family" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-family')">
+                        <span>👨‍👩‍👧‍👦</span> 우리 가족 및 권한 관리
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-logs" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-logs')">
+                        <span>🔒</span> 최근 로그인 시도 이력
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-stack" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-stack')">
+                        <span>🛡️</span> SSO & 기술 스택 명세
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" onclick="openAdminPasswordModal(); toggleAdminSidebar(false);">
+                        <span>🔑</span> 마스터 비밀번호 변경 (팝업)
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div class="admin-sidebar-footer">
+            <button class="btn-admin btn-admin-success btn-admin-sm" onclick="downloadAllDatabases()" style="width:100%; justify-content:center;">
+                ⚡ 전체 DB 일괄 백업 (.zip)
+            </button>
+            <a href="https://j-jg.cc/" class="btn-admin btn-admin-outline btn-admin-sm" style="width:100%; justify-content:center; text-decoration:none;">
+                🏠 포털 홈으로 돌아가기
+            </a>
+        </div>
+    </aside>
+
+    <main class="container admin-main-container">
+        <!-- 관리자 컴팩트 헤더 바 (Clean Light & Slate) -->
+        <section class="admin-header">
+            <div class="admin-header-left">
+                <button type="button" class="admin-sidebar-toggle-btn" onclick="toggleAdminSidebar()" title="관리자 메뉴 열기/닫기">
+                    <span class="hamburger-icon"><span></span><span></span><span></span></span>
+                </button>
+                <div class="admin-header-title">
+                    <div class="admin-header-title-row">
+                        <h2>⚙️ 통합 관리자 센터</h2>
+                        <span id="dualDaemonOverallBadge" class="badge-online">🟢 듀얼 정상</span>
+                    </div>
+                    <p>포털 및 서브 서비스(혈압·자산·뉴스) 실시간 모니터링 및 제어</p>
+                </div>
+            </div>
+            <div class="admin-header-actions">
+                <button class="btn-admin btn-admin-success btn-admin-sm" onclick="downloadAllDatabases()">
+                    ⚡ DB 백업 (.zip)
+                </button>
+                <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadOverviewData()" title="상태 새로고침">
+                    🔄 새로고침
+                </button>
+            </div>
+        </section>
+
+        <!-- 탭 내비게이션 고정 래퍼 (상단 고정 Sticky 2단 캡슐 탭) -->
+        <div class="admin-nav-sticky-wrapper">
+            <!-- 1단 대메뉴 탭 -->
+            <nav class="admin-tabs-nav" id="adminTabsNav">
+                <button class="admin-tab-btn active" data-tab="tab-overview" onclick="switchAdminTab('tab-overview', this)">
+                    🖥️ 서버 모니터링
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-blood" onclick="switchAdminTab('tab-blood', this)">
+                    🩸 혈압 관리
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-asset" onclick="switchAdminTab('tab-asset', this)">
+                    💰 자산 관리
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-news" onclick="switchAdminTab('tab-news', this)">
+                    📰 뉴스 브리핑
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-album" onclick="switchAdminTab('tab-album', this)">
+                    📸 가족 사진첩
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-backup" onclick="switchAdminTab('tab-backup', this)">
+                    💾 통합 백업
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-database" onclick="switchAdminTab('tab-database', this)">
+                    🗄️ DB 관리자
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-security" onclick="switchAdminTab('tab-security', this)">
+                    👤 보안 및 계정
+                </button>
+            </nav>
+            <!-- 2단 서브메뉴 탭 (선택된 대메뉴에 따라 동적 주입) -->
+            <div class="admin-subtabs-nav" id="adminSubtabsNav">
+                <!-- JS renderSubTabs()가 동적 생성 -->
+            </div>
+        </div>
+        <!-- ==========================================
+             🧩 기능별 모듈 탭 패널 (views/ 컴포넌트 마운트 영역)
+             ========================================== -->
+        <!-- @@ADMIN_TAB_PANES@@ -->
+    </main>
+
+    <!-- 🔑 관리자 마스터 비밀번호 변경 전용 팝업 모달 -->
+    <div id="adminPasswordModal" class="admin-modal-backdrop" style="display:none;" onclick="handlePasswordModalBackdropClick(event)">
+        <div class="admin-modal-dialog">
+            <div class="admin-modal-header">
+                <h3>🔑 마스터 비밀번호 변경</h3>
+                <button type="button" class="admin-modal-close-btn" onclick="closeAdminPasswordModal()" title="창 닫기">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <p style="font-size:0.875rem; color:#64748b; margin-top:0; margin-bottom:1.15rem;">
+                    변경 즉시 모든 서브 서비스(혈압, 자산, 뉴스)의 로그인 비밀번호가 동기화됩니다.
+                </p>
+                <form onsubmit="changeAdminPassword(event)">
+                    <div style="margin-bottom:0.85rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">현재 비밀번호</label>
+                        <input type="password" id="currentPassInput" required style="width:100%; padding:0.65rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.85rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">새 비밀번호</label>
+                        <input type="password" id="newPassInput" required style="width:100%; padding:0.65rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:1.15rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">새 비밀번호 확인</label>
+                        <input type="password" id="confirmPassInput" required style="width:100%; padding:0.65rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" class="btn-admin btn-admin-outline" onclick="closeAdminPasswordModal()">취소</button>
+                        <button type="submit" class="btn-admin btn-admin-primary">🔐 비밀번호 안전하게 변경</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔗 1. 가족 초대 링크 생성 모달 -->
+    <div id="addFamilyModal" class="admin-modal-backdrop" style="display:none;">
+        <div class="admin-modal-dialog">
+            <div class="admin-modal-header">
+                <h3>🔗 가족 초대 링크 생성</h3>
+                <button type="button" class="admin-modal-close-btn" onclick="closeAddFamilyModal()" title="창 닫기">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <p style="font-size:0.85rem; color:#64748b; margin-top:0; margin-bottom:1rem; line-height:1.45;">
+                    관리용 명칭을 입력하고 초대 링크를 발급하세요.<br>
+                    가족이 초대 링크 접속 시 <strong>프로필명, 아이디, 이메일, 비밀번호, 생년월일</strong>을 직접 입력해 가입합니다.
+                </p>
+                <form id="addFamilyForm" onsubmit="submitAddFamily(event)">
+                    <div style="margin-bottom:0.85rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">관리용 명칭 (가족 호칭 메모) *</label>
+                        <input type="text" id="inputAddNickname" placeholder="예: 어머니, 둘째, 막내" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:1.15rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem;">
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.5rem;">이용 허용 서비스 선택</label>
+                        <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#334155;">
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkAddServiceAlbum" checked> <span>📸 우리 가족 앨범</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkAddServiceNews" checked> <span>📰 뉴스룸 & 날씨·증시</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; color:#94a3b8;">
+                                <input type="checkbox" id="chkAddServiceAsset"> <span>💰 자산 관리 (관리자 전용 비공개 권장)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; color:#94a3b8;">
+                                <input type="checkbox" id="chkAddServiceBlood"> <span>🩸 혈압 관리 (향후 프로필 분리 예정)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" class="btn-admin btn-admin-outline" onclick="closeAddFamilyModal()">취소</button>
+                        <button type="submit" class="btn-admin btn-admin-primary">초대 링크 발급하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✏️ 2. 가족 정보 및 권한 수정 모달 -->
+    <div id="editFamilyModal" class="admin-modal-backdrop" style="display:none;">
+        <div class="admin-modal-dialog">
+            <div class="admin-modal-header">
+                <h3>✏️ 가족 정보 및 이용 권한 수정</h3>
+                <button type="button" class="admin-modal-close-btn" onclick="closeEditFamilyModal()" title="창 닫기">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <form id="editFamilyForm" onsubmit="submitEditFamily(event)">
+                    <input type="hidden" id="editFamilyTargetUsername">
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">관리용 명칭 (가족 호칭 메모) *</label>
+                        <input type="text" id="inputEditAdminMemo" required style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">활동 프로필명 (가족 닉네임)</label>
+                        <input type="text" id="inputEditNickname" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">이메일 주소</label>
+                        <input type="email" id="inputEditEmail" placeholder="example@email.com" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.85rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">생년월일</label>
+                        <input type="text" id="inputEditBirthdate" placeholder="예: 1995-05-15 또는 950515" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:1.15rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem;">
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.5rem;">이용 허용 서비스 선택</label>
+                        <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#334155;">
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceAlbum"> <span>📸 우리 가족 앨범</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceNews"> <span>📰 뉴스룸 & 날씨·증시</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceAsset"> <span>💰 자산 관리</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceBlood"> <span>🩸 혈압 관리</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" class="btn-admin btn-admin-outline" onclick="closeEditFamilyModal()">취소</button>
+                        <button type="submit" class="btn-admin btn-admin-primary">수정사항 저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔑 3. 임시 PIN 재설정 모달 -->
+    <div id="resetPinModal" class="admin-modal-backdrop" style="display:none;">
+        <div class="admin-modal-dialog">
+            <div class="admin-modal-header">
+                <h3>🔑 임시 PIN 재설정</h3>
+                <button type="button" class="admin-modal-close-btn" onclick="closeResetPinModal()" title="창 닫기">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <p style="font-size:0.85rem; color:#64748b; margin-top:0; margin-bottom:0.85rem;">
+                    [<strong id="resetPinTargetNameDisplay">-</strong>]님의 로그인 PIN을 임시 번호로 재설정합니다.
+                </p>
+                <form onsubmit="submitResetPin(event)">
+                    <input type="hidden" id="resetPinTargetUsername">
+                    <div style="margin-bottom:1.15rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">새 임시 숫자 6자리 PIN</label>
+                        <input type="text" id="inputResetNewPin" value="123456" maxlength="6" inputmode="numeric" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-family:monospace; font-size:1.1rem; letter-spacing:2px; box-sizing:border-box;">
+                        <span style="font-size:0.75rem; color:#64748b; display:block; margin-top:0.25rem;">가족에게 전달 후, 로그인하면 본인만의 PIN으로 즉시 변경됩니다.</span>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" class="btn-admin btn-admin-outline" onclick="closeResetPinModal()">취소</button>
+                        <button type="submit" class="btn-admin btn-admin-primary">PIN 재설정 완료</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🗄️ 단일 레코드 추가/수정 모달 -->
+    <div id="dbRowModal" class="admin-modal-backdrop" style="display:none;" onclick="if(event.target===this)DbManager.closeRowModal()">
+        <div class="admin-modal-dialog" style="max-width:560px;">
+            <div class="admin-modal-header">
+                <h3 id="dbRowModalTitle">➕ 레코드 관리</h3>
+                <button type="button" class="admin-modal-close-btn" onclick="DbManager.closeRowModal()" title="창 닫기">✕</button>
+            </div>
+            <div class="admin-modal-body" style="max-height:75vh; overflow-y:auto;">
+                <form id="dbRowForm" onsubmit="DbManager.submitRowForm(event)">
+                    <!-- 동적 컬럼 폼 주입 -->
+                </form>
+            </div>
+            <div style="padding:1rem 1.25rem; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; gap:0.5rem; background:#f8fafc; border-bottom-left-radius:0.75rem; border-bottom-right-radius:0.75rem;">
+                <button type="button" class="btn-admin btn-admin-outline" onclick="DbManager.closeRowModal()">취소</button>
+                <button type="button" class="btn-admin btn-admin-primary" onclick="document.getElementById('dbRowForm').requestSubmit()">💾 저장 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 플로팅 토스트 알림창 -->
+    <div id="adminToast">알림 메시지</div>
+
+    <!-- 📈 초경량 uPlot (10KB) 시계열 차트 엔진 로컬 로드 -->
+    <script src="/js/uPlot.iife.min.js"></script>
+    <!-- 📦 관리자 모듈화 스크립트 로드 (서버 동적 버전 자동 주입) -->
+    <script src="/js/admin-core.js"></script>
+    <script src="/js/admin-monitor.js"></script>
+    <script src="/js/admin-services.js"></script>
+    <script src="/js/admin-family.js"></script>
+    <script src="/js/admin-album-backup.js"></script>
+    <script src="/js/admin-db-manager.js"></script>
+    <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
+    <script src="/api/jg-ui" data-ticker="false" defer></script>
+</body>
+</html>
+

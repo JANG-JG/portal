@@ -1,0 +1,460 @@
+
+        <!-- ==========================================
+             탭 1: 전체 모니터링 & PM2 프로세스
+             ========================================== -->
+        <div id="tab-overview" class="admin-tab-pane active">
+            <!-- 서브 1: 실행 중인 서비스, 서버 핵심 리소스 & 상태, 서버 가동 시간, 5대 프로세스 (PM2) -->
+            <div id="subpane-overview-processes" class="admin-sub-pane">
+
+                <!-- 📊 1. 듀얼 서버 핵심 리소스 한눈 비교 & 실시간 추이 통합 카드 -->
+                <div class="admin-card dual-summary-unified-card" style="margin-bottom: 1.15rem;">
+                    <div class="admin-card-header" style="margin-bottom: 0.85rem; padding-bottom: 0.65rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                            <h3 style="font-size:1rem; margin:0;">📊 듀얼 서버 핵심 자원 & 실시간 추이</h3>
+                            <span class="live-indicator"><span class="live-dot"></span>5초 주기 동기화</span>
+                        </div>
+                        <div class="uplot-legend-badges">
+                            <span class="uplot-badge-p-cpu">📱 주 CPU <strong id="uplotPrimaryCpuText">-%</strong></span>
+                            <span class="uplot-badge-p-ram">📱 주 RAM <strong id="uplotPrimaryRamText">-%</strong></span>
+                            <span class="uplot-badge-s-cpu">💻 보조 CPU <strong id="uplotSecCpuText">-%</strong></span>
+                            <span class="uplot-badge-s-ram">💻 보조 RAM <strong id="uplotSecRamText">-%</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- 주 서버 vs 보조 서버 2열 한눈 비교 그리드 -->
+                    <div class="dual-server-compare-grid">
+                        <!-- 좌측: 📱 주 서버 (노트 9) -->
+                        <div class="dual-server-box primary-box">
+                            <div class="dual-server-box-head">
+                                <span class="dual-server-name">📱 주 서버 (노트 9)</span>
+                                <div class="dual-server-badges">
+                                    <span id="gaugeCpuTemp" class="temp-badge temp-badge-normal">🌡️ --°C</span>
+                                    <span class="badge-online" style="font-size:0.68rem; padding:1px 6px;">운영 중</span>
+                                </div>
+                            </div>
+                            <div class="dual-server-submeta">
+                                <span>가동: <strong id="systemUptime">-</strong></span>
+                                <span>PM2: <strong id="activeProcessCount" style="color:#2563eb;">- / 6</strong></span>
+                            </div>
+                            <div class="dual-metric-rows">
+                                <div class="dual-metric-row">
+                                    <div class="dual-metric-label">
+                                        <span>메모리 (RAM)</span>
+                                        <strong id="dualMemPrimaryVal">- / - (-%)</strong>
+                                    </div>
+                                    <div class="gauge-track"><div id="dualMemPrimaryBar" class="gauge-bar-primary-ram" style="width:0%;"></div></div>
+                                </div>
+                                <div class="dual-metric-row">
+                                    <div class="dual-metric-label">
+                                        <span>저장 공간 (UFS)</span>
+                                        <strong id="dualDiskPrimaryVal">- / - (-%)</strong>
+                                    </div>
+                                    <div class="gauge-track"><div id="dualDiskPrimaryBar" class="gauge-bar-primary-disk" style="width:0%;"></div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 우측: 💻 보조 서버 (HP 노트북) -->
+                        <div class="dual-server-box secondary-box">
+                            <div class="dual-server-box-head">
+                                <span class="dual-server-name" style="color:#6b21a8;">💻 보조 서버 (HP)</span>
+                                <div class="dual-server-badges">
+                                    <span id="gaugeSecCpuTemp" class="temp-badge temp-badge-normal">🌡️ --°C</span>
+                                    <span id="secondaryServerBadge" class="badge-online" style="font-size:0.68rem; padding:1px 6px;">확인 중</span>
+                                </div>
+                            </div>
+                            <div class="dual-server-submeta">
+                                <span>가동: <strong id="secServerUptimeSummary">-</strong></span>
+                                <span>백업 데몬: <strong id="secActiveProcessCountSummary" style="color:#7c3aed;">- / 3</strong></span>
+                            </div>
+                            <div class="dual-metric-rows">
+                                <div class="dual-metric-row">
+                                    <div class="dual-metric-label">
+                                        <span>메모리 (RAM)</span>
+                                        <strong id="dualMemSecVal">- / - (-%)</strong>
+                                    </div>
+                                    <div class="gauge-track"><div id="dualMemSecBar" class="gauge-bar-sec-ram" style="width:0%;"></div></div>
+                                </div>
+                                <div class="dual-metric-row">
+                                    <div class="dual-metric-label">
+                                        <span>저장 공간 (HDD)</span>
+                                        <strong id="dualDiskSecVal">- / - (-%)</strong>
+                                    </div>
+                                    <div class="gauge-track"><div id="dualDiskSecBar" class="gauge-bar-sec-disk" style="width:0%;"></div></div>
+                                </div>
+                                <div class="dual-metric-row">
+                                    <div class="dual-metric-label">
+                                        <span title="/media/external_ssd (가족 사진 원본 영구 보관소)">외장 SSD (사진 원본)</span>
+                                        <strong id="dualExternalSsdVal">- / - (-%)</strong>
+                                    </div>
+                                    <div class="gauge-track"><div id="dualExternalSsdBar" class="gauge-bar-sec-ssd" style="width:0%;"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 하단 일체형 실시간 uPlot 시계열 차트 -->
+                    <div class="uplot-chart-card" id="uplotResourceCard">
+                        <div id="uplotResourceContainer" class="uplot-container"></div>
+                    </div>
+                </div>
+
+                <!-- 🖥️ 2. 듀얼 서버 탭 내비게이션 바 (주 서버 / 보조 서버 상세 전환) -->
+                <div class="server-switch-row">
+                    <div class="server-tab-container">
+                        <button type="button" class="server-tab-btn active" id="serverTabBtnPrimary" onclick="switchServerTab('primary')">
+                            <span>📱</span>
+                            <span class="server-tab-label">주 서버 (노트 9)</span>
+                            <span class="badge-online server-tab-badge" id="primaryTabBadge" style="font-size:0.68rem; padding:1px 6px;">PM2</span>
+                        </button>
+                        <button type="button" class="server-tab-btn secondary-btn" id="serverTabBtnSecondary" onclick="switchServerTab('secondary')">
+                            <span>💻</span>
+                            <span class="server-tab-label">보조 서버 (HP)</span>
+                            <span class="badge-online server-tab-badge" id="secondaryTabBadge" style="font-size:0.68rem; padding:1px 6px; background:#f3e8ff; color:#7c3aed; border:1px solid #ddd6fe;">백업</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     [서버 1] 📱 주 서버 (삼성 갤럭시 노트 9) 전용 패널
+                     ========================================== -->
+                <div id="serverPanePrimary" class="server-pane active">
+                    <!-- 주 서버 인프라 상태 배너 (슬림형) -->
+                    <div class="server-info-banner">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; width:100%;">
+                            <div style="display:flex; align-items:center; gap:0.6rem; min-width:0;">
+                                <span style="font-size:1.25rem;">📱</span>
+                                <div style="min-width:0;">
+                                    <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                                        <h4 style="margin:0; font-size:0.92rem; color:#0f172a; font-weight:800;">삼성 갤럭시 노트 9 (메인 앱 서버)</h4>
+                                        <span class="badge-online" id="primaryServerBadge" style="font-size:0.68rem; padding:1px 5px;">🟢 메인 운영</span>
+                                    </div>
+                                    <div style="font-size:0.76rem; color:#64748b; margin-top:2px; display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                        <span>IP: <code>192.168.50.111:2222</code></span>
+                                        <span id="primaryPaneCpuTemp" class="temp-badge temp-badge-normal" style="font-size:0.68rem; padding:0 4px;">🌡️ --°C</span>
+                                        <span>&bull; Exynos 9810 &bull; Cloudflare 터널</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 전체 서비스 PM2 프로세스 목록 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <div>
+                                <h3 style="margin-bottom:0.2rem;">🚀 주 서버 서비스 프로세스 제어 (PM2)</h3>
+                                <span style="font-size:0.8rem; color:#64748b;">6대 핵심 서비스 시작 / 중지 / 재기동 원클릭 제어</span>
+                            </div>
+                            <span class="live-indicator"><span class="live-dot"></span>실시간</span>
+                        </div>
+                        <div id="processListContainer" class="process-list-grid">
+                            <div style="text-align:center; padding:1.5rem; color:#64748b;">프로세스 상태 조회 중...</div>
+                        </div>
+                    </div>
+
+                    <!-- 💾 RAM(메모리) 상위 점유 프로세스 (TOP 10) -->
+                    <div class="admin-card">
+                        <div class="admin-card-header" style="margin-bottom:0.75rem;">
+                            <div>
+                                <h3 style="margin-bottom:0.2rem;">💾 메모리(RAM) 상위 점유 프로세스 (TOP 10)</h3>
+                                <span style="font-size:0.8rem; color:#64748b;">주 서버 RAM 상위 점유 프로세스 실시간 목록</span>
+                            </div>
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadOverviewData()">
+                                🔄 갱신
+                            </button>
+                        </div>
+                        <div class="admin-table-container admin-table-scroll">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:45px;">순위</th>
+                                        <th style="width:70px;">PID</th>
+                                        <th>프로세스 / 명령어</th>
+                                        <th style="width:90px; text-align:right;">사용량</th>
+                                        <th style="width:75px; text-align:right;">점유율</th>
+                                        <th style="width:65px; text-align:right;">CPU</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="topMemProcessTableBody">
+                                    <tr>
+                                        <td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">메모리 점유 프로세스 데이터 로딩 중...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ==========================================
+                     [서버 2] 💻 보조 서버 (HP 노트북 15-g008au) 전용 패널
+                     ========================================== -->
+                <div id="serverPaneSecondary" class="server-pane">
+                    <!-- 보조 서버 인프라 상태 배너 (슬림형) -->
+                    <div class="server-info-banner" style="border-left:4px solid #7c3aed;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; width:100%;">
+                            <div style="display:flex; align-items:center; gap:0.6rem; min-width:0;">
+                                <span style="font-size:1.25rem;">💻</span>
+                                <div style="min-width:0;">
+                                    <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                                        <h4 style="margin:0; font-size:0.92rem; color:#0f172a; font-weight:800;">HP 노트북 15-g008au (보조 백업 스토리지)</h4>
+                                        <span class="badge-online" id="secPaneServerBadge" style="font-size:0.68rem; padding:1px 5px;">확인 중...</span>
+                                    </div>
+                                    <div style="font-size:0.76rem; color:#64748b; margin-top:2px; display:flex; align-items:center; gap:0.35rem; flex-wrap:wrap;">
+                                        <span>IP: <code>192.168.50.75:22</code></span>
+                                        <span id="secPaneCpuTemp" class="temp-badge temp-badge-normal" style="font-size:0.68rem; padding:0 4px;">🌡️ --°C</span>
+                                        <span>&bull; 500GB HDD &bull; 매일 04:00 자동 백업</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 전체 서비스 프로세스 상태 카드 (3대 백업 데몬) -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <div>
+                                <h3 style="margin-bottom:0.2rem;">🚀 보조 서버 백업 데몬 상태</h3>
+                                <span style="font-size:0.8rem; color:#64748b;">3대 핵심 백업 데몬 및 SSH 원격 서비스 모니터링</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                                <span class="badge-online" id="secBadgeCard" style="font-size:0.72rem;">SSH: 22</span>
+                                <button class="btn-admin btn-admin-outline btn-admin-sm" id="btnSecPing" onclick="pingSecondaryServer()">
+                                    🔄 핑 테스트
+                                </button>
+                                <button class="btn-admin btn-admin-sm" id="btnSecBackupNow" onclick="triggerSecondaryBackupNow()" style="background:#7c3aed; color:#fff; border:none; font-weight:700;" title="지금 즉시 SQLite 3대 DB 핫 스냅샷을 생성하여 보조 서버로 rsync 백업 전송">
+                                    📦 수동 백업 전송
+                                </button>
+                            </div>
+                        </div>
+                        <div id="secProcessListContainer" class="process-list-grid">
+                            <div style="text-align:center; padding:1.5rem; color:#64748b;">백업 프로세스 상태 조회 중...</div>
+                        </div>
+                    </div>
+
+                    <!-- 💾 RAM(메모리) 상위 점유 프로세스 (TOP 10) -->
+                    <div class="admin-card">
+                        <div class="admin-card-header" style="margin-bottom:0.75rem;">
+                            <div>
+                                <h3 style="margin-bottom:0.2rem;">💾 보조 서버 메모리 상위 점유 프로세스 (TOP 10)</h3>
+                                <span style="font-size:0.8rem; color:#64748b;">보조 서버 RAM 상위 점유 프로세스 실시간 목록</span>
+                            </div>
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadOverviewData()">
+                                🔄 갱신
+                            </button>
+                        </div>
+                        <div class="admin-table-container admin-table-scroll">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:45px;">순위</th>
+                                        <th style="width:70px;">PID</th>
+                                        <th>프로세스 / 명령어</th>
+                                        <th style="width:90px; text-align:right;">사용량</th>
+                                        <th style="width:75px; text-align:right;">점유율</th>
+                                        <th style="width:65px; text-align:right;">CPU</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="secTopMemProcessTableBody">
+                                    <tr>
+                                        <td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">메모리 점유 프로세스 데이터 로딩 중...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 💻 보조 서버 백업 보관 현황 및 정기 백업 실행 로그 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div>
+                                <h3 style="margin-bottom:0.2rem;">💻 보조 서버 백업 보관 현황 및 실행 로그</h3>
+                                <span style="font-size:0.8rem; color:#64748b;">30일 보존 아카이브 및 새벽 04시 정기 핫 백업 실행 로그</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
+                                <input type="search" id="secLogSearchInput" placeholder="🔍 백업 로그 검색..." oninput="filterSecConsoleLogs()" style="padding:0.35rem 0.65rem; font-size:0.8rem; border-radius:0.375rem; border:1px solid #cbd5e1; width:140px; background:#f8fafc;">
+                                <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadOverviewData()">
+                                    🔄 새로고침
+                                </button>
+                            </div>
+                        </div>
+                        <div class="terminal-window">
+                            <div class="terminal-header">
+                                <div class="terminal-title-bar">
+                                    <div class="terminal-dots">
+                                        <span class="terminal-dot dot-red"></span>
+                                        <span class="terminal-dot dot-yellow"></span>
+                                        <span class="terminal-dot dot-green"></span>
+                                    </div>
+                                    <span class="terminal-title">backup-to-secondary.sh</span>
+                                </div>
+                                <span style="font-size:0.7rem; color:#a78bfa; font-family:monospace;">backup.log</span>
+                            </div>
+                            <pre id="secLogConsole" class="pm2-console">보조 서버 백업 로그를 불러오는 중입니다...</pre>
+                        </div>
+                    </div>
+
+                    <!-- 🗄️ 보조 스토리지 서비스 데이터베이스 (SQLite 백업본) 보존 현황 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header" style="margin-bottom:0.75rem;">
+                            <div>
+                                <h3 style="margin-bottom:0.2rem;">🗄️ 서비스 데이터베이스 (SQLite 백업본) 보존 현황</h3>
+                                <span style="font-size:0.8rem; color:#64748b;">보조 서버로 자동 증분 동기화되는 핫 스냅샷 DB</span>
+                            </div>
+                            <span class="badge-online" style="background:#f3e8ff; color:#7c3aed; border:1px solid #ddd6fe;">보존 주기: 30일</span>
+                        </div>
+                        <div class="admin-table-container">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:44px; text-align:center;">순번</th>
+                                        <th>서비스명</th>
+                                        <th>파일명</th>
+                                        <th class="col-desc">설명 및 중요도</th>
+                                        <th style="text-align:center;">동기화 방식</th>
+                                        <th style="text-align:center;">무결성 검증</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">1</td>
+                                        <td style="font-weight:700; color:#0f172a;">🏠 포털 메인</td>
+                                        <td><code>portal.db</code></td>
+                                        <td class="col-desc" style="color:#475569;">일정 캘린더, 개인 메모, 범례, 시스템 설정</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
+                                        <td style="text-align:center;" id="secDbPortal"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">2</td>
+                                        <td style="font-weight:700; color:#0f172a;">🩸 혈압 관리</td>
+                                        <td><code>health.db</code></td>
+                                        <td class="col-desc" style="color:#475569;">혈압, 맥박, 복약 일지, 병원 진료 기록</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
+                                        <td style="text-align:center;" id="secDbHealth"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">3</td>
+                                        <td style="font-weight:700; color:#0f172a;">💰 자산 관리</td>
+                                        <td><code>asset.db</code></td>
+                                        <td class="col-desc" style="color:#475569;">증권 계좌 잔고, 주식 포트폴리오, 입출금 이력</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
+                                        <td style="text-align:center;" id="secDbAsset"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">4</td>
+                                        <td style="font-weight:700; color:#0f172a;">📰 AI 뉴스 브리핑</td>
+                                        <td><code>briefing.db</code></td>
+                                        <td class="col-desc" style="color:#475569;">뉴스 브리핑, 속보 수집 및 텔레그램 발송 이력</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
+                                        <td style="text-align:center;" id="secDbBriefing"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">5</td>
+                                        <td style="font-weight:700; color:#0f172a;">📸 가족 사진첩</td>
+                                        <td><code>album.db</code></td>
+                                        <td class="col-desc" style="color:#475569;">가족 사진 메타데이터, 댓글, 리액션 이력</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
+                                        <td style="text-align:center;" id="secDbAlbum"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">6</td>
+                                        <td style="font-weight:700; color:#0f172a;">🚀 PM2 실행 로그</td>
+                                        <td><code>logs/pm2/*</code></td>
+                                        <td class="col-desc" style="color:#475569;">포털, 혈압, 자산, 뉴스, 사진첩, 터널 프로세스 로그</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">증분 전송</span></td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">자동 동기화</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">7</td>
+                                        <td style="font-weight:700; color:#0f172a;">⏱️ 뉴스 크롤러 로그</td>
+                                        <td><code>logs/news/*</code></td>
+                                        <td class="col-desc" style="color:#475569;">AI 뉴스 수집기 및 스케줄러 실행 상세 로그</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">증분 전송</span></td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">자동 동기화</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 보조 스토리지 수동 동기화 및 SSH 연동 안내 카드 -->
+                    <div class="admin-card" style="margin-top:1.5rem; background:#f8fafc; border:1px dashed #cbd5e1;">
+                        <div class="admin-card-header" style="margin-bottom:0.5rem;">
+                            <h4 style="margin:0; font-size:0.95rem; color:#1e293b;">🛠️ 보조 서버 수동 동기화 & 원격 SSH 연동 가이드</h4>
+                            <span style="font-size:0.8rem; color:#64748b;">원클릭 복사 및 실시간 OS 수치 연동</span>
+                        </div>
+                        <div style="font-size:0.85rem; color:#475569; line-height:1.6;">
+                            <div><strong>1. 수동 백업 즉시 실행</strong> (주 서버 터미널에서 실행):</div>
+                            <div style="margin:0.4rem 0 0.8rem; background:#0f172a; color:#f8fafc; padding:0.6rem 0.85rem; border-radius:0.4rem; font-family:monospace; font-size:0.82rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                <code>bash ~/scripts/backup-to-secondary.sh</code>
+                                <button class="btn-admin-xs" style="background:#334155; color:#f8fafc; border:none; padding:3px 8px; border-radius:4px; cursor:pointer;" onclick="copyText('bash ~/scripts/backup-to-secondary.sh', '백업 스크립트 명령어 복사 완료!')">복사</button>
+                            </div>
+
+                            <div style="margin-top:0.75rem;"><strong>2. 보조 서버 SSH 공개키 1초 등록</strong> (HP 노트북 터미널에서 최초 1회 붙여넣기 시 실제 OS 수치 100% 실시간 연동):</div>
+                            <div style="margin:0.4rem 0; background:#1e1b4b; color:#e0e7ff; padding:0.6rem 0.85rem; border-radius:0.4rem; font-family:monospace; font-size:0.78rem; word-break:break-all; display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+                                <code id="secSshRegisterCmd">mkdir -p ~/.ssh && echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHDSTfnXOjSxy+v/fS564BvpR2067rqgWw8J+Zxo9w4Y jg-server@localhost" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys</code>
+                                <button class="btn-admin-xs" style="background:#4338ca; color:#f8fafc; border:none; padding:3px 8px; border-radius:4px; cursor:pointer; white-space:nowrap;" onclick="copyText(document.getElementById('secSshRegisterCmd').innerText, 'SSH 등록 명령어가 복사되었습니다!')">명령어 복사</button>
+                            </div>
+                            <div style="font-size:0.8rem; color:#64748b; margin-top:0.5rem;">
+                                &bull; 백업 실행 로그: <code>~/scripts/backup.log</code> | &bull; 보조 서버 대상 경로: <code>192.168.50.75:~/backups/jg_server</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 서브 2: 실시간 서버 시스템 및 에러 로그 (최근 50줄) -->
+            <div id="subpane-overview-logs" class="admin-sub-pane hidden-pane">
+                <div class="admin-card" style="padding: 1.25rem;">
+                    <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                        <h3>💻 실시간 서버 시스템 및 에러 로그 (최근 50줄)</h3>
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                            <select id="pm2LogProcessSelect" onchange="fetchPm2Logs()" style="padding:0.35rem 0.65rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; background:#f8fafc; font-weight:600; color:#334155; cursor:pointer;">
+                                <option value="all">전체 통합 로그</option>
+                                <option value="portal">🏠 portal</option>
+                                <option value="blood-pressure-app">🩸 blood-pressure-app</option>
+                                <option value="asset">💰 asset</option>
+                                <option value="news-dashboard">📰 news-dashboard</option>
+                                <option value="news-scheduler">⏱️ news-scheduler</option>
+                                <option value="cloudflared">🛡️ cloudflared</option>
+                            </select>
+                            <input type="search" id="pm2LogSearchInput" placeholder="🔍 키워드 필터..." oninput="filterPm2ConsoleLogs()" style="padding:0.35rem 0.65rem; font-size:0.82rem; border-radius:0.375rem; border:1px solid #cbd5e1; width:135px; background:#f8fafc;">
+                            <div style="display:inline-flex; gap:2px; background:#f1f5f9; padding:2px; border-radius:4px; border:1px solid #e2e8f0;">
+                                <button type="button" class="btn-admin-xs active" id="btnFilterAll" onclick="setPm2LogFilter('all')" style="font-size:0.72rem; padding:2px 6px; border:none; background:#2563eb; color:#fff; border-radius:3px; cursor:pointer;">전체</button>
+                                <button type="button" class="btn-admin-xs" id="btnFilterError" onclick="setPm2LogFilter('error')" style="font-size:0.72rem; padding:2px 6px; border:none; background:transparent; color:#ef4444; border-radius:3px; font-weight:700; cursor:pointer;">에러</button>
+                                <button type="button" class="btn-admin-xs" id="btnFilterWarn" onclick="setPm2LogFilter('warn')" style="font-size:0.72rem; padding:2px 6px; border:none; background:transparent; color:#d97706; border-radius:3px; font-weight:700; cursor:pointer;">경고</button>
+                            </div>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" id="btnToggleLogOrder" onclick="togglePm2LogOrder()" title="로그 정렬 순서 전환 (터미널 방식 하단 ↔ 최신순 상단)">
+                                ⬇️ 터미널순
+                            </button>
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="fetchPm2Logs()">
+                                🔄 새로고침
+                            </button>
+                            <button class="btn-admin btn-admin-danger btn-admin-sm" onclick="clearPm2Logs()" title="누적된 PM2 로그 버퍼 초기화">
+                                🧹 로그 비우기
+                            </button>
+                            <button class="btn-admin btn-admin-secondary btn-admin-sm" onclick="testTelegramAlert()" title="서버 장애 알림 텔레그램 발송 연동 테스트">
+                                🔔 텔레그램 테스트
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 실제 터미널 윈도우 스타일 프레임 -->
+                    <div class="terminal-window">
+                        <div class="terminal-header">
+                            <div class="terminal-title-bar">
+                                <div class="terminal-dots">
+                                    <span class="terminal-dot dot-red"></span>
+                                    <span class="terminal-dot dot-yellow"></span>
+                                    <span class="terminal-dot dot-green"></span>
+                                </div>
+                                <span class="terminal-title">bash - pm2 logs --lines 50</span>
+                            </div>
+                            <span style="font-size:0.7rem; color:#64748b; font-family:monospace;">tail -n 50 (live)</span>
+                        </div>
+                        <pre id="pm2LogConsole" class="pm2-console">로그를 불러오는 중입니다...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>

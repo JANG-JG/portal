@@ -1,0 +1,101 @@
+
+        <!-- ========================================== -->
+        <!-- 💾 [탭 7] 통합 백업 센터 (tab-backup) -->
+        <!-- ========================================== -->
+        <div id="tab-backup" class="admin-tab-pane">
+            <div id="subpane-backup-status" class="admin-sub-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <div class="admin-card-title">
+                            <span>💾</span>
+                            <span>정기 백업 & 듀얼 스토리지 현황</span>
+                        </div>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadBackupAdminStatus()">
+                                🔄 상태 갱신
+                            </button>
+                            <button class="btn-admin btn-admin-primary btn-admin-sm" id="btnTriggerManualBackup" onclick="triggerManualBackup()">
+                                ⚡ 지금 전체 백업 실행
+                            </button>
+                        </div>
+                    </div>
+                    <div class="admin-card-body">
+                        <!-- 백업 상태 헤더 요약 카드 -->
+                        <div class="admin-overview-grid" style="margin-bottom:1.5rem;">
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#e0f2fe; color:#0369a1;">⏰</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">최근 백업 일시</div>
+                                    <div class="admin-stat-val stat-val-date" id="backupStatLastDate">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#f0fdf4; color:#15803d;">📦</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">아카이브 용량</div>
+                                    <div class="admin-stat-val" id="backupStatArchiveSize">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#fef3c7; color:#b45309;">🖥️</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">보조 스토리지</div>
+                                    <div class="admin-stat-val" id="backupStatSecondaryStatus">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#fae8ff; color:#86198f;">🛡️</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">5대 DB 무결성</div>
+                                    <div class="admin-stat-val" id="backupStatIntegrity">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#e0f2fe; color:#0284c7;">📸</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">외장 SSD (사진 원본)</div>
+                                    <div class="admin-stat-val" id="backupStatExternalSsd">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 백업 아카이브 목록 테이블 -->
+                        <div style="font-weight:700; color:#1e293b; font-size:0.95rem; margin-bottom:0.75rem;">
+                            📂 보관소 백업 아카이브 목록 (최근 10건)
+                        </div>
+                        <div class="table-responsive">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>파일명</th>
+                                        <th>용량</th>
+                                        <th>생성 일시</th>
+                                        <th style="text-align:right;">다운로드</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="backupArchivesTableBody">
+                                    <tr><td colspan="4" style="text-align:center; padding:2rem 0; color:#94a3b8;">백업 파일 목록을 불러오는 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="subpane-backup-logs" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <div class="admin-card-title">
+                            <span>📋</span>
+                            <span>정기 백업 실행 로그 콘솔 (backup.log)</span>
+                        </div>
+                        <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadBackupAdminLogs()">
+                            🔄 로그 갱신
+                        </button>
+                    </div>
+                    <div class="admin-card-body">
+                        <pre id="adminBackupLogConsole" style="background:#0f172a; color:#f8fafc; padding:1rem; border-radius:0.5rem; font-family:monospace; font-size:0.8rem; line-height:1.5; max-height:450px; overflow-y:auto; white-space:pre-wrap; word-break:break-all;">로그를 불러오는 중...</pre>
+                    </div>
+                </div>
+            </div>
+        </div>

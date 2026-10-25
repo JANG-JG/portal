@@ -89,10 +89,38 @@ app.get('/api/jg-ui', (req, res) => {
 // 📄 [HTML 웹 화면 라우팅 - 무하드코딩 동적 버전 주입]
 // ==========================================
 
+// 🧩 관리자 센터 탭 컴포넌트(views/tab-*.html) SSR 결합 엔진 (파일당 500줄 이하 모듈화)
+function assembleAdminHtml() {
+    const adminIndex = path.join(__dirname, 'public', 'admin', 'index.html');
+    let shell = fs.readFileSync(adminIndex, 'utf8');
+    const viewsDir = path.join(__dirname, 'public', 'admin', 'views');
+    const tabFiles = [
+        'tab-overview.html',
+        'tab-blood.html',
+        'tab-asset.html',
+        'tab-news.html',
+        'tab-security.html',
+        'tab-album.html',
+        'tab-backup.html',
+        'tab-database.html'
+    ];
+    const panes = tabFiles.map(file => {
+        const filePath = path.join(viewsDir, file);
+        return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+    }).join('\n');
+
+    return shell.replace('<!-- @@ADMIN_TAB_PANES@@ -->', panes);
+}
+
 function sendHtml(res, fileName) {
     const filePath = path.join(__dirname, 'public', fileName);
     try {
-        let html = fs.readFileSync(filePath, 'utf8');
+        let html;
+        if (fileName === 'admin.html' || fileName === 'admin/index.html') {
+            html = assembleAdminHtml();
+        } else {
+            html = fs.readFileSync(filePath, 'utf8');
+        }
         // 정적 자원(/css/, /js/) 링크에 서버 동적 버전 자동 주입 (HTML 파일 자체는 항상 100% 클린한 상태 유지)
         html = html.replace(/(href="\/css\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
                    .replace(/(src="\/js\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
@@ -110,9 +138,9 @@ app.get(['/', '/index.html'], authenticateToken, (req, res) => {
     sendHtml(res, 'index.html');
 });
 
-// 1-1. 통합 관리자 센터 화면 (관리자 전용 접근 제어)
-app.get(['/admin', '/admin.html'], authenticateToken, requireAdmin, (req, res) => {
-    sendHtml(res, 'admin.html');
+// 1-1. 통합 관리자 센터 화면 (관리자 전용 접근 제어, 폴더 기반 모듈화)
+app.get(['/admin', '/admin/', '/admin/index.html', '/admin.html'], authenticateToken, requireAdmin, (req, res) => {
+    sendHtml(res, 'admin/index.html');
 });
 
 // 1-2. 아이디어 & 메모장 전용 화면

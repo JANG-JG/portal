@@ -1,0 +1,170 @@
+
+        <!-- ========================================== -->
+        <!-- 🗄️ [탭 8] 경량 SQLite DB 매니저 (tab-database) -->
+        <!-- ========================================== -->
+        <div id="tab-database" class="admin-tab-pane">
+            <!-- 🗄️ DB 매니저 상단 통합 선택 바 (2줄 컴팩트 최적화) -->
+            <div class="admin-card db-unified-control-card" style="margin-bottom: 0.85rem;">
+                <div class="db-control-two-rows">
+                    <!-- 1행: DB 선택 (전폭) + 데이터 새로고침 버튼 -->
+                    <div class="db-control-row">
+                        <div class="db-control-field db-field-main">
+                            <label class="db-control-label"><span>🗄️</span> <span>데이터베이스</span></label>
+                            <select id="dbSelect" class="db-control-select" onchange="DbManager.switchDb(this.value)">
+                                <option value="">데이터베이스 불러오는 중...</option>
+                            </select>
+                        </div>
+                        <div class="db-control-action-btn-wrap">
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm btn-db-refresh" onclick="DbManager.loadTableData()" title="데이터 새로고침">
+                                🔄 새로고침
+                            </button>
+                        </div>
+                    </div>
+                    <!-- 2행: 테이블 선택 (전폭) + 뷰 모드 스위처 (카드 / 표) -->
+                    <div class="db-control-row">
+                        <div class="db-control-field db-field-main">
+                            <label class="db-control-label"><span>📋</span> <span>테이블 선택</span></label>
+                            <select id="tableSelect" class="db-control-select" onchange="DbManager.switchTable(this.value)">
+                                <option value="">테이블 선택</option>
+                            </select>
+                        </div>
+                        <div class="server-tab-container db-view-switcher" style="margin:0; width:auto;">
+                            <button type="button" id="btnViewModeCard" class="server-tab-btn active" onclick="DbManager.setViewMode('card')">
+                                <span>📱</span> <span class="server-tab-label">카드</span>
+                            </button>
+                            <button type="button" id="btnViewModeTable" class="server-tab-btn" onclick="DbManager.setViewMode('table')">
+                                <span>💻</span> <span class="server-tab-label">표</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 1: 데이터 브라우징 & 레코드 관리 -->
+            <div id="subpane-db-browse" class="admin-sub-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.6rem;">
+                        <div class="admin-card-title">
+                            <span>📋</span>
+                            <span>테이블 데이터 탐색 & 레코드 관리</span>
+                        </div>
+                        <div class="db-browse-actions">
+                            <button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="DbManager.openInsertModal()">
+                                ➕ 새 레코드 추가
+                            </button>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.exportCsv()">
+                                📥 CSV 내보내기
+                            </button>
+                        </div>
+                    </div>
+                    <div class="admin-card-body">
+                        <!-- 검색 및 표시 건수 필터 툴바 -->
+                        <div class="db-filter-bar">
+                            <div class="db-search-box">
+                                <span class="db-search-icon">🔍</span>
+                                <input type="text" id="dbSearchInput" placeholder="테이블 내 텍스트 전체 검색..." oninput="DbManager.handleSearch(this.value)">
+                            </div>
+                            <div class="db-limit-box">
+                                <label style="font-size:0.8rem; color:#64748b; font-weight:600;">표시:</label>
+                                <select class="db-limit-select" onchange="DbManager.setLimit(this.value)">
+                                    <option value="25" selected>25개</option>
+                                    <option value="50">50개</option>
+                                    <option value="100">100개</option>
+                                </select>
+                            </div>
+                            <div id="dbExecutionStatus" class="db-execution-badge">
+                                ⚡ 데이터 준비 중
+                            </div>
+                        </div>
+
+                        <!-- 데이터 컨테이너 (모바일 카드 뷰 ↔ 데스크톱 표 뷰 동적 렌더링) -->
+                        <div id="dbDataContainer" class="db-data-view-area">
+                            <div style="text-align:center; padding:3rem; color:#94a3b8;">데이터를 불러오는 중...</div>
+                        </div>
+
+                        <!-- 하단 페이지네이션 -->
+                        <div id="dbPagination" class="db-pagination-wrapper"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 2: SQL 쿼리 콘솔 -->
+            <div id="subpane-db-query" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div class="admin-card-title">
+                            <span>⚡</span>
+                            <span>SQLite SQL 쿼리 콘솔</span>
+                        </div>
+                        <span style="font-size:0.75rem; color:#64748b;">(상단 선택된 DB 대상 실행)</span>
+                    </div>
+                    <div class="admin-card-body">
+                        <!-- 단축 쿼리 템플릿 버튼들 -->
+                        <div class="db-sql-templates">
+                            <span style="font-size:0.8rem; font-weight:700; color:#475569;">빠른 템플릿:</span>
+                            <button type="button" class="btn-template" onclick="DbManager.setQueryTemplate('select')">SELECT *</button>
+                            <button type="button" class="btn-template" onclick="DbManager.setQueryTemplate('count')">COUNT(*)</button>
+                            <button type="button" class="btn-template" onclick="DbManager.setQueryTemplate('pragma')">PRAGMA info</button>
+                            <button type="button" class="btn-template" onclick="DbManager.setQueryTemplate('insert')">INSERT</button>
+                            <button type="button" class="btn-template" onclick="DbManager.setQueryTemplate('update')">UPDATE</button>
+                        </div>
+
+                        <!-- SQL 입력 에디터 -->
+                        <textarea id="dbSqlEditor" class="db-sql-editor" rows="5" placeholder="SELECT * FROM users LIMIT 25;"></textarea>
+
+                        <!-- 실행 옵션 및 버튼 -->
+                        <div class="db-sql-action-bar">
+                            <label class="db-danger-confirm">
+                                <input type="checkbox" id="dbSqlForceCheck">
+                                <span>⚠️ DROP/DELETE 위험 쿼리 강제 실행 허용</span>
+                            </label>
+                            <button type="button" class="btn-admin btn-admin-primary" onclick="DbManager.runQuery()">
+                                ⚡ SQL 실행
+                            </button>
+                        </div>
+
+                        <!-- 쿼리 실행 결과 영역 -->
+                        <div class="db-query-result-wrapper">
+                            <div class="db-result-title">실행 결과</div>
+                            <div id="dbQueryResultContainer" class="db-query-result-body">
+                                <div style="color:#94a3b8; font-size:0.85rem;">SQL 쿼리를 작성하고 'SQL 실행' 버튼을 누르면 결과가 이곳에 표시됩니다.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 3: 테이블 구조 명세 -->
+            <div id="subpane-db-schema" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <div class="admin-card-title">
+                            <span>📐</span>
+                            <span>테이블 스키마 구조 명세</span>
+                        </div>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="table-responsive" style="margin-bottom:1.5rem;">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>컬럼명</th>
+                                        <th>데이터 타입</th>
+                                        <th>NULL 허용</th>
+                                        <th>기본값</th>
+                                        <th>기본키(PK)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dbSchemaTableBody">
+                                    <tr><td colspan="6" style="text-align:center; padding:2rem 0; color:#94a3b8;">스키마를 불러오는 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div style="font-weight:700; font-size:0.9rem; color:#334155; margin-bottom:0.5rem;">테이블 생성 DDL 쿼리</div>
+                        <pre id="dbSchemaDdl" class="db-ddl-pre">DDL 정보 없음</pre>
+                    </div>
+                </div>
+            </div>
+        </div>

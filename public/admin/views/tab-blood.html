@@ -1,0 +1,126 @@
+
+        <!-- ==========================================
+             탭 2: 혈압 관리 제어
+             ========================================== -->
+        <div id="tab-blood" class="admin-tab-pane">
+            <!-- 서브 1: 데이터 백업 & CSV 내보내기, CSV 데이터 복구 통합 (메일 테스트 포함) -->
+            <div id="subpane-blood-backup" class="admin-sub-pane">
+                <div class="admin-grid-2">
+                    <!-- 1. 데이터 백업 & CSV 내보내기 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>📥 데이터 백업 & CSV 내보내기</h3>
+                        </div>
+                        <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                            혈압 및 병원 예약 원본 데이터베이스와 엑셀 호환 CSV 파일을 다운로드합니다.
+                        </p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+                            <a href="/api/admin/backup/health" class="btn-admin btn-admin-primary">
+                                💾 SQLite DB 백업
+                            </a>
+                            <a href="/api/admin/blood/export-csv" class="btn-admin btn-admin-success">
+                                📊 CSV 내보내기 (엑셀용)
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- 2. 알림 메일 (SMTP) 테스트 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>📧 구글 SMTP 알림 메일 테스트</h3>
+                        </div>
+                        <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                            병원 예약 및 시스템 알림용 Gmail SMTP 발송 연동 상태를 즉시 테스트합니다.
+                        </p>
+                        <button class="btn-admin btn-admin-outline" id="btnTestEmail" onclick="testBloodSmtpEmail()">
+                            📨 메일 전송 테스트 실행
+                        </button>
+                        <div id="emailTestResult" style="margin-top:0.75rem; font-size:0.85rem;"></div>
+                    </div>
+                </div>
+
+                <!-- 3. CSV 데이터 복원 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📤 CSV 데이터 복구 (Import)</h3>
+                    </div>
+                    <p style="font-size:0.9rem; color:#475569; margin-bottom:1rem;">
+                        내보낸 CSV 파일의 내용을 붙여넣어 혈압 기록 및 병원 방문 기록을 데이터베이스에 복구합니다.
+                    </p>
+                    <textarea id="importCsvText" rows="4" placeholder="CSV 파일 내용(헤더 포함)을 여기에 붙여넣으세요..." style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-family:monospace; font-size:0.85rem; margin-bottom:0.75rem;"></textarea>
+                    <button class="btn-admin btn-admin-danger" onclick="importBloodCsv()">
+                        📥 CSV 데이터 복구 실행
+                    </button>
+                </div>
+            </div>
+
+            <!-- 서브 2: 혈압 위험 기준치 설정 -->
+            <div id="subpane-blood-threshold" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>⚙️ 혈압 위험 기준치 설정</h3>
+                        <span style="font-size:0.85rem; color:#64748b;">위험 경고 기준치 관리</span>
+                    </div>
+                    <p style="font-size:0.9rem; color:#475569; margin-bottom:1.25rem;">
+                        대시보드에서 고혈압 및 저혈압 경고 배지를 띄울 기준 수치를 변경합니다. (통합 포털 세션 정책에 따라 자동 로그아웃은 해제되어 로그인 상태가 안전하게 유지됩니다)
+                    </p>
+                    <form id="bloodConfigForm" onsubmit="saveBloodConfigs(event)">
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:0.85rem; margin-bottom:1rem;">
+                            <div>
+                                <label for="cfgHighSys" style="display:block; font-size:0.85rem; font-weight:600; color:#dc2626; margin-bottom:0.35rem;">
+                                    🚨 고혈압 수축기 (최고)
+                                </label>
+                                <input type="number" id="cfgHighSys" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                            </div>
+                            <div>
+                                <label for="cfgHighDia" style="display:block; font-size:0.85rem; font-weight:600; color:#dc2626; margin-bottom:0.35rem;">
+                                    🚨 고혈압 이완기 (최저)
+                                </label>
+                                <input type="number" id="cfgHighDia" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                            </div>
+                            <div>
+                                <label for="cfgLowSys" style="display:block; font-size:0.85rem; font-weight:600; color:#2563eb; margin-bottom:0.35rem;">
+                                    ❄️ 저혈압 수축기 (최고)
+                                </label>
+                                <input type="number" id="cfgLowSys" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                            </div>
+                            <div>
+                                <label for="cfgLowDia" style="display:block; font-size:0.85rem; font-weight:600; color:#2563eb; margin-bottom:0.35rem;">
+                                    ❄️ 저혈압 이완기 (최저)
+                                </label>
+                                <input type="number" id="cfgLowDia" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.9rem;">
+                            </div>
+                        </div>
+                        <button type="submit" id="btnSaveBloodConfig" class="btn-admin btn-admin-primary">
+                            ⚙️ 설정 저장하기
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 서브 3: 최근 혈압 측정 기록 -->
+            <div id="subpane-blood-records" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>🩸 최근 혈압 측정 기록 (최근 10건)</h3>
+                        <a href="/go/blood" class="btn-admin btn-admin-outline btn-admin-sm">혈압 앱 열기 →</a>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>측정일시</th>
+                                    <th>수축기 (mmHg)</th>
+                                    <th>이완기 (mmHg)</th>
+                                    <th>맥박 (회)</th>
+                                    <th>최근 복약시각</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bloodRecentTableBody">
+                                <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">데이터 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
