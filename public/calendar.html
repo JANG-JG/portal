@@ -8,6 +8,34 @@
     <link rel="stylesheet" href="/css/pretendard.css?v=20261025_124344">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/css/calendar.css?v=20261025_124344">
+    <!-- 🛡️ 권한 기반 UI 즉시 적용 (FOUC 원천 차단) -->
+    <script>
+        (function() {
+            try {
+                var c = document.cookie || '';
+                var role = '';
+                var allowed = '';
+                var mRole = c.match(/(?:^|;\s*)jg_user_role=([^;]*)/);
+                if (mRole) role = decodeURIComponent(mRole[1]);
+                else role = localStorage.getItem('jg_user_role') || '';
+                var mAllowed = c.match(/(?:^|;\s*)jg_allowed_services=([^;]*)/);
+                if (mAllowed) allowed = decodeURIComponent(mAllowed[1]);
+                else allowed = localStorage.getItem('jg_allowed_services') || '';
+
+                if (role === 'family') {
+                    document.documentElement.classList.add('role-family', 'hide-ops');
+                    var allowedArr = [];
+                    try { allowedArr = JSON.parse(allowed); } catch(e) { allowedArr = []; }
+                    if (!allowedArr.includes('blood') && !allowedArr.includes('all')) {
+                        document.documentElement.classList.add('hide-blood');
+                    }
+                    if (!allowedArr.includes('asset') && !allowedArr.includes('all')) {
+                        document.documentElement.classList.add('hide-asset');
+                    }
+                }
+            } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
 
@@ -54,10 +82,10 @@
                         <button type="button" onclick="openCategoryModal()" style="background: none; border: none; color: var(--cal-blue); font-size: 0.72rem; font-weight: 700; cursor: pointer; text-decoration: underline;">⚙️ 분류 및 색상 관리</button>
                     </div>
                     <div id="legendContainer">
-                        <span><span style="width: 8px; height: 8px; border-radius: 50%; background: #059669;"></span> 🏥 진료/병원</span>
-                        <span><span style="width: 8px; height: 8px; border-radius: 50%; background: #d97706;"></span> 🔔 예약오픈</span>
-                        <span><span style="width: 8px; height: 8px; border-radius: 50%; background: #0284c7;"></span> 💊 처방약소진</span>
-                        <span><span style="width: 8px; height: 8px; border-radius: 50%; background: #e11d48;"></span> ❤️ 혈압/건강</span>
+                        <span data-service="blood"><span style="width: 8px; height: 8px; border-radius: 50%; background: #059669;"></span> 🏥 진료/병원</span>
+                        <span data-service="blood"><span style="width: 8px; height: 8px; border-radius: 50%; background: #d97706;"></span> 🔔 예약오픈</span>
+                        <span data-service="blood"><span style="width: 8px; height: 8px; border-radius: 50%; background: #0284c7;"></span> 💊 처방약소진</span>
+                        <span data-service="blood"><span style="width: 8px; height: 8px; border-radius: 50%; background: #e11d48;"></span> ❤️ 혈압/건강</span>
                         <span><span style="width: 8px; height: 8px; border-radius: 50%; background: #dc2626;"></span> 🚩 공휴일</span>
                         <!-- 사용자 커스텀 카테고리가 동적으로 추가됨 -->
                         <div id="customLegendsContainer" style="display: inline-flex; gap: 0.65rem;"></div>
@@ -110,12 +138,18 @@
                                 <div id="titleAutocompleteDropdown" class="autocomplete-dropdown" style="display: none;"></div>
                             </div>
 
-                            <!-- 종일 여부 & 시간 입력 -->
-                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: #ffffff; padding: 0.45rem 0.6rem; border-radius: 0.45rem; border: 1px solid #e2e8f0;">
-                                <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 700; color: #334155; cursor: pointer; user-select: none;">
-                                    <input type="checkbox" id="inputEventAllDay" onchange="toggleAllDayMode()" style="width: 16px; height: 16px; accent-color: #4f46e5; cursor: pointer;">
-                                    ☀️ 하루 종일
-                                </label>
+                            <!-- 종일 여부 & 가족 공유 & 시간 입력 -->
+                            <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background: #ffffff; padding: 0.45rem 0.6rem; border-radius: 0.45rem; border: 1px solid #e2e8f0; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 700; color: #334155; cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="inputEventAllDay" onchange="toggleAllDayMode()" style="width: 16px; height: 16px; accent-color: #4f46e5; cursor: pointer;">
+                                        ☀️ 하루 종일
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; font-weight: 700; color: #db2777; cursor: pointer; user-select: none;">
+                                        <input type="checkbox" id="inputEventIsFamily" style="width: 16px; height: 16px; accent-color: #db2777; cursor: pointer;">
+                                        👨‍👩‍👧‍👦 가족 공유
+                                    </label>
+                                </div>
                                 <div id="timeInputWrapper" style="display: flex; align-items: center; gap: 0.35rem;">
                                     <span style="font-size: 0.78rem; color: #64748b; font-weight: 600;">⏰ 시각</span>
                                     <input type="time" id="inputEventTime" style="padding: 0.3rem 0.5rem; border: 1px solid #cbd5e1; border-radius: 0.4rem; font-size: 0.82rem;">
@@ -176,7 +210,7 @@
 
                 <!-- 하단 서비스 바로가기 -->
                 <div style="border-top: 1px solid #f1f5f9; padding-top: 0.75rem; margin-top: 1rem; display: flex; justify-content: space-between; font-size: 0.75rem; color: #64748b;">
-                    <span>🏥 <a href="https://blood.j-jg.cc/hospital.html" style="color: #4f46e5; font-weight: 700; text-decoration: none;">병원 예약 관리 →</a></span>
+                    <span data-service="blood">🏥 <a href="https://blood.j-jg.cc/hospital.html" style="color: #4f46e5; font-weight: 700; text-decoration: none;">병원 예약 관리 →</a></span>
                     <span>📝 <a href="/memo" style="color: #4f46e5; font-weight: 700; text-decoration: none;">메모장 →</a></span>
                 </div>
             </div>

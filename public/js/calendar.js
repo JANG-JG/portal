@@ -4,6 +4,8 @@
         let allEvents = [];
         let categories = [];
         let selectedCategoryColor = '#6366f1';
+        let currentUsername = '';
+        let currentUserRole = '';
 
         // 1. 범례(카테고리) 목록 가져오기
         async function fetchCategories() {
@@ -50,6 +52,10 @@
             if (selectedOpt) {
                 const color = selectedOpt.getAttribute('data-color') || '#6366f1';
                 select.style.borderLeft = `5px solid ${color}`;
+                if (selectedOpt.value === '가족') {
+                    const famCheck = document.getElementById('inputEventIsFamily');
+                    if (famCheck) famCheck.checked = true;
+                }
             }
         }
 
@@ -392,6 +398,13 @@
                     </span>
                 ` : '';
 
+                // 가족 공유 뱃지
+                const familyBadge = ev.isFamily ? `
+                    <span style="font-size:0.68rem; font-weight:700; background:#fdf2f8; color:#db2777; border:1px solid #fbcfe8; padding:1px 5px; border-radius:3px; margin-right:0.35rem;">
+                        👨‍👩‍👧‍👦 가족공유
+                    </span>
+                ` : '';
+
                 // 알림 태그
                 let notifyBadge = '';
                 if (isPersonal && ev.notifyTiming && ev.notifyTiming !== 'none') {
@@ -408,9 +421,10 @@
 
                 const memoStr = ev.memo ? `<div style="font-size:0.75rem; color:#64748b; margin-top:3px;">${escapeHtml(ev.memo)}</div>` : '';
 
-                // 서비스 바로가기 또는 관리 버튼 생성
+                // 서비스 바로가기 또는 관리 버튼 생성 (본인 일정 또는 관리자만 수정/삭제 가능)
                 let actionBtn = '';
-                if (isPersonal) {
+                const canManage = isPersonal && (!ev.userId || ev.userId === currentUsername || currentUserRole === 'admin');
+                if (canManage) {
                     actionBtn = `
                         <div style="display:flex; align-items:center; gap:0.3rem; flex-shrink:0;">
                             <button type="button" onclick="openEditEvent(${ev.dbId})" style="background:#eef2ff; border:1px solid #c7d2fe; color:#4f46e5; font-size:0.75rem; font-weight:700; cursor:pointer; padding:3px 7px; border-radius:4px;" title="일정 수정">✏️ 수정</button>
@@ -439,6 +453,7 @@
                             <div style="flex:1; min-width:0;">
                                 <div style="display:flex; align-items:center; flex-wrap:wrap; gap:2px; margin-bottom:2px;">
                                     ${timeBadge}
+                                    ${familyBadge}
                                     ${categoryBadge}
                                     ${notifyBadge}
                                 </div>
@@ -469,6 +484,8 @@
             if (memoInput) memoInput.value = '';
             const allDayCheck = document.getElementById('inputEventAllDay');
             if (allDayCheck) allDayCheck.checked = false;
+            const isFamilyCheck = document.getElementById('inputEventIsFamily');
+            if (isFamilyCheck) isFamilyCheck.checked = false;
             const timeInput = document.getElementById('inputEventTime');
             if (timeInput) timeInput.value = '';
             toggleAllDayMode();
@@ -546,6 +563,9 @@
             if (allDayCheckbox) allDayCheckbox.checked = !!ev.isAllDay;
             toggleAllDayMode();
 
+            const isFamilyCheckbox = document.getElementById('inputEventIsFamily');
+            if (isFamilyCheckbox) isFamilyCheckbox.checked = !!ev.isFamily;
+
             const timeInput = document.getElementById('inputEventTime');
             if (timeInput) timeInput.value = ev.time || '';
 
@@ -585,6 +605,7 @@
             const titleInput = document.getElementById('inputEventTitle');
             const dateInput = document.getElementById('inputEventDate');
             const isAllDay = document.getElementById('inputEventAllDay').checked;
+            const isFamily = document.getElementById('inputEventIsFamily')?.checked ? 1 : 0;
             const timeInput = document.getElementById('inputEventTime');
             const categorySelect = document.getElementById('inputEventCategorySelect');
             const notifyTimingSelect = document.getElementById('inputEventNotifyTiming');
@@ -616,6 +637,7 @@
                 color: categoryColor,
                 memo: memoInput.value,
                 is_all_day: isAllDay ? 1 : 0,
+                is_family: isFamily,
                 notify_timing: notifyTimingSelect.value,
                 notify_repeat: parseInt(notifyRepeatSelect.value, 10) || 1
             };
@@ -763,7 +785,19 @@
             });
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
+        async function fetchCurrentUser() {
+            try {
+                const res = await fetch('/api/me');
+                const data = await res.json();
+                if (data.success) {
+                    currentUsername = data.username || '';
+                    currentUserRole = data.role || '';
+                }
+            } catch (e) {}
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await fetchCurrentUser();
             fetchCategories();
             fetchEvents();
             initTitleAutocomplete();

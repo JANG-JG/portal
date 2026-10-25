@@ -31,16 +31,27 @@ const KOREAN_HOLIDAYS_2026 = [
 router.get('/events', authenticateToken, async (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
+    const allowedServices = Array.isArray(req.user.allowed_services) ? req.user.allowed_services : [];
+    const hasBlood = isAdmin || allowedServices.includes('blood') || allowedServices.includes('all');
     const events = [];
 
     // 1) 캘린더 등록 개인 일정
+    // - 관리자: 전체 등록 일정 조회
+    // - 가족 계정: 본인 등록 일정 (user_id = ?) + 가족 공유 일정 (is_family = 1 또는 category = '가족')
+    // * 관리자의 개인 일정(업무, 개인, 중요 등)은 가족 계정에 완벽히 비노출
     const personalPromise = new Promise((resolve) => {
-        db.all("SELECT id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, notify_timing, notify_repeat FROM calendar_events WHERE user_id = ? OR user_id = 'admin' ORDER BY event_date ASC", [userId], (err, rows) => {
+        const query = isAdmin
+            ? "SELECT id, user_id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, is_family, notify_timing, notify_repeat FROM calendar_events ORDER BY event_date ASC"
+            : "SELECT id, user_id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, is_family, notify_timing, notify_repeat FROM calendar_events WHERE user_id = ? OR is_family = 1 OR category = '가족' ORDER BY event_date ASC";
+        const params = isAdmin ? [] : [userId];
+
+        db.all(query, params, (err, rows) => {
             if (!err && rows) {
                 rows.forEach(r => {
                     events.push({
                         id: `cal-${r.id}`,
                         dbId: r.id,
+                        userId: r.user_id,
                         title: r.title,
                         date: r.event_date,
                         time: r.event_time,
@@ -50,6 +61,7 @@ router.get('/events', authenticateToken, async (req, res) => {
                         memo: r.memo,
                         isCompleted: !!r.is_completed,
                         isAllDay: !!r.is_all_day,
+                        isFamily: !!r.is_family || r.category === '가족',
                         notifyTiming: r.notify_timing || 'exact',
                         notifyRepeat: r.notify_repeat !== undefined ? r.notify_repeat : 1
                     });
@@ -60,8 +72,15 @@ router.get('/events', authenticateToken, async (req, res) => {
     });
 
     // 2) 병원 진료 예약일, 방문일, 다음 예정일 및 처방약 소진일 (health.db)
+    // blood 서비스 권한이 없으면 가족 계정에 원천 비노출
     const hospitalPromise = new Promise((resolve) => {
-        db.all("SELECT id, visit_date, prescription_days, next_visit_date, reservation_open_date, hospital_name, department, memo FROM hospital_visits WHERE user_id = ? OR ? = 1", [userId, isAdmin], (err, rows) => {
+        if (!hasBlood) return resolve();
+        const hospQuery = isAdmin
+            ? "SELECT id, visit_date, prescription_days, next_visit_date, reservation_open_date, hospital_name, department, memo FROM hospital_visits"
+            : "SELECT id, visit_date, prescription_days, next_visit_date, reservation_open_date, hospital_name, department, memo FROM hospital_visits WHERE user_id = ?";
+        const hospParams = isAdmin ? [] : [userId];
+
+        db.all(hospQuery, hospParams, (err, rows) => {
             if (!err && rows) {
                 rows.forEach(h => {
                     const hospName = h.hospital_name || '병원';
@@ -120,8 +139,15 @@ router.get('/events', authenticateToken, async (req, res) => {
     });
 
     // 3) 최근 혈압 측정 & 복약 기록 (health.db records)
+    // blood 서비스 권한이 없으면 원천 비노출
     const bloodPromise = new Promise((resolve) => {
-        db.all("SELECT id, measured_at, systolic, diastolic, pulse, medication_time FROM records ORDER BY measured_at DESC LIMIT 150", (err, rows) => {
+        if (!hasBlood) return resolve();
+        const bloodQuery = isAdmin
+            ? "SELECT id, measured_at, systolic, diastolic, pulse, medication_time FROM records ORDER BY measured_at DESC LIMIT 150"
+            : "SELECT id, measured_at, systolic, diastolic, pulse, medication_time FROM records WHERE user_id = ? ORDER BY measured_at DESC LIMIT 150";
+        const bloodParams = isAdmin ? [] : [userId];
+
+        db.all(bloodQuery, bloodParams, (err, rows) => {
             if (err) {
                 console.error('[Calendar Blood Fetch Error]:', err.message);
                 return resolve();
@@ -260,6 +286,7 @@ router.post('/events', authenticateToken, (req, res) => {
         color = '#6366f1',
         memo = '',
         is_all_day = 0,
+        is_family = 0,
         notify_timing = 'exact',
         notify_repeat = 1
     } = req.body;
@@ -269,11 +296,12 @@ router.post('/events', authenticateToken, (req, res) => {
     }
 
     const isAllDayVal = is_all_day ? 1 : 0;
+    const isFamilyVal = (is_family || category === '가족') ? 1 : 0;
     const timeVal = isAllDayVal ? '' : (event_time || '').trim();
 
     const query = `
-        INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, notify_timing, notify_repeat)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, is_family, notify_timing, notify_repeat)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     db.run(query, [
         userId,
@@ -284,6 +312,7 @@ router.post('/events', authenticateToken, (req, res) => {
         color.trim(),
         (memo || '').trim(),
         isAllDayVal,
+        isFamilyVal,
         notify_timing || 'exact',
         parseInt(notify_repeat, 10) || 1
     ], function(err) {
@@ -308,6 +337,7 @@ router.put('/events/:id', authenticateToken, (req, res) => {
         color = '#6366f1',
         memo = '',
         is_all_day = 0,
+        is_family = 0,
         notify_timing = 'exact',
         notify_repeat = 1
     } = req.body;
@@ -317,12 +347,13 @@ router.put('/events/:id', authenticateToken, (req, res) => {
     }
 
     const isAllDayVal = is_all_day ? 1 : 0;
+    const isFamilyVal = (is_family || category === '가족') ? 1 : 0;
     const timeVal = isAllDayVal ? '' : (event_time || '').trim();
 
     const query = `
         UPDATE calendar_events
         SET title = ?, event_date = ?, event_time = ?, category = ?, color = ?, memo = ?,
-            is_all_day = ?, notify_timing = ?, notify_repeat = ?, notify_sent_count = 0
+            is_all_day = ?, is_family = ?, notify_timing = ?, notify_repeat = ?, notify_sent_count = 0
         WHERE id = ? AND (user_id = ? OR ? = 1)
     `;
     db.run(query, [
@@ -333,6 +364,7 @@ router.put('/events/:id', authenticateToken, (req, res) => {
         color.trim(),
         (memo || '').trim(),
         isAllDayVal,
+        isFamilyVal,
         notify_timing || 'exact',
         parseInt(notify_repeat, 10) || 1,
         eventId,

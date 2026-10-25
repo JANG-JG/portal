@@ -83,6 +83,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`ALTER TABLE calendar_events ADD COLUMN notify_repeat INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE calendar_events ADD COLUMN notify_sent_count INTEGER DEFAULT 0`, () => {});
             db.run(`ALTER TABLE calendar_events ADD COLUMN last_notified_at DATETIME`, () => {});
+            db.run(`ALTER TABLE calendar_events ADD COLUMN is_family INTEGER DEFAULT 0`, () => {});
 
             // 📅 캘린더 커스텀 범례/카테고리 관리 테이블
             db.run(`CREATE TABLE IF NOT EXISTS calendar_categories (
@@ -98,6 +99,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
                         const defaultCats = [
                             ['admin', '업무', '#6366f1'],
                             ['admin', '개인', '#10b981'],
+                            ['admin', '가족', '#ec4899'],
                             ['admin', '중요', '#f43f5e'],
                             ['admin', '모임', '#f59e0b'],
                             ['admin', '기타', '#0ea5e9']

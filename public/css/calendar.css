@@ -718,3 +718,14 @@ body {
     }
 }
 
+/* 🛡️ 권한 격리 (RBAC) 스타일 */
+html.hide-blood [data-service="blood"] {
+    display: none !important;
+}
+html.hide-asset [data-service="asset"] {
+    display: none !important;
+}
+html.hide-ops [data-service="ops"] {
+    display: none !important;
+}
+
