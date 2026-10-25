@@ -447,41 +447,78 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
     }
 });
 
-// 1-1. 메인 대시보드용 최근 가족 앨범 사진 8선 조회 API
+// 1-1. 메인 대시보드용 최근 가족 앨범 사진 12선 조회 API (개별 슬라이드 사진 단위 전개)
 router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
     if (!albumDb) {
         return res.json({ success: true, photos: [] });
     }
+    // 1) 슬라이드 개별 사진(photo_images) 우선 조회
     const query = `
         SELECT 
-            p.id, p.caption, p.thumbnail_filename, p.storage_filename, p.created_at, 
+            pi.id as image_id,
+            p.id as photo_id,
+            p.caption,
+            pi.thumbnail_filename,
+            pi.storage_filename,
+            COALESCE(pi.created_at, p.created_at) as created_at,
             COALESCE(m.nickname, '가족') as author_nickname,
             COALESCE(m.avatar_emoji, '😊') as author_emoji,
             (SELECT COUNT(*) FROM photo_comments c WHERE c.photo_id = p.id) as comment_count,
-            (SELECT COUNT(*) FROM photo_reactions r WHERE r.photo_id = p.id) as reaction_count,
-            (SELECT COUNT(*) FROM photo_images pi WHERE pi.photo_id = p.id) as image_count
-        FROM photos p
+            (SELECT COUNT(*) FROM photo_reactions r WHERE r.photo_id = p.id) as reaction_count
+        FROM photo_images pi
+        JOIN photos p ON pi.photo_id = p.id
         LEFT JOIN family_members m ON p.member_id = m.id
-        ORDER BY p.id DESC
-        LIMIT 8
+        ORDER BY pi.id DESC
+        LIMIT 12
     `;
     albumDb.all(query, [], (err, rows) => {
-        if (err) {
-            console.error('포털 최근 사진 조회 오류:', err.message);
-            return res.json({ success: false, photos: [] });
+        if (!err && Array.isArray(rows) && rows.length > 0) {
+            const photos = rows.map(r => ({
+                id: r.photo_id,
+                imageId: r.image_id,
+                caption: r.caption || '',
+                thumbnailUrl: `/album-uploads/thumbnails/${r.thumbnail_filename}`,
+                externalThumbnailUrl: `https://album.j-jg.cc/uploads/thumbnails/${r.thumbnail_filename}`,
+                author: r.author_nickname,
+                emoji: r.author_emoji,
+                createdAt: r.created_at,
+                commentCount: r.comment_count || 0,
+                reactionCount: r.reaction_count || 0
+            }));
+            return res.json({ success: true, photos });
         }
-        const photos = (rows || []).map(r => ({
-            id: r.id,
-            caption: r.caption || '',
-            thumbnailUrl: `https://album.j-jg.cc/uploads/thumbnails/${r.thumbnail_filename}`,
-            author: r.author_nickname,
-            emoji: r.author_emoji,
-            createdAt: r.created_at,
-            commentCount: r.comment_count || 0,
-            reactionCount: r.reaction_count || 0,
-            batchTotal: Math.max(1, r.image_count || 1)
-        }));
-        res.json({ success: true, photos });
+
+        // 2) 폴백: photos 테이블 직접 조회 (과거 단일 사진)
+        const fallbackQuery = `
+            SELECT 
+                p.id as photo_id, p.caption, p.thumbnail_filename, p.storage_filename, p.created_at,
+                COALESCE(m.nickname, '가족') as author_nickname,
+                COALESCE(m.avatar_emoji, '😊') as author_emoji,
+                (SELECT COUNT(*) FROM photo_comments c WHERE c.photo_id = p.id) as comment_count,
+                (SELECT COUNT(*) FROM photo_reactions r WHERE r.photo_id = p.id) as reaction_count
+            FROM photos p
+            LEFT JOIN family_members m ON p.member_id = m.id
+            ORDER BY p.id DESC
+            LIMIT 12
+        `;
+        albumDb.all(fallbackQuery, [], (fErr, fRows) => {
+            if (fErr) {
+                console.error('포털 최근 사진 조회 오류:', fErr.message);
+                return res.json({ success: false, photos: [] });
+            }
+            const photos = (fRows || []).map(r => ({
+                id: r.photo_id,
+                caption: r.caption || '',
+                thumbnailUrl: `/album-uploads/thumbnails/${r.thumbnail_filename}`,
+                externalThumbnailUrl: `https://album.j-jg.cc/uploads/thumbnails/${r.thumbnail_filename}`,
+                author: r.author_nickname,
+                emoji: r.author_emoji,
+                createdAt: r.created_at,
+                commentCount: r.comment_count || 0,
+                reactionCount: r.reaction_count || 0
+            }));
+            res.json({ success: true, photos });
+        });
     });
 });
 

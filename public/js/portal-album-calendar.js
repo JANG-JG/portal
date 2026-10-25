@@ -40,6 +40,7 @@ async function loadRecentAlbumPhotos() {
                 ? `<div class="album-thumb-batch-badge">📷 ${photo.batchTotal}장</div>` 
                 : '';
 
+            const extUrl = photo.externalThumbnailUrl || photo.thumbnailUrl;
             return `
                 <a href="https://album.j-jg.cc" class="album-thumb-card" title="${safeCaption}">
                     <div class="album-thumb-img-wrap">
@@ -47,8 +48,7 @@ async function loadRecentAlbumPhotos() {
                              alt="${safeCaption}" 
                              class="album-thumb-img" 
                              loading="lazy" 
-                             onerror="this.src='/favicon.svg'; this.style.objectFit='contain';">
-                        ${batchBadge}
+                             onerror="if (!this.dataset.fallback && '${extUrl}') { this.dataset.fallback='1'; this.src='${extUrl}'; } else { this.src='/favicon.svg'; this.style.objectFit='contain'; }">
                     </div>
                     <div class="album-thumb-meta">
                         <div class="album-thumb-caption">${safeCaption}</div>
@@ -176,12 +176,19 @@ async function loadUpcomingCalendarEvents() {
     }
 }
 
-// 3. 메인 포털 초기화 시 동시 로드
-document.addEventListener('DOMContentLoaded', () => {
+// 3. 메인 포털 초기화 시 동시 로드 (DOM 로드 상태 완벽 방어)
+function initPortalAlbumAndCalendar() {
     loadRecentAlbumPhotos();
     loadUpcomingCalendarEvents();
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPortalAlbumAndCalendar);
+} else {
+    initPortalAlbumAndCalendar();
+}
 
 // 전역 바인딩
 window.loadRecentAlbumPhotos = loadRecentAlbumPhotos;
 window.loadUpcomingCalendarEvents = loadUpcomingCalendarEvents;
+window.initPortalAlbumAndCalendar = initPortalAlbumAndCalendar;
