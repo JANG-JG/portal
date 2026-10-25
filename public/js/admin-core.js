@@ -167,6 +167,12 @@ function handlePasswordModalBackdropClick(e) {
 function scrollTabIntoCenter(container, button, smooth = true) {
     if (!container || !button) return;
     
+    // 만약 전체 내용이 컨테이너 너비보다 작거나 같으면 스크롤 불필요 (맨 왼쪽 0 고정)
+    if (container.scrollWidth <= container.clientWidth) {
+        container.scrollTo({ left: 0, behavior: smooth ? 'smooth' : 'auto' });
+        return;
+    }
+
     // 만약 첫 번째 버튼이면 항상 맨 왼쪽(scrollLeft = 0)으로 고정
     if (button === container.firstElementChild) {
         container.scrollTo({ left: 0, behavior: smooth ? 'smooth' : 'auto' });
@@ -177,12 +183,18 @@ function scrollTabIntoCenter(container, button, smooth = true) {
         container.scrollTo({ left: Math.max(0, container.scrollWidth - container.clientWidth), behavior: smooth ? 'smooth' : 'auto' });
         return;
     }
-    // 중간 버튼이면 컨테이너 중심에 정확히 자석 스냅
-    const containerWidth = container.clientWidth;
-    const buttonLeft = button.offsetLeft;
-    const buttonWidth = button.offsetWidth;
-    const targetScrollLeft = buttonLeft - (containerWidth / 2) + (buttonWidth / 2);
 
+    // 현재 버튼이 이미 화면 안에 온전히 다 보이고 있다면 굳이 스크롤 이동하지 않음
+    const curScroll = container.scrollLeft;
+    const contWidth = container.clientWidth;
+    const btnLeft = button.offsetLeft;
+    const btnRight = btnLeft + button.offsetWidth;
+    if (btnLeft >= curScroll + 10 && btnRight <= curScroll + contWidth - 10) {
+        return;
+    }
+
+    // 버튼이 가려져 있는 경우만 부드럽게 중심 정렬
+    const targetScrollLeft = btnLeft - (contWidth / 2) + (button.offsetWidth / 2);
     container.scrollTo({
         left: Math.max(0, targetScrollLeft),
         behavior: smooth ? 'smooth' : 'auto'
