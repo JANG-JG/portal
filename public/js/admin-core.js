@@ -80,6 +80,15 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-news-articles', label: '최근 수집 기사 (10선)', icon: '📑' },
         { id: 'subpane-news-history', label: '수집 이력 & 로그 콘솔', icon: '📋' }
     ],
+    'tab-album': [
+        { id: 'subpane-album-summary', label: '사진첩 통계 & 스토리지', icon: '📊' },
+        { id: 'subpane-album-photos', label: '최근 업로드 사진 관리', icon: '🖼️' },
+        { id: 'subpane-album-members', label: '가족 구성원 활동 현황', icon: '👥' }
+    ],
+    'tab-backup': [
+        { id: 'subpane-backup-status', label: '정기 백업 & 즉시 실행', icon: '📦' },
+        { id: 'subpane-backup-logs', label: '실시간 백업 로그 콘솔', icon: '📋' }
+    ],
     'tab-security': [
         { id: 'subpane-security-family', label: '우리 가족 및 권한 관리', icon: '👨‍👩‍👧‍👦' },
         { id: 'subpane-security-logs', label: '최근 로그인 시도 이력', icon: '🔒' },
@@ -378,6 +387,13 @@ function switchAdminTab(tabId, btn, targetSubId = null, shouldScroll = true) {
         if (typeof window.loadNewsData === 'function') window.loadNewsData();
         if (typeof window.loadNewsLogs === 'function') window.loadNewsLogs();
         if (typeof window.fetchNewsFileLogs === 'function') window.fetchNewsFileLogs();
+    } else if (tabId === 'tab-album') {
+        if (typeof window.loadAlbumAdminStats === 'function') window.loadAlbumAdminStats();
+        if (typeof window.loadAlbumAdminPhotos === 'function') window.loadAlbumAdminPhotos();
+        if (typeof window.loadAlbumAdminMembers === 'function') window.loadAlbumAdminMembers();
+    } else if (tabId === 'tab-backup') {
+        if (typeof window.loadBackupAdminStatus === 'function') window.loadBackupAdminStatus();
+        if (typeof window.loadBackupAdminLogs === 'function') window.loadBackupAdminLogs();
     } else if (tabId === 'tab-security') {
         if (typeof window.loadSecurityLogs === 'function') window.loadSecurityLogs();
     }

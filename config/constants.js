@@ -17,10 +17,12 @@ const HOME_WORKSPACE = path.join(os.homedir(), 'workspace');
 const BLOOD_DIR = process.env.BLOOD_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'blood-pressure-app')) ? path.join(WORKSPACE_ROOT, 'blood-pressure-app') : path.join(HOME_WORKSPACE, 'blood-pressure-app'));
 const ASSET_DIR = process.env.ASSET_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'asset')) ? path.join(WORKSPACE_ROOT, 'asset') : path.join(HOME_WORKSPACE, 'asset'));
 const NEWS_DIR = process.env.NEWS_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'news-dashboard')) ? path.join(WORKSPACE_ROOT, 'news-dashboard') : path.join(HOME_WORKSPACE, 'news-dashboard'));
+const ALBUM_DIR = process.env.ALBUM_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'family-album')) ? path.join(WORKSPACE_ROOT, 'family-album') : path.join(HOME_WORKSPACE, 'family-album'));
 
 const BLOOD_DB_PATH = process.env.DB_PATH || path.join(BLOOD_DIR, 'health.db');
 const ASSET_DB_PATH = process.env.ASSET_DB_PATH || path.join(ASSET_DIR, 'asset.db');
 const NEWS_DB_PATH = process.env.NEWS_DB_PATH || path.join(NEWS_DIR, 'briefing.db');
+const ALBUM_DB_PATH = process.env.ALBUM_DB_PATH || path.join(ALBUM_DIR, 'album.db');
 
 const ADMIN_USERS = new Set([
     'admin',
@@ -34,9 +36,11 @@ const ALLOWED_ORIGINS = [
     'https://blood.j-jg.cc',
     'https://asset.j-jg.cc',
     'https://news.j-jg.cc',
+    'https://album.j-jg.cc',
     'http://localhost:3000',
     'http://localhost:3003',
     'http://localhost:3004',
+    'http://localhost:3005',
     'http://localhost:5050'
 ];
 

@@ -165,8 +165,23 @@ const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
     }
 });
 
+// 가족 사진첩 DB 연결 (album.db)
+const { ALBUM_DB_PATH } = require('../config/constants');
+const albumDb = new sqlite3.Database(ALBUM_DB_PATH, (err) => {
+    if (err) console.error('❌ 사진첩 DB 연결 실패:', err);
+    else {
+        console.log('✅ 사진첩 DB 로드 완료:', ALBUM_DB_PATH);
+        albumDb.run('PRAGMA journal_mode = WAL;');
+        albumDb.run('PRAGMA synchronous = NORMAL;');
+        albumDb.run('PRAGMA busy_timeout = 5000;');
+        albumDb.run('PRAGMA temp_store = MEMORY;');
+        albumDb.run('PRAGMA cache_size = -8000;');
+    }
+});
+
 module.exports = {
     db,
     assetDb,
-    newsDb
+    newsDb,
+    albumDb
 };

@@ -10,9 +10,10 @@ const {
     WORKSPACE_ROOT,
     BLOOD_DB_PATH,
     ASSET_DB_PATH,
-    NEWS_DB_PATH
+    NEWS_DB_PATH,
+    ALBUM_DB_PATH
 } = require('../config/constants');
-const { db, assetDb, newsDb } = require('../services/db');
+const { db, assetDb, newsDb, albumDb } = require('../services/db');
 const { getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
 const { sendServerTelegram } = require('../services/unifiedNotificationScheduler');
 const {
@@ -31,10 +32,14 @@ const {
 const bloodAdminRoutes = require('./admin/blood.admin.routes');
 const newsAdminRoutes = require('./admin/news.admin.routes');
 const familyAdminRoutes = require('./admin/family.admin.routes');
+const albumAdminRoutes = require('./admin/album.admin.routes');
+const backupAdminRoutes = require('./admin/backup.admin.routes');
 
 router.use('/blood', bloodAdminRoutes);
 router.use('/news', newsAdminRoutes);
 router.use('/family', familyAdminRoutes);
+router.use('/album', albumAdminRoutes);
+router.use('/backup', backupAdminRoutes);
 
 // 1. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링
 let adminOverviewCache = null;
@@ -121,7 +126,8 @@ router.get('/overview', async (req, res) => {
             const dbs = {
                 health: getFileSize(BLOOD_DB_PATH),
                 asset: getFileSize(ASSET_DB_PATH),
-                briefing: getFileSize(NEWS_DB_PATH)
+                briefing: getFileSize(NEWS_DB_PATH),
+                album: getFileSize(ALBUM_DB_PATH)
             };
 
             const memoryInfo = getRealMemoryInfo();
