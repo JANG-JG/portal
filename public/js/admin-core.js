@@ -530,7 +530,7 @@ function initAdminSwipeGestures() {
 
         const target = e.target;
         // 테이블, 터미널 콘솔, 상단 탭바, 모달, 사이드바, 폼 입력, 차트 등 내부 터치는 서브탭 스와이프 제외
-        if (target.closest('.admin-table-container, .pm2-console, .admin-nav-sticky-wrapper, .admin-sidebar, .admin-modal-backdrop, pre, code, input, textarea, select, canvas, #uplotPrimary, #secUplot')) {
+        if (target.closest('.admin-table-container, .table-responsive, .pm2-console, .admin-nav-sticky-wrapper, .admin-sidebar, .admin-modal-backdrop, pre, code, input, textarea, select, canvas, #uplotPrimary, #secUplot')) {
             isTouchCancelled = true;
             return;
         }

@@ -1755,111 +1755,104 @@ body {
 }
 
 /* ==========================================
-   🗄️ SQLite DB 매니저 스타일 (Clean Light & Slate)
+   🗄️ SQLite DB 매니저 스타일 (Clean Light & Slate 디자인 시스템 통일)
    ========================================== */
-.db-manager-topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+.db-unified-control-card {
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 0.75rem;
-    padding: 0.85rem 1.1rem;
-    margin-bottom: 1.25rem;
+    padding: 0.85rem 1.15rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 
-.db-manager-topbar-left {
+.db-control-bar-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.db-control-fields-wrap {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    flex-wrap: wrap;
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+.db-control-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
     flex: 1 1 auto;
+    min-width: 0;
 }
 
-.db-manager-topbar-right {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.db-select-group {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.db-select-label {
-    font-size: 0.8rem;
-    font-weight: 600;
+.db-control-label {
+    font-size: 0.76rem;
+    font-weight: 700;
     color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
     white-space: nowrap;
 }
 
-.db-select-control {
-    padding: 0.45rem 0.75rem;
-    font-size: 0.85rem;
+.db-control-select {
+    width: 100%;
+    padding: 0.45rem 0.65rem;
+    font-size: 0.82rem;
+    font-weight: 600;
     border: 1px solid #cbd5e1;
     border-radius: 0.5rem;
     background: #f8fafc;
-    color: #1e293b;
-    font-weight: 500;
+    color: #0f172a;
     outline: none;
-    max-width: 260px;
+    transition: all 0.15s ease;
+    box-sizing: border-box;
+    text-overflow: ellipsis;
 }
 
-.db-select-control:focus {
+.db-control-select:focus {
     border-color: #3b82f6;
     background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
-.db-view-mode-toggle {
+.db-control-actions-wrap {
     display: flex;
-    background: #f1f5f9;
-    border-radius: 0.5rem;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.db-view-switcher {
+    background: #e2e8f0;
+    border-radius: 0.55rem;
     padding: 2px;
-    border: 1px solid #e2e8f0;
-}
-
-.btn-view-toggle {
-    border: none;
-    background: transparent;
-    padding: 0.35rem 0.65rem;
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: #64748b;
-    border-radius: 0.375rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-.btn-view-toggle.active {
-    background: #ffffff;
-    color: #0f172a;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    display: flex;
+    gap: 2px;
 }
 
 /* 필터 바 & 검색 */
 .db-filter-bar {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.65rem;
     margin-bottom: 1rem;
     flex-wrap: wrap;
 }
 
 .db-search-box {
     position: relative;
-    flex: 1 1 240px;
+    flex: 1 1 200px;
     min-width: 0;
 }
 
 .db-search-icon {
     position: absolute;
-    left: 0.75rem;
+    left: 0.7rem;
     top: 50%;
     transform: translateY(-50%);
     font-size: 0.85rem;
@@ -1869,42 +1862,53 @@ body {
 
 .db-search-box input {
     width: 100%;
-    padding: 0.45rem 0.75rem 0.45rem 2.2rem;
-    font-size: 0.85rem;
+    padding: 0.45rem 0.75rem 0.45rem 2.1rem;
+    font-size: 0.82rem;
     border: 1px solid #cbd5e1;
     border-radius: 0.5rem;
+    background: #ffffff;
     box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.db-search-box input:focus {
+    border-color: #3b82f6;
 }
 
 .db-limit-box {
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    flex-shrink: 0;
 }
 
 .db-limit-select {
-    padding: 0.4rem 0.5rem;
+    padding: 0.4rem 0.55rem;
     font-size: 0.8rem;
     border: 1px solid #cbd5e1;
     border-radius: 0.375rem;
     background: #fff;
+    color: #334155;
+    outline: none;
 }
 
 .db-execution-badge {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     color: #059669;
     background: #ecfdf5;
     border: 1px solid #a7f3d0;
-    padding: 0.35rem 0.65rem;
+    padding: 0.3rem 0.6rem;
     border-radius: 0.375rem;
     font-weight: 600;
     margin-left: auto;
+    white-space: nowrap;
 }
 
 /* 📱 모바일 카드 뷰 (가로 360px 완벽 대응) */
 .db-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 0.75rem;
     box-sizing: border-box;
     width: 100%;
@@ -1931,41 +1935,51 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 0.6rem;
+    padding-bottom: 0.55rem;
     border-bottom: 1px solid #f1f5f9;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0.55rem;
+    gap: 0.5rem;
 }
 
 .db-record-card-id {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
+    gap: 0.45rem;
+    font-size: 0.88rem;
     color: #0f172a;
     min-width: 0;
+    overflow: hidden;
+}
+
+.db-record-card-id strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .db-rowid-badge {
     background: #e2e8f0;
     color: #475569;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    padding: 2px 6px;
+    padding: 2px 5px;
     border-radius: 4px;
     font-family: monospace;
+    flex-shrink: 0;
 }
 
 .db-record-actions {
     display: flex;
-    gap: 0.25rem;
+    gap: 0.35rem;
+    flex-shrink: 0;
 }
 
 .btn-admin-icon {
     border: 1px solid #e2e8f0;
     background: #f8fafc;
     border-radius: 0.375rem;
-    padding: 0.3rem 0.45rem;
-    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
     cursor: pointer;
     transition: all 0.15s ease;
 }
@@ -1990,23 +2004,24 @@ body {
     justify-content: space-between;
     align-items: baseline;
     gap: 0.5rem;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     min-width: 0;
 }
 
 .db-field-key {
     color: #64748b;
-    font-weight: 500;
+    font-weight: 600;
     white-space: nowrap;
-    font-size: 0.75rem;
+    font-size: 0.74rem;
+    flex-shrink: 0;
 }
 
 .db-field-val {
     color: #1e293b;
-    font-weight: 600;
+    font-weight: 500;
     text-align: right;
     word-break: break-all;
-    max-width: 70%;
+    max-width: 68%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2047,7 +2062,7 @@ thead th.sticky-action-col {
 }
 
 .db-col-type {
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: normal;
     color: #94a3b8;
     margin-left: 2px;
@@ -2064,7 +2079,7 @@ thead th.sticky-action-col {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 1rem;
+    padding-top: 0.85rem;
     margin-top: 0.75rem;
     border-top: 1px solid #f1f5f9;
     flex-wrap: wrap;
@@ -2074,21 +2089,21 @@ thead th.sticky-action-col {
 .db-pagination-controls {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
 }
 
 .db-page-num {
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: #0f172a;
-    padding: 0 0.25rem;
+    padding: 0 0.35rem;
 }
 
 /* ⚡ SQL 콘솔 */
 .db-sql-templates {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     flex-wrap: wrap;
     margin-bottom: 0.6rem;
 }
@@ -2098,10 +2113,11 @@ thead th.sticky-action-col {
     background: #f8fafc;
     color: #334155;
     font-family: monospace;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     padding: 0.25rem 0.5rem;
     border-radius: 0.35rem;
     cursor: pointer;
+    transition: all 0.15s ease;
 }
 
 .btn-template:hover {
@@ -2233,20 +2249,19 @@ thead th.sticky-action-col {
 
 /* 모바일 360px 완벽 대응 미디어 쿼리 */
 @media (max-width: 640px) {
-    .db-manager-topbar {
+    .db-control-bar-inner {
         flex-direction: column;
         align-items: stretch;
     }
-    .db-manager-topbar-left, .db-manager-topbar-right {
+    .db-control-fields-wrap {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    .db-control-actions-wrap {
         width: 100%;
         justify-content: space-between;
-    }
-    .db-select-group {
-        flex: 1 1 auto;
-    }
-    .db-select-control {
-        width: 100%;
-        max-width: none;
     }
     .db-cards-grid {
         grid-template-columns: 1fr;
@@ -2258,6 +2273,29 @@ thead th.sticky-action-col {
         width: 100%;
         margin-left: 0;
         text-align: center;
+    }
+    .db-browse-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .db-browse-actions .btn-admin {
+        flex: 1 1 50%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 380px) {
+    .db-control-fields-wrap {
+        grid-template-columns: 1fr;
+    }
+    .db-record-field-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.15rem;
+    }
+    .db-field-val {
+        max-width: 100%;
+        text-align: left;
     }
 }
 

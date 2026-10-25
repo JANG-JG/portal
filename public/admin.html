@@ -658,7 +658,7 @@
             </div>
 
             <!-- 서브 2: 실시간 서버 시스템 및 에러 로그 (최근 50줄) -->
-            <div id="subpane-overview-logs" class="admin-sub-pane">
+            <div id="subpane-overview-logs" class="admin-sub-pane hidden-pane">
                 <div class="admin-card" style="padding: 1.25rem;">
                     <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
                         <h3>💻 실시간 서버 시스템 및 에러 로그 (최근 50줄)</h3>
@@ -709,7 +709,7 @@
             </div>
 
             <!-- 서브 3: 서비스 데이터베이스 현황 -->
-            <div id="subpane-overview-db" class="admin-sub-pane">
+            <div id="subpane-overview-db" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h3>🗄️ 서비스 데이터베이스 (SQLite) 현황</h3>
@@ -813,7 +813,7 @@
             </div>
 
             <!-- 서브 2: 혈압 위험 기준치 설정 -->
-            <div id="subpane-blood-threshold" class="admin-sub-pane">
+            <div id="subpane-blood-threshold" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h3>⚙️ 혈압 위험 기준치 설정</h3>
@@ -857,7 +857,7 @@
             </div>
 
             <!-- 서브 3: 최근 혈압 측정 기록 -->
-            <div id="subpane-blood-records" class="admin-sub-pane">
+            <div id="subpane-blood-records" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h3>🩸 최근 혈압 측정 기록 (최근 10건)</h3>
@@ -922,7 +922,7 @@
             </div>
 
             <!-- 서브 2: 등록 증권 계좌 현황 -->
-            <div id="subpane-asset-accounts" class="admin-sub-pane">
+            <div id="subpane-asset-accounts" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h3>📂 증권 계좌별 현황</h3>
@@ -946,7 +946,7 @@
             </div>
 
             <!-- 서브 3: 전체 보유 종목 상세 (한글 종목명) -->
-            <div id="subpane-asset-holdings" class="admin-sub-pane">
+            <div id="subpane-asset-holdings" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h3>💼 전체 보유 종목 상세 (한글명 매핑)</h3>
@@ -1068,7 +1068,7 @@
             </div>
 
             <!-- 서브 2: 최근 수집된 헤드라인 10선 -->
-            <div id="subpane-news-articles" class="admin-sub-pane">
+            <div id="subpane-news-articles" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h3>📑 최근 수집 뉴스 기사 (최신 10선)</h3>
@@ -1093,7 +1093,7 @@
             </div>
 
             <!-- 서브 3: 수집 이력 & 로그 콘솔 -->
-            <div id="subpane-news-history" class="admin-sub-pane">
+            <div id="subpane-news-history" class="admin-sub-pane hidden-pane">
                 <!-- 4. 자동 수집 및 텔레그램 발송 이력 (최근 50회) -->
                 <div class="admin-card">
                     <div class="admin-card-header">
@@ -1195,7 +1195,7 @@
             </div>
 
             <!-- 서브 2: 최근 로그인 시도 이력 (최근 50건) -->
-            <div id="subpane-security-logs" class="admin-sub-pane">
+            <div id="subpane-security-logs" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <h3>🔒 최근 로그인 시도 이력 (최근 50건)</h3>
@@ -1229,7 +1229,7 @@
             </div>
 
             <!-- 서브 2: SSO 보안 및 시스템 기술 스택 -->
-            <div id="subpane-security-stack" class="admin-sub-pane">
+            <div id="subpane-security-stack" class="admin-sub-pane hidden-pane">
                 <!-- 1. 포털 SSO 보안 정책 정보 -->
                 <div class="admin-card">
                     <div class="admin-card-header">
@@ -1341,7 +1341,7 @@
         <!-- 📸 [탭 6] 우리 가족 사진첩 제어 (tab-album) -->
         <!-- ========================================== -->
         <div id="tab-album" class="admin-tab-pane">
-            <div class="admin-subpane active" id="subpane-album-summary">
+            <div id="subpane-album-summary" class="admin-sub-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <div class="admin-card-title">
@@ -1398,7 +1398,7 @@
                 </div>
             </div>
 
-            <div class="admin-subpane" id="subpane-album-photos">
+            <div id="subpane-album-photos" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <div class="admin-card-title">
@@ -1419,7 +1419,7 @@
                 </div>
             </div>
 
-            <div class="admin-subpane" id="subpane-album-members">
+            <div id="subpane-album-members" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <div class="admin-card-title">
@@ -1457,7 +1457,7 @@
         <!-- 💾 [탭 7] 통합 백업 센터 (tab-backup) -->
         <!-- ========================================== -->
         <div id="tab-backup" class="admin-tab-pane">
-            <div class="admin-subpane active" id="subpane-backup-status">
+            <div id="subpane-backup-status" class="admin-sub-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <div class="admin-card-title">
@@ -1500,7 +1500,7 @@
                             <div class="admin-stat-card">
                                 <div class="admin-stat-icon" style="background:#fae8ff; color:#86198f;">🛡️</div>
                                 <div class="admin-stat-info">
-                                    <div class="admin-stat-label">4대 DB 무결성</div>
+                                    <div class="admin-stat-label">5대 DB 무결성</div>
                                     <div class="admin-stat-val" id="backupStatIntegrity">-</div>
                                 </div>
                             </div>
@@ -1529,7 +1529,7 @@
                 </div>
             </div>
 
-            <div class="admin-subpane" id="subpane-backup-logs">
+            <div id="subpane-backup-logs" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <div class="admin-card-title">
@@ -1551,37 +1551,43 @@
         <!-- 🗄️ [탭 8] 경량 SQLite DB 매니저 (tab-database) -->
         <!-- ========================================== -->
         <div id="tab-database" class="admin-tab-pane">
-            <!-- DB 매니저 상단 글로벌 툴바 (DB 선택 / 테이블 선택 / 뷰 모드 토글) -->
-            <div class="db-manager-topbar">
-                <div class="db-manager-topbar-left">
-                    <div class="db-select-group">
-                        <label class="db-select-label">데이터베이스</label>
-                        <select id="dbSelect" class="db-select-control" onchange="DbManager.switchDb(this.value)">
-                            <option value="">데이터베이스 불러오는 중...</option>
-                        </select>
+            <!-- 🗄️ DB 매니저 상단 통합 선택 바 (기존 관리자 카드 디자인 시스템 통일) -->
+            <div class="admin-card db-unified-control-card" style="margin-bottom: 1.15rem;">
+                <div class="db-control-bar-inner">
+                    <div class="db-control-fields-wrap">
+                        <div class="db-control-field">
+                            <label class="db-control-label"><span>🗄️</span> <span>데이터베이스</span></label>
+                            <select id="dbSelect" class="db-control-select" onchange="DbManager.switchDb(this.value)">
+                                <option value="">데이터베이스 불러오는 중...</option>
+                            </select>
+                        </div>
+                        <div class="db-control-field">
+                            <label class="db-control-label"><span>📋</span> <span>테이블</span></label>
+                            <select id="tableSelect" class="db-control-select" onchange="DbManager.switchTable(this.value)">
+                                <option value="">테이블 선택</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="db-select-group">
-                        <label class="db-select-label">테이블</label>
-                        <select id="tableSelect" class="db-select-control" onchange="DbManager.switchTable(this.value)">
-                            <option value="">테이블 선택</option>
-                        </select>
+                    <div class="db-control-actions-wrap">
+                        <div class="server-tab-container db-view-switcher" style="margin:0; width:auto;">
+                            <button type="button" id="btnViewModeCard" class="server-tab-btn active" onclick="DbManager.setViewMode('card')">
+                                <span>📱</span> <span class="server-tab-label">카드</span>
+                            </button>
+                            <button type="button" id="btnViewModeTable" class="server-tab-btn" onclick="DbManager.setViewMode('table')">
+                                <span>💻</span> <span class="server-tab-label">표</span>
+                            </button>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.loadTableData()" title="데이터 새로고침">
+                            🔄 새로고침
+                        </button>
                     </div>
-                </div>
-                <div class="db-manager-topbar-right">
-                    <div class="db-view-mode-toggle">
-                        <button type="button" id="btnViewModeCard" class="btn-view-toggle active" onclick="DbManager.setViewMode('card')" title="모바일 카드 뷰">📱 카드</button>
-                        <button type="button" id="btnViewModeTable" class="btn-view-toggle" onclick="DbManager.setViewMode('table')" title="데스크톱 표 뷰">💻 표</button>
-                    </div>
-                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.loadTableData()" title="데이터 새로고침">
-                        🔄 새로고침
-                    </button>
                 </div>
             </div>
 
-            <!-- 서브패널 1: 데이터 브라우징 & 관리 -->
-            <div class="admin-subpane active" id="subpane-db-browse">
+            <!-- 서브 1: 데이터 브라우징 & 레코드 관리 -->
+            <div id="subpane-db-browse" class="admin-sub-pane">
                 <div class="admin-card">
-                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.6rem;">
                         <div class="admin-card-title">
                             <span>📋</span>
                             <span>테이블 데이터 탐색 & 레코드 관리</span>
@@ -1596,14 +1602,14 @@
                         </div>
                     </div>
                     <div class="admin-card-body">
-                        <!-- 검색 및 필터 툴바 -->
+                        <!-- 검색 및 표시 건수 필터 툴바 -->
                         <div class="db-filter-bar">
                             <div class="db-search-box">
                                 <span class="db-search-icon">🔍</span>
                                 <input type="text" id="dbSearchInput" placeholder="테이블 내 텍스트 전체 검색..." oninput="DbManager.handleSearch(this.value)">
                             </div>
                             <div class="db-limit-box">
-                                <label style="font-size:0.8rem; color:#64748b;">표시:</label>
+                                <label style="font-size:0.8rem; color:#64748b; font-weight:600;">표시:</label>
                                 <select class="db-limit-select" onchange="DbManager.setLimit(this.value)">
                                     <option value="25" selected>25개</option>
                                     <option value="50">50개</option>
@@ -1615,7 +1621,7 @@
                             </div>
                         </div>
 
-                        <!-- 데이터 컨테이너 (카드 뷰 또는 테이블 뷰 동적 렌더링) -->
+                        <!-- 데이터 컨테이너 (모바일 카드 뷰 ↔ 데스크톱 표 뷰 동적 렌더링) -->
                         <div id="dbDataContainer" class="db-data-view-area">
                             <div style="text-align:center; padding:3rem; color:#94a3b8;">데이터를 불러오는 중...</div>
                         </div>
@@ -1626,19 +1632,20 @@
                 </div>
             </div>
 
-            <!-- 서브패널 2: SQL 쿼리 콘솔 -->
-            <div class="admin-subpane" id="subpane-db-query">
+            <!-- 서브 2: SQL 쿼리 콘솔 -->
+            <div id="subpane-db-query" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
-                    <div class="admin-card-header">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
                         <div class="admin-card-title">
                             <span>⚡</span>
                             <span>SQLite SQL 쿼리 콘솔</span>
                         </div>
+                        <span style="font-size:0.75rem; color:#64748b;">(상단 선택된 DB 대상 실행)</span>
                     </div>
                     <div class="admin-card-body">
                         <!-- 단축 쿼리 템플릿 버튼들 -->
                         <div class="db-sql-templates">
-                            <span style="font-size:0.8rem; font-weight:600; color:#475569;">빠른 템플릿:</span>
+                            <span style="font-size:0.8rem; font-weight:700; color:#475569;">빠른 템플릿:</span>
                             <button type="button" class="btn-template" onclick="DbManager.setQueryTemplate('select')">SELECT *</button>
                             <button type="button" class="btn-template" onclick="DbManager.setQueryTemplate('count')">COUNT(*)</button>
                             <button type="button" class="btn-template" onclick="DbManager.setQueryTemplate('pragma')">PRAGMA info</button>
@@ -1671,8 +1678,8 @@
                 </div>
             </div>
 
-            <!-- 서브패널 3: 테이블 구조 명세 -->
-            <div class="admin-subpane" id="subpane-db-schema">
+            <!-- 서브 3: 테이블 구조 명세 -->
+            <div id="subpane-db-schema" class="admin-sub-pane hidden-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
                         <div class="admin-card-title">
@@ -1699,7 +1706,7 @@
                             </table>
                         </div>
 
-                        <div style="font-weight:600; font-size:0.9rem; color:#334155; margin-bottom:0.5rem;">테이블 생성 DDL 쿼리</div>
+                        <div style="font-weight:700; font-size:0.9rem; color:#334155; margin-bottom:0.5rem;">테이블 생성 DDL 쿼리</div>
                         <pre id="dbSchemaDdl" class="db-ddl-pre">DDL 정보 없음</pre>
                     </div>
                 </div>
