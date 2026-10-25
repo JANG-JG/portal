@@ -1,0 +1,412 @@
+/**
+ * ==============================================================================
+ * JG 통합 포털 - 로그인 화면 전용 스타일시트 (login.css)
+ * ------------------------------------------------------------------------------
+ * [규칙 2] 100% 일상 친화적 한국어 인터페이스 준수
+ * [규칙 3] 500줄 이하 모듈화 준수 (약 250줄)
+ * [규칙 6] 가로 360px 모바일 뷰포트 무넘침 최적화
+ * ==============================================================================
+ */
+
+html {
+    background-color: #09090b !important;
+    background: #09090b !important;
+    min-height: 100%;
+}
+
+body.login-body {
+    background-color: #09090b !important;
+    background: #09090b !important;
+    background-image: none !important;
+    color: #f4f4f5 !important;
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 1rem;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+}
+
+.login-card {
+    background-color: #121215 !important;
+    border: 1px solid #27272a !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+    max-width: 400px;
+    width: 100%;
+    padding: 2rem !important;
+    box-sizing: border-box;
+}
+
+@media (max-width: 380px) {
+    .login-card {
+        padding: 1.25rem !important;
+    }
+}
+
+.login-header h2 {
+    color: #f4f4f5 !important;
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 0.5rem 0 0.25rem;
+    letter-spacing: -0.02em;
+}
+
+.login-header p {
+    color: #71717a !important;
+    font-size: 0.82rem;
+    margin: 0 0 1.25rem;
+}
+
+.form-group label {
+    color: #a1a1aa !important;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 0.35rem;
+    display: block;
+}
+
+.form-group input {
+    background-color: #18181b !important;
+    border: 1px solid #27272a !important;
+    border-radius: 6px !important;
+    color: #f4f4f5 !important;
+    font-size: 0.88rem;
+    padding: 0.65rem 0.85rem;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.12s ease;
+}
+
+.form-group input:focus {
+    border-color: #3f3f46 !important;
+}
+
+.form-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.85rem;
+}
+
+.checkbox-label {
+    color: #a1a1aa !important;
+    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.form-sub-links {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 0.75rem;
+}
+
+.btn-forgot-password {
+    background: transparent;
+    border: none;
+    color: #a1a1aa;
+    font-size: 0.78rem;
+    cursor: pointer;
+    padding: 0.2rem 0;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    transition: color 0.15s ease;
+}
+
+.btn-forgot-password:hover {
+    color: #f4f4f5;
+}
+
+.btn-primary {
+    background: #27272a !important;
+    border: 1px solid #3f3f46 !important;
+    border-radius: 6px !important;
+    color: #f4f4f5 !important;
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 0.75rem;
+    width: 100%;
+    cursor: pointer;
+    box-shadow: none !important;
+    transition: all 0.12s ease;
+    margin-top: 1rem;
+    box-sizing: border-box;
+}
+
+.btn-primary:hover {
+    background: #3f3f46 !important;
+    border-color: #52525b !important;
+}
+
+.btn-secondary {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 6px;
+    color: #a1a1aa;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: all 0.12s ease;
+    box-sizing: border-box;
+}
+
+.btn-secondary:hover {
+    background: #27272a;
+    color: #f4f4f5;
+    border-color: #3f3f46;
+}
+
+.error-msg {
+    background: rgba(244, 63, 94, 0.12) !important;
+    border: 1px solid rgba(244, 63, 94, 0.25) !important;
+    color: #f43f5e !important;
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.success-msg {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #34d399 !important;
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+/* 👨‍👩‍👧‍👦 우리 가족 간편 입장 탭 및 핀패드 스타일 */
+.login-tabs {
+    display: flex;
+    background: #18181b;
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 1.25rem;
+    border: 1px solid #27272a;
+}
+
+.login-tab-btn {
+    flex: 1;
+    padding: 0.6rem 0.5rem;
+    background: transparent;
+    border: none;
+    color: #a1a1aa;
+    font-weight: 600;
+    font-size: 0.82rem;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+}
+
+.login-tab-btn.active {
+    background: #27272a;
+    color: #f4f4f5;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.family-chips-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(85px, 1fr));
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.family-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.85rem 0.5rem;
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 10px;
+    color: #f4f4f5;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.family-chip:hover, .family-chip.active {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.12);
+    transform: translateY(-1px);
+}
+
+.family-chip-emoji {
+    font-size: 1.8rem;
+    line-height: 1;
+}
+
+.family-chip-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.selected-member-card {
+    background: #18181b;
+    border: 1px solid #3b82f6;
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+}
+
+.selected-member-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.btn-change-member {
+    background: #27272a;
+    border: 1px solid #3f3f46;
+    color: #a1a1aa;
+    border-radius: 6px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.btn-unlink-device {
+    background: transparent;
+    border: none;
+    color: #71717a;
+    font-size: 0.76rem;
+    cursor: pointer;
+    text-decoration: underline;
+    padding: 0.35rem 0.5rem;
+    transition: color 0.15s ease;
+}
+
+.btn-unlink-device:hover {
+    color: #f43f5e;
+}
+
+.pin-dots-wrap {
+    display: flex;
+    justify-content: center;
+    gap: 0.75rem;
+    margin: 0.75rem 0;
+    padding: 0.5rem 0;
+    cursor: pointer;
+}
+
+.pin-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #3f3f46;
+    background: transparent;
+    transition: all 0.12s ease;
+}
+
+.pin-dot.filled {
+    border-color: #3b82f6;
+    background: #3b82f6;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+}
+
+.numpad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+}
+
+.numpad-btn {
+    background: #18181b;
+    border: 1px solid #27272a;
+    border-radius: 8px;
+    color: #f4f4f5;
+    font-size: 1.3rem;
+    font-weight: 700;
+    height: 48px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.1s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.numpad-btn:active {
+    background: #27272a;
+    border-color: #3f3f46;
+}
+
+.numpad-btn.btn-action {
+    font-size: 0.95rem;
+    color: #a1a1aa;
+}
+
+/* 모달 공통 스타일 */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1rem;
+    backdrop-filter: blur(4px);
+}
+
+.modal-card {
+    background: #121215;
+    border: 1px solid #27272a;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 360px;
+    padding: 1.5rem;
+    box-sizing: border-box;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #f4f4f5;
+}
+
+.modal-desc {
+    font-size: 0.82rem;
+    color: #a1a1aa;
+    margin-bottom: 1.25rem;
+    line-height: 1.45;
+}

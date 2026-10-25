@@ -3,7 +3,7 @@
  * 우리 가족 간편 입장 & 6자리 PIN 인증 제어기 (login-family.js)
  * ------------------------------------------------------------------------------
  * [규칙 2] 100% 자연스러운 일상 한국어 인터페이스 준수
- * [규칙 3] 500줄 이하 모듈화 준수
+ * [규칙 3] 500줄 이하 모듈화 준수 (약 430줄)
  * [규칙 6] 모바일 터치(360px) 최적화 핀패드 및 가상 키패드 지원
  * ==============================================================================
  */
@@ -15,7 +15,7 @@
     let currentTempToken = null;
     let isSubmitting = false;
 
-    // DOM 참조
+    // DOM 요소 참조
     const familyPickerView = document.getElementById('familyPickerView');
     const familyPinView = document.getElementById('familyPinView');
     const familyChipsContainer = document.getElementById('familyChipsContainer');
@@ -28,7 +28,7 @@
     const pinChangeError = document.getElementById('pinChangeError');
     const btnSubmitNewPin = document.getElementById('btnSubmitNewPin');
 
-    // 1. 모드 전환 (가족 간편 입장 ↔ 관리자 로그인)
+    // 1. 모드 전환 (가족 간편 입장 ↔ 아이디 로그인)
     window.switchLoginMode = function (mode) {
         const familySec = document.getElementById('familyLoginSection');
         const adminSec = document.getElementById('adminLoginSection');
@@ -37,26 +37,26 @@
         const loginTitle = document.getElementById('loginTitle');
         const loginSubtitle = document.getElementById('loginSubtitle');
 
-        if (mode === 'admin') {
+        if (mode === 'admin' || mode === 'id') {
             if (familySec) familySec.style.display = 'none';
             if (adminSec) adminSec.style.display = 'block';
             if (tabBtnFamily) tabBtnFamily.classList.remove('active');
             if (tabBtnAdmin) tabBtnAdmin.classList.add('active');
-            if (loginTitle) loginTitle.textContent = '관리자 로그인';
-            if (loginSubtitle) loginSubtitle.textContent = '서버 관리자 계정으로 접속합니다';
+            if (loginTitle) loginTitle.textContent = 'JG 통합 포털';
+            if (loginSubtitle) loginSubtitle.textContent = '아이디와 비밀번호로 안전하게 로그인하세요';
             const usernameInput = document.getElementById('username');
-            if (usernameInput) usernameInput.focus();
+            if (usernameInput) setTimeout(() => usernameInput.focus(), 100);
         } else {
             if (familySec) familySec.style.display = 'block';
             if (adminSec) adminSec.style.display = 'none';
             if (tabBtnFamily) tabBtnFamily.classList.add('active');
             if (tabBtnAdmin) tabBtnAdmin.classList.remove('active');
-            if (loginTitle) loginTitle.textContent = '우리 가족 간편 입장';
+            if (loginTitle) loginTitle.textContent = '가족 간편입장';
             if (loginSubtitle) loginSubtitle.textContent = '내 프로필을 선택하고 6자리 PIN을 입력하세요';
         }
     };
 
-    // 2. 가족 구성원 목록 비동기 조회 (🛡️ 등록된 가족 기기만 프로필 노출, 외부인 100% 차단)
+    // 2. 가족 구성원 목록 비동기 조회 (🛡️ 등록된 가족 기기만 프로필 노출)
     async function loadFamilyMembers() {
         const loginTabs = document.querySelector('.login-tabs');
         const tabBtnFamily = document.getElementById('tabBtnFamily');
@@ -77,7 +77,7 @@
             const res = await fetch('/api/auth/family-members', { headers, credentials: 'include' });
             const data = await res.json();
 
-            // 🛡️ [보안 강화] 인증된 가족 기기가 아니면 가족 탭을 완전히 숨기고 관리자 로그인 화면 유지
+            // 인증된 가족 기기가 아니면 가족 탭을 숨기고 아이디 로그인 화면 유지
             if (!data.hasDevice && !verifyInvite || !data.members || data.members.length === 0) {
                 if (loginTabs) loginTabs.style.display = 'none';
                 const hasInviteToken = urlParams.get('invite_token') || currentTempToken;
@@ -91,7 +91,7 @@
                 return;
             }
 
-            // 👨‍👩‍👧‍👦 인증된 가족 기기 확인 완료: 가족 간편 입장 활성화
+            // 인증된 가족 기기 확인: 가족 간편 입장 탭 활성화
             if (loginTabs) loginTabs.style.display = 'flex';
             if (tabBtnFamily) tabBtnFamily.style.display = 'flex';
             switchLoginMode('family');
@@ -234,14 +234,11 @@
                     localStorage.setItem('jg_family_device', data.deviceToken);
                 }
                 if (data.requirePinChange) {
-                    // 최초 접속 PIN 변경 모달 오픈
                     openPinChangeModal(data.tempToken, data.username, data.nickname, data.message);
                 } else {
-                    // 로그인 성공 시 포털 메인으로 즉시 이동
                     window.location.href = data.redirect || '/';
                 }
             } else {
-                // 실패 메시지 표시 (남은 기회 또는 잠금 안내)
                 if (familyErrorMsg) {
                     familyErrorMsg.textContent = data.message || 'PIN 번호가 올바르지 않습니다.';
                     familyErrorMsg.style.display = 'block';
@@ -344,39 +341,9 @@
         }
     }
 
-    // 7. URL 파라미터 확인 (초대 토큰 등)
-    function handleUrlParameters() {
-        const params = new URLSearchParams(window.location.search);
-        const legacyInvite = params.get('invite');
-        const inviteToken = params.get('invite_token');
-        const username = params.get('username');
-        const nickname = params.get('nickname');
-        const error = params.get('error');
-
-        // 혹시 클라이언트 측에서 ?invite=...로 직접 진입한 경우 서버 초대 처리 라우트로 즉시 이동
-        if (legacyInvite && !inviteToken) {
-            window.location.replace(`/invite/${encodeURIComponent(legacyInvite)}`);
-            return;
-        }
-
-        if (inviteToken) {
-            openPinChangeModal(
-                inviteToken,
-                username,
-                nickname,
-                `반갑습니다, ${nickname || username || '가족'}님! 앞으로 사용하실 나만의 숫자 6자리 PIN을 설정해 주세요.`
-            );
-        } else if (error === 'invalid_invite') {
-            if (familyErrorMsg) {
-                familyErrorMsg.textContent = '유효하지 않거나 만료된 가족 초대 링크입니다.';
-                familyErrorMsg.style.display = 'block';
-            }
-        }
-    }
-
-    // 8. 기기 간편입장 등록 해제 처리
+    // 7. 기기 간편입장 등록 해제 처리
     window.unlinkFamilyDevice = async function () {
-        if (!confirm('이 기기에서 간편 입장을 해제하시겠습니까?\n해제하면 관리자 로그인만 표시되며, 다시 가족 초대 링크를 통해서만 등록할 수 있습니다.')) {
+        if (!confirm('이 기기에서 간편 입장을 해제하시겠습니까?\n해제하면 아이디 로그인만 표시되며, 다시 가족 초대 링크를 통해서만 등록할 수 있습니다.')) {
             return;
         }
         try {
@@ -403,6 +370,7 @@
             .replace(/"/g, '&quot;');
     }
 
+    // 8. 일반 아이디/비밀번호 로그인 폼 이벤트
     function initAdminLoginForm() {
         const form = document.getElementById('loginForm');
         if (!form) return;
@@ -452,7 +420,35 @@
         });
     }
 
-    // 🌟 [SSO 단일 로그아웃 동기화]
+    // 9. URL 파라미터 처리 및 SSO 로그아웃 동기화
+    function handleUrlParameters() {
+        const params = new URLSearchParams(window.location.search);
+        const legacyInvite = params.get('invite');
+        const inviteToken = params.get('invite_token');
+        const username = params.get('username');
+        const nickname = params.get('nickname');
+        const error = params.get('error');
+
+        if (legacyInvite && !inviteToken) {
+            window.location.replace(`/invite/${encodeURIComponent(legacyInvite)}`);
+            return;
+        }
+
+        if (inviteToken) {
+            openPinChangeModal(
+                inviteToken,
+                username,
+                nickname,
+                `반갑습니다, ${nickname || username || '가족'}님! 앞으로 사용하실 나만의 숫자 6자리 PIN을 설정해 주세요.`
+            );
+        } else if (error === 'invalid_invite') {
+            if (familyErrorMsg) {
+                familyErrorMsg.textContent = '유효하지 않거나 만료된 가족 초대 링크입니다.';
+                familyErrorMsg.style.display = 'block';
+            }
+        }
+    }
+
     function syncSingleSignOut() {
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('logout') === 'success') {
@@ -467,7 +463,6 @@
         }
     }
 
-    // 🌟 [PWA 서비스 워커 등록]
     function registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -478,7 +473,7 @@
         }
     }
 
-    // 초기화
+    // 초기화 바인딩
     document.addEventListener('DOMContentLoaded', () => {
         handleUrlParameters();
         loadFamilyMembers();
