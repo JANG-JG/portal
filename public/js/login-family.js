@@ -67,14 +67,6 @@
                 deviceToken = localStorage.getItem('jg_family_device');
             } catch (e) {}
 
-            if (!deviceToken) {
-                const urlParams = new URLSearchParams(window.location.search);
-                deviceToken = urlParams.get('device_token');
-                if (deviceToken) {
-                    try { localStorage.setItem('jg_family_device', deviceToken); } catch (e) {}
-                }
-            }
-
             const headers = {};
             if (deviceToken) headers['x-family-device'] = deviceToken;
 
@@ -349,7 +341,6 @@
         const params = new URLSearchParams(window.location.search);
         const legacyInvite = params.get('invite');
         const inviteToken = params.get('invite_token');
-        const deviceToken = params.get('device_token');
         const username = params.get('username');
         const nickname = params.get('nickname');
         const error = params.get('error');
@@ -358,10 +349,6 @@
         if (legacyInvite && !inviteToken) {
             window.location.replace(`/invite/${encodeURIComponent(legacyInvite)}`);
             return;
-        }
-
-        if (deviceToken) {
-            try { localStorage.setItem('jg_family_device', deviceToken); } catch (e) {}
         }
 
         if (inviteToken) {
@@ -378,6 +365,26 @@
             }
         }
     }
+
+    // 8. 기기 간편입장 등록 해제 처리
+    window.unlinkFamilyDevice = async function () {
+        if (!confirm('이 기기에서 간편 입장을 해제하시겠습니까?\n해제하면 관리자 로그인만 표시되며, 다시 가족 초대 링크를 통해서만 등록할 수 있습니다.')) {
+            return;
+        }
+        try {
+            await fetch('/api/auth/unlink-device', { method: 'POST', credentials: 'include' });
+        } catch (e) {}
+        try { localStorage.removeItem('jg_family_device'); } catch (e) {}
+        currentMember = null;
+        const loginTabs = document.querySelector('.login-tabs');
+        if (loginTabs) loginTabs.style.display = 'none';
+        switchLoginMode('admin');
+        const title = document.getElementById('loginTitle');
+        const sub = document.getElementById('loginSubtitle');
+        if (title) title.textContent = 'JG 통합 포털';
+        if (sub) sub.textContent = '단일 계정으로 모든 서비스를 안전하게 이용하세요';
+        alert('이 기기의 간편 입장이 정상적으로 해제되었습니다.');
+    };
 
     function escapeHtml(str) {
         if (!str) return '';

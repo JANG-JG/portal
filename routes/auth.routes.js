@@ -374,6 +374,17 @@ router.get('/invite/:token', (req, res) => {
             return res.redirect('/login?error=invalid_invite');
         }
 
+        // 초기 PIN 변경이 필요한 경우 로그인 페이지의 PIN 변경 모드로 전달 (⚠️ 이 시점에서는 기기 등록 쿠키를 발급하지 않음)
+        if (user.pin_reset_required === 1 || !user.pin) {
+            const tempToken = jwt.sign(
+                { username: user.username, role: user.role || 'family', purpose: 'pin_change_required' },
+                JWT_SECRET,
+                { expiresIn: '30m' }
+            );
+            return res.redirect(`/login?invite_token=${encodeURIComponent(tempToken)}&username=${encodeURIComponent(user.username)}&nickname=${encodeURIComponent(user.nickname || '')}`);
+        }
+
+        // 이미 PIN 설정이 완료된 가족이면 기기 인증 쿠키 및 포털 세션 발급 후 포털로 안내
         const deviceToken = jwt.sign(
             { username: user.username, role: user.role || 'family', purpose: 'family_device' },
             JWT_SECRET,
@@ -381,17 +392,6 @@ router.get('/invite/:token', (req, res) => {
         );
         sendDeviceCookie(res, req, deviceToken);
 
-        // 초기 PIN 변경이 필요한 경우 로그인 페이지의 PIN 변경 모드로 전달
-        if (user.pin_reset_required === 1 || !user.pin) {
-            const tempToken = jwt.sign(
-                { username: user.username, role: user.role || 'family', purpose: 'pin_change_required' },
-                JWT_SECRET,
-                { expiresIn: '30m' }
-            );
-            return res.redirect(`/login?invite_token=${encodeURIComponent(tempToken)}&device_token=${encodeURIComponent(deviceToken)}&username=${encodeURIComponent(user.username)}&nickname=${encodeURIComponent(user.nickname || '')}`);
-        }
-
-        // 이미 PIN 설정이 완료된 가족이면 즉시 365일 로그인 처리 후 포털 또는 앨범으로 안내
         let allowedServices = ['album', 'news'];
         try {
             if (user.allowed_services) allowedServices = JSON.parse(user.allowed_services);
@@ -411,6 +411,19 @@ router.get('/invite/:token', (req, res) => {
         sendPortalAuthCookie(res, req, token, 365);
         res.redirect('/?welcome=family');
     });
+});
+
+// 5. 기기 간편입장 등록 해제 API (POST /api/auth/unlink-device)
+router.post('/api/auth/unlink-device', (req, res) => {
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    const clearOpts = { path: '/', sameSite: 'lax', secure: isHttps };
+    const reqHost = (req.hostname || req.headers.host || '').split(':')[0];
+    if (reqHost === 'j-jg.cc' || reqHost.endsWith('.j-jg.cc')) {
+        clearOpts.domain = COOKIE_DOMAIN;
+    }
+    res.clearCookie('jg_family_device', clearOpts);
+    res.clearCookie('jg_family_device', { path: '/' });
+    res.json({ success: true, message: '이 기기에서 간편 입장이 해제되었습니다.' });
 });
 
 // 로그아웃 API

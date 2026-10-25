@@ -206,6 +206,19 @@
             font-size: 0.78rem;
             cursor: pointer;
         }
+        .btn-unlink-device {
+            background: transparent;
+            border: none;
+            color: #71717a;
+            font-size: 0.76rem;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 0.35rem 0.5rem;
+            transition: color 0.15s ease;
+        }
+        .btn-unlink-device:hover {
+            color: #f43f5e;
+        }
         .pin-dots-wrap {
             display: flex;
             justify-content: center;
@@ -374,6 +387,12 @@
             </div>
 
             <div id="familyErrorMessage" class="error-msg" style="display: none;"></div>
+
+            <div class="family-unlink-wrap" style="text-align: center; margin-top: 1.25rem;">
+                <button type="button" class="btn-unlink-device" onclick="unlinkFamilyDevice()">
+                    이 기기에서 간편입장 해제
+                </button>
+            </div>
         </div>
 
         <!-- 🔒 관리자 계정 로그인 섹션 -->
