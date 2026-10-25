@@ -7,12 +7,14 @@ const {
     BLOOD_DB_PATH,
     ASSET_DB_PATH,
     NEWS_DB_PATH,
-    ALBUM_DB_PATH
+    ALBUM_DB_PATH,
+    PORTAL_DB_PATH
 } = require('../../config/constants');
-const { db, assetDb, newsDb, albumDb } = require('../../services/db');
+const { db, assetDb, newsDb, albumDb, portalDb } = require('../../services/db');
 
 // 대상 데이터베이스 매핑 딕셔너리
 const DB_MAP = {
+    'portal': { key: 'portal', name: '포털 메인 & 일정/메모 (portal.db)', db: portalDb, path: PORTAL_DB_PATH },
     'health': { key: 'health', name: '혈압 & 마스터 계정 (health.db)', db, path: BLOOD_DB_PATH },
     'asset': { key: 'asset', name: '자산 관리 (asset.db)', db: assetDb, path: ASSET_DB_PATH },
     'briefing': { key: 'briefing', name: '뉴스 브리핑 (briefing.db)', db: newsDb, path: NEWS_DB_PATH },
@@ -20,7 +22,7 @@ const DB_MAP = {
 };
 
 function getDbInstance(dbKey) {
-    return DB_MAP[dbKey] || DB_MAP['health'];
+    return DB_MAP[dbKey] || DB_MAP['portal'] || DB_MAP['health'];
 }
 
 function getFileSizeStr(filePath) {

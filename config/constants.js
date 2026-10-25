@@ -18,11 +18,13 @@ const BLOOD_DIR = process.env.BLOOD_DIR || (fs.existsSync(path.join(WORKSPACE_RO
 const ASSET_DIR = process.env.ASSET_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'asset')) ? path.join(WORKSPACE_ROOT, 'asset') : path.join(HOME_WORKSPACE, 'asset'));
 const NEWS_DIR = process.env.NEWS_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'news-dashboard')) ? path.join(WORKSPACE_ROOT, 'news-dashboard') : path.join(HOME_WORKSPACE, 'news-dashboard'));
 const ALBUM_DIR = process.env.ALBUM_DIR || (fs.existsSync(path.join(WORKSPACE_ROOT, 'family-album')) ? path.join(WORKSPACE_ROOT, 'family-album') : path.join(HOME_WORKSPACE, 'family-album'));
+const PORTAL_DIR = path.resolve(__dirname, '..');
 
 const BLOOD_DB_PATH = process.env.DB_PATH || path.join(BLOOD_DIR, 'health.db');
 const ASSET_DB_PATH = process.env.ASSET_DB_PATH || path.join(ASSET_DIR, 'asset.db');
 const NEWS_DB_PATH = process.env.NEWS_DB_PATH || path.join(NEWS_DIR, 'briefing.db');
 const ALBUM_DB_PATH = process.env.ALBUM_DB_PATH || path.join(ALBUM_DIR, 'album.db');
+const PORTAL_DB_PATH = process.env.PORTAL_DB_PATH || path.join(PORTAL_DIR, 'portal.db');
 
 const ADMIN_USERS = new Set([
     'admin',
@@ -63,9 +65,13 @@ module.exports = {
     BLOOD_DIR,
     ASSET_DIR,
     NEWS_DIR,
+    ALBUM_DIR,
+    PORTAL_DIR,
     BLOOD_DB_PATH,
     ASSET_DB_PATH,
     NEWS_DB_PATH,
+    ALBUM_DB_PATH,
+    PORTAL_DB_PATH,
     ADMIN_USERS,
     ALLOWED_ORIGINS,
     isOriginAllowed

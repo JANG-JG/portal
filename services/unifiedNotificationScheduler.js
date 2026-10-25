@@ -6,6 +6,7 @@ const axios = require('axios');
 const nodemailer = require('nodemailer');
 const { exec } = require('child_process');
 const { decryptCalendarText } = require('./crypto.service');
+const { portalDb } = require('./db');
 
 // 🌐 Node.js 18+ IPv6 바인딩 지연/타임아웃(ETIMEDOUT / ENETUNREACH) 방지 전용 IPv4 HTTPS 에이전트
 const ipv4HttpsAgent = new https.Agent({
@@ -382,7 +383,7 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                 // ------------------------------------------------------------------
                 // 7. 📅 캘린더 개인 일정 알림 (종일 및 시간 지정 일정 / 사전 및 다회 발송)
                 // ------------------------------------------------------------------
-                checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush);
+                checkAndDispatchCalendarEvents(portalDb || db, userId, kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush);
             });
         });
 

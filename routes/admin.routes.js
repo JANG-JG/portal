@@ -11,9 +11,10 @@ const {
     BLOOD_DB_PATH,
     ASSET_DB_PATH,
     NEWS_DB_PATH,
-    ALBUM_DB_PATH
+    ALBUM_DB_PATH,
+    PORTAL_DB_PATH
 } = require('../config/constants');
-const { db, assetDb, newsDb, albumDb } = require('../services/db');
+const { db, assetDb, newsDb, albumDb, portalDb } = require('../services/db');
 const { getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
 const { sendServerTelegram } = require('../services/unifiedNotificationScheduler');
 const {
@@ -126,6 +127,7 @@ router.get('/overview', async (req, res) => {
             };
 
             const dbs = {
+                portal: getFileSize(PORTAL_DB_PATH),
                 health: getFileSize(BLOOD_DB_PATH),
                 asset: getFileSize(ASSET_DB_PATH),
                 briefing: getFileSize(NEWS_DB_PATH),

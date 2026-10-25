@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../services/db');
+const { portalDb: db } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { ADMIN_USERS } = require('../config/constants');
 

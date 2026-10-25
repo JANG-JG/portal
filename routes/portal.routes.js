@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/constants');
-const { db, assetDb, newsDb } = require('../services/db');
+const { db, assetDb, newsDb, portalDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { getLiveWeatherData, CITY_LIST, normalizeCityCode } = require('../services/weather.service');
 const { getLiveMarketData, getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
@@ -131,8 +131,8 @@ async function buildSummaryData() {
 
     // 3-1) 최근 메모 3건 및 메모 총 개수 Promise
     const memoPromise = new Promise((resolve) => {
-        db.all("SELECT id, title, category, updated_at, is_pinned FROM user_memos ORDER BY is_pinned DESC, updated_at DESC LIMIT 3", [], (err, rows) => {
-            db.get("SELECT COUNT(*) as cnt FROM user_memos", [], (cErr, cRow) => {
+        portalDb.all("SELECT id, title, category, updated_at, is_pinned FROM user_memos ORDER BY is_pinned DESC, updated_at DESC LIMIT 3", [], (err, rows) => {
+            portalDb.get("SELECT COUNT(*) as cnt FROM user_memos", [], (cErr, cRow) => {
                 resolve({
                     recent: rows || [],
                     totalCount: cRow ? cRow.cnt : (rows ? rows.length : 0)

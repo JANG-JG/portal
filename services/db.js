@@ -1,5 +1,5 @@
 const sqlite3 = require('sqlite3').verbose();
-const { BLOOD_DB_PATH, ASSET_DB_PATH, NEWS_DB_PATH, ADMIN_USERS } = require('../config/constants');
+const { BLOOD_DB_PATH, ASSET_DB_PATH, NEWS_DB_PATH, ALBUM_DB_PATH, PORTAL_DB_PATH, ADMIN_USERS } = require('../config/constants');
 
 // 마스터 계정 DB 연결 (혈압 앱 health.db)
 const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
@@ -166,7 +166,6 @@ const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
 });
 
 // 가족 사진첩 DB 연결 (album.db)
-const { ALBUM_DB_PATH } = require('../config/constants');
 const albumDb = new sqlite3.Database(ALBUM_DB_PATH, (err) => {
     if (err) console.error('❌ 사진첩 DB 연결 실패:', err);
     else {
@@ -179,9 +178,146 @@ const albumDb = new sqlite3.Database(ALBUM_DB_PATH, (err) => {
     }
 });
 
+// 포털 전용 DB 연결 (portal.db - 메모, 캘린더, 시스템 설정 독립 분리)
+const portalDb = new sqlite3.Database(PORTAL_DB_PATH, (err) => {
+    if (err) console.error('❌ 포털 DB 연결 실패:', err);
+    else {
+        console.log('✅ 포털 DB 로드 완료:', PORTAL_DB_PATH);
+        portalDb.serialize(() => {
+            portalDb.run('PRAGMA journal_mode = WAL;');
+            portalDb.run('PRAGMA synchronous = NORMAL;');
+            portalDb.run('PRAGMA busy_timeout = 5000;');
+            portalDb.run('PRAGMA temp_store = MEMORY;');
+            portalDb.run('PRAGMA cache_size = -8000;');
+
+            // 1. 메모 테이블
+            portalDb.run(`CREATE TABLE IF NOT EXISTS user_memos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT 'admin',
+                title TEXT,
+                content TEXT NOT NULL,
+                category TEXT DEFAULT 'idea',
+                color TEXT DEFAULT '#fef3c7',
+                is_pinned INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+            portalDb.run(`CREATE INDEX IF NOT EXISTS idx_user_memos_user ON user_memos (user_id, is_pinned DESC, updated_at DESC)`);
+
+            // 2. 캘린더 일정 테이블
+            portalDb.run(`CREATE TABLE IF NOT EXISTS calendar_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT 'admin',
+                title TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                event_time TEXT DEFAULT '',
+                category TEXT DEFAULT 'general',
+                color TEXT DEFAULT '#4f46e5',
+                memo TEXT DEFAULT '',
+                is_completed INTEGER DEFAULT 0,
+                is_all_day INTEGER DEFAULT 0,
+                is_family INTEGER DEFAULT 0,
+                notify_timing TEXT DEFAULT 'exact',
+                notify_repeat INTEGER DEFAULT 1,
+                notify_sent_count INTEGER DEFAULT 0,
+                last_notified_at DATETIME,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+            portalDb.run(`CREATE INDEX IF NOT EXISTS idx_cal_user_date ON calendar_events (user_id, event_date)`);
+
+            // 3. 캘린더 커스텀 범례/카테고리 테이블
+            portalDb.run(`CREATE TABLE IF NOT EXISTS calendar_categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT 'admin',
+                name TEXT NOT NULL,
+                color TEXT NOT NULL,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`, () => {
+                portalDb.get("SELECT COUNT(*) as count FROM calendar_categories", (cErr, cRow) => {
+                    if (!cErr && cRow && cRow.count === 0) {
+                        const defaultCats = [
+                            ['admin', '업무', '#6366f1'],
+                            ['admin', '개인', '#10b981'],
+                            ['admin', '가족', '#ec4899'],
+                            ['admin', '중요', '#f43f5e'],
+                            ['admin', '모임', '#f59e0b'],
+                            ['admin', '기타', '#0ea5e9']
+                        ];
+                        const stmt = portalDb.prepare("INSERT INTO calendar_categories (user_id, name, color) VALUES (?, ?, ?)");
+                        defaultCats.forEach(c => stmt.run(c));
+                        stmt.finalize();
+                    }
+                });
+            });
+
+            // 4. 시스템 설정 테이블
+            portalDb.run(`CREATE TABLE IF NOT EXISTS system_configs (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )`);
+
+            // 🛡️ 기존 health.db로부터 데이터 1회성 무손실 자동 마이그레이션
+            migrateFromHealthDb();
+        });
+    }
+});
+
+function migrateFromHealthDb() {
+    // health.db의 user_memos 이전
+    db.all("SELECT * FROM user_memos", [], (err, rows) => {
+        if (!err && Array.isArray(rows) && rows.length > 0) {
+            portalDb.get("SELECT COUNT(*) as cnt FROM user_memos", (pErr, pRow) => {
+                if (!pErr && pRow && pRow.cnt === 0) {
+                    console.log(`📦 [마이그레이션] health.db에서 user_memos ${rows.length}건 portal.db로 복제 중...`);
+                    const stmt = portalDb.prepare(`INSERT OR IGNORE INTO user_memos (id, user_id, title, content, category, color, is_pinned, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                    rows.forEach(r => stmt.run([r.id, r.user_id, r.title, r.content, r.category, r.color, r.is_pinned, r.created_at, r.updated_at]));
+                    stmt.finalize();
+                }
+            });
+        }
+    });
+
+    // health.db의 calendar_events 이전
+    db.all("SELECT * FROM calendar_events", [], (err, rows) => {
+        if (!err && Array.isArray(rows) && rows.length > 0) {
+            portalDb.get("SELECT COUNT(*) as cnt FROM calendar_events", (pErr, pRow) => {
+                if (!pErr && pRow && pRow.cnt === 0) {
+                    console.log(`📦 [마이그레이션] health.db에서 calendar_events ${rows.length}건 portal.db로 복제 중...`);
+                    const stmt = portalDb.prepare(`INSERT OR IGNORE INTO calendar_events (id, user_id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, is_family, notify_timing, notify_repeat, notify_sent_count, last_notified_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                    rows.forEach(r => stmt.run([r.id, r.user_id, r.title, r.event_date, r.event_time, r.category, r.color, r.memo, r.is_completed, r.is_all_day, r.is_family, r.notify_timing, r.notify_repeat, r.notify_sent_count, r.last_notified_at, r.created_at]));
+                    stmt.finalize();
+                }
+            });
+        }
+    });
+
+    // health.db의 calendar_categories 이전
+    db.all("SELECT * FROM calendar_categories", [], (err, rows) => {
+        if (!err && Array.isArray(rows) && rows.length > 0) {
+            portalDb.get("SELECT COUNT(*) as cnt FROM calendar_categories", (pErr, pRow) => {
+                if (!pErr && pRow && pRow.cnt === 0) {
+                    const stmt = portalDb.prepare(`INSERT OR IGNORE INTO calendar_categories (id, user_id, name, color, created_at) VALUES (?, ?, ?, ?, ?)`);
+                    rows.forEach(r => stmt.run([r.id, r.user_id, r.name, r.color, r.created_at]));
+                    stmt.finalize();
+                }
+            });
+        }
+    });
+
+    // health.db의 system_configs 이전
+    db.all("SELECT * FROM system_configs", [], (err, rows) => {
+        if (!err && Array.isArray(rows) && rows.length > 0) {
+            const stmt = portalDb.prepare(`INSERT OR IGNORE INTO system_configs (key, value) VALUES (?, ?)`);
+            rows.forEach(r => stmt.run([r.key, r.value]));
+            stmt.finalize();
+        }
+    });
+}
+
 module.exports = {
     db,
     assetDb,
     newsDb,
-    albumDb
+    albumDb,
+    portalDb
 };

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db, newsDb } = require('../services/db');
+const { db, newsDb, portalDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { ADMIN_USERS } = require('../config/constants');
 const { encryptCalendarText, decryptCalendarText } = require('../services/crypto.service');
@@ -43,7 +43,7 @@ router.get('/events', authenticateToken, async (req, res) => {
         const query = "SELECT id, user_id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, is_family, notify_timing, notify_repeat FROM calendar_events WHERE user_id = ? OR is_family = 1 OR category = '가족' ORDER BY event_date ASC";
         const params = [userId];
 
-        db.all(query, params, (err, rows) => {
+        portalDb.all(query, params, (err, rows) => {
             if (!err && rows) {
                 rows.forEach(r => {
                     const isFam = !!r.is_family || r.category === '가족';
@@ -235,7 +235,7 @@ router.get('/events', authenticateToken, async (req, res) => {
 // 2. 커스텀 범례/카테고리 목록 조회
 router.get('/categories', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
-    db.all("SELECT id, name, color FROM calendar_categories WHERE user_id = ? OR user_id = 'admin' ORDER BY id ASC", [userId], (err, rows) => {
+    portalDb.all("SELECT id, name, color FROM calendar_categories WHERE user_id = ? OR user_id = 'admin' ORDER BY id ASC", [userId], (err, rows) => {
         if (err) {
             console.error('[Calendar 범례 조회 실패]:', err.message);
             return res.status(500).json({ success: false, message: '범례 조회 실패' });
@@ -254,7 +254,7 @@ router.post('/categories', authenticateToken, (req, res) => {
     const cleanName = name.trim();
     const cleanColor = (color || '#6366f1').trim();
 
-    db.run("INSERT INTO calendar_categories (user_id, name, color) VALUES (?, ?, ?)", [userId, cleanName, cleanColor], function(err) {
+    portalDb.run("INSERT INTO calendar_categories (user_id, name, color) VALUES (?, ?, ?)", [userId, cleanName, cleanColor], function(err) {
         if (err) {
             console.error('[Calendar 범례 추가 실패]:', err.message);
             return res.status(500).json({ success: false, message: '범례 추가 실패' });
@@ -268,7 +268,7 @@ router.delete('/categories/:id', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const catId = req.params.id;
-    db.run("DELETE FROM calendar_categories WHERE id = ? AND (user_id = ? OR ? = 1)", [catId, userId, isAdmin], function(err) {
+    portalDb.run("DELETE FROM calendar_categories WHERE id = ? AND (user_id = ? OR ? = 1)", [catId, userId, isAdmin], function(err) {
         if (err) {
             return res.status(500).json({ success: false, message: '범례 삭제 실패' });
         }
@@ -307,7 +307,7 @@ router.post('/events', authenticateToken, (req, res) => {
         INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, is_family, notify_timing, notify_repeat)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.run(query, [
+    portalDb.run(query, [
         userId,
         encryptedTitle,
         event_date.trim(),
@@ -363,7 +363,7 @@ router.put('/events/:id', authenticateToken, (req, res) => {
             is_all_day = ?, is_family = ?, notify_timing = ?, notify_repeat = ?, notify_sent_count = 0
         WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))
     `;
-    db.run(query, [
+    portalDb.run(query, [
         encryptedTitle,
         event_date.trim(),
         timeVal,
@@ -392,7 +392,7 @@ router.delete('/events/:id', authenticateToken, (req, res) => {
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const eventId = req.params.id;
 
-    db.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))", [eventId, userId, isAdmin], function(err) {
+    portalDb.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))", [eventId, userId, isAdmin], function(err) {
         if (err) return res.status(500).json({ success: false, message: '일정 삭제 실패' });
         res.json({ success: true, message: '일정이 삭제되었습니다.' });
     });
@@ -404,7 +404,7 @@ router.patch('/events/:id/toggle', authenticateToken, (req, res) => {
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const eventId = req.params.id;
 
-    db.run(`
+    portalDb.run(`
         UPDATE calendar_events 
         SET is_completed = CASE WHEN is_completed = 1 THEN 0 ELSE 1 END
         WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db, assetDb, newsDb } = require('../services/db');
+const { db, assetDb, newsDb, portalDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { ADMIN_USERS } = require('../config/constants');
 
@@ -60,7 +60,7 @@ router.get('/unified', authenticateToken, async (req, res) => {
     // 1) 메모 검색 (일반 or 초성)
     const memoPromise = new Promise((resolve) => {
         if (isChosung) {
-            db.all("SELECT id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE (user_id = ? OR ? = 1) ORDER BY is_pinned DESC, updated_at DESC LIMIT 50", [userId, isAdmin], (err, rows) => {
+            portalDb.all("SELECT id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE (user_id = ? OR ? = 1) ORDER BY is_pinned DESC, updated_at DESC LIMIT 50", [userId, isAdmin], (err, rows) => {
                 if (err || !rows) return resolve([]);
                 const filtered = rows.filter(r => extractChosung(r.title).includes(cleanChosungQuery) || extractChosung(r.content).includes(cleanChosungQuery)).slice(0, 8);
                 resolve(filtered);
@@ -74,7 +74,7 @@ router.get('/unified', authenticateToken, async (req, res) => {
                 ORDER BY is_pinned DESC, updated_at DESC
                 LIMIT 8
             `;
-            db.all(sql, [userId, isAdmin, term, term], (err, rows) => resolve(rows || []));
+            portalDb.all(sql, [userId, isAdmin, term, term], (err, rows) => resolve(rows || []));
         }
     });
 
