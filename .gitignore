@@ -5,6 +5,8 @@ node_modules/
 *.sqlite*
 *.bak*
 *backup*
+!routes/**
+!public/**
 *_bak*
 *.pem
 *.key

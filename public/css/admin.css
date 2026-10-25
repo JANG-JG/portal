@@ -2424,20 +2424,37 @@ thead th.sticky-action-col {
     }
     .admin-overview-grid {
         grid-template-columns: repeat(2, 1fr) !important;
-        gap: 0.55rem !important;
+        gap: 0.5rem !important;
     }
     .admin-stat-card {
-        padding: 0.65rem 0.75rem !important;
-        gap: 0.55rem !important;
+        padding: 0.55rem 0.65rem !important;
+        gap: 0.45rem !important;
+        min-width: 0 !important;
     }
     .admin-stat-icon {
-        width: 36px !important;
-        height: 36px !important;
-        font-size: 1.15rem !important;
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 1.05rem !important;
         border-radius: 0.5rem !important;
+        flex-shrink: 0 !important;
+    }
+    .admin-stat-label {
+        font-size: 0.72rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
     .admin-stat-val {
-        font-size: 0.95rem !important;
+        font-size: 0.9rem !important;
+    }
+    .admin-stat-val.stat-val-date {
+        white-space: normal !important;
+        line-height: 1.15 !important;
+    }
+    .admin-stat-val .admin-badge {
+        font-size: 0.72rem !important;
+        padding: 0.15rem 0.4rem !important;
+        white-space: nowrap !important;
     }
 }
 
@@ -2448,6 +2465,26 @@ thead th.sticky-action-col {
     }
     .admin-overview-grid {
         grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.35rem !important;
+    }
+    .admin-stat-card {
+        padding: 0.45rem 0.5rem !important;
+        gap: 0.35rem !important;
+    }
+    .admin-stat-icon {
+        width: 28px !important;
+        height: 28px !important;
+        font-size: 0.95rem !important;
+    }
+    .admin-stat-label {
+        font-size: 0.68rem !important;
+    }
+    .admin-stat-val {
+        font-size: 0.82rem !important;
+    }
+    .admin-stat-val .admin-badge {
+        font-size: 0.68rem !important;
+        padding: 0.12rem 0.35rem !important;
     }
 }
 
