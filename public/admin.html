@@ -1096,7 +1096,7 @@
                         </div>
                         <div style="display:flex; gap:0.5rem; align-items:center;">
                             <button class="btn-admin btn-admin-primary btn-admin-sm" onclick="openAddFamilyModal()">
-                                ➕ 새 가족 추가
+                                ➕ 가족 초대 링크 생성
                             </button>
                             <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadFamilyMembers()">🔄 새로고침</button>
                         </div>
@@ -1105,7 +1105,7 @@
                         <table class="admin-table">
                             <thead>
                                 <tr>
-                                    <th>호칭 / 이름</th>
+                                    <th>관리 명칭 / 프로필명</th>
                                     <th>아이디</th>
                                     <th>이메일 / 생년월일</th>
                                     <th>이용 가능한 서비스</th>
@@ -1115,7 +1115,7 @@
                                 </tr>
                             </thead>
                             <tbody id="familyMembersTableBody">
-                                <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">가족 목록을 불러오는 중...</td></tr>
+                                <tr><td colspan="7" style="text-align:center; padding:1.5rem; color:#64748b;">가족 목록을 불러오는 중...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1299,34 +1299,22 @@
         </div>
     </div>
 
-    <!-- 👨‍👩‍👧‍👦 1. 새 가족 구성원 등록 모달 -->
+    <!-- 🔗 1. 가족 초대 링크 생성 모달 -->
     <div id="addFamilyModal" class="admin-modal-backdrop" style="display:none;">
         <div class="admin-modal-dialog">
             <div class="admin-modal-header">
-                <h3>👨‍👩‍👧‍👦 새 가족 구성원 등록</h3>
+                <h3>🔗 가족 초대 링크 생성</h3>
                 <button type="button" class="admin-modal-close-btn" onclick="closeAddFamilyModal()" title="창 닫기">✕</button>
             </div>
             <div class="admin-modal-body">
-                <p style="font-size:0.85rem; color:#64748b; margin-top:0; margin-bottom:1rem;">
-                    가족을 등록하면 초기 6자리 PIN으로 로그인 후 나만의 PIN으로 설정할 수 있습니다.
+                <p style="font-size:0.85rem; color:#64748b; margin-top:0; margin-bottom:1rem; line-height:1.45;">
+                    관리용 명칭을 입력하고 초대 링크를 발급하세요.<br>
+                    가족이 초대 링크 접속 시 <strong>프로필명, 아이디, 이메일, 비밀번호, 생년월일</strong>을 직접 입력해 가입합니다.
                 </p>
                 <form id="addFamilyForm" onsubmit="submitAddFamily(event)">
-                    <div style="margin-bottom:0.75rem;">
-                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">가족 호칭 (이름) *</label>
-                        <input type="text" id="inputAddNickname" placeholder="예: 엄마, 아빠, 동생" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
-                    </div>
-                    <div style="margin-bottom:0.75rem;">
-                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">접속 아이디 (영문/숫자)</label>
-                        <input type="text" id="inputAddUsername" placeholder="비워두면 영문 아이디가 자동 생성됩니다" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
-                    </div>
-                    <div style="margin-bottom:0.75rem;">
-                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">휴대폰 번호 (선택사항, 단방향 암호화 보관)</label>
-                        <input type="tel" id="inputAddPhone" placeholder="010-XXXX-XXXX" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
-                    </div>
                     <div style="margin-bottom:0.85rem;">
-                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">초기 숫자 6자리 PIN *</label>
-                        <input type="text" id="inputAddInitialPin" value="123456" maxlength="6" inputmode="numeric" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-family:monospace; font-size:1.1rem; letter-spacing:2px; box-sizing:border-box;">
-                        <span style="font-size:0.75rem; color:#64748b;">가족이 최초 접속 시 본인만의 6자리 PIN으로 변경하게 됩니다.</span>
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">관리용 명칭 (가족 호칭 메모) *</label>
+                        <input type="text" id="inputAddNickname" placeholder="예: 어머니, 둘째, 막내" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
                     </div>
                     <div style="margin-bottom:1.15rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem;">
                         <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.5rem;">이용 허용 서비스 선택</label>
@@ -1347,7 +1335,7 @@
                     </div>
                     <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
                         <button type="button" class="btn-admin btn-admin-outline" onclick="closeAddFamilyModal()">취소</button>
-                        <button type="submit" class="btn-admin btn-admin-primary">등록하기</button>
+                        <button type="submit" class="btn-admin btn-admin-primary">초대 링크 발급하기</button>
                     </div>
                 </form>
             </div>
@@ -1365,8 +1353,12 @@
                 <form id="editFamilyForm" onsubmit="submitEditFamily(event)">
                     <input type="hidden" id="editFamilyTargetUsername">
                     <div style="margin-bottom:0.75rem;">
-                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">가족 호칭 (프로필명)</label>
-                        <input type="text" id="inputEditNickname" required style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">관리용 명칭 (가족 호칭 메모) *</label>
+                        <input type="text" id="inputEditAdminMemo" required style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">활동 프로필명 (가족 닉네임)</label>
+                        <input type="text" id="inputEditNickname" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
                     </div>
                     <div style="margin-bottom:0.75rem;">
                         <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">이메일 주소</label>

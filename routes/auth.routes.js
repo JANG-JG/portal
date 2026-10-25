@@ -387,7 +387,7 @@ router.get('/invite/:token', (req, res) => {
 
         // 1) 아직 가입하지 않은 초대 링크인 경우: 회원가입 모달로 연결
         if (user.is_registered === 0 || !user.password) {
-            return res.redirect(`/login?register_invite=${encodeURIComponent(inviteToken)}&nickname=${encodeURIComponent(user.nickname || '')}`);
+            return res.redirect(`/login?register_invite=${encodeURIComponent(inviteToken)}&memo=${encodeURIComponent(user.admin_memo || user.nickname || '')}`);
         }
 
         // 2) 가입 완료되었으나 초기 PIN 변경이 필요한 경우: PIN 변경 모달로 연결

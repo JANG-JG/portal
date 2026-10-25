@@ -23,7 +23,14 @@
     const regError = document.getElementById('registerError');
     const btnSubmit = document.getElementById('btnSubmitRegister');
 
-    window.openRegisterModal = function (inviteToken, defaultNickname) {
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, m => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[m]));
+    }
+
+    window.openRegisterModal = function (inviteToken, memo) {
         currentInviteToken = inviteToken;
         if (!registerModal) return;
 
@@ -31,9 +38,18 @@
         if (regEmail) regEmail.value = '';
         if (regPassword) regPassword.value = '';
         if (regPasswordConfirm) regPasswordConfirm.value = '';
-        if (regNickname) regNickname.value = defaultNickname || '';
+        if (regNickname) regNickname.value = '';
         if (regBirthdate) regBirthdate.value = '';
         if (regError) regError.style.display = 'none';
+
+        const desc = document.getElementById('registerModalDesc');
+        if (desc) {
+            if (memo) {
+                desc.innerHTML = `환영합니다! <strong>[${escapeHtml(memo)}]</strong> 가족 초대 링크입니다.<br>포털 및 가족 앨범에서 활동할 회원 정보를 입력해 주세요.`;
+            } else {
+                desc.textContent = '환영합니다! 통합 포털 및 가족 앨범 이용을 위한 계정 정보를 입력해 주세요.';
+            }
+        }
 
         if (btnSubmit) {
             btnSubmit.disabled = false;
@@ -42,7 +58,7 @@
 
         registerModal.style.display = 'flex';
         setTimeout(() => {
-            if (regNickname && !regNickname.value) regNickname.focus();
+            if (regNickname) regNickname.focus();
             else if (regUsername) regUsername.focus();
         }, 150);
     };
@@ -155,10 +171,10 @@
     document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const registerInvite = urlParams.get('register_invite');
-        const defaultNick = urlParams.get('nickname') || '';
+        const memo = urlParams.get('memo') || urlParams.get('nickname') || '';
 
         if (registerInvite) {
-            window.openRegisterModal(registerInvite, defaultNick);
+            window.openRegisterModal(registerInvite, memo);
         }
 
         if (registerModal) {

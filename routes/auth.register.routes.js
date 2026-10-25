@@ -27,7 +27,7 @@ router.get('/api/auth/invite-info/:token', (req, res) => {
     }
 
     db.get(
-        'SELECT username, nickname, role, is_registered, allowed_services FROM users WHERE invite_token = ?',
+        'SELECT username, nickname, admin_memo, role, is_registered, allowed_services FROM users WHERE invite_token = ?',
         [inviteToken],
         (err, user) => {
             if (err || !user) {
@@ -37,6 +37,7 @@ router.get('/api/auth/invite-info/:token', (req, res) => {
             res.json({
                 success: true,
                 isRegistered: Boolean(user.is_registered === 1),
+                adminMemo: user.admin_memo || '',
                 nickname: user.nickname || '',
                 username: user.is_registered === 1 ? user.username : ''
             });

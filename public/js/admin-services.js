@@ -391,11 +391,24 @@ async function loadSecurityLogs() {
                 timeline.innerHTML = '<div style="text-align:center; padding:1.2rem; color:#64748b;">기록된 보안 감사 로그가 없습니다.</div>';
             } else {
                 timeline.innerHTML = logs.slice(0, 15).map(log => {
-                    const isSuccess = String(log.status).startsWith('SUCCESS');
+                    const isRegister = log.status === 'REGISTER_SUCCESS';
+                    const isSuccess = String(log.status).startsWith('SUCCESS') || isRegister;
                     const badgeClass = isSuccess ? 'badge-success' : 'badge-failed';
-                    const statusText = log.status === 'SUCCESS_FAMILY_PIN' ? '가족 PIN 입장' : (isSuccess ? '정상 로그인' : (log.status === 'LOCKED_PIN_LIMIT' ? '5회 오류 잠금' : '인증 실패'));
-                    const icon = isSuccess ? '🛡️' : '🚨';
-                    const userLabel = log.nickname ? `${escapeHtml(log.nickname)} (${escapeHtml(log.username)})` : escapeHtml(log.username || 'unknown');
+                    let statusText = '인증 실패';
+                    if (isRegister) statusText = '가족 회원가입';
+                    else if (log.status === 'SUCCESS_FAMILY_PIN') statusText = '가족 PIN 입장';
+                    else if (log.status === 'SUCCESS_PASSWORD') statusText = '비밀번호 로그인';
+                    else if (log.status === 'SUCCESS_ADMIN_SESSION') statusText = '관리자 세션';
+                    else if (isSuccess) statusText = '정상 로그인';
+                    else if (log.status === 'LOCKED_PIN_LIMIT') statusText = '5회 오류 잠금';
+                    else if (log.status === 'FAIL_PIN_MISMATCH') statusText = 'PIN 불일치';
+                    else if (log.status === 'FAIL_PASSWORD_MISMATCH') statusText = '비밀번호 불일치';
+
+                    const icon = isRegister ? '🎉' : (isSuccess ? '🛡️' : '🚨');
+                    const memoText = log.admin_memo ? `[${escapeHtml(log.admin_memo)}] ` : '';
+                    const userLabel = log.nickname 
+                        ? `${memoText}${escapeHtml(log.nickname)} (${escapeHtml(log.username)})` 
+                        : (log.admin_memo ? `${escapeHtml(log.admin_memo)} (${escapeHtml(log.username || 'unknown')})` : escapeHtml(log.username || 'unknown'));
                     return `
                         <div class="admin-timeline-item">
                             <div class="admin-timeline-badge ${badgeClass}"></div>
@@ -410,7 +423,7 @@ async function loadSecurityLogs() {
                                 </div>
                                 <div class="admin-timeline-desc">
                                     접속 IP: <code style="font-size:0.78rem; background:#e2e8f0; padding:1px 5px; border-radius:3px; color:#0f172a;">${escapeHtml(log.ip || '-')}</code>
-                                    ${!isSuccess ? '<span style="color:#ef4444; margin-left:6px; font-weight:600;">(인증 거부됨)</span>' : '<span style="color:#10b981; margin-left:6px;">(세션 발급 완료)</span>'}
+                                    ${!isSuccess ? '<span style="color:#ef4444; margin-left:6px; font-weight:600;">(인증 거부됨)</span>' : (isRegister ? '<span style="color:#10b981; margin-left:6px;">(가입 완료)</span>' : '<span style="color:#10b981; margin-left:6px;">(세션 발급 완료)</span>')}
                                 </div>
                             </div>
                         </div>
@@ -427,11 +440,17 @@ async function loadSecurityLogs() {
             }
 
             tbody.innerHTML = logs.map(log => {
-                const isSuccess = String(log.status).startsWith('SUCCESS');
-                const badge = isSuccess 
-                    ? `<span class="badge-success">${log.status === 'SUCCESS_FAMILY_PIN' ? '가족 PIN' : '성공'}</span>` 
-                    : `<span class="badge-failed">${log.status === 'LOCKED_PIN_LIMIT' ? '잠금' : '실패'}</span>`;
-                const userLabel = log.nickname ? `${escapeHtml(log.nickname)} <small style="color:#64748b;">(${escapeHtml(log.username)})</small>` : `<strong>${escapeHtml(log.username || '-')}</strong>`;
+                const isRegister = log.status === 'REGISTER_SUCCESS';
+                const isSuccess = String(log.status).startsWith('SUCCESS') || isRegister;
+                const badge = isRegister
+                    ? `<span style="display:inline-block; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:9999px; background:#dcfce7; color:#15803d;">가입완료</span>`
+                    : (isSuccess 
+                        ? `<span class="badge-success">${log.status === 'SUCCESS_FAMILY_PIN' ? '가족 PIN' : '성공'}</span>` 
+                        : `<span class="badge-failed">${log.status === 'LOCKED_PIN_LIMIT' ? '잠금' : '실패'}</span>`);
+                const memoText = log.admin_memo ? `<span style="font-weight:700; color:#1e293b;">[${escapeHtml(log.admin_memo)}]</span> ` : '';
+                const userLabel = log.nickname 
+                    ? `${memoText}${escapeHtml(log.nickname)} <small style="color:#64748b;">(${escapeHtml(log.username)})</small>` 
+                    : `${memoText}<strong>${escapeHtml(log.username || '-')}</strong>`;
                 return `
                     <tr>
                         <td><small>${log.attempted_at || '-'}</small></td>

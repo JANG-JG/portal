@@ -32,6 +32,7 @@ router.get('/members', (req, res) => {
         SELECT 
             rowid,
             username,
+            admin_memo,
             nickname,
             role,
             email,
@@ -75,6 +76,7 @@ router.get('/members', (req, res) => {
             return {
                 id: row.rowid,
                 username: row.username,
+                adminMemo: row.admin_memo || '',
                 nickname: row.nickname || (row.role === 'admin' ? '관리자 (나)' : row.username),
                 role: row.role || (row.rowid === 1 ? 'admin' : 'family'),
                 email: row.email || '',
@@ -97,81 +99,62 @@ router.get('/members', (req, res) => {
 });
 
 /**
- * 2. 신규 가족 구성원 등록 API
+ * 2. 신규 가족 초대 링크 생성 API
  * POST /api/admin/family/members
  */
 router.post('/members', async (req, res) => {
     try {
         const nickname = (req.body.nickname || '').trim();
-        let username = (req.body.username || '').trim().toLowerCase();
-        const initialPin = String(req.body.initialPin || '').trim();
-        const phone = (req.body.phone || '').trim();
         let allowedServices = req.body.allowedServices;
 
         if (!nickname) {
-            return res.status(400).json({ success: false, message: '가족 호칭(이름)을 입력해 주세요.' });
-        }
-
-        // 아이디 미입력 시 초대용 임시 아이디 자동 생성
-        if (!username) {
-            const randomSuffix = Math.random().toString(36).substring(2, 8);
-            username = `pending_${randomSuffix}`;
+            return res.status(400).json({ success: false, message: '관리용 명칭(가족 호칭 메모)을 입력해 주세요.' });
         }
 
         if (!Array.isArray(allowedServices) || allowedServices.length === 0) {
             allowedServices = ['album', 'news'];
         }
 
-        // 아이디 중복 체크
-        db.get('SELECT username FROM users WHERE username = ?', [username], async (chkErr, existingUser) => {
-            if (chkErr) return res.status(500).json({ success: false, message: 'DB 확인 오류' });
-            if (existingUser) {
-                return res.status(409).json({ success: false, message: '이미 존재하는 아이디입니다. 다른 아이디를 입력해 주세요.' });
+        // 가입 완료 전 임시 식별용 고유 아이디 및 초대 토큰 생성
+        const randomId = crypto.randomBytes(4).toString('hex');
+        const username = `pending_${randomId}`;
+        const inviteToken = crypto.randomBytes(16).toString('hex');
+        const servicesJson = JSON.stringify(allowedServices);
+
+        const insertSql = `
+            INSERT INTO users (
+                username,
+                password,
+                pin,
+                role,
+                allowed_services,
+                admin_memo,
+                nickname,
+                pin_reset_required,
+                invite_token,
+                failed_pin_attempts,
+                is_registered
+            ) VALUES (?, '', '', 'family', ?, ?, ?, 1, ?, 0, 0)
+        `;
+
+        db.run(insertSql, [username, servicesJson, nickname, nickname, inviteToken], function (insErr) {
+            if (insErr) {
+                console.error('가족 초대 링크 생성 실패:', insErr);
+                return res.status(500).json({ success: false, message: '초대 링크 생성 실패: ' + insErr.message });
             }
 
-            const pinHash = initialPin ? await bcrypt.hash(initialPin, 10) : '';
-            const inviteToken = crypto.randomBytes(16).toString('hex');
-            const phoneHash = hashPhoneNumber(phone);
-            const servicesJson = JSON.stringify(allowedServices);
-
-            const insertSql = `
-                INSERT INTO users (
+            res.json({
+                success: true,
+                message: `[${nickname}]님의 가족 초대 링크가 발급되었습니다.`,
+                member: {
+                    id: this.lastID,
                     username,
-                    password,
-                    pin,
-                    role,
-                    allowed_services,
+                    adminMemo: nickname,
                     nickname,
-                    pin_reset_required,
-                    invite_token,
-                    phone_hash,
-                    failed_pin_attempts,
-                    is_registered
-                ) VALUES (?, ?, ?, 'family', ?, ?, 1, ?, ?, 0, 0)
-            `;
-
-            db.run(
-                insertSql,
-                [username, pinHash, pinHash, servicesJson, nickname, inviteToken, phoneHash],
-                function (insErr) {
-                    if (insErr) {
-                        console.error('가족 구성원 추가 실패:', insErr);
-                        return res.status(500).json({ success: false, message: '가족 등록에 실패했습니다: ' + insErr.message });
-                    }
-
-                    res.json({
-                        success: true,
-                        message: `가족 '${nickname}'님의 초대 링크가 발급되었습니다.`,
-                        member: {
-                            id: this.lastID,
-                            username,
-                            nickname,
-                            inviteToken,
-                            inviteUrl: `https://j-jg.cc/invite/${inviteToken}`
-                        }
-                    });
+                    inviteToken,
+                    inviteUrl: `https://j-jg.cc/invite/${inviteToken}`
                 }
-            );
+            });
         });
     } catch (err) {
         console.error('가족 추가 처리 오류:', err);
@@ -186,6 +169,7 @@ router.post('/members', async (req, res) => {
 router.put('/members/:username', (req, res) => {
     const targetUsername = req.params.username;
     const nickname = (req.body.nickname || '').trim();
+    const adminMemo = (req.body.adminMemo !== undefined ? req.body.adminMemo : nickname).trim();
     const email = (req.body.email || '').trim().toLowerCase();
     const birthdate = (req.body.birthdate || '').trim();
     const allowedServices = req.body.allowedServices;
@@ -197,8 +181,8 @@ router.put('/members/:username', (req, res) => {
     const servicesJson = Array.isArray(allowedServices) ? JSON.stringify(allowedServices) : JSON.stringify(['album', 'news']);
 
     db.run(
-        'UPDATE users SET nickname = ?, email = ?, birthdate = ?, allowed_services = ? WHERE username = ?',
-        [nickname, email, birthdate, servicesJson, targetUsername],
+        'UPDATE users SET admin_memo = ?, nickname = ?, email = ?, birthdate = ?, allowed_services = ? WHERE username = ?',
+        [adminMemo, nickname, email, birthdate, servicesJson, targetUsername],
         function (err) {
             if (err) return res.status(500).json({ success: false, message: '정보 수정 실패: ' + err.message });
             res.json({ success: true, message: '가족 정보가 성공적으로 수정되었습니다.' });

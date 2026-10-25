@@ -123,13 +123,25 @@ function renderFamilyMembersTable(members) {
 
         const contactInfo = `<div style="font-size:0.8rem; color:#334155;">${escapeHtml(m.email || '-')}</div><div style="font-size:0.75rem; color:#94a3b8;">${escapeHtml(m.birthdate || '-')}</div>`;
 
+        const memoLabel = m.adminMemo ? escapeHtml(m.adminMemo) : escapeHtml(m.nickname);
+        const subNick = (m.isRegistered && m.nickname && m.nickname !== m.adminMemo) 
+            ? `<div style="font-size:0.75rem; color:#64748b; margin-top:2px;">프로필: ${escapeHtml(m.nickname)}</div>` 
+            : (!m.isRegistered ? `<div style="font-size:0.72rem; color:#d97706; margin-top:2px;">(초대 링크 가입 대기)</div>` : '');
+
+        const usernameDisplay = m.isRegistered 
+            ? `<span style="font-family:monospace; color:#475569; font-size:0.85rem;">${escapeHtml(m.username)}</span>` 
+            : `<span style="font-size:0.78rem; color:#94a3b8; font-style:italic;">가입 대기</span>`;
+
         return `
             <tr>
-                <td style="font-weight:700; font-size:0.92rem; color:#0f172a;">
-                    ${escapeHtml(m.nickname)} ${roleBadge}
+                <td>
+                    <div style="font-weight:700; font-size:0.92rem; color:#0f172a;">
+                        ${memoLabel} ${roleBadge}
+                    </div>
+                    ${subNick}
                 </td>
-                <td style="font-family:monospace; color:#475569; font-size:0.85rem;">
-                    ${escapeHtml(m.username)}
+                <td>
+                    ${usernameDisplay}
                 </td>
                 <td>
                     ${contactInfo}
@@ -192,16 +204,19 @@ function copyViaFallback(text, nickname) {
 }
 
 /**
- * 3. 가족 추가 모달
+ * 3. 가족 초대 링크 생성 모달
  */
 function openAddFamilyModal() {
     const modal = document.getElementById('addFamilyModal');
     const form = document.getElementById('addFamilyForm');
     if (!modal || !form) return;
     form.reset();
-    document.getElementById('inputAddInitialPin').value = '123456';
+    document.getElementById('chkAddServiceAlbum').checked = true;
+    document.getElementById('chkAddServiceNews').checked = true;
     modal.style.display = 'flex';
     modal.classList.add('active');
+    const nickInput = document.getElementById('inputAddNickname');
+    if (nickInput) setTimeout(() => nickInput.focus(), 150);
 }
 
 function closeAddFamilyModal() {
@@ -215,9 +230,6 @@ function closeAddFamilyModal() {
 async function submitAddFamily(e) {
     e.preventDefault();
     const nickname = document.getElementById('inputAddNickname').value.trim();
-    const username = document.getElementById('inputAddUsername').value.trim();
-    const initialPin = document.getElementById('inputAddInitialPin').value.trim();
-    const phone = document.getElementById('inputAddPhone').value.trim();
 
     const allowedServices = [];
     if (document.getElementById('chkAddServiceAlbum').checked) allowedServices.push('album');
@@ -226,11 +238,7 @@ async function submitAddFamily(e) {
     if (document.getElementById('chkAddServiceBlood').checked) allowedServices.push('blood');
 
     if (!nickname) {
-        alert('가족 호칭을 입력해 주세요.');
-        return;
-    }
-    if (!/^\d{6}$/.test(initialPin)) {
-        alert('초기 PIN은 숫자 6자리로 입력해 주세요.');
+        alert('관리용 명칭(가족 호칭)을 입력해 주세요.');
         return;
     }
 
@@ -238,19 +246,24 @@ async function submitAddFamily(e) {
         const res = await fetch('/api/admin/family/members', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nickname, username, initialPin, phone, allowedServices })
+            body: JSON.stringify({ nickname, allowedServices })
         });
         const data = await res.json();
 
         if (data.success) {
             closeAddFamilyModal();
-            showToast(data.message || '가족 구성원이 등록되었습니다.');
+            const inviteUrl = data.member?.inviteUrl;
+            if (inviteUrl) {
+                copyFamilyInviteUrl(inviteUrl, nickname);
+            } else {
+                showToast(data.message || '가족 초대 링크가 생성되었습니다.');
+            }
             await loadFamilyMembers();
         } else {
-            alert(data.message || '가족 등록에 실패했습니다.');
+            alert(data.message || '초대 링크 생성에 실패했습니다.');
         }
     } catch (err) {
-        alert('가족 등록 중 서버 오류가 발생했습니다.');
+        alert('초대 링크 생성 중 서버 오류가 발생했습니다.');
     }
 }
 
@@ -262,7 +275,9 @@ function openEditFamilyModal(username) {
     if (!member) return;
 
     document.getElementById('editFamilyTargetUsername').value = member.username;
-    document.getElementById('inputEditNickname').value = member.nickname;
+    const memoInput = document.getElementById('inputEditAdminMemo');
+    if (memoInput) memoInput.value = member.adminMemo || member.nickname;
+    document.getElementById('inputEditNickname').value = member.nickname || '';
     document.getElementById('inputEditEmail').value = member.email || '';
     document.getElementById('inputEditBirthdate').value = member.birthdate || '';
 
@@ -291,7 +306,8 @@ function closeEditFamilyModal() {
 async function submitEditFamily(e) {
     e.preventDefault();
     const username = document.getElementById('editFamilyTargetUsername').value;
-    const nickname = document.getElementById('inputEditNickname').value.trim();
+    const adminMemo = (document.getElementById('inputEditAdminMemo')?.value || '').trim();
+    const nickname = (document.getElementById('inputEditNickname')?.value || '').trim() || adminMemo;
     const email = document.getElementById('inputEditEmail').value.trim();
     const birthdate = document.getElementById('inputEditBirthdate').value.trim();
 
@@ -305,7 +321,7 @@ async function submitEditFamily(e) {
         const res = await fetch(`/api/admin/family/members/${username}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nickname, email, birthdate, allowedServices })
+            body: JSON.stringify({ adminMemo, nickname, email, birthdate, allowedServices })
         });
         const data = await res.json();
         if (data.success) {
