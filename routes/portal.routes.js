@@ -7,6 +7,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { getLiveWeatherData, CITY_LIST, normalizeCityCode, getDefaultWeatherCity } = require('../services/weather.service');
 const { getLiveMarketData, getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
 const { getCurrentCpuPercent, getRealMemoryInfo, getSecondaryServerStatus, getDiskUsage } = require('../services/systemMonitor.service');
+const { decryptMemoText } = require('../services/crypto.service');
 
 // KST (Asia/Seoul) 기준 현재 또는 오프셋 시각 문자열 생성 헬퍼 (YYYY-MM-DD HH:mm:ss)
 function getKstDateTimeString(offsetMinutes = 0) {
@@ -129,13 +130,20 @@ async function buildSummaryData() {
         });
     });
 
-    // 3-1) 최근 메모 3건 및 메모 총 개수 Promise
+    // 3-1) 최근 메모 3건 및 메모 총 개수 Promise (AES-256-GCM 복호화 적용)
     const memoPromise = new Promise((resolve) => {
-        portalDb.all("SELECT id, title, category, updated_at, is_pinned FROM user_memos ORDER BY is_pinned DESC, updated_at DESC LIMIT 3", [], (err, rows) => {
+        portalDb.all("SELECT id, user_id, title, category, updated_at, is_pinned FROM user_memos ORDER BY is_pinned DESC, updated_at DESC LIMIT 3", [], (err, rows) => {
+            const decRows = (rows || []).map(r => ({
+                id: r.id,
+                title: decryptMemoText(r.title, r.user_id),
+                category: r.category,
+                updated_at: r.updated_at,
+                is_pinned: r.is_pinned
+            }));
             portalDb.get("SELECT COUNT(*) as cnt FROM user_memos", [], (cErr, cRow) => {
                 resolve({
-                    recent: rows || [],
-                    totalCount: cRow ? cRow.cnt : (rows ? rows.length : 0)
+                    recent: decRows,
+                    totalCount: cRow ? cRow.cnt : decRows.length
                 });
             });
         });

@@ -3,6 +3,7 @@ const router = express.Router();
 const { db, assetDb, newsDb, portalDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { ADMIN_USERS } = require('../config/constants');
+const { decryptMemoText } = require('../services/crypto.service');
 
 // ==============================================================================
 // 🔍 [한글 초성 검색 및 통합 퀵 검색 (Ctrl+K)]
@@ -57,25 +58,39 @@ router.get('/unified', authenticateToken, async (req, res) => {
     const cleanChosungQuery = rawQuery.replace(/\s+/g, '').toLowerCase();
     const term = `%${rawQuery}%`;
 
-    // 1) 메모 검색 (일반 or 초성)
+    // 1) 메모 검색 (AES-256-GCM 복호화 후 일반/초성 검색 지원)
     const memoPromise = new Promise((resolve) => {
-        if (isChosung) {
-            portalDb.all("SELECT id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE (user_id = ? OR ? = 1) ORDER BY is_pinned DESC, updated_at DESC LIMIT 50", [userId, isAdmin], (err, rows) => {
-                if (err || !rows) return resolve([]);
-                const filtered = rows.filter(r => extractChosung(r.title).includes(cleanChosungQuery) || extractChosung(r.content).includes(cleanChosungQuery)).slice(0, 8);
-                resolve(filtered);
-            });
-        } else {
-            const sql = `
-                SELECT id, title, content, category, color, is_pinned, updated_at
-                FROM user_memos
-                WHERE (user_id = ? OR ? = 1)
-                  AND (title LIKE ? OR content LIKE ?)
-                ORDER BY is_pinned DESC, updated_at DESC
-                LIMIT 8
-            `;
-            portalDb.all(sql, [userId, isAdmin, term, term], (err, rows) => resolve(rows || []));
-        }
+        portalDb.all("SELECT id, user_id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE (user_id = ? OR ? = 1) ORDER BY is_pinned DESC, updated_at DESC LIMIT 100", [userId, isAdmin], (err, rows) => {
+            if (err || !rows) return resolve([]);
+            const cleanQuery = rawQuery.toLowerCase();
+            const results = [];
+
+            for (const r of rows) {
+                const decTitle = decryptMemoText(r.title, r.user_id);
+                const decContent = decryptMemoText(r.content, r.user_id);
+
+                let match = false;
+                if (isChosung) {
+                    match = extractChosung(decTitle).includes(cleanChosungQuery) || extractChosung(decContent).includes(cleanChosungQuery);
+                } else {
+                    match = (decTitle && decTitle.toLowerCase().includes(cleanQuery)) || (decContent && decContent.toLowerCase().includes(cleanQuery));
+                }
+
+                if (match) {
+                    results.push({
+                        id: r.id,
+                        title: decTitle,
+                        content: decContent,
+                        category: r.category,
+                        color: r.color,
+                        is_pinned: r.is_pinned,
+                        updated_at: r.updated_at
+                    });
+                    if (results.length >= 8) break;
+                }
+            }
+            resolve(results);
+        });
     });
 
     // 2) 뉴스 브리핑 검색
