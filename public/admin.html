@@ -45,9 +45,6 @@
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-overview" data-sub="subpane-overview-logs" onclick="switchAdminTabAndSub('tab-overview', 'subpane-overview-logs')">
                         <span>💻</span> 실시간 서버 시스템 로그
                     </button>
-                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-overview" data-sub="subpane-overview-db" onclick="switchAdminTabAndSub('tab-overview', 'subpane-overview-db')">
-                        <span>🗄️</span> 서비스 데이터베이스 현황
-                    </button>
                 </div>
             </div>
 
@@ -723,54 +720,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- 서브 3: 서비스 데이터베이스 현황 -->
-            <div id="subpane-overview-db" class="admin-sub-pane hidden-pane">
-                <div class="admin-card">
-                    <div class="admin-card-header">
-                        <h3>🗄️ 서비스 데이터베이스 (SQLite) 현황</h3>
-                        <button class="btn-admin btn-admin-success btn-admin-sm" onclick="downloadAllDatabases()">
-                            ⚡ 전체 압축 다운로드 (.zip)
-                        </button>
-                    </div>
-                    <div class="admin-table-container">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>서비스명</th>
-                                    <th>DB 파일명</th>
-                                    <th>파일 크기</th>
-                                    <th>상태</th>
-                                    <th>다운로드</th>
-                                </tr>
-                            </thead>
-                            <tbody id="dbStatusTableBody">
-                                <tr>
-                                    <td><strong>혈압 관리</strong></td>
-                                    <td>health.db</td>
-                                    <td id="dbSizeHealth">-</td>
-                                    <td><span class="badge-online">정상</span></td>
-                                    <td><a href="/api/admin/backup/health" class="btn-admin btn-admin-outline btn-admin-sm">📥 다운로드</a></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>자산 관리</strong></td>
-                                    <td>asset.db</td>
-                                    <td id="dbSizeAsset">-</td>
-                                    <td><span class="badge-online">정상</span></td>
-                                    <td><a href="/api/admin/backup/asset" class="btn-admin btn-admin-outline btn-admin-sm">📥 다운로드</a></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>뉴스 브리핑</strong></td>
-                                    <td>briefing.db</td>
-                                    <td id="dbSizeNews">-</td>
-                                    <td><span class="badge-online">정상</span></td>
-                                    <td><a href="/api/admin/backup/briefing" class="btn-admin btn-admin-outline btn-admin-sm">📥 다운로드</a></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- ==========================================
@@ -1323,10 +1272,12 @@
                                 <span>🗄️ 데이터베이스 스택</span>
                             </div>
                             <ul style="margin:0; padding-left:1.1rem; font-size:0.85rem; color:#334155; line-height:1.65;">
-                                <li><strong>SQLite 3 독립 DB 아키텍처</strong>
-                                    <div style="font-size:0.78rem; color:#64748b;">• <code>health.db</code> (혈압·병원·계정)</div>
-                                    <div style="font-size:0.78rem; color:#64748b;">• <code>asset.db</code> (자산·거래·환율)</div>
-                                    <div style="font-size:0.78rem; color:#64748b;">• <code>briefing.db</code> (뉴스·브리핑 로그)</div>
+                                <li><strong>SQLite 3 독립 5대 DB 아키텍처</strong>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>portal.db</code> (포털 일정·개인 메모·시스템 설정)</div>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>health.db</code> (혈압·약 복용·병원 진료·마스터 계정)</div>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>asset.db</code> (증권 계좌·주식 포트폴리오·실시간 시세)</div>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>briefing.db</code> (AI 모닝 뉴스·실시간 기상·수집 로그)</div>
+                                    <div style="font-size:0.78rem; color:#64748b;">• <code>album.db</code> (가족 사진첩·댓글·하트 리액션)</div>
                                 </li>
                                 <li><strong>실시간 WAL 저널 & 원클릭 백업 지원</strong></li>
                             </ul>

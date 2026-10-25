@@ -257,6 +257,10 @@ async function performSecondaryServerCheck() {
                             try {
                                 const integrityJson = JSON.parse(dbsRaw);
                                 if (integrityJson && integrityJson.dbs) {
+                                    if (integrityJson.dbs['portal.db']) {
+                                        const st = integrityJson.dbs['portal.db'].status;
+                                        dbsObj.portal = st === 'ok' ? '보관 완료 (무결성 OK 🟢)' : `경고 (${st})`;
+                                    }
                                     if (integrityJson.dbs['health.db']) {
                                         const st = integrityJson.dbs['health.db'].status;
                                         dbsObj.health = st === 'ok' ? '보관 완료 (무결성 OK 🟢)' : `경고 (${st})`;
@@ -269,11 +273,17 @@ async function performSecondaryServerCheck() {
                                         const st = integrityJson.dbs['briefing.db'].status;
                                         dbsObj.briefing = st === 'ok' ? '보관 완료 (무결성 OK 🟢)' : `경고 (${st})`;
                                     }
+                                    if (integrityJson.dbs['album.db']) {
+                                        const st = integrityJson.dbs['album.db'].status;
+                                        dbsObj.album = st === 'ok' ? '보관 완료 (무결성 OK 🟢)' : `경고 (${st})`;
+                                    }
                                 }
                             } catch (e) {
+                                if (dbsRaw.includes('portal.db') || dbsRaw.includes('jg_backup_')) dbsObj.portal = '백업 보관 완료';
                                 if (dbsRaw.includes('health.db') || dbsRaw.includes('jg_backup_')) dbsObj.health = '백업 보관 완료';
                                 if (dbsRaw.includes('asset.db') || dbsRaw.includes('jg_backup_')) dbsObj.asset = '백업 보관 완료';
                                 if (dbsRaw.includes('briefing.db') || dbsRaw.includes('jg_backup_')) dbsObj.briefing = '백업 보관 완료';
+                                if (dbsRaw.includes('album.db') || dbsRaw.includes('jg_backup_')) dbsObj.album = '백업 보관 완료';
                             }
                         }
 

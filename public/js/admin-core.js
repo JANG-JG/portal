@@ -62,8 +62,7 @@ function fallbackCopyText(text, msg) {
 const SUBTABS_CONFIG = {
     'tab-overview': [
         { id: 'subpane-overview-processes', label: '프로세스 & 핵심 자원', icon: '🚀' },
-        { id: 'subpane-overview-logs', label: '실시간 시스템 로그', icon: '💻' },
-        { id: 'subpane-overview-db', label: '서비스 DB 현황', icon: '🗄️' }
+        { id: 'subpane-overview-logs', label: '실시간 시스템 로그', icon: '💻' }
     ],
     'tab-blood': [
         { id: 'subpane-blood-backup', label: '데이터 백업 & CSV 복구', icon: '💾' },
