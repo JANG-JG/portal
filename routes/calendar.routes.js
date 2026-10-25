@@ -36,14 +36,11 @@ router.get('/events', authenticateToken, async (req, res) => {
     const events = [];
 
     // 1) 캘린더 등록 개인 일정
-    // - 관리자: 전체 등록 일정 조회
-    // - 가족 계정: 본인 등록 일정 (user_id = ?) + 가족 공유 일정 (is_family = 1 또는 category = '가족')
-    // * 관리자의 개인 일정(업무, 개인, 중요 등)은 가족 계정에 완벽히 비노출
+    // - 관리자/가족 공통: 본인이 등록한 일정 (user_id = ?) + 가족 공유 일정 (is_family = 1 또는 category = '가족')
+    // * 엄격한 프라이버시 보호: 가족의 개인 일정은 관리자도 열람 불가, 관리자의 개인 일정은 가족도 열람 불가
     const personalPromise = new Promise((resolve) => {
-        const query = isAdmin
-            ? "SELECT id, user_id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, is_family, notify_timing, notify_repeat FROM calendar_events ORDER BY event_date ASC"
-            : "SELECT id, user_id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, is_family, notify_timing, notify_repeat FROM calendar_events WHERE user_id = ? OR is_family = 1 OR category = '가족' ORDER BY event_date ASC";
-        const params = isAdmin ? [] : [userId];
+        const query = "SELECT id, user_id, title, event_date, event_time, category, color, memo, is_completed, is_all_day, is_family, notify_timing, notify_repeat FROM calendar_events WHERE user_id = ? OR is_family = 1 OR category = '가족' ORDER BY event_date ASC";
+        const params = [userId];
 
         db.all(query, params, (err, rows) => {
             if (!err && rows) {
@@ -354,7 +351,7 @@ router.put('/events/:id', authenticateToken, (req, res) => {
         UPDATE calendar_events
         SET title = ?, event_date = ?, event_time = ?, category = ?, color = ?, memo = ?,
             is_all_day = ?, is_family = ?, notify_timing = ?, notify_repeat = ?, notify_sent_count = 0
-        WHERE id = ? AND (user_id = ? OR ? = 1)
+        WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))
     `;
     db.run(query, [
         title.trim(),
@@ -385,7 +382,7 @@ router.delete('/events/:id', authenticateToken, (req, res) => {
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const eventId = req.params.id;
 
-    db.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR ? = 1)", [eventId, userId, isAdmin], function(err) {
+    db.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))", [eventId, userId, isAdmin], function(err) {
         if (err) return res.status(500).json({ success: false, message: '일정 삭제 실패' });
         res.json({ success: true, message: '일정이 삭제되었습니다.' });
     });
@@ -400,7 +397,7 @@ router.patch('/events/:id/toggle', authenticateToken, (req, res) => {
     db.run(`
         UPDATE calendar_events 
         SET is_completed = CASE WHEN is_completed = 1 THEN 0 ELSE 1 END
-        WHERE id = ? AND (user_id = ? OR ? = 1)
+        WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))
     `, [eventId, userId, isAdmin], function(err) {
         if (err) return res.status(500).json({ success: false, message: '완료 토글 실패' });
         res.json({ success: true, message: '일정 상태가 변경되었습니다.' });
