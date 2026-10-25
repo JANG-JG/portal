@@ -30,6 +30,7 @@ const {
 // 🌐 도메인별 라우터
 const authRoutes = require('./routes/auth.routes');
 const authResetRoutes = require('./routes/auth.reset.routes');
+const authRegisterRoutes = require('./routes/auth.register.routes');
 const portalRoutes = require('./routes/portal.routes');
 const calendarRoutes = require('./routes/calendar.routes');
 const memoRoutes = require('./routes/memo.routes');
@@ -165,9 +166,10 @@ app.get(['/login', '/login.html'], (req, res) => {
 // 🔌 [도메인별 REST API 라우터 마운트]
 // ==========================================
 
-// 인증 & 세션 API (/api/login, /logout, /api/me, /api/reset-password)
+// 인증 & 세션 API (/api/login, /logout, /api/me, /api/reset-password, /api/auth/register)
 app.use('/', authRoutes);
 app.use('/', authResetRoutes);
+app.use('/', authRegisterRoutes);
 
 // 포털 메인 & 공통 대시보드 API (/api/summary, /api/ticker, /api/blood/quick-med, /go/:service)
 app.use('/', portalRoutes);

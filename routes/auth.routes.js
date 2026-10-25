@@ -385,7 +385,12 @@ router.get('/invite/:token', (req, res) => {
             return res.redirect('/login?error=invalid_invite');
         }
 
-        // 초기 PIN 변경이 필요한 경우 로그인 페이지의 PIN 변경 모드로 전달 (⚠️ 이 시점에서는 기기 등록 쿠키를 발급하지 않음)
+        // 1) 아직 가입하지 않은 초대 링크인 경우: 회원가입 모달로 연결
+        if (user.is_registered === 0 || !user.password) {
+            return res.redirect(`/login?register_invite=${encodeURIComponent(inviteToken)}&nickname=${encodeURIComponent(user.nickname || '')}`);
+        }
+
+        // 2) 가입 완료되었으나 초기 PIN 변경이 필요한 경우: PIN 변경 모달로 연결
         if (user.pin_reset_required === 1 || !user.pin) {
             const tempToken = jwt.sign(
                 { username: user.username, role: user.role || 'family', purpose: 'pin_change_required' },

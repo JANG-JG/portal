@@ -259,7 +259,7 @@
     }
 
     // 6. 나만의 6자리 PIN 설정 모달
-    function openPinChangeModal(tempToken, username, nickname, desc) {
+    window.openPinChangeModal = function (tempToken, username, nickname, desc) {
         currentTempToken = tempToken;
         const modal = document.getElementById('pinChangeModal');
         const titleEl = document.getElementById('pinChangeTitle');

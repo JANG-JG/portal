@@ -117,7 +117,11 @@ function renderFamilyMembersTable(members) {
 
         const roleBadge = isAdmin 
             ? '<span class="badge" style="background:#2563eb; color:#fff; font-size:0.72rem;">관리자</span>' 
-            : '<span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:0.72rem;">가족</span>';
+            : (!m.isRegistered 
+                ? '<span class="badge" style="background:#fef3c7; color:#d97706; font-size:0.72rem;">가입대기</span>' 
+                : '<span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:0.72rem;">가족</span>');
+
+        const contactInfo = `<div style="font-size:0.8rem; color:#334155;">${escapeHtml(m.email || '-')}</div><div style="font-size:0.75rem; color:#94a3b8;">${escapeHtml(m.birthdate || '-')}</div>`;
 
         return `
             <tr>
@@ -126,6 +130,9 @@ function renderFamilyMembersTable(members) {
                 </td>
                 <td style="font-family:monospace; color:#475569; font-size:0.85rem;">
                     ${escapeHtml(m.username)}
+                </td>
+                <td>
+                    ${contactInfo}
                 </td>
                 <td>
                     <div style="display:flex; flex-wrap:wrap; gap:2px;">
@@ -256,6 +263,8 @@ function openEditFamilyModal(username) {
 
     document.getElementById('editFamilyTargetUsername').value = member.username;
     document.getElementById('inputEditNickname').value = member.nickname;
+    document.getElementById('inputEditEmail').value = member.email || '';
+    document.getElementById('inputEditBirthdate').value = member.birthdate || '';
 
     const services = member.allowedServices || ['album', 'news'];
     const isAll = services.includes('all');
@@ -283,6 +292,8 @@ async function submitEditFamily(e) {
     e.preventDefault();
     const username = document.getElementById('editFamilyTargetUsername').value;
     const nickname = document.getElementById('inputEditNickname').value.trim();
+    const email = document.getElementById('inputEditEmail').value.trim();
+    const birthdate = document.getElementById('inputEditBirthdate').value.trim();
 
     const allowedServices = [];
     if (document.getElementById('chkEditServiceAlbum').checked) allowedServices.push('album');
@@ -294,7 +305,7 @@ async function submitEditFamily(e) {
         const res = await fetch(`/api/admin/family/members/${username}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nickname, allowedServices })
+            body: JSON.stringify({ nickname, email, birthdate, allowedServices })
         });
         const data = await res.json();
         if (data.success) {

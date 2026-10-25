@@ -350,7 +350,8 @@ router.post('/system/test-telegram', async (req, res) => {
 
 // 2-2. 보안 로그인 시도 이력 조회 API
 router.get('/logs/login', (req, res) => {
-    db.all('SELECT id, username, ip, status, attempted_at FROM login_logs ORDER BY attempted_at DESC LIMIT 50', [], (err, rows) => {
+    const query = 'SELECT l.id, l.username, u.nickname, u.role, l.ip, l.status, l.attempted_at FROM login_logs l LEFT JOIN users u ON l.username = u.username ORDER BY l.attempted_at DESC LIMIT 100';
+    db.all(query, [], (err, rows) => {
         if (err) return res.status(500).json({ success: false, message: '로그인 기록 조회 실패: ' + err.message });
         res.json({ success: true, logs: rows || [] });
     });

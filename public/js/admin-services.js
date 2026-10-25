@@ -391,10 +391,11 @@ async function loadSecurityLogs() {
                 timeline.innerHTML = '<div style="text-align:center; padding:1.2rem; color:#64748b;">기록된 보안 감사 로그가 없습니다.</div>';
             } else {
                 timeline.innerHTML = logs.slice(0, 15).map(log => {
-                    const isSuccess = log.status === 'SUCCESS';
+                    const isSuccess = String(log.status).startsWith('SUCCESS');
                     const badgeClass = isSuccess ? 'badge-success' : 'badge-failed';
-                    const statusText = isSuccess ? '정상 로그인' : '인증 실패';
+                    const statusText = log.status === 'SUCCESS_FAMILY_PIN' ? '가족 PIN 입장' : (isSuccess ? '정상 로그인' : (log.status === 'LOCKED_PIN_LIMIT' ? '5회 오류 잠금' : '인증 실패'));
                     const icon = isSuccess ? '🛡️' : '🚨';
+                    const userLabel = log.nickname ? `${escapeHtml(log.nickname)} (${escapeHtml(log.username)})` : escapeHtml(log.username || 'unknown');
                     return `
                         <div class="admin-timeline-item">
                             <div class="admin-timeline-badge ${badgeClass}"></div>
@@ -402,7 +403,7 @@ async function loadSecurityLogs() {
                                 <div class="admin-timeline-header">
                                     <span class="admin-timeline-title">
                                         <span>${icon}</span>
-                                        <strong>${escapeHtml(log.username || 'unknown')}</strong>
+                                        <strong>${userLabel}</strong>
                                         <span class="${isSuccess ? 'badge-online' : 'badge-stopped'}" style="font-size:0.7rem; padding:1px 6px;">${statusText}</span>
                                     </span>
                                     <span class="admin-timeline-time">${log.attempted_at || '-'}</span>
@@ -426,14 +427,15 @@ async function loadSecurityLogs() {
             }
 
             tbody.innerHTML = logs.map(log => {
-                const isSuccess = log.status === 'SUCCESS';
+                const isSuccess = String(log.status).startsWith('SUCCESS');
                 const badge = isSuccess 
-                    ? '<span class="badge-success">성공</span>' 
-                    : '<span class="badge-failed">실패</span>';
+                    ? `<span class="badge-success">${log.status === 'SUCCESS_FAMILY_PIN' ? '가족 PIN' : '성공'}</span>` 
+                    : `<span class="badge-failed">${log.status === 'LOCKED_PIN_LIMIT' ? '잠금' : '실패'}</span>`;
+                const userLabel = log.nickname ? `${escapeHtml(log.nickname)} <small style="color:#64748b;">(${escapeHtml(log.username)})</small>` : `<strong>${escapeHtml(log.username || '-')}</strong>`;
                 return `
                     <tr>
                         <td><small>${log.attempted_at || '-'}</small></td>
-                        <td><strong>${escapeHtml(log.username || '-')}</strong></td>
+                        <td>${userLabel}</td>
                         <td><code>${escapeHtml(log.ip || '-')}</code></td>
                         <td>${badge}</td>
                     </tr>

@@ -34,6 +34,9 @@ router.get('/members', (req, res) => {
             username,
             nickname,
             role,
+            email,
+            birthdate,
+            is_registered,
             allowed_services,
             pin_reset_required,
             invite_token,
@@ -74,6 +77,9 @@ router.get('/members', (req, res) => {
                 username: row.username,
                 nickname: row.nickname || (row.role === 'admin' ? '관리자 (나)' : row.username),
                 role: row.role || (row.rowid === 1 ? 'admin' : 'family'),
+                email: row.email || '',
+                birthdate: row.birthdate || '',
+                isRegistered: Boolean(row.is_registered === 1),
                 allowedServices,
                 pinResetRequired: Boolean(row.pin_reset_required),
                 inviteToken,
@@ -106,15 +112,10 @@ router.post('/members', async (req, res) => {
             return res.status(400).json({ success: false, message: '가족 호칭(이름)을 입력해 주세요.' });
         }
 
-        // 아이디 미입력 시 호칭 기반 자동 생성 (영문/숫자 치환 또는 고유 타임스탬프)
+        // 아이디 미입력 시 초대용 임시 아이디 자동 생성
         if (!username) {
-            const randomSuffix = Math.random().toString(36).substring(2, 6);
-            username = `family_${randomSuffix}`;
-        }
-
-        // 6자리 PIN 검증
-        if (!/^\d{6}$/.test(initialPin)) {
-            return res.status(400).json({ success: false, message: '초기 PIN은 숫자 6자리로 입력해 주세요.' });
+            const randomSuffix = Math.random().toString(36).substring(2, 8);
+            username = `pending_${randomSuffix}`;
         }
 
         if (!Array.isArray(allowedServices) || allowedServices.length === 0) {
@@ -128,7 +129,7 @@ router.post('/members', async (req, res) => {
                 return res.status(409).json({ success: false, message: '이미 존재하는 아이디입니다. 다른 아이디를 입력해 주세요.' });
             }
 
-            const pinHash = await bcrypt.hash(initialPin, 10);
+            const pinHash = initialPin ? await bcrypt.hash(initialPin, 10) : '';
             const inviteToken = crypto.randomBytes(16).toString('hex');
             const phoneHash = hashPhoneNumber(phone);
             const servicesJson = JSON.stringify(allowedServices);
@@ -144,8 +145,9 @@ router.post('/members', async (req, res) => {
                     pin_reset_required,
                     invite_token,
                     phone_hash,
-                    failed_pin_attempts
-                ) VALUES (?, ?, ?, 'family', ?, ?, 1, ?, ?, 0)
+                    failed_pin_attempts,
+                    is_registered
+                ) VALUES (?, ?, ?, 'family', ?, ?, 1, ?, ?, 0, 0)
             `;
 
             db.run(
@@ -159,7 +161,7 @@ router.post('/members', async (req, res) => {
 
                     res.json({
                         success: true,
-                        message: `가족 '${nickname}'님이 성공적으로 등록되었습니다.`,
+                        message: `가족 '${nickname}'님의 초대 링크가 발급되었습니다.`,
                         member: {
                             id: this.lastID,
                             username,
@@ -178,26 +180,28 @@ router.post('/members', async (req, res) => {
 });
 
 /**
- * 3. 가족 구성원 정보(호칭/허용 서비스) 수정 API
+ * 3. 가족 구성원 정보(호칭/이메일/생년월일/허용 서비스) 수정 API
  * PUT /api/admin/family/members/:username
  */
 router.put('/members/:username', (req, res) => {
     const targetUsername = req.params.username;
     const nickname = (req.body.nickname || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase();
+    const birthdate = (req.body.birthdate || '').trim();
     const allowedServices = req.body.allowedServices;
 
     if (!nickname) {
-        return res.status(400).json({ success: false, message: '호칭을 입력해 주세요.' });
+        return res.status(400).json({ success: false, message: '호칭(프로필명)을 입력해 주세요.' });
     }
 
     const servicesJson = Array.isArray(allowedServices) ? JSON.stringify(allowedServices) : JSON.stringify(['album', 'news']);
 
     db.run(
-        'UPDATE users SET nickname = ?, allowed_services = ? WHERE username = ?',
-        [nickname, servicesJson, targetUsername],
+        'UPDATE users SET nickname = ?, email = ?, birthdate = ?, allowed_services = ? WHERE username = ?',
+        [nickname, email, birthdate, servicesJson, targetUsername],
         function (err) {
-            if (err) return res.status(500).json({ success: false, message: '정보 수정 실패' });
-            res.json({ success: true, message: '가족 정보가 수정되었습니다.' });
+            if (err) return res.status(500).json({ success: false, message: '정보 수정 실패: ' + err.message });
+            res.json({ success: true, message: '가족 정보가 성공적으로 수정되었습니다.' });
         }
     );
 });

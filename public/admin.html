@@ -1107,6 +1107,7 @@
                                 <tr>
                                     <th>호칭 / 이름</th>
                                     <th>아이디</th>
+                                    <th>이메일 / 생년월일</th>
                                     <th>이용 가능한 서비스</th>
                                     <th>PIN 인증 상태</th>
                                     <th>최근 접속일</th>
@@ -1363,9 +1364,17 @@
             <div class="admin-modal-body">
                 <form id="editFamilyForm" onsubmit="submitEditFamily(event)">
                     <input type="hidden" id="editFamilyTargetUsername">
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">가족 호칭 (프로필명)</label>
+                        <input type="text" id="inputEditNickname" required style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">이메일 주소</label>
+                        <input type="email" id="inputEditEmail" placeholder="example@email.com" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
                     <div style="margin-bottom:0.85rem;">
-                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">가족 호칭 (이름)</label>
-                        <input type="text" id="inputEditNickname" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">생년월일</label>
+                        <input type="text" id="inputEditBirthdate" placeholder="예: 1995-05-15 또는 950515" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
                     </div>
                     <div style="margin-bottom:1.15rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem;">
                         <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.5rem;">이용 허용 서비스 선택</label>
