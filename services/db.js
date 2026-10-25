@@ -11,6 +11,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run('PRAGMA synchronous = NORMAL;');
             db.run('PRAGMA busy_timeout = 5000;');
             db.run('PRAGMA temp_store = MEMORY;');
+            db.run('PRAGMA cache_size = -8000;');
 
             // 🛡️ 통합 계정(RBAC) 및 가족 PIN/초기화 컬럼 마이그레이션 및 관리자 동적 로드
             db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'family'`, () => {});
@@ -29,6 +30,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`ALTER TABLE users ADD COLUMN birthdate TEXT DEFAULT ''`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN is_registered INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN admin_memo TEXT DEFAULT ''`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN weather_city TEXT DEFAULT 'Seoul'`, () => {});
             db.run(`UPDATE users SET role = 'admin', allowed_services = '["all"]', pin_reset_required = 0 WHERE rowid = 1 OR role IS NULL`, () => {
                 db.all(`SELECT username FROM users WHERE role = 'admin' OR rowid = 1`, (uErr, uRows) => {
                     if (!uErr && Array.isArray(uRows)) {
@@ -146,6 +148,7 @@ const assetDb = new sqlite3.Database(ASSET_DB_PATH, (err) => {
         assetDb.run('PRAGMA synchronous = NORMAL;');
         assetDb.run('PRAGMA busy_timeout = 5000;');
         assetDb.run('PRAGMA temp_store = MEMORY;');
+        assetDb.run('PRAGMA cache_size = -8000;');
     }
 });
 
@@ -158,6 +161,7 @@ const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
         newsDb.run('PRAGMA synchronous = NORMAL;');
         newsDb.run('PRAGMA busy_timeout = 5000;');
         newsDb.run('PRAGMA temp_store = MEMORY;');
+        newsDb.run('PRAGMA cache_size = -8000;');
     }
 });
 

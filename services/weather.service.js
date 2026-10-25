@@ -120,25 +120,50 @@ function getWeatherIconSlug(condition, is_day = 1) {
     return is_day === 1 ? 'clear-day' : 'clear-night';
 }
 
-let weatherCache = {
-    timestamp: 0,
-    data: {
-        city: '계룡',
-        temp: '13.0°C',
-        condition: '맑음',
-        icon: '🌤️',
-        icon_slug: 'clear-day',
-        icon_url: 'https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/clear-day.svg',
-        is_day: 1
-    }
+const CITY_LIST = Object.entries(CITY_KO_MAP).map(([code, name]) => ({ code, name }));
+const KO_CITY_MAP = Object.entries(CITY_KO_MAP).reduce((acc, [code, name]) => {
+    acc[name] = code;
+    return acc;
+}, {});
+
+// 도시별 메모리 날씨 캐시 (TTL: 10분)
+const weatherCacheMap = new Map();
+const inFlightWeatherFetches = new Map();
+const WEATHER_CACHE_TTL_MS = 10 * 60 * 1000;
+
+// 서울 초기 기본 날씨 데이터 (0ms 즉시 응답용 안전 폴백)
+const DEFAULT_SEOUL_FALLBACK = {
+    city: '서울',
+    city_code: 'Seoul',
+    temp: '15.0°C',
+    condition: '맑음',
+    icon: '☀️',
+    icon_slug: 'clear-day',
+    icon_url: 'https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/clear-day.svg',
+    is_day: 1,
+    feels_like: '15.0°C',
+    humidity: '50%',
+    wind_speed: '5.0km/h'
 };
-let weatherFetchPromise = null;
+weatherCacheMap.set('Seoul', { timestamp: 0, data: DEFAULT_SEOUL_FALLBACK });
+
+function normalizeCityCode(cityInput) {
+    if (!cityInput || typeof cityInput !== 'string') return 'Seoul';
+    const trimmed = cityInput.trim();
+    if (CITY_COORDS[trimmed]) return trimmed;
+    if (KO_CITY_MAP[trimmed]) return KO_CITY_MAP[trimmed];
+    return 'Seoul';
+}
 
 async function refreshWeatherInBackground(rawCity, korCityName) {
-    if (weatherFetchPromise) return weatherFetchPromise;
-    weatherFetchPromise = (async () => {
+    const cityKey = normalizeCityCode(rawCity);
+    if (inFlightWeatherFetches.has(cityKey)) {
+        return inFlightWeatherFetches.get(cityKey);
+    }
+
+    const fetchPromise = (async () => {
         try {
-            const coords = CITY_COORDS[rawCity] || CITY_COORDS['Gyeryong'] || { lat: 36.3160, lon: 127.2480 };
+            const coords = CITY_COORDS[cityKey] || CITY_COORDS['Seoul'];
             const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,cloud_cover,wind_speed_10m&timezone=Asia%2FTokyo`;
 
             const controller = new AbortController();
@@ -161,61 +186,70 @@ async function refreshWeatherInBackground(rawCity, korCityName) {
                     const conditionKo = WMO_CODE_KO[weatherCode] || '맑음';
                     const icon = getWeatherIcon(conditionKo, isDay);
                     const iconSlug = getWeatherIconSlug(conditionKo, isDay);
+                    const displayName = korCityName || CITY_KO_MAP[cityKey] || cityKey;
 
-                    weatherCache = {
-                        timestamp: Date.now(),
-                        data: {
-                            city: korCityName,
-                            temp: `${tempVal.toFixed(1)}°C`,
-                            condition: conditionKo,
-                            icon: icon,
-                            icon_slug: iconSlug,
-                            icon_url: `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconSlug}.svg`,
-                            is_day: isDay,
-                            feels_like: `${feelsVal.toFixed(1)}°C`,
-                            humidity: `${curr.relative_humidity_2m || 0}%`,
-                            wind_speed: `${curr.wind_speed_10m || 0}km/h`
-                        }
+                    const weatherData = {
+                        city: displayName,
+                        city_code: cityKey,
+                        temp: `${tempVal.toFixed(1)}°C`,
+                        condition: conditionKo,
+                        icon: icon,
+                        icon_slug: iconSlug,
+                        icon_url: `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconSlug}.svg`,
+                        is_day: isDay,
+                        feels_like: `${feelsVal.toFixed(1)}°C`,
+                        humidity: `${curr.relative_humidity_2m || 0}%`,
+                        wind_speed: `${curr.wind_speed_10m || 0}km/h`
                     };
+
+                    weatherCacheMap.set(cityKey, {
+                        timestamp: Date.now(),
+                        data: weatherData
+                    });
+
+                    return weatherData;
                 }
             }
         } catch (e) {
+            // 실패 시 기존 캐시 또는 기본 폴백 유지
         } finally {
-            weatherFetchPromise = null;
+            inFlightWeatherFetches.delete(cityKey);
         }
+        const existing = weatherCacheMap.get(cityKey);
+        return existing ? existing.data : DEFAULT_SEOUL_FALLBACK;
     })();
-    return weatherFetchPromise;
+
+    inFlightWeatherFetches.set(cityKey, fetchPromise);
+    return fetchPromise;
 }
 
-async function getLiveWeatherData() {
+async function getLiveWeatherData(requestedCity = 'Seoul') {
+    const cityKey = normalizeCityCode(requestedCity);
+    const korCityName = CITY_KO_MAP[cityKey] || '서울';
     const now = Date.now();
-    if (weatherCache.data && weatherCache.timestamp > 0 && (now - weatherCache.timestamp < 10 * 60 * 1000)) {
-        return weatherCache.data;
+    const cached = weatherCacheMap.get(cityKey);
+
+    // 1. 유효한 신선 캐시 (10분 이내) -> 0ms 즉시 반환
+    if (cached && cached.data && (now - cached.timestamp < WEATHER_CACHE_TTL_MS) && cached.timestamp > 0) {
+        return cached.data;
     }
 
-    let rawCity = 'Gyeryong';
-    try {
-        const row = await new Promise((res) => {
-            newsDb.get("SELECT value FROM system_settings WHERE key = 'weather_city'", (err, r) => res(r || null));
-        });
-        if (row && row.value && row.value.trim()) {
-            rawCity = row.value.trim();
-        }
-    } catch (e) {}
-    const korCityName = CITY_KO_MAP[rawCity] || rawCity;
-
-    if (weatherCache.data && weatherCache.timestamp > 0) {
-        refreshWeatherInBackground(rawCity, korCityName);
-        return weatherCache.data;
+    // 2. 만료되었지만 기존 캐시가 있음 -> 0ms 즉시 반환하고 백그라운드 비동기 갱신 (SWR)
+    if (cached && cached.data) {
+        refreshWeatherInBackground(cityKey, korCityName);
+        return cached.data;
     }
 
-    await refreshWeatherInBackground(rawCity, korCityName);
-    return weatherCache.data;
+    // 3. 최초 요청 시 -> 비동기 조회 후 반환
+    const freshData = await refreshWeatherInBackground(cityKey, korCityName);
+    return freshData || DEFAULT_SEOUL_FALLBACK;
 }
 
 module.exports = {
     CITY_KO_MAP,
     CITY_COORDS,
+    CITY_LIST,
+    normalizeCityCode,
     getLiveWeatherData,
     refreshWeatherInBackground
 };

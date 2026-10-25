@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/constants');
 const { db, assetDb, newsDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
-const { getLiveWeatherData } = require('../services/weather.service');
+const { getLiveWeatherData, CITY_LIST, normalizeCityCode } = require('../services/weather.service');
 const { getLiveMarketData, getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
 const { getCurrentCpuPercent, getRealMemoryInfo, getSecondaryServerStatus, getDiskUsage } = require('../services/systemMonitor.service');
 
@@ -389,22 +389,46 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
     try {
         const now = Date.now();
 
+        async function attachUserWeather(baseSummary) {
+            if (!baseSummary) return baseSummary;
+            const username = req.user ? req.user.username : 'admin';
+            let userCity = 'Seoul';
+            try {
+                const userRow = await new Promise((resUser) => {
+                    db.get("SELECT weather_city FROM users WHERE username = ?", [username], (uErr, row) => resUser(row || null));
+                });
+                if (userRow && userRow.weather_city) {
+                    userCity = userRow.weather_city;
+                }
+            } catch (e) {}
+
+            const userWeather = await getLiveWeatherData(userCity);
+            return {
+                ...baseSummary,
+                user_city: userCity,
+                weather: userWeather || baseSummary.weather
+            };
+        }
+
         // 1. 60초 이내 신선한 캐시: 0ms 즉시 반환
         if (summaryCache && (now - summaryCacheTime < 60 * 1000)) {
-            return res.json(summaryCache);
+            const responseData = await attachUserWeather(summaryCache);
+            return res.json(responseData);
         }
 
         // 2. 만료되었지만 기존 캐시가 있음: 0ms 즉시 반환하고 백그라운드에서 조용히 갱신 (SWR)
         if (summaryCache) {
             refreshSummaryInBackground();
-            return res.json(summaryCache);
+            const responseData = await attachUserWeather(summaryCache);
+            return res.json(responseData);
         }
 
         // 3. 서버 시작 후 최초 1회 요청 시
         const resultData = await buildSummaryData();
         summaryCache = resultData;
         summaryCacheTime = now;
-        res.json(resultData);
+        const responseData = await attachUserWeather(resultData);
+        res.json(responseData);
     } catch (err) {
         console.error('요약 데이터 조회 오류:', err);
         res.status(500).json({ success: false, message: '요약 데이터 조회 실패' });
@@ -621,6 +645,45 @@ router.get('/go/:service', authenticateToken, (req, res) => {
         });
     } else {
         executeSso();
+    }
+});
+
+// 6. 사용자 날씨 지역 조회 API
+router.get('/api/portal/user/weather-city', authenticateToken, (req, res) => {
+    const username = req.user ? req.user.username : 'admin';
+    db.get("SELECT weather_city FROM users WHERE username = ?", [username], (err, row) => {
+        const currentCity = row && row.weather_city ? row.weather_city : 'Seoul';
+        res.json({
+            success: true,
+            current_city: currentCity,
+            cities: CITY_LIST
+        });
+    });
+});
+
+// 7. 사용자 날씨 지역 변경 저장 API
+router.post('/api/portal/user/weather-city', authenticateToken, async (req, res) => {
+    try {
+        const username = req.user ? req.user.username : 'admin';
+        const rawCity = (req.body && req.body.city) ? req.body.city : 'Seoul';
+        const cityCode = normalizeCityCode(rawCity);
+
+        db.run("UPDATE users SET weather_city = ? WHERE username = ?", [cityCode, username], async function(err) {
+            if (err) {
+                console.error('날씨 지역 변경 실패:', err);
+                return res.status(500).json({ success: false, message: '지역 설정 저장에 실패했습니다.' });
+            }
+            const updatedWeather = await getLiveWeatherData(cityCode);
+            res.json({
+                success: true,
+                message: '날씨 지역이 성공적으로 변경되었습니다.',
+                current_city: cityCode,
+                weather: updatedWeather
+            });
+        });
+    } catch (e) {
+        console.error('날씨 지역 설정 오류:', e);
+        res.status(500).json({ success: false, message: '서버 내부 오류' });
     }
 });
 

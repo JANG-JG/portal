@@ -199,3 +199,97 @@ if (document.readyState === 'loading') {
     initLogoutButton();
 }
 
+// 🌤️ 5. 날씨 지역 설정 모달 제어
+let currentSelectedWeatherCity = 'Seoul';
+
+function openWeatherCityModal(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const modal = document.getElementById('weatherCityModal');
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+    lockBodyScroll();
+
+    const grid = document.getElementById('weatherCityGrid');
+    if (grid) {
+        grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #94a3b8; padding: 20px 0;">지역 목록을 불러오는 중...</div>';
+    }
+
+    fetch('/api/portal/user/weather-city')
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.success) {
+                currentSelectedWeatherCity = data.current_city || 'Seoul';
+                renderWeatherCityGrid(currentSelectedWeatherCity, data.cities || []);
+            }
+        })
+        .catch(() => {
+            if (grid) {
+                grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #ef4444; padding: 20px 0;">지역 목록을 불러오지 못했습니다.</div>';
+            }
+        });
+}
+window.openWeatherCityModal = openWeatherCityModal;
+
+function closeWeatherCityModal() {
+    const modal = document.getElementById('weatherCityModal');
+    if (modal) {
+        modal.style.display = 'none';
+        unlockBodyScroll();
+    }
+}
+window.closeWeatherCityModal = closeWeatherCityModal;
+
+function renderWeatherCityGrid(currentCity, cities) {
+    const grid = document.getElementById('weatherCityGrid');
+    if (!grid) return;
+
+    grid.innerHTML = '';
+    cities.forEach(c => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'weather-city-item' + (c.code === currentCity ? ' active' : '');
+        item.textContent = c.name;
+        item.title = `${c.name} (${c.code})`;
+        item.onclick = () => selectWeatherCity(c.code, item);
+        grid.appendChild(item);
+    });
+}
+
+function selectWeatherCity(cityCode, buttonEl) {
+    const grid = document.getElementById('weatherCityGrid');
+    if (grid) {
+        const allItems = grid.querySelectorAll('.weather-city-item');
+        allItems.forEach(el => el.classList.remove('active'));
+    }
+    if (buttonEl) buttonEl.classList.add('active');
+
+    fetch('/api/portal/user/weather-city', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ city: cityCode })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data && data.success) {
+            currentSelectedWeatherCity = cityCode;
+            if (data.weather && typeof window.updateWeatherBadge === 'function') {
+                window.updateWeatherBadge(data.weather);
+            }
+            setTimeout(() => {
+                closeWeatherCityModal();
+            }, 250);
+        }
+    })
+    .catch(err => {
+        console.error('날씨 지역 변경 실패:', err);
+    });
+}
+window.selectWeatherCity = selectWeatherCity;
+
+

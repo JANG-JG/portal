@@ -92,17 +92,26 @@ app.use(express.static(path.join(__dirname, 'public'), {
     dotfiles: 'ignore',
     setHeaders: (res, filePath) => {
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+        const reqUrl = res.req ? res.req.url : '';
+        const hasVersionQuery = reqUrl.includes('?v=') || reqUrl.includes('&v=');
 
         if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
         } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-            // ETag 기반 304 검증 허용: 캐시 고착 없이 항상 재검증하되 무변경 시 0ms 304로 즉시 렌더링
-            res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
-            res.setHeader('Pragma', 'no-cache');
-        } else if (filePath.match(/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf)$/i)) {
+            if (hasVersionQuery) {
+                // 🚀 배포 버전 쿼리가 있는 에셋은 1년 불변 캐시 -> 0ms 로컬 캐시 즉시 렌더링
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            } else {
+                // 버전 쿼리가 없는 에셋은 ETag 기반 재검증
+                res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
+                res.setHeader('Pragma', 'no-cache');
+            }
+        } else if (filePath.match(/\.(woff2?|ttf|eot|otf)$/i)) {
+            // 웹폰트는 항상 불변 캐시 적용 (Pretendard 등 폰트 렌더링 0ms 보장)
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (filePath.match(/\.(png|jpg|jpeg|gif|svg|ico)$/i)) {
             res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
         }
     }

@@ -5,6 +5,30 @@
 // - 비로그인/세션 만료 시 안전 Fallback 데이터
 // ==============================================================================
 
+// 🌤️ 상단 날씨 뱃지 UI 렌더링 헬퍼
+function updateWeatherBadge(w) {
+    if (!w) return;
+    const iconEl = document.getElementById('welcomeWeatherIcon');
+    const cityEl = document.getElementById('welcomeWeatherCity');
+    const tempEl = document.getElementById('welcomeWeatherTemp');
+    const badgeEl = document.getElementById('welcomeWeatherBadge');
+    if (iconEl) {
+        const iconUrl = w.icon_url || (w.icon_slug ? `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${w.icon_slug}.svg` : null);
+        if (iconUrl) {
+            iconEl.innerHTML = `<img src="${iconUrl}" alt="${w.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${w.icon || '🌤️'}';">`;
+        } else if (w.icon) {
+            iconEl.textContent = w.icon;
+        }
+    }
+    const displayName = (w.city === 'Gyeryong' ? '계룡' : (w.city || '서울'));
+    if (cityEl) cityEl.textContent = displayName;
+    if (tempEl && w.temp) tempEl.textContent = w.temp;
+    if (badgeEl && w.condition) {
+        badgeEl.title = `실시간 날씨: ${displayName} ${w.temp || ''} (${w.condition}) - 클릭 시 날씨 브리핑 이동`;
+    }
+}
+window.updateWeatherBadge = updateWeatherBadge;
+
 // 🔄 1. 통합 요약 데이터 로드 함수
 function loadSummary() {
     fetch('/api/summary')
@@ -21,24 +45,7 @@ function loadSummary() {
 
             // 1-1. 상단 날씨 뱃지 바인딩
             if (data.weather) {
-                const w = data.weather;
-                const iconEl = document.getElementById('welcomeWeatherIcon');
-                const cityEl = document.getElementById('welcomeWeatherCity');
-                const tempEl = document.getElementById('welcomeWeatherTemp');
-                const badgeEl = document.getElementById('welcomeWeatherBadge');
-                if (iconEl) {
-                    const iconUrl = w.icon_url || (w.icon_slug ? `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${w.icon_slug}.svg` : null);
-                    if (iconUrl) {
-                        iconEl.innerHTML = `<img src="${iconUrl}" alt="${w.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${w.icon || '🌤️'}';">`;
-                    } else if (w.icon) {
-                        iconEl.textContent = w.icon;
-                    }
-                }
-                if (cityEl && w.city) cityEl.textContent = (w.city === 'Gyeryong' ? '계룡' : w.city);
-                if (tempEl && w.temp) tempEl.textContent = w.temp;
-                if (badgeEl && w.condition) {
-                    badgeEl.title = `실시간 날씨: ${w.city} ${w.temp} (${w.condition}) - 클릭 시 날씨 브리핑 이동`;
-                }
+                updateWeatherBadge(data.weather);
             }
 
             // 1-2. 위젯 1: 오늘 복약 상태

@@ -265,6 +265,160 @@ html.role-pending [data-service="ops"] {
     color: var(--text-primary);
 }
 
+.weather-nav-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px 4px 2px 6px;
+    transition: border-color 0.12s ease;
+}
+
+.weather-nav-container:hover {
+    border-color: var(--border-strong);
+}
+
+.weather-nav-container .cmd-nav-weather {
+    border: none;
+    background: transparent;
+    padding: 2px 2px;
+}
+
+.weather-city-setting-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 0.82rem;
+    padding: 0;
+    color: var(--text-secondary);
+    transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.weather-city-setting-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    transform: scale(1.08);
+}
+
+.weather-city-setting-btn:active {
+    transform: scale(0.95);
+}
+
+/* 🌤️ 날씨 지역 설정 모달 */
+.weather-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px;
+    box-sizing: border-box;
+}
+
+.weather-modal-card {
+    background: #ffffff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 420px;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.weather-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.weather-modal-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.weather-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #94a3b8;
+    padding: 2px 6px;
+    line-height: 1;
+}
+
+.weather-modal-close:hover {
+    color: #334155;
+}
+
+.weather-modal-desc {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 0 0 14px 0;
+    line-height: 1.4;
+}
+
+.weather-city-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 2px;
+    box-sizing: border-box;
+}
+
+@media (max-width: 380px) {
+    .weather-city-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+    }
+}
+
+.weather-city-item {
+    padding: 8px 2px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    background: #f8fafc;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.12s ease;
+    user-select: none;
+}
+
+.weather-city-item:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.weather-city-item.active {
+    background: #0284c7;
+    border-color: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 2px 4px rgba(2, 132, 199, 0.25);
+}
+
 .cmd-nav-search-btn {
     display: inline-flex;
     align-items: center;
