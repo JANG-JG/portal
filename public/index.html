@@ -17,6 +17,32 @@
     <link rel="stylesheet" href="/css/pretendard.css?v=20261025_121213">
     <link rel="stylesheet" href="/css/unified-nav.css?v=20261025_121213">
     <link rel="stylesheet" href="/css/index.css?v=20261025_121213">
+    <!-- 🛡️ 권한 기반 UI 즉시 적용 (FOUC / 메뉴 깜빡임 원천 차단) -->
+    <script>
+        (function() {
+            try {
+                var c = document.cookie || '';
+                var role = '';
+                var allowed = '';
+                var mRole = c.match(/(?:^|;\s*)jg_user_role=([^;]*)/);
+                if (mRole) role = decodeURIComponent(mRole[1]);
+                else role = localStorage.getItem('jg_user_role') || '';
+                var mAllowed = c.match(/(?:^|;\s*)jg_allowed_services=([^;]*)/);
+                if (mAllowed) allowed = decodeURIComponent(mAllowed[1]);
+                else allowed = localStorage.getItem('jg_allowed_services') || '';
+
+                if (role === 'family') {
+                    document.documentElement.classList.add('role-family', 'hide-ops');
+                    if (allowed.indexOf('blood') === -1) document.documentElement.classList.add('hide-blood');
+                    if (allowed.indexOf('asset') === -1) document.documentElement.classList.add('hide-asset');
+                } else if (role === 'admin') {
+                    document.documentElement.classList.add('role-admin');
+                } else {
+                    document.documentElement.classList.add('role-pending');
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 <body>
     <!-- 🌐 단일 통합 커맨드 내비게이션 바 (Command Center Dark Header) -->
@@ -36,16 +62,16 @@
                 <button type="button" class="portal-tab-btn active" data-tab="home" onclick="switchPortalTab('home')">
                     <span>🏠</span><span>대시보드</span>
                 </button>
-                <button type="button" class="portal-tab-btn" data-tab="blood" onclick="switchPortalTab('blood')">
+                <button type="button" class="portal-tab-btn" data-tab="blood" data-service="blood" onclick="switchPortalTab('blood')">
                     <span>🩸</span><span>혈압·건강·약</span>
                 </button>
-                <button type="button" class="portal-tab-btn" data-tab="asset" onclick="switchPortalTab('asset')">
+                <button type="button" class="portal-tab-btn" data-tab="asset" data-service="asset" onclick="switchPortalTab('asset')">
                     <span>💰</span><span>자산·금융</span>
                 </button>
                 <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
                     <span>📰</span><span>뉴스룸</span>
                 </button>
-                <button type="button" class="portal-tab-btn" data-tab="ops" onclick="switchPortalTab('ops')">
+                <button type="button" class="portal-tab-btn" data-tab="ops" data-service="ops" onclick="switchPortalTab('ops')">
                     <span>🖥️</span><span>서버 인프라</span>
                 </button>
             </nav>
@@ -93,11 +119,11 @@
                     <div class="cmd-launcher-menu" id="cmdLauncherMenu" style="display: none;">
                         <div class="cmd-launcher-header">JG 패밀리 서비스</div>
                         <div class="cmd-launcher-grid">
-                            <a href="https://blood.j-jg.cc" class="cmd-launcher-item">
+                            <a href="https://blood.j-jg.cc" class="cmd-launcher-item" data-service="blood">
                                 <span class="cmd-launcher-icon">🩸</span>
                                 <span class="cmd-launcher-name">혈압 앱</span>
                             </a>
-                            <a href="https://asset.j-jg.cc" class="cmd-launcher-item">
+                            <a href="https://asset.j-jg.cc" class="cmd-launcher-item" data-service="asset">
                                 <span class="cmd-launcher-icon">💰</span>
                                 <span class="cmd-launcher-name">자산 앱</span>
                             </a>
@@ -109,7 +135,7 @@
                                 <span class="cmd-launcher-icon">📸</span>
                                 <span class="cmd-launcher-name">가족 앨범</span>
                             </a>
-                            <a href="/admin" class="cmd-launcher-item">
+                            <a href="/admin" class="cmd-launcher-item" data-service="ops">
                                 <span class="cmd-launcher-icon">⚙️</span>
                                 <span class="cmd-launcher-name">서버 관리</span>
                             </a>
@@ -124,16 +150,16 @@
             <button type="button" class="portal-tab-btn active" data-tab="home" onclick="switchPortalTab('home')">
                 <span>🏠</span><span>대시보드</span>
             </button>
-            <button type="button" class="portal-tab-btn" data-tab="blood" onclick="switchPortalTab('blood')">
+            <button type="button" class="portal-tab-btn" data-tab="blood" data-service="blood" onclick="switchPortalTab('blood')">
                 <span>🩸</span><span>건강·약</span>
             </button>
-            <button type="button" class="portal-tab-btn" data-tab="asset" onclick="switchPortalTab('asset')">
+            <button type="button" class="portal-tab-btn" data-tab="asset" data-service="asset" onclick="switchPortalTab('asset')">
                 <span>💰</span><span>자산</span>
             </button>
             <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
                 <span>📰</span><span>뉴스</span>
             </button>
-            <button type="button" class="portal-tab-btn" data-tab="ops" onclick="switchPortalTab('ops')">
+            <button type="button" class="portal-tab-btn" data-tab="ops" data-service="ops" onclick="switchPortalTab('ops')">
                 <span>🖥️</span><span>서버</span>
             </button>
         </nav>
@@ -158,15 +184,15 @@
                     <span class="text-muted">원터치 바로가기</span>
                 </div>
                 <div class="cmd-strip-grid">
-                    <a href="/go/blood" class="cmd-strip-btn" title="혈압 관리 앱">
+                    <a href="/go/blood" class="cmd-strip-btn" title="혈압 관리 앱" data-service="blood">
                         <span class="cmd-strip-icon">🩸</span>
                         <span>혈압 측정</span>
                     </a>
-                    <button type="button" class="cmd-strip-btn" onclick="recordQuickMedication()" title="오늘 혈압약 복용 기록">
+                    <button type="button" class="cmd-strip-btn" onclick="recordQuickMedication()" title="오늘 혈압약 복용 기록" data-service="blood">
                         <span class="cmd-strip-icon">💊</span>
                         <span>약 복용</span>
                     </button>
-                    <a href="/go/asset" class="cmd-strip-btn" title="자산 관리 앱">
+                    <a href="/go/asset" class="cmd-strip-btn" title="자산 관리 앱" data-service="asset">
                         <span class="cmd-strip-icon">💰</span>
                         <span>자산 분석</span>
                     </a>
@@ -224,7 +250,7 @@
             <div class="bento-grid">
                 
                 <!-- Bento 1: 🩸💊 혈압·건강 & 약·병원 일정 통합 카드 (col-span-6) -->
-                <div class="bento-card col-health" id="bento-blood">
+                <div class="bento-card col-health" id="bento-blood" data-service="blood">
                     <div>
                         <div class="bento-card-header">
                             <div class="bento-card-title-group">
@@ -286,7 +312,7 @@
                 </div>
 
                 <!-- Bento 2: 💰 개인 자산 포트폴리오 (col-span-6) -->
-                <div class="bento-card col-asset" id="bento-asset">
+                <div class="bento-card col-asset" id="bento-asset" data-service="asset">
                     <div>
                         <div class="bento-card-header">
                             <div class="bento-card-title-group">
@@ -370,7 +396,7 @@
                 </div>
 
                 <!-- Bento 5: 🖥️ 서버 인프라 관리 (col-span-5) - 주서버/보조서버 균일 2단 & 단추 전환 지원 -->
-                <div class="bento-card col-ops" id="bento-ops">
+                <div class="bento-card col-ops" id="bento-ops" data-service="ops">
                     <div>
                         <div class="bento-card-header">
                             <div class="bento-card-title-group">
@@ -866,10 +892,10 @@
                 <button type="button" class="qs-tab" data-category="news" onclick="selectQsCategory('news')">
                     📰 뉴스 <span class="qs-tab-badge" id="qsBadgeNews">0</span>
                 </button>
-                <button type="button" class="qs-tab" data-category="hospital" onclick="selectQsCategory('hospital')">
+                <button type="button" class="qs-tab" data-category="hospital" data-service="blood" onclick="selectQsCategory('hospital')">
                     🏥 병원 <span class="qs-tab-badge" id="qsBadgeHospital">0</span>
                 </button>
-                <button type="button" class="qs-tab" data-category="asset" onclick="selectQsCategory('asset')">
+                <button type="button" class="qs-tab" data-category="asset" data-service="asset" onclick="selectQsCategory('asset')">
                     💰 자산 <span class="qs-tab-badge" id="qsBadgeAsset">0</span>
                 </button>
             </div>
@@ -888,11 +914,19 @@
                             <span class="qs-quick-icon">📈</span>
                             <span class="qs-quick-label">경제 & 증시</span>
                         </a>
-                        <a href="https://blood.j-jg.cc/hospital.html" class="qs-quick-btn">
+                        <a href="https://album.j-jg.cc" class="qs-quick-btn">
+                            <span class="qs-quick-icon">📸</span>
+                            <span class="qs-quick-label">가족 앨범</span>
+                        </a>
+                        <a href="/calendar" class="qs-quick-btn">
+                            <span class="qs-quick-icon">📅</span>
+                            <span class="qs-quick-label">스마트 캘린더</span>
+                        </a>
+                        <a href="https://blood.j-jg.cc/hospital.html" class="qs-quick-btn" data-service="blood">
                             <span class="qs-quick-icon">🏥</span>
                             <span class="qs-quick-label">병원 진료 일정</span>
                         </a>
-                        <a href="https://asset.j-jg.cc" class="qs-quick-btn">
+                        <a href="https://asset.j-jg.cc" class="qs-quick-btn" data-service="asset">
                             <span class="qs-quick-icon">💰</span>
                             <span class="qs-quick-label">자산 대시보드</span>
                         </a>

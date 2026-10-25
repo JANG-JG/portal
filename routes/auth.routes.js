@@ -61,26 +61,18 @@ router.post('/api/login', (req, res) => {
 
             const isRemember = rememberMe === true || rememberMe === 'true';
             const expiresIn = isRemember ? '7d' : '1d';
-            const token = jwt.sign({ username: user.username, role: userRole }, JWT_SECRET, { expiresIn });
-
-            const reqHost = (req.hostname || req.headers.host || '').split(':')[0];
-            const isJjgDomain = reqHost === 'j-jg.cc' || reqHost.endsWith('.j-jg.cc');
-            const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
-
-            const cookieOptions = {
-                httpOnly: true,
-                path: '/',
-                sameSite: 'lax',
-                secure: isHttps
-            };
-            if (isJjgDomain) {
-                cookieOptions.domain = COOKIE_DOMAIN;
+            let allowedServices = ['album', 'news'];
+            if (userRole === 'admin') allowedServices = ['all'];
+            else if (user.allowed_services) {
+                try { allowedServices = JSON.parse(user.allowed_services); } catch (e) {}
             }
-            if (isRemember) {
-                cookieOptions.maxAge = 7 * 24 * 60 * 60 * 1000;
-            }
+            const token = jwt.sign(
+                { username: user.username, role: userRole, nickname: user.nickname || user.username, allowed_services: allowedServices },
+                JWT_SECRET,
+                { expiresIn }
+            );
 
-            res.cookie('portal_token', token, cookieOptions);
+            sendPortalAuthCookie(res, req, token, isRemember ? 7 : 1, userRole, allowedServices);
             res.json({ success: true, redirect: '/' });
         } catch (bcryptErr) {
             console.error('비밀번호 검증 오류:', bcryptErr);
@@ -94,7 +86,7 @@ router.post('/api/login', (req, res) => {
 // 가족 간편 로그인 & 6자리 PIN 인증 API
 // ------------------------------------------------------------------------------
 
-function sendPortalAuthCookie(res, req, token, maxAgeDays = 365) {
+function sendPortalAuthCookie(res, req, token, maxAgeDays = 365, userRole = 'family', allowedServices = ['album', 'news']) {
     const reqHost = (req.hostname || req.headers.host || '').split(':')[0];
     const isJjgDomain = reqHost === 'j-jg.cc' || reqHost.endsWith('.j-jg.cc');
     const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
@@ -110,6 +102,11 @@ function sendPortalAuthCookie(res, req, token, maxAgeDays = 365) {
         cookieOptions.domain = COOKIE_DOMAIN;
     }
     res.cookie('portal_token', token, cookieOptions);
+
+    const clientOpts = { ...cookieOptions, httpOnly: false };
+    res.cookie('jg_user_role', userRole, clientOpts);
+    const svcs = Array.isArray(allowedServices) ? allowedServices.join(',') : (userRole === 'admin' ? 'all' : 'album,news');
+    res.cookie('jg_allowed_services', svcs, clientOpts);
 }
 
 function sendDeviceCookie(res, req, deviceToken) {
@@ -290,7 +287,7 @@ router.post('/api/auth/family-login', async (req, res) => {
                 { expiresIn: '3650d' }
             );
             sendDeviceCookie(res, req, deviceToken);
-            sendPortalAuthCookie(res, req, token, 365);
+            sendPortalAuthCookie(res, req, token, 365, user.role || 'family', allowedServices);
             res.json({
                 success: true,
                 requirePinChange: false,
@@ -360,7 +357,7 @@ router.post('/api/auth/change-pin', async (req, res) => {
                         { expiresIn: '3650d' }
                     );
                     sendDeviceCookie(res, req, deviceToken);
-                    sendPortalAuthCookie(res, req, token, 365);
+                    sendPortalAuthCookie(res, req, token, 365, user.role || 'family', allowedServices);
                     res.json({
                         success: true,
                         message: '새로운 6자리 PIN이 안전하게 설정되었습니다! 이제 자동 로그인됩니다.',
@@ -439,11 +436,17 @@ router.get('/logout', (req, res) => {
     res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
     res.clearCookie('portal_token', { path: '/' });
     res.clearCookie('portal_token', { path: '/', domain: 'j-jg.cc' });
+    res.clearCookie('jg_user_role', { path: '/', domain: COOKIE_DOMAIN });
+    res.clearCookie('jg_user_role', { path: '/' });
+    res.clearCookie('jg_allowed_services', { path: '/', domain: COOKIE_DOMAIN });
+    res.clearCookie('jg_allowed_services', { path: '/' });
 
     res.setHeader('Set-Cookie', [
         'portal_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
         `portal_token=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
-        'portal_token=; Path=/; Domain=j-jg.cc; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax'
+        'portal_token=; Path=/; Domain=j-jg.cc; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
+        `jg_user_role=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
+        `jg_allowed_services=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
     ]);
 
     res.redirect('/login?logout=success');

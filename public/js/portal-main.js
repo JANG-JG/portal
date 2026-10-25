@@ -155,8 +155,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 const u = document.getElementById('usernameDisplay');
                 if (u) u.textContent = data.nickname || data.username;
 
+                // 권한 캐시 동기화 및 FOUC 방지 클래스 업데이트
+                document.documentElement.classList.remove('role-pending');
+                const role = data.role || 'family';
+                const allowed = data.allowedServices || ['album', 'news'];
+                try {
+                    localStorage.setItem('jg_user_role', role);
+                    localStorage.setItem('jg_allowed_services', allowed.join(','));
+                } catch (e) {}
+
                 // 👨‍👩‍👧‍👦 가족 계정 권한 분리 및 UI 격리
-                if (data.role === 'family') {
+                if (role === 'family') {
+                    document.documentElement.classList.add('role-family', 'hide-ops');
+                    if (!allowed.includes('blood')) document.documentElement.classList.add('hide-blood');
+                    else document.documentElement.classList.remove('hide-blood');
+                    if (!allowed.includes('asset')) document.documentElement.classList.add('hide-asset');
+                    else document.documentElement.classList.remove('hide-asset');
+
                     // 1) 헤더 가족 환영 뱃지 표시
                     const badge = document.getElementById('familyGreetingBadge');
                     if (badge) {
@@ -164,14 +179,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         badge.style.display = 'inline-flex';
                     }
 
-                    // 2) 서버 인프라 카드 및 탭 원천 차단/숨김
+                    // 2) 서버 인프라 카드 및 탭 원천 차단/숨김 (방어 로직)
                     const opsBento = document.getElementById('bento-ops');
                     if (opsBento) opsBento.style.display = 'none';
                     document.querySelectorAll('.portal-tab-btn[data-tab="ops"]').forEach(el => el.style.display = 'none');
                     document.querySelectorAll('a[href="/admin"]').forEach(el => el.style.display = 'none');
 
-                    // 3) 허용되지 않은 서브 서비스 숨김
-                    const allowed = data.allowedServices || ['album', 'news'];
+                    // 3) 허용되지 않은 서브 서비스 숨김 (방어 로직)
                     if (!allowed.includes('asset')) {
                         const assetBento = document.getElementById('bento-asset');
                         if (assetBento) assetBento.style.display = 'none';
@@ -186,6 +200,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         const medBtn = document.querySelector('button[onclick="recordQuickMedication()"]');
                         if (medBtn) medBtn.style.display = 'none';
                     }
+                } else {
+                    document.documentElement.classList.remove('role-family', 'hide-blood', 'hide-asset', 'hide-ops');
+                    document.documentElement.classList.add('role-admin');
                 }
             }
         })

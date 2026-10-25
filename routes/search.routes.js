@@ -41,6 +41,18 @@ router.get('/unified', authenticateToken, async (req, res) => {
 
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
+    let hasBlood = Boolean(isAdmin);
+    if (!isAdmin) {
+        let allowed = req.user.allowed_services;
+        if (!allowed) {
+            try {
+                const uRow = await new Promise(r => db.get('SELECT allowed_services FROM users WHERE username = ?', [userId], (e, row) => r(row)));
+                if (uRow && uRow.allowed_services) allowed = JSON.parse(uRow.allowed_services);
+            } catch (e) {}
+        }
+        hasBlood = Array.isArray(allowed) && allowed.includes('blood');
+    }
+
     const isChosung = isChosungOnly(rawQuery);
     const cleanChosungQuery = rawQuery.replace(/\s+/g, '').toLowerCase();
     const term = `%${rawQuery}%`;
@@ -86,8 +98,9 @@ router.get('/unified', authenticateToken, async (req, res) => {
         }
     });
 
-    // 3) 병원 진료 일정 검색
+    // 3) 병원 진료 일정 검색 (blood 권한 보유자 전용)
     const hospitalPromise = new Promise((resolve) => {
+        if (!hasBlood) return resolve([]);
         if (isChosung) {
             db.all("SELECT id, visit_date, hospital_name, department, memo, next_visit_date, reservation_open_date FROM hospital_visits WHERE (user_id = ? OR ? = 1) ORDER BY visit_date DESC LIMIT 50", [userId, isAdmin], (err, rows) => {
                 if (err || !rows) return resolve([]);

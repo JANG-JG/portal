@@ -92,6 +92,16 @@ body.modal-open {
     box-sizing: border-box;
 }
 
+/* 🛡️ [RBAC & FOUC 방지] 권한 종속 요소 즉각 은폐 규칙 */
+html.hide-blood [data-service="blood"],
+html.hide-asset [data-service="asset"],
+html.hide-ops [data-service="ops"],
+html.role-pending [data-service="blood"],
+html.role-pending [data-service="asset"],
+html.role-pending [data-service="ops"] {
+    display: none !important;
+}
+
 /* ==============================================================================
  * 🏛️ 단일 통합 커맨드 내비게이션 바 (Command Center Navbar) - 상단 완벽 고정
  * ============================================================================== */

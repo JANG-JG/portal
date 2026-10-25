@@ -111,6 +111,13 @@
                 .unav-dropdown { position: absolute !important; top: 100% !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
                 .unav-drawer:not(.open) { display: none !important; }
                 @media (max-width: 860px) { #unified-nav-root, .unav-header { min-height: 52px !important; } .unav-container { padding: 0.5rem 0.85rem !important; height: 52px !important; } .unav-menu { display: none !important; } }
+                /* 🛡️ RBAC 및 FOUC 방지 은폐 규칙 */
+                html.hide-blood [data-service="blood"],
+                html.hide-asset [data-service="asset"],
+                html.hide-ops [data-service="ops"],
+                html.role-pending [data-service="blood"],
+                html.role-pending [data-service="asset"],
+                html.role-pending [data-service="ops"] { display: none !important; }
             `;
             (document.head || document.documentElement).appendChild(style);
         }
@@ -330,6 +337,58 @@
         });
     }
 
+    // 🛡️ 권한 기반 상단 내비바 메뉴 마스킹 (가족 계정 혈압/자산/서버 메뉴 비노출)
+    function applyUnifiedNavPermissions() {
+        try {
+            const c = document.cookie || '';
+            let role = '';
+            let allowed = '';
+            const mRole = c.match(/(?:^|;\s*)jg_user_role=([^;]*)/);
+            if (mRole) role = decodeURIComponent(mRole[1]);
+            else role = localStorage.getItem('jg_user_role') || '';
+            const mAllowed = c.match(/(?:^|;\s*)jg_allowed_services=([^;]*)/);
+            if (mAllowed) allowed = decodeURIComponent(mAllowed[1]);
+            else allowed = localStorage.getItem('jg_allowed_services') || '';
+
+            const applyDom = (r, a) => {
+                if (r === 'family') {
+                    document.documentElement.classList.add('role-family', 'hide-ops');
+                    const hasBlood = a.indexOf('blood') !== -1;
+                    const hasAsset = a.indexOf('asset') !== -1;
+                    if (!hasBlood) {
+                        document.documentElement.classList.add('hide-blood');
+                        document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    }
+                    if (!hasAsset) {
+                        document.documentElement.classList.add('hide-asset');
+                        document.querySelectorAll('[data-service="asset"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    }
+                    document.querySelectorAll('[data-service="ops"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                } else if (r === 'admin') {
+                    document.documentElement.classList.remove('hide-blood', 'hide-asset', 'hide-ops');
+                    document.documentElement.classList.add('role-admin');
+                }
+            };
+
+            applyDom(role, allowed);
+
+            fetch(`${NOTIF_BASE_URL}/api/me`, { credentials: 'include' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data && data.success) {
+                        const newRole = data.role || 'family';
+                        const newAllowed = (data.allowedServices || []).join(',');
+                        try {
+                            localStorage.setItem('jg_user_role', newRole);
+                            localStorage.setItem('jg_allowed_services', newAllowed);
+                        } catch (e) {}
+                        applyDom(newRole, newAllowed);
+                    }
+                })
+                .catch(() => {});
+        } catch (e) {}
+    }
+
     // 4. 내비게이션 바 인터랙션 및 알림 연동
     function initUnifiedNav() {
         const btn = document.getElementById('unavHamburgerBtn');
@@ -337,6 +396,9 @@
 
         // 알림 버튼 확인 및 보정
         ensureNotificationNavItems();
+
+        // 🛡️ 권한 기반 메뉴 필터링 (혈압/자산/서버)
+        applyUnifiedNavPermissions();
 
         // 미확인 알림 뱃지 카운트 비동기 조회 및 60초 주기 갱신
         fetchUnreadNotificationBadge();

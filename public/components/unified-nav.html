@@ -34,7 +34,7 @@
             </div>
 
             <!-- 2. 혈압·건강·약 -->
-            <div class="unav-item">
+            <div class="unav-item" data-service="blood">
                 <a href="https://j-jg.cc/go/blood?path=/dashboard.html" class="unav-link" data-nav="blood">
                     <span class="unav-item-icon">🩸</span>
                     <span>혈압·건강·약</span>
@@ -66,7 +66,7 @@
             </div>
 
             <!-- 3. 자산·금융 -->
-            <div class="unav-item">
+            <div class="unav-item" data-service="asset">
                 <a href="https://j-jg.cc/go/asset" class="unav-link" data-nav="asset">
                     <span class="unav-item-icon">💰</span>
                     <span>자산·금융</span>
@@ -168,7 +168,7 @@
             </div>
 
             <!-- 8. 서버 인프라 -->
-            <div class="unav-item">
+            <div class="unav-item" data-service="ops">
                 <a href="https://j-jg.cc/admin" class="unav-link" data-nav="admin">
                     <span class="unav-item-icon">🖥️</span>
                     <span>서버 인프라</span>
@@ -262,7 +262,7 @@
                 </div>
 
                 <!-- 2. 혈압·건강·약 -->
-                <div class="unav-m-group" data-nav="blood">
+                <div class="unav-m-group" data-nav="blood" data-service="blood">
                     <button type="button" class="unav-m-title" onclick="toggleUnavAccordion(this)">
                         <span>🩸 혈압·건강·약</span>
                         <span class="unav-m-chevron">▾</span>
@@ -275,7 +275,7 @@
                 </div>
 
                 <!-- 3. 자산·금융 -->
-                <div class="unav-m-group" data-nav="asset">
+                <div class="unav-m-group" data-nav="asset" data-service="asset">
                     <button type="button" class="unav-m-title" onclick="toggleUnavAccordion(this)">
                         <span>💰 자산·금융</span>
                         <span class="unav-m-chevron">▾</span>
@@ -327,7 +327,7 @@
                 </div>
 
                 <!-- 8. 서버 인프라 -->
-                <div class="unav-m-group" data-nav="admin">
+                <div class="unav-m-group" data-nav="admin" data-service="ops">
                     <button type="button" class="unav-m-title" onclick="toggleUnavAccordion(this)">
                         <span>🖥️ 서버 인프라</span>
                         <span class="unav-m-chevron">▾</span>

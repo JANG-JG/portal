@@ -80,6 +80,18 @@
                 document.documentElement.classList.add('modal-open');
                 document.body.classList.add('modal-open');
             }
+
+            // 🛡️ 권한에 맞춘 탭 및 플레이스홀더 정리
+            const isFamily = document.documentElement.classList.contains('role-family') || localStorage.getItem('jg_user_role') === 'family';
+            if (isFamily) {
+                if (input) input.placeholder = '메모, 뉴스 기사, 일정 검색...';
+                if (currentQsCategory === 'hospital' || currentQsCategory === 'asset') {
+                    selectQsCategory('all');
+                }
+            } else {
+                if (input) input.placeholder = '메모, 뉴스 기사, 병원 일정, 보유 자산 검색...';
+            }
+
             setTimeout(() => {
                 if (input) {
                     input.focus();
@@ -145,17 +157,19 @@
         }
 
         function resetBadgeCounts(data) {
+            const isFamily = document.documentElement.classList.contains('role-family') || localStorage.getItem('jg_user_role') === 'family';
+            const allowed = (localStorage.getItem('jg_allowed_services') || '').split(',');
             const mCount = (data.memos || []).length;
             const nCount = (data.news || []).length;
-            const hCount = (data.hospitals || []).length;
-            const aCount = (data.assets || []).length;
-            const total = (data.total !== undefined) ? data.total : (mCount + nCount + hCount + aCount);
+            const hCount = (!isFamily || allowed.includes('blood')) ? (data.hospitals || []).length : 0;
+            const aCount = (!isFamily) ? (data.assets || []).length : 0;
+            const total = (data.total !== undefined && !isFamily) ? data.total : (mCount + nCount + hCount + aCount);
 
-            document.getElementById('qsBadgeAll').textContent = total;
-            document.getElementById('qsBadgeMemo').textContent = mCount;
-            document.getElementById('qsBadgeNews').textContent = nCount;
-            document.getElementById('qsBadgeHospital').textContent = hCount;
-            document.getElementById('qsBadgeAsset').textContent = aCount;
+            const bAll = document.getElementById('qsBadgeAll'); if (bAll) bAll.textContent = total;
+            const bMemo = document.getElementById('qsBadgeMemo'); if (bMemo) bMemo.textContent = mCount;
+            const bNews = document.getElementById('qsBadgeNews'); if (bNews) bNews.textContent = nCount;
+            const bHosp = document.getElementById('qsBadgeHospital'); if (bHosp) bHosp.textContent = hCount;
+            const bAsset = document.getElementById('qsBadgeAsset'); if (bAsset) bAsset.textContent = aCount;
         }
 
         async function performQuickSearch(query) {
