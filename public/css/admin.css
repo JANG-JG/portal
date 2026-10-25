@@ -1754,4 +1754,512 @@ body {
     }
 }
 
+/* ==========================================
+   🗄️ SQLite DB 매니저 스타일 (Clean Light & Slate)
+   ========================================== */
+.db-manager-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+.db-manager-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+}
+
+.db-manager-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.db-select-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.db-select-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+    white-space: nowrap;
+}
+
+.db-select-control {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    background: #f8fafc;
+    color: #1e293b;
+    font-weight: 500;
+    outline: none;
+    max-width: 260px;
+}
+
+.db-select-control:focus {
+    border-color: #3b82f6;
+    background: #ffffff;
+}
+
+.db-view-mode-toggle {
+    display: flex;
+    background: #f1f5f9;
+    border-radius: 0.5rem;
+    padding: 2px;
+    border: 1px solid #e2e8f0;
+}
+
+.btn-view-toggle {
+    border: none;
+    background: transparent;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-view-toggle.active {
+    background: #ffffff;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+/* 필터 바 & 검색 */
+.db-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.db-search-box {
+    position: relative;
+    flex: 1 1 240px;
+    min-width: 0;
+}
+
+.db-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.85rem;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.db-search-box input {
+    width: 100%;
+    padding: 0.45rem 0.75rem 0.45rem 2.2rem;
+    font-size: 0.85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    box-sizing: border-box;
+}
+
+.db-limit-box {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.db-limit-select {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.8rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.375rem;
+    background: #fff;
+}
+
+.db-execution-badge {
+    font-size: 0.78rem;
+    color: #059669;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+    margin-left: auto;
+}
+
+/* 📱 모바일 카드 뷰 (가로 360px 완벽 대응) */
+.db-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 0.75rem;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.db-record-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.65rem;
+    padding: 0.85rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    transition: all 0.15s ease;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+}
+
+.db-record-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.05);
+}
+
+.db-record-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid #f1f5f9;
+    margin-bottom: 0.6rem;
+}
+
+.db-record-card-id {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: #0f172a;
+    min-width: 0;
+}
+
+.db-rowid-badge {
+    background: #e2e8f0;
+    color: #475569;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.db-record-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.btn-admin-icon {
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 0.375rem;
+    padding: 0.3rem 0.45rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-admin-icon:hover {
+    background: #e2e8f0;
+}
+
+.btn-danger-icon:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.db-record-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.db-record-field-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    min-width: 0;
+}
+
+.db-field-key {
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+
+.db-field-val {
+    color: #1e293b;
+    font-weight: 600;
+    text-align: right;
+    word-break: break-all;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 💻 표 뷰 고정 열 및 스타일 */
+.db-table-wrapper {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.db-data-table th, .db-data-table td {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.sticky-action-col {
+    position: sticky;
+    left: 0;
+    background: #ffffff;
+    z-index: 2;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.03);
+}
+
+thead th.sticky-action-col {
+    background: #f8fafc;
+    z-index: 3;
+}
+
+.db-sortable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.db-sortable:hover {
+    background: #f1f5f9;
+}
+
+.db-col-type {
+    font-size: 0.7rem;
+    font-weight: normal;
+    color: #94a3b8;
+    margin-left: 2px;
+}
+
+.db-cell-val {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 페이지네이션 */
+.db-pagination-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid #f1f5f9;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.db-pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.db-page-num {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #0f172a;
+    padding: 0 0.25rem;
+}
+
+/* ⚡ SQL 콘솔 */
+.db-sql-templates {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+}
+
+.btn-template {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    font-family: monospace;
+    font-size: 0.78rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.35rem;
+    cursor: pointer;
+}
+
+.btn-template:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.db-sql-editor {
+    width: 100%;
+    box-sizing: border-box;
+    background: #0f172a;
+    color: #38bdf8;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 0.85rem;
+    border-radius: 0.5rem;
+    border: 1px solid #334155;
+    resize: vertical;
+    outline: none;
+}
+
+.db-sql-editor:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+}
+
+.db-sql-action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.db-danger-confirm {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #ef4444;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.db-query-result-wrapper {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 0.85rem;
+}
+
+.db-result-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+
+.db-sql-success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.375rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.db-sql-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.375rem;
+    font-size: 0.85rem;
+    font-family: monospace;
+}
+
+.db-ddl-pre {
+    background: #0f172a;
+    color: #cbd5e1;
+    font-family: monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-x: auto;
+}
+
+/* 모달 폼 필드 */
+.db-modal-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.85rem;
+}
+
+.db-modal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.db-modal-field label {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.db-modal-field input {
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.375rem;
+    font-size: 0.85rem;
+    box-sizing: border-box;
+}
+
+.db-browse-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* 모바일 360px 완벽 대응 미디어 쿼리 */
+@media (max-width: 640px) {
+    .db-manager-topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .db-manager-topbar-left, .db-manager-topbar-right {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .db-select-group {
+        flex: 1 1 auto;
+    }
+    .db-select-control {
+        width: 100%;
+        max-width: none;
+    }
+    .db-cards-grid {
+        grid-template-columns: 1fr;
+    }
+    .db-modal-fields-grid {
+        grid-template-columns: 1fr;
+    }
+    .db-execution-badge {
+        width: 100%;
+        margin-left: 0;
+        text-align: center;
+    }
+}
+
+
 

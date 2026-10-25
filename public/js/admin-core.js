@@ -89,6 +89,11 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-backup-status', label: '정기 백업 & 즉시 실행', icon: '📦' },
         { id: 'subpane-backup-logs', label: '실시간 백업 로그 콘솔', icon: '📋' }
     ],
+    'tab-database': [
+        { id: 'subpane-db-browse', label: '데이터 브라우징 & 관리', icon: '🗄️' },
+        { id: 'subpane-db-query', label: 'SQL 쿼리 콘솔', icon: '⚡' },
+        { id: 'subpane-db-schema', label: '테이블 구조 명세', icon: '📐' }
+    ],
     'tab-security': [
         { id: 'subpane-security-family', label: '우리 가족 및 권한 관리', icon: '👨‍👩‍👧‍👦' },
         { id: 'subpane-security-logs', label: '최근 로그인 시도 이력', icon: '🔒' },
@@ -394,6 +399,8 @@ function switchAdminTab(tabId, btn, targetSubId = null, shouldScroll = true) {
     } else if (tabId === 'tab-backup') {
         if (typeof window.loadBackupAdminStatus === 'function') window.loadBackupAdminStatus();
         if (typeof window.loadBackupAdminLogs === 'function') window.loadBackupAdminLogs();
+    } else if (tabId === 'tab-database') {
+        if (typeof window.initDbManager === 'function') window.initDbManager();
     } else if (tabId === 'tab-security') {
         if (typeof window.loadSecurityLogs === 'function') window.loadSecurityLogs();
     }

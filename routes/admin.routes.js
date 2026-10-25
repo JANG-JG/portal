@@ -34,12 +34,14 @@ const newsAdminRoutes = require('./admin/news.admin.routes');
 const familyAdminRoutes = require('./admin/family.admin.routes');
 const albumAdminRoutes = require('./admin/album.admin.routes');
 const backupAdminRoutes = require('./admin/backup.admin.routes');
+const dbAdminRoutes = require('./admin/db.admin.routes');
 
 router.use('/blood', bloodAdminRoutes);
 router.use('/news', newsAdminRoutes);
 router.use('/family', familyAdminRoutes);
 router.use('/album', albumAdminRoutes);
 router.use('/backup', backupAdminRoutes);
+router.use('/db', dbAdminRoutes);
 
 // 1. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링
 let adminOverviewCache = null;
