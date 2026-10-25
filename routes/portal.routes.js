@@ -405,8 +405,8 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
                 const userRow = await new Promise((resUser) => {
                     db.get("SELECT weather_city FROM users WHERE username = ?", [username], (uErr, row) => resUser(row || null));
                 });
-                if (userRow && userRow.weather_city && userRow.weather_city !== 'Seoul') {
-                    userCity = userRow.weather_city;
+                if (userRow && userRow.weather_city && userRow.weather_city.trim()) {
+                    userCity = userRow.weather_city.trim();
                 }
             } catch (e) {}
 
@@ -667,7 +667,7 @@ router.get('/api/portal/user/weather-city', authenticateToken, async (req, res) 
         const username = req.user ? req.user.username : 'admin';
         const defaultCity = await getDefaultWeatherCity();
         db.get("SELECT weather_city FROM users WHERE username = ?", [username], (err, row) => {
-            const currentCity = (row && row.weather_city && row.weather_city !== 'Seoul') ? row.weather_city : defaultCity;
+            const currentCity = (row && row.weather_city && row.weather_city.trim()) ? row.weather_city.trim() : defaultCity;
             res.json({
                 success: true,
                 current_city: currentCity,
