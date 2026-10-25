@@ -81,6 +81,7 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-news-history', label: '수집 이력 & 로그 콘솔', icon: '📋' }
     ],
     'tab-security': [
+        { id: 'subpane-security-family', label: '우리 가족 및 권한 관리', icon: '👨‍👩‍👧‍👦' },
         { id: 'subpane-security-logs', label: '최근 로그인 시도 이력', icon: '🔒' },
         { id: 'subpane-security-stack', label: 'SSO & 기술 스택 명세', icon: '🛡️' },
         { id: 'action-password-modal', label: '마스터 비밀번호 변경 (팝업)', icon: '🔑', isModal: true }

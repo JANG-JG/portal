@@ -12,11 +12,19 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run('PRAGMA busy_timeout = 5000;');
             db.run('PRAGMA temp_store = MEMORY;');
 
-            // 🛡️ 통합 계정(RBAC) 컬럼 마이그레이션 및 관리자 동적 로드 (하드코딩 제거)
+            // 🛡️ 통합 계정(RBAC) 및 가족 PIN/초기화 컬럼 마이그레이션 및 관리자 동적 로드
             db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'family'`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN allowed_services TEXT DEFAULT '["album","news"]'`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN nickname TEXT DEFAULT ''`, () => {});
-            db.run(`UPDATE users SET role = 'admin', allowed_services = '["all"]' WHERE rowid = 1 OR role IS NULL`, () => {
+            db.run(`ALTER TABLE users ADD COLUMN pin TEXT DEFAULT ''`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN pin_reset_required INTEGER DEFAULT 1`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN invite_token TEXT DEFAULT ''`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN failed_pin_attempts INTEGER DEFAULT 0`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN locked_until DATETIME DEFAULT NULL`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN phone_hash TEXT DEFAULT ''`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT (datetime('now', 'localtime'))`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN last_login_at DATETIME`, () => {});
+            db.run(`UPDATE users SET role = 'admin', allowed_services = '["all"]', pin_reset_required = 0 WHERE rowid = 1 OR role IS NULL`, () => {
                 db.all(`SELECT username FROM users WHERE role = 'admin' OR rowid = 1`, (uErr, uRows) => {
                     if (!uErr && Array.isArray(uRows)) {
                         uRows.forEach(r => {

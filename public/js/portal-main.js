@@ -147,13 +147,46 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => switchPortalTab(hash, false), 150);
     }
 
-    // 4-3. 사용자 정보 비동기 로드
+    // 4-3. 사용자 정보 비동기 로드 및 가족 계정 RBAC 격리
     fetch('/api/me')
         .then(res => res.json())
         .then(data => {
-            if (data && data.success && data.username) {
+            if (data && data.success) {
                 const u = document.getElementById('usernameDisplay');
-                if (u) u.textContent = data.username;
+                if (u) u.textContent = data.nickname || data.username;
+
+                // 👨‍👩‍👧‍👦 가족 계정 권한 분리 및 UI 격리
+                if (data.role === 'family') {
+                    // 1) 헤더 가족 환영 뱃지 표시
+                    const badge = document.getElementById('familyGreetingBadge');
+                    if (badge) {
+                        badge.textContent = `🌸 ${data.nickname || data.username}님`;
+                        badge.style.display = 'inline-flex';
+                    }
+
+                    // 2) 서버 인프라 카드 및 탭 원천 차단/숨김
+                    const opsBento = document.getElementById('bento-ops');
+                    if (opsBento) opsBento.style.display = 'none';
+                    document.querySelectorAll('.portal-tab-btn[data-tab="ops"]').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('a[href="/admin"]').forEach(el => el.style.display = 'none');
+
+                    // 3) 허용되지 않은 서브 서비스 숨김
+                    const allowed = data.allowedServices || ['album', 'news'];
+                    if (!allowed.includes('asset')) {
+                        const assetBento = document.getElementById('bento-asset');
+                        if (assetBento) assetBento.style.display = 'none';
+                        document.querySelectorAll('.portal-tab-btn[data-tab="asset"]').forEach(el => el.style.display = 'none');
+                        document.querySelectorAll('a[href="/go/asset"], a[href="https://asset.j-jg.cc"]').forEach(el => el.style.display = 'none');
+                    }
+                    if (!allowed.includes('blood')) {
+                        const bloodBento = document.getElementById('bento-blood');
+                        if (bloodBento) bloodBento.style.display = 'none';
+                        document.querySelectorAll('.portal-tab-btn[data-tab="blood"]').forEach(el => el.style.display = 'none');
+                        document.querySelectorAll('a[href="/go/blood"], a[href="https://blood.j-jg.cc"]').forEach(el => el.style.display = 'none');
+                        const medBtn = document.querySelector('button[onclick="recordQuickMedication()"]');
+                        if (medBtn) medBtn.style.display = 'none';
+                    }
+                }
             }
         })
         .catch(() => {});

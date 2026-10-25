@@ -548,53 +548,80 @@ router.get('/api/ticker', async (req, res) => {
     res.json(freshData);
 });
 
-// 4. OAuth 방식 SSO 게이트웨이 (15초 초단기 + jti 1회용 Nonce + 딥링크 지원)
+// 4. OAuth 방식 SSO 게이트웨이 (15초 초단기 + jti 1회용 Nonce + 딥링크 지원 + RBAC 권한 검증)
 const crypto = require('crypto');
 router.get('/go/:service', authenticateToken, (req, res) => {
     const service = req.params.service;
     let targetPath = (req.query.path || '').trim();
-    // 🛡️ 오픈 리다이렉트 및 프로토콜 탈출 차단 가드 (//, /\, http:, https:, javascript:, 백슬래시 등 차단)
+    // 🛡️ 오픈 리다이렉트 및 프로토콜 탈출 차단 가드
     if (targetPath) {
         if (/^\/\//.test(targetPath) || /^\/\\/.test(targetPath) || /^[a-zA-Z]+:/.test(targetPath) || targetPath.includes('\\')) {
             targetPath = '';
         }
     }
-    const jti = crypto.randomBytes(16).toString('hex');
-    const ticket = jwt.sign(
-        { username: req.user.username, jti, purpose: 'sso_ticket' },
-        JWT_SECRET,
-        { expiresIn: '15s' }
-    );
 
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
+    const executeSso = (userNickname = '') => {
+        const jti = crypto.randomBytes(16).toString('hex');
+        const ticket = jwt.sign(
+            {
+                username: req.user.username,
+                role: req.user.role || 'family',
+                nickname: userNickname || req.user.nickname || req.user.username,
+                jti,
+                purpose: 'sso_ticket'
+            },
+            JWT_SECRET,
+            { expiresIn: '15s' }
+        );
 
-    let baseUrl = '';
-    if (service === 'news') baseUrl = 'https://news.j-jg.cc';
-    else if (service === 'economy') baseUrl = 'https://news.j-jg.cc/economy';
-    else if (service === 'asset') baseUrl = 'https://asset.j-jg.cc';
-    else if (service === 'blood') baseUrl = 'https://blood.j-jg.cc';
-    else if (service === 'album') baseUrl = 'https://album.j-jg.cc';
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
 
-    if (baseUrl) {
-        let destUrl = baseUrl;
-        let hash = '';
-        if (targetPath) {
-            const hashIdx = targetPath.indexOf('#');
-            let cleanPath = targetPath;
-            if (hashIdx !== -1) {
-                hash = targetPath.slice(hashIdx);
-                cleanPath = targetPath.slice(0, hashIdx);
+        let baseUrl = '';
+        if (service === 'news') baseUrl = 'https://news.j-jg.cc';
+        else if (service === 'economy') baseUrl = 'https://news.j-jg.cc/economy';
+        else if (service === 'asset') baseUrl = 'https://asset.j-jg.cc';
+        else if (service === 'blood') baseUrl = 'https://blood.j-jg.cc';
+        else if (service === 'album') baseUrl = 'https://album.j-jg.cc';
+
+        if (baseUrl) {
+            let destUrl = baseUrl;
+            let hash = '';
+            if (targetPath) {
+                const hashIdx = targetPath.indexOf('#');
+                let cleanPath = targetPath;
+                if (hashIdx !== -1) {
+                    hash = targetPath.slice(hashIdx);
+                    cleanPath = targetPath.slice(0, hashIdx);
+                }
+                if (cleanPath && !cleanPath.startsWith('/') && !cleanPath.startsWith('?')) {
+                    cleanPath = '/' + cleanPath;
+                }
+                destUrl = baseUrl.replace(/\/+$/, '') + cleanPath;
             }
-            if (cleanPath && !cleanPath.startsWith('/') && !cleanPath.startsWith('?')) {
-                cleanPath = '/' + cleanPath;
-            }
-            destUrl = baseUrl.replace(/\/+$/, '') + cleanPath;
+            const sep = destUrl.includes('?') ? '&' : '?';
+            return res.redirect(`${destUrl}${sep}token=${ticket}${hash}`);
         }
-        const sep = destUrl.includes('?') ? '&' : '?';
-        return res.redirect(`${destUrl}${sep}token=${ticket}${hash}`);
+        res.redirect('/');
+    };
+
+    // 🛡️ 가족 계정 서비스별 접근 권한(RBAC) 검증
+    if (req.user.role === 'family') {
+        db.get('SELECT allowed_services, nickname FROM users WHERE username = ?', [req.user.username], (uErr, userRow) => {
+            let allowed = ['album', 'news'];
+            try {
+                if (userRow && userRow.allowed_services) allowed = JSON.parse(userRow.allowed_services);
+            } catch (e) {}
+
+            const serviceKey = (service === 'economy' ? 'news' : service);
+            if (!allowed.includes('all') && !allowed.includes(serviceKey)) {
+                return res.redirect('/?notice=unauthorized_service');
+            }
+            executeSso(userRow?.nickname);
+        });
+    } else {
+        executeSso();
     }
-    res.redirect('/');
 });
 
 module.exports = router;

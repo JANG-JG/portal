@@ -90,6 +90,266 @@ router.post('/api/login', (req, res) => {
     });
 });
 
+// ------------------------------------------------------------------------------
+// 가족 간편 로그인 & 6자리 PIN 인증 API
+// ------------------------------------------------------------------------------
+
+function sendPortalAuthCookie(res, req, token, maxAgeDays = 365) {
+    const reqHost = (req.hostname || req.headers.host || '').split(':')[0];
+    const isJjgDomain = reqHost === 'j-jg.cc' || reqHost.endsWith('.j-jg.cc');
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+
+    const cookieOptions = {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'lax',
+        secure: isHttps,
+        maxAge: maxAgeDays * 24 * 60 * 60 * 1000
+    };
+    if (isJjgDomain) {
+        cookieOptions.domain = COOKIE_DOMAIN;
+    }
+    res.cookie('portal_token', token, cookieOptions);
+}
+
+// 1. 로그인 화면용 가족 구성원 목록 (비밀번호 제외)
+router.get('/api/auth/family-members', (req, res) => {
+    db.all(
+        `SELECT username, nickname, role, avatar_emoji 
+         FROM users 
+         WHERE role = 'family' OR (role IS NULL AND rowid > 1) 
+         ORDER BY rowid ASC`,
+        [],
+        (err, rows) => {
+            if (err) return res.status(500).json({ success: false, message: '가족 목록 조회 실패' });
+            const members = (rows || []).map(r => ({
+                username: r.username,
+                nickname: r.nickname || r.username,
+                role: r.role || 'family',
+                emoji: r.avatar_emoji || (r.nickname && r.nickname.includes('엄마') ? '👩' : (r.nickname && r.nickname.includes('아빠') ? '👨' : '😊'))
+            }));
+            res.json({ success: true, members });
+        }
+    );
+});
+
+// 2. 가족 6자리 PIN 로그인 처리
+router.post('/api/auth/family-login', async (req, res) => {
+    const { username, pin } = req.body;
+    const clientIp = getClientIp(req);
+
+    if (!username || !pin) {
+        return res.status(400).json({ success: false, message: '가족을 선택하고 6자리 PIN을 입력해 주세요.' });
+    }
+
+    if (!/^\d{6}$/.test(String(pin))) {
+        return res.status(400).json({ success: false, message: 'PIN 번호는 숫자 6자리여야 합니다.' });
+    }
+
+    db.get('SELECT rowid, * FROM users WHERE username = ?', [username], async (err, user) => {
+        if (err || !user) {
+            recordLoginFailure(clientIp);
+            return res.status(401).json({ success: false, message: '등록되지 않은 가족 계정입니다.' });
+        }
+
+        // 🛡️ 5회 연속 실패 잠금 검사 (30분 잠금)
+        if (user.locked_until && new Date(user.locked_until) > new Date()) {
+            const diffMin = Math.ceil((new Date(user.locked_until).getTime() - Date.now()) / (60 * 1000));
+            return res.status(423).json({
+                success: false,
+                isLocked: true,
+                message: `PIN을 5회 연속 잘못 입력하여 일시 잠금되었습니다.\n약 ${diffMin}분 후 다시 시도하시거나 관리자에게 초기화를 요청하세요.`
+            });
+        }
+
+        try {
+            const pinToCompare = user.pin || user.password;
+            const match = await bcrypt.compare(String(pin), pinToCompare);
+
+            if (!match) {
+                const newAttempts = (user.failed_pin_attempts || 0) + 1;
+                if (newAttempts >= 5) {
+                    db.run(
+                        "UPDATE users SET failed_pin_attempts = 5, locked_until = datetime('now', '+30 minutes') WHERE username = ?",
+                        [username]
+                    );
+                    recordLoginLog(username, clientIp, 'LOCKED_PIN_LIMIT');
+                    return res.status(423).json({
+                        success: false,
+                        isLocked: true,
+                        message: 'PIN을 5회 연속 잘못 입력하여 30분간 입장이 제한됩니다.\n관리자에게 PIN 초기화를 요청해 주세요.'
+                    });
+                } else {
+                    db.run('UPDATE users SET failed_pin_attempts = ? WHERE username = ?', [newAttempts, username]);
+                    recordLoginLog(username, clientIp, 'FAILED_PIN');
+                    return res.status(401).json({
+                        success: false,
+                        message: `PIN 번호가 올바르지 않습니다. (남은 기회: ${5 - newAttempts}회)`
+                    });
+                }
+            }
+
+            // PIN 일치 성공! 실패 카운트 리셋 및 로그인 기록
+            db.run(
+                "UPDATE users SET failed_pin_attempts = 0, locked_until = NULL, last_login_at = datetime('now', 'localtime') WHERE username = ?",
+                [username]
+            );
+            recordLoginSuccess(clientIp);
+            recordLoginLog(username, clientIp, 'SUCCESS_FAMILY_PIN');
+
+            // 최초 PIN 변경 필요 여부 확인
+            if (user.pin_reset_required === 1 || !user.pin) {
+                const tempToken = jwt.sign(
+                    { username: user.username, role: user.role || 'family', purpose: 'pin_change_required' },
+                    JWT_SECRET,
+                    { expiresIn: '15m' }
+                );
+                return res.json({
+                    success: true,
+                    requirePinChange: true,
+                    tempToken,
+                    username: user.username,
+                    nickname: user.nickname || user.username,
+                    message: '보안을 위해 앞으로 사용할 나만의 6자리 PIN으로 변경해 주세요.'
+                });
+            }
+
+            // 정상 로그인 쿠키 발급 (1년 자동 로그인)
+            let allowedServices = ['album', 'news'];
+            try {
+                if (user.allowed_services) allowedServices = JSON.parse(user.allowed_services);
+            } catch (e) {}
+
+            const token = jwt.sign(
+                {
+                    username: user.username,
+                    role: user.role || 'family',
+                    nickname: user.nickname || user.username,
+                    allowed_services: allowedServices
+                },
+                JWT_SECRET,
+                { expiresIn: '365d' }
+            );
+
+            sendPortalAuthCookie(res, req, token, 365);
+            res.json({
+                success: true,
+                requirePinChange: false,
+                redirect: '/',
+                nickname: user.nickname || user.username
+            });
+        } catch (bcryptErr) {
+            console.error('가족 PIN 검증 오류:', bcryptErr);
+            res.status(500).json({ success: false, message: '인증 처리 중 오류가 발생했습니다.' });
+        }
+    });
+});
+
+// 3. 최초 접속 시 나만의 새 6자리 PIN으로 변경 API
+router.post('/api/auth/change-pin', async (req, res) => {
+    const { tempToken, newPin } = req.body;
+    if (!tempToken || !newPin) {
+        return res.status(400).json({ success: false, message: '인증 토큰과 새로운 6자리 PIN을 입력해 주세요.' });
+    }
+
+    if (!/^\d{6}$/.test(String(newPin))) {
+        return res.status(400).json({ success: false, message: '새 PIN은 반드시 숫자 6자리여야 합니다.' });
+    }
+
+    try {
+        const decoded = jwt.verify(tempToken, JWT_SECRET);
+        if (!decoded || !decoded.username || decoded.purpose !== 'pin_change_required') {
+            return res.status(401).json({ success: false, message: '유효하지 않거나 만료된 요청입니다. 다시 로그인해 주세요.' });
+        }
+
+        const username = decoded.username;
+        const newPinHash = await bcrypt.hash(String(newPin), 10);
+
+        db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
+            if (err || !user) {
+                return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+            }
+
+            db.run(
+                'UPDATE users SET pin = ?, password = ?, pin_reset_required = 0, failed_pin_attempts = 0, locked_until = NULL WHERE username = ?',
+                [newPinHash, newPinHash, username],
+                (upErr) => {
+                    if (upErr) {
+                        return res.status(500).json({ success: false, message: 'PIN 변경 실패' });
+                    }
+
+                    let allowedServices = ['album', 'news'];
+                    try {
+                        if (user.allowed_services) allowedServices = JSON.parse(user.allowed_services);
+                    } catch (e) {}
+
+                    const token = jwt.sign(
+                        {
+                            username: user.username,
+                            role: user.role || 'family',
+                            nickname: user.nickname || user.username,
+                            allowed_services: allowedServices
+                        },
+                        JWT_SECRET,
+                        { expiresIn: '365d' }
+                    );
+
+                    sendPortalAuthCookie(res, req, token, 365);
+                    res.json({
+                        success: true,
+                        message: '새로운 6자리 PIN이 안전하게 설정되었습니다! 이제 자동 로그인됩니다.',
+                        redirect: '/'
+                    });
+                }
+            );
+        });
+    } catch (jwtErr) {
+        return res.status(401).json({ success: false, message: '인증 세션이 만료되었습니다. 다시 시도해 주세요.' });
+    }
+});
+
+// 4. 카톡 원터치 초대 링크 처리 (GET /invite/:token)
+router.get('/invite/:token', (req, res) => {
+    const inviteToken = req.params.token;
+    if (!inviteToken) return res.redirect('/login');
+
+    db.get('SELECT * FROM users WHERE invite_token = ?', [inviteToken], (err, user) => {
+        if (err || !user) {
+            return res.redirect('/login?error=invalid_invite');
+        }
+
+        // 초기 PIN 변경이 필요한 경우 로그인 페이지의 PIN 변경 모드로 전달
+        if (user.pin_reset_required === 1 || !user.pin) {
+            const tempToken = jwt.sign(
+                { username: user.username, role: user.role || 'family', purpose: 'pin_change_required' },
+                JWT_SECRET,
+                { expiresIn: '30m' }
+            );
+            return res.redirect(`/login?invite_token=${encodeURIComponent(tempToken)}&username=${encodeURIComponent(user.username)}&nickname=${encodeURIComponent(user.nickname || '')}`);
+        }
+
+        // 이미 PIN 설정이 완료된 가족이면 즉시 365일 로그인 처리 후 포털 또는 앨범으로 안내
+        let allowedServices = ['album', 'news'];
+        try {
+            if (user.allowed_services) allowedServices = JSON.parse(user.allowed_services);
+        } catch (e) {}
+
+        const token = jwt.sign(
+            {
+                username: user.username,
+                role: user.role || 'family',
+                nickname: user.nickname || user.username,
+                allowed_services: allowedServices
+            },
+            JWT_SECRET,
+            { expiresIn: '365d' }
+        );
+
+        sendPortalAuthCookie(res, req, token, 365);
+        res.redirect('/?welcome=family');
+    });
+});
+
 // 로그아웃 API
 router.get('/logout', (req, res) => {
     const token = req.cookies.portal_token;
@@ -116,9 +376,31 @@ router.get('/logout', (req, res) => {
     res.redirect('/login?logout=success');
 });
 
-// 내 정보 조회 API
+// 내 정보 조회 API (역할, 닉네임, 허용 서비스 포함)
 router.get('/api/me', authenticateToken, (req, res) => {
-    res.json({ success: true, username: req.user.username });
+    db.get('SELECT rowid, username, nickname, role, allowed_services FROM users WHERE username = ?', [req.user.username], (err, user) => {
+        let allowedServices = ['album', 'news'];
+        let role = req.user.role || 'family';
+        let nickname = req.user.username;
+
+        if (user) {
+            role = user.role || (user.rowid === 1 ? 'admin' : 'family');
+            nickname = user.nickname || user.username;
+            try {
+                if (user.allowed_services) allowedServices = JSON.parse(user.allowed_services);
+            } catch (e) {}
+        }
+
+        res.json({
+            success: true,
+            username: req.user.username,
+            nickname,
+            role,
+            isAdmin: role === 'admin',
+            allowedServices
+        });
+    });
 });
 
 module.exports = router;
+

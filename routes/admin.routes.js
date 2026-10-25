@@ -30,9 +30,11 @@ const {
 // 서브 관리자 라우터 마운트
 const bloodAdminRoutes = require('./admin/blood.admin.routes');
 const newsAdminRoutes = require('./admin/news.admin.routes');
+const familyAdminRoutes = require('./admin/family.admin.routes');
 
 router.use('/blood', bloodAdminRoutes);
 router.use('/news', newsAdminRoutes);
+router.use('/family', familyAdminRoutes);
 
 // 1. 전체 프로세스(PM2), DB 용량, 시스템 리소스 현황 및 듀얼 서버 모니터링
 let adminOverviewCache = null;

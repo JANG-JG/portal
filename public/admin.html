@@ -127,6 +127,9 @@
                     <span class="admin-sidebar-parent-chevron">▼</span>
                 </button>
                 <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-family" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-family')">
+                        <span>👨‍👩‍👧‍👦</span> 우리 가족 및 권한 관리
+                    </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-logs" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-logs')">
                         <span>🔒</span> 최근 로그인 시도 이력
                     </button>
@@ -1081,7 +1084,44 @@
              탭 5: 보안 및 마스터 계정
              ========================================== -->
         <div id="tab-security" class="admin-tab-pane">
-            <!-- 서브 1: 최근 로그인 시도 이력 (최근 50건) -->
+            <!-- 서브 1: 우리 가족 구성원 및 접근 권한(RBAC) 관리 -->
+            <div id="subpane-security-family" class="admin-sub-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3>👨‍👩‍👧‍👦 우리 가족 구성원 및 권한(RBAC) 관리</h3>
+                            <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
+                                가족 계정을 등록하고 서비스별 접근 권한(가족 앨범, 뉴스·날씨)과 6자리 PIN을 안전하게 관리합니다.
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; align-items:center;">
+                            <button class="btn-admin btn-admin-primary btn-admin-sm" onclick="openAddFamilyModal()">
+                                ➕ 새 가족 추가
+                            </button>
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadFamilyMembers()">🔄 새로고침</button>
+                        </div>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>호칭 / 이름</th>
+                                    <th>아이디</th>
+                                    <th>이용 가능한 서비스</th>
+                                    <th>PIN 인증 상태</th>
+                                    <th>최근 접속일</th>
+                                    <th>관리 및 초대</th>
+                                </tr>
+                            </thead>
+                            <tbody id="familyMembersTableBody">
+                                <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">가족 목록을 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 2: 최근 로그인 시도 이력 (최근 50건) -->
             <div id="subpane-security-logs" class="admin-sub-pane">
                 <div class="admin-card">
                     <div class="admin-card-header">
@@ -1258,6 +1298,128 @@
         </div>
     </div>
 
+    <!-- 👨‍👩‍👧‍👦 1. 새 가족 구성원 등록 모달 -->
+    <div id="addFamilyModal" class="admin-modal-backdrop" style="display:none;">
+        <div class="admin-modal-dialog">
+            <div class="admin-modal-header">
+                <h3>👨‍👩‍👧‍👦 새 가족 구성원 등록</h3>
+                <button type="button" class="admin-modal-close-btn" onclick="closeAddFamilyModal()" title="창 닫기">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <p style="font-size:0.85rem; color:#64748b; margin-top:0; margin-bottom:1rem;">
+                    가족을 등록하면 초기 6자리 PIN으로 로그인 후 나만의 PIN으로 설정할 수 있습니다.
+                </p>
+                <form id="addFamilyForm" onsubmit="submitAddFamily(event)">
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">가족 호칭 (이름) *</label>
+                        <input type="text" id="inputAddNickname" placeholder="예: 엄마, 아빠, 동생" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">접속 아이디 (영문/숫자)</label>
+                        <input type="text" id="inputAddUsername" placeholder="비워두면 영문 아이디가 자동 생성됩니다" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.75rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">휴대폰 번호 (선택사항, 단방향 암호화 보관)</label>
+                        <input type="tel" id="inputAddPhone" placeholder="010-XXXX-XXXX" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:0.85rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">초기 숫자 6자리 PIN *</label>
+                        <input type="text" id="inputAddInitialPin" value="123456" maxlength="6" inputmode="numeric" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-family:monospace; font-size:1.1rem; letter-spacing:2px; box-sizing:border-box;">
+                        <span style="font-size:0.75rem; color:#64748b;">가족이 최초 접속 시 본인만의 6자리 PIN으로 변경하게 됩니다.</span>
+                    </div>
+                    <div style="margin-bottom:1.15rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem;">
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.5rem;">이용 허용 서비스 선택</label>
+                        <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#334155;">
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkAddServiceAlbum" checked> <span>📸 우리 가족 앨범</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkAddServiceNews" checked> <span>📰 뉴스룸 & 날씨·증시</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; color:#94a3b8;">
+                                <input type="checkbox" id="chkAddServiceAsset"> <span>💰 자산 관리 (관리자 전용 비공개 권장)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; color:#94a3b8;">
+                                <input type="checkbox" id="chkAddServiceBlood"> <span>🩸 혈압 관리 (향후 프로필 분리 예정)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" class="btn-admin btn-admin-outline" onclick="closeAddFamilyModal()">취소</button>
+                        <button type="submit" class="btn-admin btn-admin-primary">등록하기</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✏️ 2. 가족 정보 및 권한 수정 모달 -->
+    <div id="editFamilyModal" class="admin-modal-backdrop" style="display:none;">
+        <div class="admin-modal-dialog">
+            <div class="admin-modal-header">
+                <h3>✏️ 가족 정보 및 이용 권한 수정</h3>
+                <button type="button" class="admin-modal-close-btn" onclick="closeEditFamilyModal()" title="창 닫기">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <form id="editFamilyForm" onsubmit="submitEditFamily(event)">
+                    <input type="hidden" id="editFamilyTargetUsername">
+                    <div style="margin-bottom:0.85rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">가족 호칭 (이름)</label>
+                        <input type="text" id="inputEditNickname" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="margin-bottom:1.15rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem;">
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.5rem;">이용 허용 서비스 선택</label>
+                        <div style="display:flex; flex-direction:column; gap:0.4rem; font-size:0.85rem; color:#334155;">
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceAlbum"> <span>📸 우리 가족 앨범</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceNews"> <span>📰 뉴스룸 & 날씨·증시</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceAsset"> <span>💰 자산 관리</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceBlood"> <span>🩸 혈압 관리</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" class="btn-admin btn-admin-outline" onclick="closeEditFamilyModal()">취소</button>
+                        <button type="submit" class="btn-admin btn-admin-primary">수정사항 저장</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔑 3. 임시 PIN 재설정 모달 -->
+    <div id="resetPinModal" class="admin-modal-backdrop" style="display:none;">
+        <div class="admin-modal-dialog">
+            <div class="admin-modal-header">
+                <h3>🔑 임시 PIN 재설정</h3>
+                <button type="button" class="admin-modal-close-btn" onclick="closeResetPinModal()" title="창 닫기">✕</button>
+            </div>
+            <div class="admin-modal-body">
+                <p style="font-size:0.85rem; color:#64748b; margin-top:0; margin-bottom:0.85rem;">
+                    [<strong id="resetPinTargetNameDisplay">-</strong>]님의 로그인 PIN을 임시 번호로 재설정합니다.
+                </p>
+                <form onsubmit="submitResetPin(event)">
+                    <input type="hidden" id="resetPinTargetUsername">
+                    <div style="margin-bottom:1.15rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">새 임시 숫자 6자리 PIN</label>
+                        <input type="text" id="inputResetNewPin" value="123456" maxlength="6" inputmode="numeric" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-family:monospace; font-size:1.1rem; letter-spacing:2px; box-sizing:border-box;">
+                        <span style="font-size:0.75rem; color:#64748b; display:block; margin-top:0.25rem;">가족에게 전달 후, 로그인하면 본인만의 PIN으로 즉시 변경됩니다.</span>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <button type="button" class="btn-admin btn-admin-outline" onclick="closeResetPinModal()">취소</button>
+                        <button type="submit" class="btn-admin btn-admin-primary">PIN 재설정 완료</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- 플로팅 토스트 알림창 -->
     <div id="adminToast">알림 메시지</div>
 
@@ -1267,6 +1429,7 @@
     <script src="/js/admin-core.js?v=20261025_015558"></script>
     <script src="/js/admin-monitor.js?v=20261025_015558"></script>
     <script src="/js/admin-services.js?v=20261025_015558"></script>
+    <script src="/js/admin-family.js"></script>
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>
 </body>
