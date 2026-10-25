@@ -175,7 +175,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     // 1) 헤더 가족 환영 뱃지 표시
                     const badge = document.getElementById('familyGreetingBadge');
                     if (badge) {
-                        badge.textContent = `🌸 ${data.nickname || data.username}님`;
+                        const name = data.nickname || data.username;
+                        badge.textContent = `🌸 ${name}님`;
+                        badge.title = `${name}님 (가족 계정)`;
                         badge.style.display = 'inline-flex';
                     }
 
