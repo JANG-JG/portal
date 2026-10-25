@@ -455,11 +455,11 @@ router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
     const query = `
         SELECT 
             p.id, p.caption, p.thumbnail_filename, p.storage_filename, p.created_at, 
-            p.batch_id, p.batch_order, p.batch_total,
             COALESCE(m.nickname, '가족') as author_nickname,
             COALESCE(m.avatar_emoji, '😊') as author_emoji,
             (SELECT COUNT(*) FROM photo_comments c WHERE c.photo_id = p.id) as comment_count,
-            (SELECT COUNT(*) FROM photo_reactions r WHERE r.photo_id = p.id) as reaction_count
+            (SELECT COUNT(*) FROM photo_reactions r WHERE r.photo_id = p.id) as reaction_count,
+            (SELECT COUNT(*) FROM photo_images pi WHERE pi.photo_id = p.id) as image_count
         FROM photos p
         LEFT JOIN family_members m ON p.member_id = m.id
         ORDER BY p.id DESC
@@ -479,7 +479,7 @@ router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
             createdAt: r.created_at,
             commentCount: r.comment_count || 0,
             reactionCount: r.reaction_count || 0,
-            batchTotal: r.batch_total || 1
+            batchTotal: Math.max(1, r.image_count || 1)
         }));
         res.json({ success: true, photos });
     });
