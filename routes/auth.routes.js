@@ -115,7 +115,7 @@ function sendPortalAuthCookie(res, req, token, maxAgeDays = 365) {
 // 1. 로그인 화면용 가족 구성원 목록 (비밀번호 제외)
 router.get('/api/auth/family-members', (req, res) => {
     db.all(
-        `SELECT username, nickname, role, avatar_emoji 
+        `SELECT username, nickname, role 
          FROM users 
          WHERE role = 'family' OR (role IS NULL AND rowid > 1) 
          ORDER BY rowid ASC`,
@@ -126,7 +126,7 @@ router.get('/api/auth/family-members', (req, res) => {
                 username: r.username,
                 nickname: r.nickname || r.username,
                 role: r.role || 'family',
-                emoji: r.avatar_emoji || (r.nickname && r.nickname.includes('엄마') ? '👩' : (r.nickname && r.nickname.includes('아빠') ? '👨' : '😊'))
+                emoji: (r.nickname && r.nickname.includes('엄마')) ? '👩' : ((r.nickname && r.nickname.includes('아빠')) ? '👨' : ((r.nickname && r.nickname.includes('동생')) ? '👧' : '😊'))
             }));
             res.json({ success: true, members });
         }
