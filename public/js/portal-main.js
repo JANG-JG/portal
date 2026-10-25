@@ -51,6 +51,10 @@ function switchPortalTab(tabName, smooth = true) {
         targetEl = document.getElementById('bento-blood');
     } else if (tabName === 'asset') {
         targetEl = document.getElementById('bento-asset');
+    } else if (tabName === 'album') {
+        targetEl = document.getElementById('bento-album');
+    } else if (tabName === 'calendar') {
+        targetEl = document.getElementById('bento-calendar');
     } else if (tabName === 'med') {
         targetEl = document.getElementById('bento-med');
     } else if (tabName === 'news') {
@@ -82,11 +86,13 @@ function switchPortalTab(tabName, smooth = true) {
 // 🌟 3. 스크롤 위치 기반 실시간 탭 활성화 감지 (ScrollSpy)
 function initBentoScrollSpy() {
     const sectionMap = [
-        { id: 'bento-blood', tab: 'blood' },
-        { id: 'bento-asset', tab: 'asset' },
-        { id: 'bento-med',   tab: 'med' },
-        { id: 'bento-news',  tab: 'news' },
-        { id: 'bento-ops',   tab: 'ops' }
+        { id: 'bento-blood',    tab: 'blood' },
+        { id: 'bento-asset',    tab: 'asset' },
+        { id: 'bento-album',    tab: 'album' },
+        { id: 'bento-calendar', tab: 'calendar' },
+        { id: 'bento-med',      tab: 'med' },
+        { id: 'bento-news',     tab: 'news' },
+        { id: 'bento-ops',      tab: 'ops' }
     ];
 
     let ticking = false;
@@ -143,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4-2. URL 해시 기반 탭 자동 이동
     const hash = window.location.hash.replace('#', '');
-    if (hash && ['home', 'blood', 'asset', 'med', 'news', 'ops'].includes(hash)) {
+    if (hash && ['home', 'blood', 'asset', 'album', 'calendar', 'med', 'news', 'ops'].includes(hash)) {
         setTimeout(() => switchPortalTab(hash, false), 150);
     }
 

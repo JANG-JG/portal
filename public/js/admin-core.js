@@ -277,6 +277,11 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
         }
     });
 
+    // 💻 로그 서브패널 전환 시 최신 로그(최하단) 자동 스크롤 보정
+    if (subId === 'subpane-overview-logs' && typeof window.scrollPm2LogsToBottom === 'function') {
+        setTimeout(window.scrollPm2LogsToBottom, 60);
+    }
+
     // 상단 서브탭 버튼 active 갱신 및 🧲 서브탭 자석 스크롤 효과 (중앙 정렬)
     const subNav = document.getElementById('adminSubtabsNav');
     document.querySelectorAll('.admin-subtab-btn').forEach(b => {

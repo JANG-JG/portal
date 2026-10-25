@@ -3994,5 +3994,204 @@ html.role-pending [data-service="ops"] {
     }
 }
 
+/* ==============================================================================
+ * 📸 가족 앨범 최신 사진 위젯 & 📅 스마트 캘린더 다가오는 일정 스타일
+ * ============================================================================== */
+.col-album, .col-calendar {
+    grid-column: 1 / -1 !important;
+}
+
+/* 앨범 썸네일 스트립 트랙 */
+.album-thumb-strip-container {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0.4rem 0 0.6rem 0;
+}
+.album-thumb-strip-container::-webkit-scrollbar {
+    display: none;
+}
+.album-thumb-track {
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+.album-thumb-card {
+    flex: 0 0 135px;
+    background: var(--bg-subtle, #1e293b);
+    border: 1px solid var(--border-color, #334155);
+    border-radius: var(--radius-md, 8px);
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
+}
+.album-thumb-card:hover {
+    transform: translateY(-2px);
+    border-color: #ec4899;
+}
+.album-thumb-img-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #0f172a;
+    overflow: hidden;
+}
+.album-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.2s ease;
+}
+.album-thumb-card:hover .album-thumb-img {
+    transform: scale(1.05);
+}
+.album-thumb-batch-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 5px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+}
+.album-thumb-meta {
+    padding: 0.5rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+}
+.album-thumb-caption {
+    font-weight: 600;
+    color: var(--text-primary, #f1f5f9);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+}
+.album-thumb-author-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.68rem;
+}
+.album-thumb-placeholder {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.82rem;
+    width: 100%;
+}
+
+/* 📅 캘린더 다가오는 일정 위젯 */
+.calendar-upcoming-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 0.65rem;
+    padding: 0.35rem 0;
+}
+.cal-upcoming-card {
+    background: var(--bg-subtle, #1e293b);
+    border: 1px solid var(--border-color, #334155);
+    border-radius: var(--radius-md, 8px);
+    padding: 0.65rem 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, background 0.15s ease;
+    border-left: 3px solid #6366f1;
+}
+.cal-upcoming-card:hover {
+    border-color: #6366f1;
+    background: var(--bg-hover, #334155);
+}
+.cal-upcoming-date-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    min-width: 44px;
+    flex-shrink: 0;
+}
+.cal-upcoming-month {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-muted, #94a3b8);
+    line-height: 1;
+}
+.cal-upcoming-day {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--text-primary, #f8fafc);
+    line-height: 1.1;
+    font-family: var(--font-mono, monospace);
+}
+.cal-upcoming-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.cal-upcoming-title {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-primary, #f8fafc);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cal-upcoming-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.7rem;
+    color: var(--text-muted, #94a3b8);
+}
+.cal-dday-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-family: var(--font-mono, monospace);
+    background: rgba(99, 102, 241, 0.2);
+    color: #818cf8;
+}
+.cal-dday-badge.today {
+    background: rgba(244, 63, 94, 0.2);
+    color: #fb7185;
+}
+.calendar-upcoming-loading, .calendar-upcoming-empty {
+    padding: 1.25rem;
+    text-align: center;
+    color: var(--text-muted, #94a3b8);
+    font-size: 0.82rem;
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 480px) {
+    .album-thumb-card {
+        flex: 0 0 115px;
+    }
+    .calendar-upcoming-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 
 

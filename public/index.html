@@ -68,6 +68,12 @@
                 <button type="button" class="portal-tab-btn" data-tab="asset" data-service="asset" onclick="switchPortalTab('asset')">
                     <span>💰</span><span>자산·금융</span>
                 </button>
+                <button type="button" class="portal-tab-btn" data-tab="album" onclick="switchPortalTab('album')">
+                    <span>📸</span><span>가족 앨범</span>
+                </button>
+                <button type="button" class="portal-tab-btn" data-tab="calendar" onclick="switchPortalTab('calendar')">
+                    <span>📅</span><span>캘린더</span>
+                </button>
                 <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
                     <span>📰</span><span>뉴스룸</span>
                 </button>
@@ -158,6 +164,12 @@
             </button>
             <button type="button" class="portal-tab-btn" data-tab="asset" data-service="asset" onclick="switchPortalTab('asset')">
                 <span>💰</span><span>자산</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-tab="album" onclick="switchPortalTab('album')">
+                <span>📸</span><span>앨범</span>
+            </button>
+            <button type="button" class="portal-tab-btn" data-tab="calendar" onclick="switchPortalTab('calendar')">
+                <span>📅</span><span>캘린더</span>
             </button>
             <button type="button" class="portal-tab-btn" data-tab="news" onclick="switchPortalTab('news')">
                 <span>📰</span><span>뉴스</span>
@@ -351,6 +363,58 @@
                     <div class="bento-card-footer">
                         <a href="/go/economy" style="color:inherit; text-decoration:none; font-family:var(--font-mono);">📈 경제 & 증시 ↗</a>
                         <span>15:30 정규장 마감</span>
+                    </div>
+                </div>
+
+                <!-- Bento: 📸 가족 앨범 최신 사진 (전폭 스트립) -->
+                <div class="bento-card col-album" id="bento-album" data-service="album" style="grid-column: 1 / -1;">
+                    <div>
+                        <div class="bento-card-header">
+                            <div class="bento-card-title-group">
+                                <span class="cmd-dot-pulse" style="background-color:#ec4899;"></span>
+                                <h3 class="bento-card-title">가족 앨범 최신 사진</h3>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <a href="https://album.j-jg.cc" class="bento-card-link" style="color:#ec4899;">앨범 열기 →</a>
+                            </div>
+                        </div>
+
+                        <!-- 앨범 썸네일 가로 스와이프 스트립 -->
+                        <div class="album-thumb-strip-container" id="albumThumbStripContainer">
+                            <div class="album-thumb-track" id="albumThumbTrack">
+                                <div class="album-thumb-placeholder">최근 사진을 불러오는 중입니다...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bento-card-footer">
+                        <span id="albumRecentCount">가족들의 소중한 순간</span>
+                        <a href="https://album.j-jg.cc" style="color:inherit; text-decoration:none;">📸 사진 올리기 ↗</a>
+                    </div>
+                </div>
+
+                <!-- Bento: 📅 스마트 캘린더 다가오는 일정 (전폭 카드) -->
+                <div class="bento-card col-calendar" id="bento-calendar" style="grid-column: 1 / -1;">
+                    <div>
+                        <div class="bento-card-header">
+                            <div class="bento-card-title-group">
+                                <span class="cmd-dot-pulse" style="background-color:#6366f1;"></span>
+                                <h3 class="bento-card-title">스마트 캘린더 다가오는 일정</h3>
+                            </div>
+                            <div style="display:flex; gap:0.5rem; align-items:center;">
+                                <a href="/calendar" class="bento-card-link" style="color:#6366f1;">캘린더 열기 →</a>
+                            </div>
+                        </div>
+
+                        <!-- 캘린더 이번 주 / 다가오는 일정 타임라인 그리드 -->
+                        <div class="calendar-upcoming-grid" id="calendarUpcomingGrid">
+                            <div class="calendar-upcoming-loading">다가오는 일정을 불러오는 중입니다...</div>
+                        </div>
+                    </div>
+
+                    <div class="bento-card-footer">
+                        <span id="calendarUpcomingCount">이번 주 일정 안내</span>
+                        <a href="/calendar" style="color:inherit; text-decoration:none;">📅 새 일정 등록 ↗</a>
                     </div>
                 </div>
 
@@ -1046,6 +1110,7 @@
     <script src="/js/portal-main.js"></script>
     <script src="/js/portal-notification.js"></script>
     <script src="/js/portal-search.js"></script>
+    <script src="/js/portal-album-calendar.js"></script>
     <script src="/api/jg-ui" defer></script>
 </body>
 </html>

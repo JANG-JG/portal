@@ -698,6 +698,9 @@
                                 <button type="button" class="btn-admin-xs" id="btnFilterError" onclick="setPm2LogFilter('error')" style="font-size:0.72rem; padding:2px 6px; border:none; background:transparent; color:#ef4444; border-radius:3px; font-weight:700; cursor:pointer;">에러</button>
                                 <button type="button" class="btn-admin-xs" id="btnFilterWarn" onclick="setPm2LogFilter('warn')" style="font-size:0.72rem; padding:2px 6px; border:none; background:transparent; color:#d97706; border-radius:3px; font-weight:700; cursor:pointer;">경고</button>
                             </div>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" id="btnToggleLogOrder" onclick="togglePm2LogOrder()" title="로그 정렬 순서 전환 (터미널 방식 하단 ↔ 최신순 상단)">
+                                ⬇️ 터미널순
+                            </button>
                             <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="fetchPm2Logs()">
                                 🔄 새로고침
                             </button>

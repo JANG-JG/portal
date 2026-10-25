@@ -795,6 +795,30 @@ function setPm2LogFilter(level) {
     filterPm2ConsoleLogs();
 }
 
+let currentPm2LogOrder = 'bottom'; // 'bottom' (터미널 방식: 아래가 최신) | 'top' (최신순: 위가 최신)
+
+function togglePm2LogOrder() {
+    currentPm2LogOrder = currentPm2LogOrder === 'bottom' ? 'top' : 'bottom';
+    const btn = document.getElementById('btnToggleLogOrder');
+    if (btn) {
+        btn.textContent = currentPm2LogOrder === 'bottom' ? '⬇️ 터미널순' : '⬆️ 최신순';
+    }
+    filterPm2ConsoleLogs();
+}
+
+function scrollPm2LogsToBottom() {
+    const consoleEl = document.getElementById('pm2LogConsole');
+    if (!consoleEl) return;
+    if (currentPm2LogOrder === 'bottom') {
+        requestAnimationFrame(() => {
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            setTimeout(() => {
+                consoleEl.scrollTop = consoleEl.scrollHeight;
+            }, 50);
+        });
+    }
+}
+
 function filterPm2ConsoleLogs() {
     const consoleEl = document.getElementById('pm2LogConsole');
     const searchInput = document.getElementById('pm2LogSearchInput');
@@ -825,11 +849,19 @@ function filterPm2ConsoleLogs() {
         return true;
     });
 
+    if (currentPm2LogOrder === 'top') {
+        filtered = filtered.reverse();
+    }
+
     if (filtered.length === 0) {
         consoleEl.textContent = `[조건에 일치하는 로그 라인이 없습니다 (필터: ${currentPm2FilterLevel}, 검색어: '${keyword}')]`;
     } else {
         consoleEl.textContent = filtered.join('\n');
-        consoleEl.scrollTop = consoleEl.scrollHeight;
+        if (currentPm2LogOrder === 'bottom') {
+            scrollPm2LogsToBottom();
+        } else {
+            consoleEl.scrollTop = 0;
+        }
     }
 }
 
@@ -942,6 +974,8 @@ window.fetchPm2Logs = fetchPm2Logs;
 window.clearPm2Logs = clearPm2Logs;
 window.setPm2LogFilter = setPm2LogFilter;
 window.filterPm2ConsoleLogs = filterPm2ConsoleLogs;
+window.togglePm2LogOrder = togglePm2LogOrder;
+window.scrollPm2LogsToBottom = scrollPm2LogsToBottom;
 window.downloadAllDatabases = downloadAllDatabases;
 window.initUPlotChart = initUPlotChart;
 window.updateUPlotData = updateUPlotData;

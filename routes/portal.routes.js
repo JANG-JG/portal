@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/constants');
-const { db, assetDb, newsDb, portalDb } = require('../services/db');
+const { db, assetDb, newsDb, albumDb, portalDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { getLiveWeatherData, CITY_LIST, normalizeCityCode, getDefaultWeatherCity } = require('../services/weather.service');
 const { getLiveMarketData, getKoreanStockName, enrichAssetsWithQuotes } = require('../services/market.service');
@@ -445,6 +445,44 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
         console.error('요약 데이터 조회 오류:', err);
         res.status(500).json({ success: false, message: '요약 데이터 조회 실패' });
     }
+});
+
+// 1-1. 메인 대시보드용 최근 가족 앨범 사진 8선 조회 API
+router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
+    if (!albumDb) {
+        return res.json({ success: true, photos: [] });
+    }
+    const query = `
+        SELECT 
+            p.id, p.caption, p.thumbnail_filename, p.storage_filename, p.created_at, 
+            p.batch_id, p.batch_order, p.batch_total,
+            COALESCE(m.nickname, '가족') as author_nickname,
+            COALESCE(m.avatar_emoji, '😊') as author_emoji,
+            (SELECT COUNT(*) FROM photo_comments c WHERE c.photo_id = p.id) as comment_count,
+            (SELECT COUNT(*) FROM photo_reactions r WHERE r.photo_id = p.id) as reaction_count
+        FROM photos p
+        LEFT JOIN family_members m ON p.member_id = m.id
+        ORDER BY p.id DESC
+        LIMIT 8
+    `;
+    albumDb.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('포털 최근 사진 조회 오류:', err.message);
+            return res.json({ success: false, photos: [] });
+        }
+        const photos = (rows || []).map(r => ({
+            id: r.id,
+            caption: r.caption || '',
+            thumbnailUrl: `https://album.j-jg.cc/uploads/thumbnails/${r.thumbnail_filename}`,
+            author: r.author_nickname,
+            emoji: r.author_emoji,
+            createdAt: r.created_at,
+            commentCount: r.comment_count || 0,
+            reactionCount: r.reaction_count || 0,
+            batchTotal: r.batch_total || 1
+        }));
+        res.json({ success: true, photos });
+    });
 });
 
 // 2. 원터치 복약 등록 API
