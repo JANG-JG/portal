@@ -587,6 +587,14 @@
                                 <tbody>
                                     <tr>
                                         <td style="font-weight:700; color:#64748b; text-align:center;">1</td>
+                                        <td style="font-weight:700; color:#0f172a;">🏠 포털 메인</td>
+                                        <td><code>portal.db</code></td>
+                                        <td class="col-desc" style="color:#475569;">일정 캘린더, 개인 메모, 범례, 시스템 설정</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
+                                        <td style="text-align:center;" id="secDbPortal"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">2</td>
                                         <td style="font-weight:700; color:#0f172a;">🩸 혈압 관리</td>
                                         <td><code>health.db</code></td>
                                         <td class="col-desc" style="color:#475569;">혈압, 맥박, 복약 일지, 병원 진료 기록</td>
@@ -594,7 +602,7 @@
                                         <td style="text-align:center;" id="secDbHealth"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
                                     </tr>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b; text-align:center;">2</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">3</td>
                                         <td style="font-weight:700; color:#0f172a;">💰 자산 관리</td>
                                         <td><code>asset.db</code></td>
                                         <td class="col-desc" style="color:#475569;">증권 계좌 잔고, 주식 포트폴리오, 입출금 이력</td>
@@ -602,7 +610,7 @@
                                         <td style="text-align:center;" id="secDbAsset"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
                                     </tr>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b; text-align:center;">3</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">4</td>
                                         <td style="font-weight:700; color:#0f172a;">📰 AI 뉴스 브리핑</td>
                                         <td><code>briefing.db</code></td>
                                         <td class="col-desc" style="color:#475569;">뉴스 브리핑, 속보 수집 및 텔레그램 발송 이력</td>
@@ -610,15 +618,23 @@
                                         <td style="text-align:center;" id="secDbBriefing"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
                                     </tr>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b; text-align:center;">4</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">5</td>
+                                        <td style="font-weight:700; color:#0f172a;">📸 가족 사진첩</td>
+                                        <td><code>album.db</code></td>
+                                        <td class="col-desc" style="color:#475569;">가족 사진 메타데이터, 댓글, 리액션 이력</td>
+                                        <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">핫스냅샷</span></td>
+                                        <td style="text-align:center;" id="secDbAlbum"><span class="badge-online" style="font-size:0.72rem;">보관 완료 🟢</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">6</td>
                                         <td style="font-weight:700; color:#0f172a;">🚀 PM2 실행 로그</td>
                                         <td><code>logs/pm2/*</code></td>
-                                        <td class="col-desc" style="color:#475569;">포털, 혈압, 자산, 뉴스, 터널 프로세스 로그 아카이브</td>
+                                        <td class="col-desc" style="color:#475569;">포털, 혈압, 자산, 뉴스, 사진첩, 터널 프로세스 로그</td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">증분 전송</span></td>
                                         <td style="text-align:center;"><span class="badge-online" style="font-size:0.72rem;">자동 동기화</span></td>
                                     </tr>
                                     <tr>
-                                        <td style="font-weight:700; color:#64748b; text-align:center;">5</td>
+                                        <td style="font-weight:700; color:#64748b; text-align:center;">7</td>
                                         <td style="font-weight:700; color:#0f172a;">⏱️ 뉴스 크롤러 로그</td>
                                         <td><code>logs/news/*</code></td>
                                         <td class="col-desc" style="color:#475569;">AI 뉴스 수집기 및 스케줄러 실행 상세 로그</td>
@@ -1551,24 +1567,31 @@
         <!-- 🗄️ [탭 8] 경량 SQLite DB 매니저 (tab-database) -->
         <!-- ========================================== -->
         <div id="tab-database" class="admin-tab-pane">
-            <!-- 🗄️ DB 매니저 상단 통합 선택 바 (기존 관리자 카드 디자인 시스템 통일) -->
+            <!-- 🗄️ DB 매니저 상단 통합 선택 바 (2줄 컴팩트 최적화) -->
             <div class="admin-card db-unified-control-card" style="margin-bottom: 0.85rem;">
-                <div class="db-control-bar-inner">
-                    <div class="db-control-fields-wrap">
-                        <div class="db-control-field">
-                            <label class="db-control-label"><span>🗄️</span> <span>DB 선택</span></label>
+                <div class="db-control-two-rows">
+                    <!-- 1행: DB 선택 (전폭) + 데이터 새로고침 버튼 -->
+                    <div class="db-control-row">
+                        <div class="db-control-field db-field-main">
+                            <label class="db-control-label"><span>🗄️</span> <span>데이터베이스</span></label>
                             <select id="dbSelect" class="db-control-select" onchange="DbManager.switchDb(this.value)">
                                 <option value="">데이터베이스 불러오는 중...</option>
                             </select>
                         </div>
-                        <div class="db-control-field">
-                            <label class="db-control-label"><span>📋</span> <span>테이블</span></label>
+                        <div class="db-control-action-btn-wrap">
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm btn-db-refresh" onclick="DbManager.loadTableData()" title="데이터 새로고침">
+                                🔄 새로고침
+                            </button>
+                        </div>
+                    </div>
+                    <!-- 2행: 테이블 선택 (전폭) + 뷰 모드 스위처 (카드 / 표) -->
+                    <div class="db-control-row">
+                        <div class="db-control-field db-field-main">
+                            <label class="db-control-label"><span>📋</span> <span>테이블 선택</span></label>
                             <select id="tableSelect" class="db-control-select" onchange="DbManager.switchTable(this.value)">
                                 <option value="">테이블 선택</option>
                             </select>
                         </div>
-                    </div>
-                    <div class="db-control-actions-wrap">
                         <div class="server-tab-container db-view-switcher" style="margin:0; width:auto;">
                             <button type="button" id="btnViewModeCard" class="server-tab-btn active" onclick="DbManager.setViewMode('card')">
                                 <span>📱</span> <span class="server-tab-label">카드</span>
@@ -1577,9 +1600,6 @@
                                 <span>💻</span> <span class="server-tab-label">표</span>
                             </button>
                         </div>
-                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.loadTableData()" title="데이터 새로고침">
-                            🔄 새로고침
-                        </button>
                     </div>
                 </div>
             </div>

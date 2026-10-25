@@ -570,9 +570,14 @@ function updateSecondaryServerUI(s) {
 
     // 8. DB 백업본 보존 상태 업데이트
     if (s.dbs) {
+        const elPortal = document.getElementById('secDbPortal');
         const elHealth = document.getElementById('secDbHealth');
         const elAsset = document.getElementById('secDbAsset');
         const elBriefing = document.getElementById('secDbBriefing');
+        const elAlbum = document.getElementById('secDbAlbum');
+        if (elPortal && s.dbs.portal) {
+            elPortal.innerHTML = `<span class="badge-online" style="font-size:0.75rem;">${s.dbs.portal}</span>`;
+        }
         if (elHealth && s.dbs.health) {
             elHealth.innerHTML = `<span class="badge-online" style="font-size:0.75rem;">${s.dbs.health}</span>`;
         }
@@ -581,6 +586,9 @@ function updateSecondaryServerUI(s) {
         }
         if (elBriefing && s.dbs.briefing) {
             elBriefing.innerHTML = `<span class="badge-online" style="font-size:0.75rem;">${s.dbs.briefing}</span>`;
+        }
+        if (elAlbum && s.dbs.album) {
+            elAlbum.innerHTML = `<span class="badge-online" style="font-size:0.75rem;">${s.dbs.album}</span>`;
         }
     }
 

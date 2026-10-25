@@ -5,7 +5,7 @@
 
 const DbManager = {
     state: {
-        currentDb: 'health',
+        currentDb: 'portal',
         currentTable: '',
         viewMode: window.innerWidth < 768 ? 'card' : 'table', // 모바일 카드 뷰 기본
         page: 1,
