@@ -23,7 +23,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`ALTER TABLE users ADD COLUMN locked_until DATETIME DEFAULT NULL`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN phone_hash TEXT DEFAULT ''`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN avatar_emoji TEXT DEFAULT ''`, () => {});
-            db.run(`ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT (datetime('now', 'localtime'))`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN created_at DATETIME`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN last_login_at DATETIME`, () => {});
             db.run(`UPDATE users SET role = 'admin', allowed_services = '["all"]', pin_reset_required = 0 WHERE rowid = 1 OR role IS NULL`, () => {
                 db.all(`SELECT username FROM users WHERE role = 'admin' OR rowid = 1`, (uErr, uRows) => {
