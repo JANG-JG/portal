@@ -18,6 +18,7 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 // 알림 수신 내역 DB 보관 헬퍼 함수
 function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon, url = 'https://j-jg.cc/' }, callback) {
     const typeIconMap = {
+        'album': '📸',
         'breaking': '🚨',
         'weather': '🌤️',
         'asset': '💰',
@@ -65,7 +66,7 @@ function sanitizePushText(text) {
 }
 
 // 🌟 [통합 포털 단일 WebPush 발송 엔진]
-function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, userId = null, adminOnly = false }) {
+function sendUnifiedPushNotification({ title, body, url, type = 'general', subtype = null, tag, userId = null, excludeUserId = null, adminOnly = false }) {
     return new Promise((resolve) => {
         let cleanTitle = sanitizePushText(title || '알림')
             .replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '')
@@ -78,6 +79,8 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
         if (targetUrl.startsWith('/')) {
             if (targetUrl.includes('dashboard') || targetUrl.includes('hospital')) {
                 targetUrl = `https://blood.j-jg.cc${targetUrl}`;
+            } else if (targetUrl.includes('album') || targetUrl.startsWith('/photos') || targetUrl.startsWith('/album')) {
+                targetUrl = `https://album.j-jg.cc${targetUrl}`;
             } else {
                 targetUrl = `https://j-jg.cc${targetUrl}`;
             }
@@ -86,9 +89,16 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
         // 수신 대상 필터 구성
         let userCondition = '';
         if (userId) {
-            userCondition = `AND ps.user_id = '${userId}'`;
+            if (Array.isArray(userId)) {
+                userCondition = `AND ps.user_id IN (${userId.map(u => `'${u}'`).join(',')})`;
+            } else {
+                userCondition = `AND ps.user_id = '${userId}'`;
+            }
         } else if (adminOnly) {
             userCondition = "AND (ps.user_id = 'admin' OR ps.user_id IN (SELECT username FROM users WHERE role = 'admin' OR rowid = 1))";
+        }
+        if (excludeUserId) {
+            userCondition += ` AND ps.user_id != '${excludeUserId}'`;
         }
 
         let categoryCondition = '';
@@ -100,6 +110,15 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
             categoryCondition = 'AND (ns.asset_report_enabled IS NULL OR ns.asset_report_enabled = 1)';
         } else if (type === 'system') {
             categoryCondition = 'AND (ns.system_alert_enabled IS NULL OR ns.system_alert_enabled = 1)';
+        } else if (type === 'album') {
+            categoryCondition = 'AND (ns.album_push_enabled IS NULL OR ns.album_push_enabled = 1)';
+            if (subtype === 'album_new_photo') {
+                categoryCondition += ' AND (ns.album_new_photo_enabled IS NULL OR ns.album_new_photo_enabled = 1)';
+            } else if (subtype === 'album_comment') {
+                categoryCondition += ' AND (ns.album_comment_enabled IS NULL OR ns.album_comment_enabled = 1)';
+            } else if (subtype === 'album_mention') {
+                categoryCondition += ' AND (ns.album_mention_enabled IS NULL OR ns.album_mention_enabled = 1)';
+            }
         }
 
         const query = `
@@ -177,14 +196,27 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', tag, 
                 });
             }
 
+            const recipientUserIds = Array.from(new Set(sendRows.map(r => r.user_id).filter(Boolean)));
+            if (recipientUserIds.length === 0) recipientUserIds.push(userId || 'admin');
+
             saveNotificationHistory({
-                userId: userId || (adminOnly ? 'admin' : (sendRows[0] ? sendRows[0].user_id : 'admin')),
+                userId: recipientUserIds[0],
                 type,
                 title: cleanTitle,
                 body: cleanBody,
                 icon: 'https://j-jg.cc/icon-monochrome.png',
                 url: targetUrl
             }, (notifId) => {
+                for (let i = 1; i < recipientUserIds.length; i++) {
+                    saveNotificationHistory({
+                        userId: recipientUserIds[i],
+                        type,
+                        title: cleanTitle,
+                        body: cleanBody,
+                        icon: 'https://j-jg.cc/icon-monochrome.png',
+                        url: targetUrl
+                    });
+                }
                 const sep = targetUrl.includes('?') ? '&' : '?';
                 const linkWithId = notifId ? `${targetUrl}${sep}notif_id=${notifId}` : targetUrl;
 

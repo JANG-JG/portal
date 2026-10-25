@@ -17,7 +17,9 @@ setInterval(() => {
 
 // 토큰 인증 미들웨어
 function authenticateToken(req, res, next) {
-    const token = req.cookies.portal_token;
+    const authHeader = req.headers['authorization'];
+    const bearerToken = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.split(' ')[1] : null;
+    const token = req.cookies?.portal_token || bearerToken;
     if (!token) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(401).json({ success: false, message: '인증이 필요합니다.' });
@@ -27,7 +29,9 @@ function authenticateToken(req, res, next) {
 
     // 🛡️ 로그아웃된 무효화 토큰(블랙리스트) 검증
     if (revokedTokens.has(token)) {
-        res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
+        if (req.cookies && req.cookies.portal_token) {
+            res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
+        }
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(401).json({ success: false, message: '로그아웃된 토큰입니다. 다시 로그인해 주세요.' });
         }
@@ -42,7 +46,9 @@ function authenticateToken(req, res, next) {
     }
 
     if (!user || !user.username || user.purpose === 'sso_ticket') {
-        res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
+        if (req.cookies && req.cookies.portal_token) {
+            res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
+        }
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(401).json({ success: false, message: '인증이 만료되었습니다.' });
         }
