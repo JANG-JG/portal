@@ -302,12 +302,12 @@
     <div class="login-card">
         <div class="login-header">
             <div class="login-icon">🏠</div>
-            <h2 id="loginTitle">우리 가족 간편 입장</h2>
-            <p id="loginSubtitle">내 프로필을 선택하고 6자리 PIN을 입력하세요</p>
+            <h2 id="loginTitle">JG 통합 포털</h2>
+            <p id="loginSubtitle">단일 계정으로 모든 서비스를 안전하게 이용하세요</p>
         </div>
 
-        <!-- 👨‍👩‍👧‍👦 / 🔒 탭 전환 바 -->
-        <div class="login-tabs">
+        <!-- 👨‍👩‍👧‍👦 / 🔒 탭 전환 바 (인증된 가족 기기에서만 동적 활성화) -->
+        <div class="login-tabs" style="display: none;">
             <button type="button" class="login-tab-btn active" id="tabBtnFamily" onclick="switchLoginMode('family')">
                 <span>👨‍👩‍👧‍👦</span><span>우리 가족 간편 입장</span>
             </button>
@@ -317,7 +317,7 @@
         </div>
 
         <!-- 👨‍👩‍👧‍👦 우리 가족 간편 입장 섹션 -->
-        <div id="familyLoginSection">
+        <div id="familyLoginSection" style="display: none;">
             <!-- 1) 가족 프로필 선택 그리드 -->
             <div id="familyPickerView">
                 <div class="family-chips-grid" id="familyChipsContainer">
@@ -377,7 +377,7 @@
         </div>
 
         <!-- 🔒 관리자 계정 로그인 섹션 -->
-        <div id="adminLoginSection" style="display: none;">
+        <div id="adminLoginSection" style="display: block;">
             <form id="loginForm" class="login-form">
                 <div class="form-group">
                     <label for="username">아이디</label>

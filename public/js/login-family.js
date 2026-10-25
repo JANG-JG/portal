@@ -56,26 +56,36 @@
         }
     };
 
-    // 2. 가족 구성원 목록 비동기 조회 및 렌더링
+    // 2. 가족 구성원 목록 비동기 조회 (🛡️ 등록된 가족 기기만 프로필 노출, 외부인 100% 차단)
     async function loadFamilyMembers() {
-        if (!familyChipsContainer) return;
+        const loginTabs = document.querySelector('.login-tabs');
+        const tabBtnFamily = document.getElementById('tabBtnFamily');
 
         try {
-            const res = await fetch('/api/auth/family-members');
+            const deviceToken = localStorage.getItem('jg_family_device');
+            const headers = {};
+            if (deviceToken) headers['x-family-device'] = deviceToken;
+
+            const res = await fetch('/api/auth/family-members', { headers });
             const data = await res.json();
 
-            if (!data.success || !data.members || data.members.length === 0) {
-                familyChipsContainer.innerHTML = `
-                    <div style="color: #a1a1aa; font-size: 0.85rem; grid-column: 1 / -1; text-align: center; padding: 1.5rem 0;">
-                        등록된 가족 구성원이 없습니다.<br>
-                        <a href="javascript:void(0)" onclick="switchLoginMode('admin')" style="color: #60a5fa; text-decoration: underline; margin-top: 0.5rem; display: inline-block;">
-                            관리자 계정으로 로그인하기 →
-                        </a>
-                    </div>
-                `;
+            // 🛡️ [보안 강화] 인증된 가족 기기가 아니면 가족 탭을 완전히 숨기고 관리자 로그인 화면 유지
+            if (!data.hasDevice || !data.members || data.members.length === 0) {
+                if (loginTabs) loginTabs.style.display = 'none';
+                switchLoginMode('admin');
+                const title = document.getElementById('loginTitle');
+                const sub = document.getElementById('loginSubtitle');
+                if (title) title.textContent = 'JG 통합 포털';
+                if (sub) sub.textContent = '단일 계정으로 모든 서비스를 안전하게 이용하세요';
                 return;
             }
 
+            // 👨‍👩‍👧‍👦 인증된 가족 기기 확인 완료: 가족 간편 입장 활성화
+            if (loginTabs) loginTabs.style.display = 'flex';
+            if (tabBtnFamily) tabBtnFamily.style.display = 'flex';
+            switchLoginMode('family');
+
+            if (!familyChipsContainer) return;
             familyChipsContainer.innerHTML = '';
             data.members.forEach(member => {
                 const btn = document.createElement('button');
@@ -88,13 +98,15 @@
                 btn.addEventListener('click', () => selectFamilyMember(member));
                 familyChipsContainer.appendChild(btn);
             });
+
+            // 해당 가족 기기에 등록된 계정이 1개인 경우 즉시 PIN 패드 활성화
+            if (data.members.length === 1) {
+                selectFamilyMember(data.members[0]);
+            }
         } catch (err) {
-            console.error('가족 목록 로드 실패:', err);
-            familyChipsContainer.innerHTML = `
-                <div style="color: #f43f5e; font-size: 0.85rem; grid-column: 1 / -1; text-align: center; padding: 1rem 0;">
-                    가족 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
-                </div>
-            `;
+            console.error('가족 기기 인증 확인 실패:', err);
+            if (loginTabs) loginTabs.style.display = 'none';
+            switchLoginMode('admin');
         }
     }
 
@@ -203,6 +215,9 @@
             const data = await res.json();
 
             if (data.success) {
+                if (data.deviceToken) {
+                    localStorage.setItem('jg_family_device', data.deviceToken);
+                }
                 if (data.requirePinChange) {
                     // 최초 접속 PIN 변경 모달 오픈
                     openPinChangeModal(data.tempToken, data.username, data.nickname, data.message);
@@ -285,6 +300,9 @@
 
             const data = await res.json();
             if (data.success) {
+                if (data.deviceToken) {
+                    localStorage.setItem('jg_family_device', data.deviceToken);
+                }
                 alert(data.message || 'PIN이 안전하게 설정되었습니다! 포털로 입장합니다.');
                 window.location.href = data.redirect || '/';
             } else {
@@ -314,9 +332,14 @@
     function handleUrlParameters() {
         const params = new URLSearchParams(window.location.search);
         const inviteToken = params.get('invite_token');
+        const deviceToken = params.get('device_token');
         const username = params.get('username');
         const nickname = params.get('nickname');
         const error = params.get('error');
+
+        if (deviceToken) {
+            localStorage.setItem('jg_family_device', deviceToken);
+        }
 
         if (inviteToken) {
             // 주소창에서 긴 토큰 난수 즉시 클렌징 (깨끗한 주소창 유지)

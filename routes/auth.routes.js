@@ -112,23 +112,65 @@ function sendPortalAuthCookie(res, req, token, maxAgeDays = 365) {
     res.cookie('portal_token', token, cookieOptions);
 }
 
-// 1. 로그인 화면용 가족 구성원 목록 (비밀번호 제외)
+function sendDeviceCookie(res, req, deviceToken) {
+    const reqHost = (req.hostname || req.headers.host || '').split(':')[0];
+    const isJjgDomain = reqHost === 'j-jg.cc' || reqHost.endsWith('.j-jg.cc');
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+
+    const cookieOptions = {
+        httpOnly: true,
+        path: '/',
+        sameSite: 'lax',
+        secure: isHttps,
+        maxAge: 10 * 365 * 24 * 60 * 60 * 1000
+    };
+    if (isJjgDomain) {
+        cookieOptions.domain = COOKIE_DOMAIN;
+    }
+    res.cookie('jg_family_device', deviceToken, cookieOptions);
+}
+
+function getAuthorizedDeviceUsername(req) {
+    const token = req.cookies?.jg_family_device || req.headers['x-family-device'] || req.query?.device_token;
+    if (!token) return null;
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded && decoded.username && decoded.purpose === 'family_device') {
+            return decoded.username;
+        }
+    } catch (e) {}
+    return null;
+}
+
+// 1. 로그인 화면용 가족 구성원 목록 (🛡️ 인증된 가족 기기만 조회 가능, 외부인 일체 비노출)
 router.get('/api/auth/family-members', (req, res) => {
-    db.all(
-        `SELECT username, nickname, role 
+    const authorizedUsername = getAuthorizedDeviceUsername(req);
+
+    // 인증된 기기가 아니면 가족 정보 일체 비노출 (0건 반환)
+    if (!authorizedUsername) {
+        return res.json({ success: true, hasDevice: false, members: [] });
+    }
+
+    db.get(
+        `SELECT username, nickname, role, avatar_emoji 
          FROM users 
-         WHERE role = 'family' OR (role IS NULL AND rowid > 1) 
-         ORDER BY rowid ASC`,
-        [],
-        (err, rows) => {
-            if (err) return res.status(500).json({ success: false, message: '가족 목록 조회 실패' });
-            const members = (rows || []).map(r => ({
-                username: r.username,
-                nickname: r.nickname || r.username,
-                role: r.role || 'family',
-                emoji: (r.nickname && r.nickname.includes('엄마')) ? '👩' : ((r.nickname && r.nickname.includes('아빠')) ? '👨' : ((r.nickname && r.nickname.includes('동생')) ? '👧' : '😊'))
-            }));
-            res.json({ success: true, members });
+         WHERE username = ? AND (role = 'family' OR role IS NULL)`,
+        [authorizedUsername],
+        (err, row) => {
+            if (err || !row) {
+                return res.json({ success: true, hasDevice: false, members: [] });
+            }
+            const emoji = row.avatar_emoji || ((row.nickname && row.nickname.includes('엄마')) ? '👩' : ((row.nickname && row.nickname.includes('아빠')) ? '👨' : ((row.nickname && row.nickname.includes('동생')) ? '👧' : '😊')));
+            res.json({
+                success: true,
+                hasDevice: true,
+                members: [{
+                    username: row.username,
+                    nickname: row.nickname || row.username,
+                    role: row.role || 'family',
+                    emoji
+                }]
+            });
         }
     );
 });
@@ -231,12 +273,19 @@ router.post('/api/auth/family-login', async (req, res) => {
                 { expiresIn: '365d' }
             );
 
+            const deviceToken = jwt.sign(
+                { username: user.username, role: user.role || 'family', purpose: 'family_device' },
+                JWT_SECRET,
+                { expiresIn: '3650d' }
+            );
+            sendDeviceCookie(res, req, deviceToken);
             sendPortalAuthCookie(res, req, token, 365);
             res.json({
                 success: true,
                 requirePinChange: false,
                 redirect: '/',
-                nickname: user.nickname || user.username
+                nickname: user.nickname || user.username,
+                deviceToken
             });
         } catch (bcryptErr) {
             console.error('가족 PIN 검증 오류:', bcryptErr);
@@ -294,11 +343,18 @@ router.post('/api/auth/change-pin', async (req, res) => {
                         { expiresIn: '365d' }
                     );
 
+                    const deviceToken = jwt.sign(
+                        { username: user.username, role: user.role || 'family', purpose: 'family_device' },
+                        JWT_SECRET,
+                        { expiresIn: '3650d' }
+                    );
+                    sendDeviceCookie(res, req, deviceToken);
                     sendPortalAuthCookie(res, req, token, 365);
                     res.json({
                         success: true,
                         message: '새로운 6자리 PIN이 안전하게 설정되었습니다! 이제 자동 로그인됩니다.',
-                        redirect: '/'
+                        redirect: '/',
+                        deviceToken
                     });
                 }
             );
@@ -318,6 +374,13 @@ router.get('/invite/:token', (req, res) => {
             return res.redirect('/login?error=invalid_invite');
         }
 
+        const deviceToken = jwt.sign(
+            { username: user.username, role: user.role || 'family', purpose: 'family_device' },
+            JWT_SECRET,
+            { expiresIn: '3650d' }
+        );
+        sendDeviceCookie(res, req, deviceToken);
+
         // 초기 PIN 변경이 필요한 경우 로그인 페이지의 PIN 변경 모드로 전달
         if (user.pin_reset_required === 1 || !user.pin) {
             const tempToken = jwt.sign(
@@ -325,7 +388,7 @@ router.get('/invite/:token', (req, res) => {
                 JWT_SECRET,
                 { expiresIn: '30m' }
             );
-            return res.redirect(`/login?invite_token=${encodeURIComponent(tempToken)}&username=${encodeURIComponent(user.username)}&nickname=${encodeURIComponent(user.nickname || '')}`);
+            return res.redirect(`/login?invite_token=${encodeURIComponent(tempToken)}&device_token=${encodeURIComponent(deviceToken)}&username=${encodeURIComponent(user.username)}&nickname=${encodeURIComponent(user.nickname || '')}`);
         }
 
         // 이미 PIN 설정이 완료된 가족이면 즉시 365일 로그인 처리 후 포털 또는 앨범으로 안내
