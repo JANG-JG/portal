@@ -263,7 +263,10 @@
     if (enableNav) {
         // 스타일시트 동적 주입
         injectStylesheet(`${origin}/css/unified-nav.css?v=${JG_UI_VERSION}`);
-        // 상단바 스크립트 동적 주입
+        // 상단바 및 통합 알림 모듈 스크립트 동적 주입
+        injectScript(`${origin}/js/unified-nav-push.js?v=${JG_UI_VERSION}`);
+        injectScript(`${origin}/js/unified-nav-modal.js?v=${JG_UI_VERSION}`);
+        injectScript(`${origin}/js/unified-nav-history.js?v=${JG_UI_VERSION}`);
         injectScript(`${origin}/js/unified-nav.js?v=${JG_UI_VERSION}`);
     }
 
