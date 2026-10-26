@@ -1,19 +1,13 @@
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const cron = require('node-cron');
 const axios = require('axios');
-const nodemailer = require('nodemailer');
 const { exec } = require('child_process');
-const { decryptCalendarText } = require('./crypto.service');
 const { portalDb } = require('./db');
-
-// 🌐 Node.js 18+ IPv6 바인딩 지연/타임아웃(ETIMEDOUT / ENETUNREACH) 방지 전용 IPv4 HTTPS 에이전트
-const ipv4HttpsAgent = new https.Agent({
-    family: 4,
-    keepAlive: true,
-    timeout: 8000
-});
+const { ipv4HttpsAgent, sendServerTelegram } = require('./telegramAlert.service');
+const { checkAndDispatchHospitalVisit } = require('./scheduler/hospitalVisit.scheduler');
+const { checkAndDispatchCalendarEvents } = require('./scheduler/calendarEvent.scheduler');
+const { checkPm2Health, checkDiskHealth } = require('./scheduler/systemHealth.scheduler');
 
 // ==============================================================================
 // 🌟 JG 통합 포털 단일 알림 스케줄러 (Unified Notification Scheduler)
@@ -26,53 +20,6 @@ const HOLIDAY_CALENDAR_ID = 'ko.south_korea#holiday@group.v.calendar.google.com'
 // 인메모리 캐시 상태
 let cachedHolidays = [];
 const sentHistoryCache = new Set(); // 키: userId:type:YYYY-MM-DD_HH:mm
-let lastWeatherSentDate = '';
-let lastAssetSentDate = '';
-let lastBpSentDate = '';
-const pm2DownAlertState = {};
-let lastDiskAlertDate = '';
-
-// 서버 전용 텔레그램 알림 발송 헬퍼 함수 (IPv4 강제 적용 및 반환값 제공)
-async function sendServerTelegram(text) {
-    const token = process.env.SERVER_TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.SERVER_TELEGRAM_CHAT_ID;
-    if (!token || !chatId) {
-        console.warn('[UnifiedScheduler] 텔레그램 설정 누락: SERVER_TELEGRAM_BOT_TOKEN 또는 SERVER_TELEGRAM_CHAT_ID 미설정');
-        return { success: false, error: 'SERVER_TELEGRAM_BOT_TOKEN 또는 SERVER_TELEGRAM_CHAT_ID 환경변수가 설정되지 않았습니다.' };
-    }
-
-    try {
-        const res = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-            chat_id: chatId,
-            text,
-            parse_mode: 'Markdown'
-        }, {
-            httpsAgent: ipv4HttpsAgent,
-            timeout: 8000
-        });
-
-        if (res.data && res.data.ok) {
-            console.log('✅ [UnifiedScheduler] 텔레그램 서버 경보 발송 성공:', res.data.result?.message_id);
-            return { success: true, messageId: res.data.result?.message_id };
-        } else {
-            console.error('[UnifiedScheduler] 텔레그램 응답 오류:', res.data);
-            return { success: false, error: res.data?.description || '응답 오류' };
-        }
-    } catch (tgErr) {
-        const errMsg = tgErr.response?.data?.description || tgErr.message;
-        console.error('[UnifiedScheduler] 텔레그램 서버 경보 발송 실패:', errMsg);
-        return { success: false, error: errMsg };
-    }
-}
-
-// 이메일 발송기 (Gmail SMTP)
-const mailTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
 
 // Google Calendar API로 올해 한국 공휴일 가져오기
 async function fetchGoogleHolidays() {
@@ -121,23 +68,6 @@ function isWeekendOrHoliday(dateObj) {
     const dateStr = `${year}-${month}-${day}`;
 
     return cachedHolidays.includes(dateStr);
-}
-
-// 병원 진료 예약 오픈일 계산 (약 소진 3일 전 일자의 전주 금요일 11시)
-function calculateReservationOpenDate(nextVisitDateStr) {
-    const nextVisit = new Date(nextVisitDateStr);
-    const dayOfWeek = nextVisit.getDay();
-    const sunday = new Date(nextVisit);
-    sunday.setDate(nextVisit.getDate() - dayOfWeek);
-
-    const openFriday = new Date(sunday);
-    openFriday.setDate(sunday.getDate() - 2);
-
-    const year = openFriday.getFullYear();
-    const month = String(openFriday.getMonth() + 1).padStart(2, '0');
-    const day = String(openFriday.getDate()).padStart(2, '0');
-
-    return `${year}-${month}-${day} 11:00:00`;
 }
 
 /**
@@ -383,364 +313,25 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                 // ------------------------------------------------------------------
                 // 7. 📅 캘린더 개인 일정 알림 (종일 및 시간 지정 일정 / 사전 및 다회 발송)
                 // ------------------------------------------------------------------
-                checkAndDispatchCalendarEvents(portalDb || db, userId, kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush);
+                checkAndDispatchCalendarEvents(portalDb || db, userId, kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush, sentHistoryCache);
             });
         });
 
         // ======================================================================
         // [B] 🖥️ PM2 프로세스 다운/복구 헬스체크 및 텔레그램 자동 경보 & 1회 자동 복구
         // ======================================================================
-        exec('pm2 jlist', (err, stdout) => {
-            if (err || !stdout) return;
-            try {
-                const procList = JSON.parse(stdout);
-                const monitoredApps = ['portal', 'blood-pressure-app', 'asset', 'news-dashboard', 'news-scheduler', 'cloudflared'];
-
-                monitoredApps.forEach(appName => {
-                    const proc = procList.find(p => p.name === appName);
-                    if (proc) {
-                        const status = proc.pm2_env.status;
-                        const isOnline = status === 'online';
-
-                        // 1. 장애 감지 (최초 다운 시 1회 발송 및 자동 재기동 시도)
-                        if (!isOnline && !pm2DownAlertState[appName]) {
-                            pm2DownAlertState[appName] = true;
-                            console.warn(`🚨 [PM2 ALERT] ${appName} 프로세스 비정상 상태 감지 (${status})`);
-
-                            // [텔레그램 경보 발송 (새로 생성한 서버 알림봇)]
-                            const alertMsg = `🚨 *[JG Server 프로세스 장애 경보]*\n\n• *프로세스*: \`${appName}\`\n• *상태*: \`${status}\` (비정상 다운 감지)\n• *감지 시각*: ${currentTargetDateTime}\n\n⚙️ *자동 복구(pm2 restart)를 1회 시도합니다...*`;
-                            sendServerTelegram(alertMsg);
-
-                            // [웹 푸시 발송 (관리자 전용)]
-                            sendBroadcastPush({
-                                title: '🚨 서버 경보',
-                                body: `${appName} 장애 발생 (${status}). 자동 복구를 시도합니다.`,
-                                url: 'https://j-jg.cc/admin#tab-overview',
-                                type: 'system',
-                                tag: `jg-pm2-${appName}`,
-                                adminOnly: true
-                            });
-
-                            // [1회 자동 복구 시도: pm2 restart]
-                            exec(`pm2 restart ${appName}`, (restartErr) => {
-                                if (restartErr) {
-                                    console.error(`[PM2 AUTO-RESTART] ${appName} 재기동 오류:`, restartErr.message);
-                                }
-                                // 재기동 후 4초 뒤 상태 재점검
-                                setTimeout(() => {
-                                    exec('pm2 jlist', (chkErr, chkStdout) => {
-                                        if (chkErr || !chkStdout) return;
-                                        try {
-                                            const updatedProcs = JSON.parse(chkStdout);
-                                            const target = updatedProcs.find(p => p.name === appName);
-                                            if (target && target.pm2_env.status === 'online') {
-                                                pm2DownAlertState[appName] = false;
-                                                const recoveryMsg = `✅ *[JG Server 자동 복구 성공]*\n\n• *프로세스*: \`${appName}\`\n• *현재 상태*: \`online\`\n• *복구 완료*: 정상 가동 중입니다.`;
-                                                sendServerTelegram(recoveryMsg);
-                                                sendBroadcastPush({
-                                                    title: '✅ 서버 복구 성공',
-                                                    body: `${appName} 프로세스가 자동 재기동되어 정상 복구되었습니다.`,
-                                                    url: 'https://j-jg.cc/admin#tab-overview',
-                                                    type: 'system',
-                                                    tag: `jg-pm2-${appName}`,
-                                                    adminOnly: true
-                                                });
-                                            } else {
-                                                const failMsg = `❌ *[JG Server 자동 복구 실패]*\n\n• *프로세스*: \`${appName}\`\n• *현재 상태*: \`${target ? target.pm2_env.status : 'unknown'}\`\n• *경고*: 재기동 후에도 online 상태가 아닙니다. 관리자의 수동 확인이 필요합니다!`;
-                                                sendServerTelegram(failMsg);
-                                            }
-                                        } catch (parseChkErr) {}
-                                    });
-                                }, 4000);
-                            });
-                        }
-                        // 2. 수동 복구 또는 다음 주기에서 정상 복구 확인된 경우
-                        else if (isOnline && pm2DownAlertState[appName]) {
-                            pm2DownAlertState[appName] = false;
-                            console.log(`✅ [PM2 RECOVERY] ${appName} 프로세스 정상 복구 확인`);
-
-                            sendServerTelegram(`✅ *[JG Server 프로세스 정상 복구]*\n\n• *프로세스*: \`${appName}\`\n• *상태*: \`online\`\n• *복구 시각*: ${currentTargetDateTime}`);
-                            sendBroadcastPush({
-                                title: '✅ 서버 복구',
-                                body: `${appName} 프로세스가 다시 온라인(online) 상태로 정상 복구되었습니다.`,
-                                url: 'https://j-jg.cc/admin#tab-overview',
-                                type: 'system',
-                                tag: `jg-pm2-${appName}`,
-                                adminOnly: true
-                            });
-                        }
-                    }
-                });
-            } catch (parseErr) {}
-        });
+        checkPm2Health(currentTargetDateTime, sendBroadcastPush);
 
         // ======================================================================
         // [C] 💾 디스크 용량(UFS) 헬스체크 (5분마다 1회 실행, 90% 초과 시 텔레그램 경보)
         // ======================================================================
-        if (kstTimeStr.endsWith('0') || kstTimeStr.endsWith('5')) {
-            exec("df -k / | awk 'NR==2 {print $2, $3, $4, $5}'", (dfErr, dfStdout) => {
-                if (dfErr || !dfStdout) return;
-                try {
-                    const [totalBlocks, usedBlocks, availBlocks, usePercentStr] = dfStdout.trim().split(/\s+/);
-                    const usePercent = parseInt(usePercentStr.replace('%', ''), 10);
-                    if (!isNaN(usePercent) && usePercent >= 90) {
-                        // 일 1회 제한 (하루 1번만 발송하여 도배 방지)
-                        if (lastDiskAlertDate !== kstDateStr) {
-                            lastDiskAlertDate = kstDateStr;
-                            const totalGB = (parseInt(totalBlocks, 10) / 1024 / 1024).toFixed(1);
-                            const availGB = (parseInt(availBlocks, 10) / 1024 / 1024).toFixed(1);
-
-                            const diskAlertMsg = `⚠️ *[JG Server 디스크 용량 경보]*\n\n• *루트 저장소(/)*: *${usePercent}%* 사용 중!\n• *잔여 용량*: ${availGB} GB / 전체: ${totalGB} GB\n• *감지 시각*: ${currentTargetDateTime}\n\n_디스크 풀(100%) 발생 시 DB 락 및 서버 크래시가 발생할 수 있습니다. 불필요한 로그와 캐시 정리를 권장합니다._`;
-                            sendServerTelegram(diskAlertMsg);
-                            console.warn(`⚠️ [DISK ALERT] 루트 디스크 사용량 ${usePercent}% 초과 경보 발송`);
-                        }
-                    }
-                } catch (dfParseErr) {}
-            });
-        }
+        checkDiskHealth(kstDateStr, kstTimeStr, currentTargetDateTime);
     });
 
     console.log('✅ [UnifiedScheduler] 단일 통합 알림 스케줄러 등록 완료!');
 }
 
-// 병원 진료 예약 오픈 알림 조건 검사 및 발송
-function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBroadcastPush) {
-    const summaryQuery = `
-        SELECT MIN(visit_date) as first_visit, SUM(prescription_days) as total_prescribed
-        FROM hospital_visits
-        WHERE user_id = ?
-    `;
-
-    db.get(summaryQuery, [userId], (sumErr, visitSummary) => {
-        if (sumErr || !visitSummary || !visitSummary.first_visit) return;
-
-        const medQuery = `
-            SELECT COUNT(DISTINCT substr(measured_at, 1, 10)) as total_taken 
-            FROM records 
-            WHERE substr(measured_at, 1, 10) >= ? 
-              AND medication_time IS NOT NULL 
-              AND length(medication_time) > 5
-        `;
-
-        db.get(medQuery, [visitSummary.first_visit], (medErr, medResult) => {
-            const totalTaken = medResult ? medResult.total_taken : 0;
-            const totalPrescribed = visitSummary.total_prescribed || 0;
-            const remainingPills = Math.max(0, totalPrescribed - totalTaken);
-
-            const now = new Date();
-            const predictedVisit = new Date(now);
-            predictedVisit.setDate(now.getDate() + remainingPills - 3);
-            const predictedVisitStr = predictedVisit.toISOString().split('T')[0];
-
-            const dynamicOpenDate = calculateReservationOpenDate(predictedVisitStr);
-
-            if (dynamicOpenDate <= currentTargetDateTime) {
-                db.get(
-                    `SELECT * FROM hospital_visits WHERE user_id = ? AND send_notification = 1 AND notified = 0 ORDER BY visit_date DESC LIMIT 1`,
-                    [userId],
-                    (rowErr, row) => {
-                        if (!row) return;
-
-                        // 중복 발송 방지를 위해 먼저 알림 완료 처리
-                        db.run(`UPDATE hospital_visits SET notified = 1 WHERE id = ?`, [row.id]);
-
-                        const hospitalNameDisplay = row.hospital_name ? `[${row.hospital_name}] ` : '';
-                        const targetEmail = row.notification_email || process.env.EMAIL_USER;
-
-                        // 1. Gmail SMTP 이메일 발송
-                        if (process.env.EMAIL_USER && process.env.EMAIL_PASS && targetEmail) {
-                            const mailOptions = {
-                                from: process.env.EMAIL_USER,
-                                to: targetEmail,
-                                subject: `[알림] 🏥 ${hospitalNameDisplay}진료 예약 오픈 안내`,
-                                html: `
-                                    <h3>🏥 병원 진료 예약 안내</h3>
-                                    <p>현재 약 잔여량 기준, <strong>예약 오픈 시각(오전 11시)</strong>이 되었습니다.</p>
-                                    <ul>
-                                        <li><strong>진료 병원:</strong> ${row.hospital_name || '미지정'} ${row.department ? '(' + row.department + ')' : ''}</li>
-                                        <li><strong>최근 진료일:</strong> ${row.visit_date}</li>
-                                        <li><strong>현재 남은 약:</strong> ${remainingPills}일분</li>
-                                        <li><strong>예측 방문일:</strong> ${predictedVisitStr}</li>
-                                        <li><strong>메모:</strong> ${row.memo || '없음'}</li>
-                                    </ul>
-                                    <p><a href="https://blood.j-jg.cc/hospital.html" target="_blank" style="display:inline-block; padding:10px 18px; background:#4f46e5; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold;">🏥 병원 진료 일정 관리 바로가기</a></p>
-                                `
-                            };
-                            mailTransporter.sendMail(mailOptions, (error) => {
-                                if (error) console.error('[UnifiedScheduler] 예약 알림 메일 발송 실패:', error.message);
-                                else console.log(`[UnifiedScheduler] ✉️ 예약 알림 메일 발송 완료: ${targetEmail}`);
-                            });
-                        }
-
-                        // 2. 통합 웹 푸시 발송
-                        sendBroadcastPush({
-                            title: `🏥 ${hospitalNameDisplay}진료 예약 오픈 알림`,
-                            body: `오전 11시 예약 오픈 시간입니다! 남은 약: ${remainingPills}일분 (예상 진료일: ${predictedVisitStr})`,
-                            url: 'https://blood.j-jg.cc/hospital.html',
-                            type: 'hospital',
-                            tag: 'jg-hospital',
-                            userId
-                        });
-                    }
-                );
-            }
-        });
-    });
-}
-
-// 📅 개인 일정 푸시 알림 조건 검사 및 발송 (종일/시간지정, 사전/정시, 다회 알림)
-function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush) {
-    // 오늘 및 내일 일정 검색 (본인 일정 또는 가족 공유 일정)
-    const query = `
-        SELECT id, user_id, title, event_date, event_time, memo, is_all_day, is_family, notify_timing, notify_repeat, notify_sent_count
-        FROM calendar_events
-        WHERE (user_id = ? OR is_family = 1)
-          AND is_completed = 0
-          AND notify_timing != 'none'
-          AND event_date >= date(?, '-1 day')
-          AND event_date <= date(?, '+1 day')
-    `;
-
-    db.all(query, [userId, kstDateStr, kstDateStr], (err, rows) => {
-        if (err || !rows || rows.length === 0) return;
-
-        rows.forEach(ev => {
-            const isFam = Boolean(ev.is_family);
-            ev.title = decryptCalendarText(ev.title, ev.user_id || userId, isFam);
-            ev.memo = decryptCalendarText(ev.memo, ev.user_id || userId, isFam);
-
-            const isAllDay = !!ev.is_all_day;
-            const timing = ev.notify_timing || 'exact'; // 'exact', '10m', '30m', '1h', '1d'
-            const maxRepeat = ev.notify_repeat || 1;
-            const sentCount = ev.notify_sent_count || 0;
-
-            if (sentCount >= maxRepeat) return;
-
-            // 🌟 사용자 요청 포맷: 
-            // 일정 제목
-            // 일정 메모
-            // 일정 시점 - 일정 시간
-            function buildCalPushBody(pointLabel, timeLabel) {
-                const memoText = (ev.memo && ev.memo.trim()) ? `${ev.memo.trim()}\n` : '';
-                return `${memoText}${pointLabel} - ${timeLabel}`;
-            }
-
-            // 1. 종일 일정 처리 (기본 오전 09:00 발송)
-            if (isAllDay) {
-                if (kstTimeStr !== '09:00') return;
-
-                // 1일 전 알림
-                if (timing === '1d') {
-                    // 내일 일정인 경우 (1일 전 오전 9시 알림)
-                    const tomorrow = new Date(Date.now() + 86400000 + 32400000).toISOString().slice(0, 10);
-                    if (ev.event_date === tomorrow && sentCount === 0) {
-                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('1일 전', '종일'), 1);
-                        return;
-                    }
-                    // 당일 오전 9시 알림 (2회 발송 설정 시)
-                    if (ev.event_date === kstDateStr && maxRepeat >= 2 && sentCount < 2) {
-                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('오늘', '종일'), 2);
-                        return;
-                    }
-                } else {
-                    // 당일 알림 (timing === 'exact' 등)
-                    if (ev.event_date === kstDateStr && sentCount === 0) {
-                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('오늘', '종일'), 1);
-                        return;
-                    }
-                }
-                return;
-            }
-
-            // 2. 시간 지정 일정 처리
-            if (!ev.event_time || ev.event_time.length < 4) return;
-            const eventDateTimeStr = `${ev.event_date} ${ev.event_time}`;
-
-            // 밀리초 기준 시각 계산 (오프셋)
-            let offsetMinutes = 0;
-            if (timing === '10m') offsetMinutes = 10;
-            else if (timing === '30m') offsetMinutes = 30;
-            else if (timing === '1h') offsetMinutes = 60;
-            else if (timing === '1d') offsetMinutes = 1440;
-
-            try {
-                // KST 기준 Date 객체 생성
-                const [ey, em, ed] = ev.event_date.split('-').map(Number);
-                const [eh, emn] = ev.event_time.split(':').map(Number);
-                const eventMs = new Date(ey, em - 1, ed, eh, emn, 0).getTime();
-
-                const [cy, cm, cd] = kstDateStr.split('-').map(Number);
-                const [ch, cmn] = kstTimeStr.split(':').map(Number);
-                const currentMs = new Date(cy, cm - 1, cd, ch, cmn, 0).getTime();
-
-                const diffMinutes = Math.round((eventMs - currentMs) / 60000);
-
-                // A. 1회차 사전 알림 (timing이 'exact'가 아닐 때 offsetMinutes 시점에 발송)
-                if (offsetMinutes > 0 && diffMinutes === offsetMinutes && sentCount === 0) {
-                    const label = timing === '10m' ? '10분 전' : (timing === '30m' ? '30분 전' : (timing === '1h' ? '1시간 전' : '1일 전'));
-                    dispatchCalPush(
-                        db,
-                        ev,
-                        userId,
-                        ev.title,
-                        buildCalPushBody(label, ev.event_time),
-                        1
-                    );
-                    return;
-                }
-
-                // B. 정시 알림 (사전 알림 후 2회차 발송이거나, 애초에 timing이 'exact'인 경우)
-                if (diffMinutes === 0) {
-                    if (timing === 'exact' && sentCount === 0) {
-                        dispatchCalPush(
-                            db,
-                            ev,
-                            userId,
-                            ev.title,
-                            buildCalPushBody('시작', ev.event_time),
-                            1
-                        );
-                    } else if (maxRepeat >= 2 && sentCount === 1) {
-                        dispatchCalPush(
-                            db,
-                            ev,
-                            userId,
-                            ev.title,
-                            buildCalPushBody('시작', ev.event_time),
-                            2
-                        );
-                    }
-                }
-            } catch (calcErr) {
-                console.error('[UnifiedScheduler] 캘린더 시간 연산 오류:', calcErr.message);
-            }
-        });
-    });
-
-    function dispatchCalPush(dbInstance, ev, targetUser, title, body, stageNum) {
-        const cacheKey = `${targetUser}:cal_push:${ev.id}:${stageNum}:${kstDateStr}_${kstTimeStr}`;
-        if (sentHistoryCache.has(cacheKey)) return;
-        sentHistoryCache.add(cacheKey);
-
-        sendBroadcastPush({
-            title,
-            body,
-            url: 'https://j-jg.cc/calendar',
-            type: 'calendar',
-            tag: `jg-cal-${ev.id}`,
-            userId: targetUser
-        });
-
-        dbInstance.run(
-            `UPDATE calendar_events SET notify_sent_count = notify_sent_count + 1, last_notified_at = datetime('now', 'localtime') WHERE id = ?`,
-            [ev.id],
-            (uErr) => {
-                if (uErr) console.error('[UnifiedScheduler] 일정 알림 상태 갱신 실패:', uErr.message);
-            }
-        );
-        console.log(`[UnifiedScheduler] 📅 캘린더 푸시 발송 완료 [${stageNum}회차]: ${ev.title}`);
-    }
-}
-
-module.exports = { initUnifiedNotificationScheduler, sendServerTelegram };
-
+module.exports = {
+    initUnifiedNotificationScheduler,
+    sendServerTelegram
+};
