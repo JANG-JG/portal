@@ -7,7 +7,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261026_230849';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261026_234125';
 const {
     PORT,
     JWT_SECRET,
@@ -133,6 +133,27 @@ function sendHtml(res, fileName) {
     }
 }
 
+function sendErrorPage(res, statusCode = 404, reqPath = '', customMessage = '') {
+    const filePath = path.join(__dirname, 'public', 'error.html');
+    try {
+        let html = fs.readFileSync(filePath, 'utf8');
+        html = html.replace(/(href="\/css\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+                   .replace(/(src="\/js\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
+        const codeNum = parseInt(statusCode, 10) || 404;
+        html = html.replace('__INITIAL_CODE__', String(codeNum))
+                   .replace('__INITIAL_PATH__', (reqPath || '').replace(/"/g, '&quot;'))
+                   .replace('__INITIAL_MSG__', (customMessage || '').replace(/"/g, '&quot;'));
+
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+        res.status(codeNum).type('html').send(html);
+    } catch (e) {
+        console.error('에러 페이지 렌더링 실패:', e);
+        res.status(statusCode || 500).send(`오류가 발생했습니다 (${statusCode})`);
+    }
+}
+
 // 1. 메인 포털 홈 화면
 app.get(['/', '/index.html'], authenticateToken, (req, res) => {
     sendHtml(res, 'index.html');
@@ -156,6 +177,14 @@ app.get(['/calendar', '/calendar.html'], authenticateToken, (req, res) => {
 // 1-4. 오프라인 대체 화면
 app.get('/offline.html', (req, res) => {
     sendHtml(res, 'offline.html');
+});
+
+// 1-5. 통합 에러 화면 (403, 404, 500 등)
+app.get(['/error', '/error.html'], (req, res) => {
+    const code = parseInt(req.query.code, 10) || 404;
+    const reqPath = req.query.path || '';
+    const msg = req.query.msg || '';
+    sendErrorPage(res, code, reqPath, msg);
 });
 
 // 2. 로그인 페이지
@@ -259,6 +288,30 @@ app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
 // 헬스 체크
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'JG Portal' });
+});
+
+// ==========================================
+// 🚨 [404 Not Found & 500 서버 오류 미들웨어]
+// ==========================================
+
+// 404 핸들러 (매칭되지 않은 모든 경로 가로채기)
+app.use((req, res, next) => {
+    if (req.path && req.path.startsWith('/api/')) {
+        return res.status(404).json({ success: false, message: '요청하신 API 엔드포인트를 찾을 수 없습니다.' });
+    }
+    sendErrorPage(res, 404, req.originalUrl || req.path);
+});
+
+// 500 전역 서버 오류 핸들러
+app.use((err, req, res, next) => {
+    console.error('💥 [서버 내부 오류]:', err);
+    if (res.headersSent) {
+        return next(err);
+    }
+    if (req.path && req.path.startsWith('/api/')) {
+        return res.status(500).json({ success: false, message: '서버 내부 오류가 발생했습니다.' });
+    }
+    sendErrorPage(res, 500, req.originalUrl || req.path, '서버 처리 중 일시적인 오류가 발생했습니다.');
 });
 
 // ==========================================

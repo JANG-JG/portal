@@ -64,7 +64,7 @@ function requireAdmin(req, res, next) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(403).json({ success: false, message: '관리자 전용 기능입니다. 접근 권한이 없습니다.' });
         }
-        return res.status(403).send('접근 권한이 없습니다. (403 Forbidden)');
+        return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
     }
     next();
 }

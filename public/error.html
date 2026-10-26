@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title id="page-title">페이지를 찾을 수 없어요 - JG 포털</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <meta name="theme-color" content="#2563eb">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+            --chip-bg: #f1f5f9;
+            --chip-border: #e2e8f0;
+            --chip-hover: #e2e8f0;
+            --chip-text: #334155;
+            --path-bg: #f1f5f9;
+            --path-border: #cbd5e1;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary: #3b82f6;
+                --primary-hover: #60a5fa;
+                --bg: #0f172a;
+                --card-bg: #1e293b;
+                --text-main: #f8fafc;
+                --text-muted: #94a3b8;
+                --border: #334155;
+                --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45);
+                --chip-bg: #334155;
+                --chip-border: #475569;
+                --chip-hover: #475569;
+                --chip-text: #e2e8f0;
+                --path-bg: #0b1329;
+                --path-border: #334155;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            line-height: 1.6;
+        }
+
+        .error-card {
+            background: var(--card-bg);
+            max-width: 480px;
+            width: 100%;
+            border-radius: 1.25rem;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            padding: 2.25rem 1.75rem;
+            text-align: center;
+            animation: fadeIn 0.35s ease-out;
+            min-width: 0;
+        }
+
+        @media (max-width: 380px) {
+            body { padding: 0.75rem; }
+            .error-card { padding: 1.75rem 1.25rem; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .icon-wrapper {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.25rem auto;
+            transition: all 0.3s ease;
+        }
+
+        .icon-wrapper svg {
+            width: 38px;
+            height: 38px;
+        }
+
+        /* 테마별 색상 */
+        /* 404: Blue */
+        .theme-404 .icon-wrapper {
+            background: #eff6ff;
+            color: #2563eb;
+            border: 2px solid #bfdbfe;
+        }
+        .theme-404 .status-badge {
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+        }
+
+        /* 403: Amber */
+        .theme-403 .icon-wrapper {
+            background: #fffbeb;
+            color: #d97706;
+            border: 2px solid #fde68a;
+        }
+        .theme-403 .status-badge {
+            background: #fffbeb;
+            color: #b45309;
+            border: 1px solid #fde68a;
+        }
+
+        /* 500: Rose */
+        .theme-500 .icon-wrapper {
+            background: #fef2f2;
+            color: #dc2626;
+            border: 2px solid #fecaca;
+        }
+        .theme-500 .status-badge {
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+
+        /* 503: Purple */
+        .theme-503 .icon-wrapper {
+            background: #faf5ff;
+            color: #9333ea;
+            border: 2px solid #e9d5ff;
+        }
+        .theme-503 .status-badge {
+            background: #faf5ff;
+            color: #7e22ce;
+            border: 1px solid #e9d5ff;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 9999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            margin-bottom: 0.85rem;
+        }
+
+        h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+            word-break: keep-all;
+        }
+
+        p.desc {
+            font-size: 0.93rem;
+            color: var(--text-muted);
+            margin-bottom: 1.25rem;
+            word-break: keep-all;
+            line-height: 1.55;
+        }
+
+        .path-box {
+            display: inline-block;
+            max-width: 100%;
+            background: var(--path-bg);
+            border: 1px dashed var(--path-border);
+            border-radius: 0.5rem;
+            padding: 0.35rem 0.75rem;
+            margin-bottom: 1.35rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
+        .path-box code {
+            font-family: monospace;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            margin-bottom: 1.75rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            width: 100%;
+            min-height: 44px;
+            padding: 0.8rem 1.25rem;
+            border-radius: 0.75rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-secondary {
+            background: var(--chip-bg);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--chip-hover);
+        }
+
+        /* 자주 찾는 서비스 (관리자 전용 제외) */
+        .quick-links-section {
+            border-top: 1px solid var(--border);
+            padding-top: 1.25rem;
+            text-align: left;
+        }
+
+        .quick-links-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .quick-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        .chip-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.45rem 0.75rem;
+            background: var(--chip-bg);
+            border: 1px solid var(--chip-border);
+            border-radius: 9999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--chip-text);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .chip-item:hover {
+            background: var(--chip-hover);
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-card theme-404" id="error-card">
+        <!-- 동적 SVG 아이콘 영역 -->
+        <div class="icon-wrapper" id="icon-wrapper">
+            <!-- 기본 404 나침반/돋보기 아이콘 -->
+            <svg id="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+        </div>
+
+        <div class="status-badge" id="status-badge">
+            <span id="badge-code">404</span>
+            <span id="badge-text">페이지를 찾을 수 없음</span>
+        </div>
+
+        <h1 id="error-title">페이지를 찾을 수 없어요</h1>
+        <p class="desc" id="error-desc">
+            입력하신 주소가 잘못되었거나 삭제된 페이지입니다.<br>
+            주소를 다시 한 번 확인해 주세요.
+        </p>
+
+        <div class="path-box" id="path-box" style="display: none;">
+            요청 경로: <code id="path-text"></code>
+        </div>
+
+        <div class="actions" id="actions-container">
+            <a href="/" class="btn btn-primary" id="btn-main">
+                🏠 JG 포털 홈으로 이동
+            </a>
+            <button type="button" class="btn btn-secondary" onclick="handleGoBack()">
+                ← 이전 화면으로
+            </button>
+        </div>
+
+        <!-- 🚀 빠른 이동 퀵 링크 (관리자 전용 기능 제외, 가족 공통 서비스) -->
+        <div class="quick-links-section">
+            <div class="quick-links-title">
+                <span>자주 찾는 서비스 바로가기</span>
+            </div>
+            <div class="quick-chips">
+                <a href="/go/blood" class="chip-item" title="혈압·건강 관리">🩺 혈압·건강</a>
+                <a href="/calendar" class="chip-item" title="스마트 라이프 캘린더">📅 캘린더</a>
+                <a href="/go/asset" class="chip-item" title="자산 관리">💰 자산 관리</a>
+                <a href="/go/news" class="chip-item" title="실시간 뉴스룸">📰 뉴스</a>
+                <a href="/memo" class="chip-item" title="아이디어 메모장">📝 메모장</a>
+                <a href="/go/album" class="chip-item" title="우리 가족 사진첩">🖼️ 사진첩</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 서버 사이드 주입 템플릿 변수 (빌드/렌더 시 대체)
+        const SERVER_CODE = "__INITIAL_CODE__";
+        const SERVER_PATH = "__INITIAL_PATH__";
+        const SERVER_MSG = "__INITIAL_MSG__";
+
+        // URL 쿼리 파라미터 파싱
+        const urlParams = new URLSearchParams(window.location.search);
+        let code = (SERVER_CODE && !SERVER_CODE.startsWith('__')) ? SERVER_CODE : (urlParams.get('code') || '404');
+        let pathStr = (SERVER_PATH && !SERVER_PATH.startsWith('__')) ? SERVER_PATH : (urlParams.get('path') || window.location.pathname);
+        let customMsg = (SERVER_MSG && !SERVER_MSG.startsWith('__')) ? SERVER_MSG : urlParams.get('msg');
+
+        // 에러 상태별 프리셋 데이터
+        const ERROR_PRESETS = {
+            '404': {
+                theme: 'theme-404',
+                badgeText: '페이지 없음',
+                title: '페이지를 찾을 수 없어요',
+                desc: '입력하신 주소가 잘못되었거나 삭제된 페이지입니다.<br>주소를 다시 한 번 확인해 주세요.',
+                icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    <line x1="8" y1="11" x2="14" y2="11"></line>
+                </svg>`,
+                primaryBtn: { text: '🏠 JG 포털 홈으로 이동', href: '/' }
+            },
+            '403': {
+                theme: 'theme-403',
+                badgeText: '접근 권한 없음',
+                title: '접근 권한이 없어요',
+                desc: '관리자 전용 페이지이거나 접근 권한이 부족합니다.<br>권한이 있는 계정으로 로그인하시거나 홈으로 이동해 주세요.',
+                icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>`,
+                primaryBtn: { text: '🔑 로그인 페이지로', href: '/login' }
+            },
+            '500': {
+                theme: 'theme-500',
+                badgeText: '시스템 오류',
+                title: '잠시 시스템 오류가 발생했어요',
+                desc: '서버에서 요청을 처리하는 중 일시적인 문제가 발생했습니다.<br>잠시 후 다시 시도해 주세요.',
+                icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                </svg>`,
+                primaryBtn: { text: '🔄 새로고침', href: 'javascript:window.location.reload()' }
+            },
+            '503': {
+                theme: 'theme-503',
+                badgeText: '서비스 점검 중',
+                title: '서비스 점검 중이에요',
+                desc: '더 안정적이고 쾌적한 서비스를 위해 점검을 진행하고 있습니다.<br>잠시 후 다시 접속해 주세요.',
+                icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>`,
+                primaryBtn: { text: '🔄 다시 시도', href: 'javascript:window.location.reload()' }
+            }
+        };
+
+        const presetKey = ERROR_PRESETS[code] ? code : (code.startsWith('5') ? '500' : '404');
+        const preset = ERROR_PRESETS[presetKey];
+
+        // DOM 요소 바인딩
+        const card = document.getElementById('error-card');
+        card.className = 'error-card ' + preset.theme;
+
+        document.getElementById('icon-wrapper').innerHTML = preset.icon;
+        document.getElementById('badge-code').innerText = code;
+        document.getElementById('badge-text').innerText = preset.badgeText;
+        document.getElementById('error-title').innerText = preset.title;
+        document.getElementById('page-title').innerText = `${preset.title} (${code}) - JG 포털`;
+
+        if (customMsg) {
+            document.getElementById('error-desc').innerHTML = customMsg;
+        } else {
+            document.getElementById('error-desc').innerHTML = preset.desc;
+        }
+
+        // 요청 경로 표시 (실제 요청 경로가 존재하고 /error 나 /error.html 자체인 경우를 제외)
+        const pathBox = document.getElementById('path-box');
+        const pathText = document.getElementById('path-text');
+        if (pathStr && pathStr !== '/error' && pathStr !== '/error.html' && pathStr !== '/') {
+            pathText.innerText = pathStr;
+            pathBox.style.display = 'inline-block';
+        }
+
+        // 메인 버튼 설정
+        const btnMain = document.getElementById('btn-main');
+        btnMain.innerText = preset.primaryBtn.text;
+        btnMain.setAttribute('href', preset.primaryBtn.href);
+
+        function handleGoBack() {
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                window.location.href = '/';
+            }
+        }
+    </script>
+</body>
+</html>
