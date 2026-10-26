@@ -42,7 +42,7 @@
             breakingBar.style.setProperty('transition', 'bottom 0.25s ease', 'important');
         }
 
-        const pad = (totalBarHeight + navHeight + 8) + 'px';
+        const pad = (totalBarHeight + navHeight + 24) + 'px';
         if (document.body) {
             document.body.style.paddingBottom = pad;
         } else {
