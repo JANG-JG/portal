@@ -106,7 +106,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
             categoryCondition = 'AND (ns.breaking_news_enabled IS NULL OR ns.breaking_news_enabled = 1)';
         } else if (type === 'weather') {
             categoryCondition = 'AND (ns.weather_morning_enabled IS NULL OR ns.weather_morning_enabled = 1)';
-        } else if (type === 'asset') {
+        } else if (type === 'asset' || type === 'economy' || type === 'finance' || type === 'stock') {
             categoryCondition = 'AND (ns.asset_report_enabled IS NULL OR ns.asset_report_enabled = 1)';
         } else if (type === 'system') {
             categoryCondition = 'AND (ns.system_alert_enabled IS NULL OR ns.system_alert_enabled = 1)';

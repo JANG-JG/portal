@@ -95,6 +95,9 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                 console.log(`[UnifiedScheduler] 30일 경과 알림 내역 ${this.changes}건 자동 정리 완료`);
             }
         });
+    }, {
+        timezone: 'Asia/Seoul',
+        missedExecutionTolerance: 300000
     });
 
     // 2-1. 매일 새벽 04:00 (KST) 데이터베이스 핫 백업 및 보조 서버 전송 스케줄러
@@ -112,11 +115,14 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
             console.log('[UnifiedScheduler] ✅ 정기 백업 스크립트 실행 성공:\n', stdout);
         });
     }, {
-        timezone: 'Asia/Seoul'
+        timezone: 'Asia/Seoul',
+        missedExecutionTolerance: 300000
     });
 
-    // 3. 매 1분 감시 루프
-    cron.schedule('* * * * *', () => {
+    // 3. 매 1분 감시 루프 (모바일 PRoot 환경 지연 무누락 2중 안전 보장)
+    let lastExecutedMinuteStr = '';
+
+    function executeMinuteRoutine() {
         const now = new Date();
         const kstFormatter = new Intl.DateTimeFormat('ko-KR', {
             timeZone: 'Asia/Seoul',
@@ -127,6 +133,12 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
         const getPart = (type) => parts.find(p => p.type === type)?.value || '';
         const kstDateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
         const kstTimeStr = `${getPart('hour')}:${getPart('minute')}`;
+        const minuteKey = `${kstDateStr} ${kstTimeStr}`;
+
+        // 동일한 분(minute)에는 중복 실행되지 않도록 멱등성 보장
+        if (lastExecutedMinuteStr === minuteKey) return;
+        lastExecutedMinuteStr = minuteKey;
+
         const kstNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
         const dayOfWeek = kstNow.getDay();
         const currentTargetDateTime = `${kstDateStr} ${kstTimeStr}:00`;
@@ -326,7 +338,23 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
         // [C] 💾 디스크 용량(UFS) 헬스체크 (5분마다 1회 실행, 90% 초과 시 텔레그램 경보)
         // ======================================================================
         checkDiskHealth(kstDateStr, kstTimeStr, currentTargetDateTime);
+    }
+
+    // [트리거 1] node-cron 1분 스케줄러 (지연 허용 오차 120초 지정)
+    cron.schedule('* * * * *', () => {
+        executeMinuteRoutine();
+    }, {
+        timezone: 'Asia/Seoul',
+        missedExecutionTolerance: 120000
     });
+
+    // [트리거 2] 모바일 PRoot 절전/타이머 지연 완벽 방어용 10초 주기 무누락 보강 워처
+    setInterval(() => {
+        executeMinuteRoutine();
+    }, 10000);
+
+    // 기동 즉시 현재 분(minute) 1회 즉시 실행
+    executeMinuteRoutine();
 
     console.log('✅ [UnifiedScheduler] 단일 통합 알림 스케줄러 등록 완료!');
 }

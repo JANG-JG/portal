@@ -9,25 +9,40 @@ const {
     refreshSecondaryServerInBackground
 } = require('./secondary.service');
 
-// 1) 실시간 호스트 CPU 사용률 백그라운드 계산기
+// 1) 실시간 호스트 CPU 사용률 백그라운드 계산기 (/proc/stat 직접 파싱 - 프로세스 포크 부하 0)
 let currentCpuPercent = 0;
 let latestPidCpuMap = {};
+let prevCpuTimes = null;
 
 function updateCpuUsage() {
-    exec("ps -eo pid,%cpu | awk '{s+=$2} END {print s}'", { timeout: 2500 }, (err, stdout) => {
-        if (!err && stdout) {
-            const sumCpu = parseFloat(stdout.trim()) || 0;
-            const cpus = os.cpus().length || 8;
-            currentCpuPercent = Math.max(1, Math.min(100, Math.round(sumCpu / cpus)));
-        } else {
-            const load = os.loadavg()[0];
-            const cpus = os.cpus().length || 8;
-            currentCpuPercent = Math.max(1, Math.min(100, Math.round((load / cpus) * 100)));
+    fs.readFile('/proc/stat', 'utf8', (err, data) => {
+        if (!err && data) {
+            const firstLine = data.split('\n')[0];
+            if (firstLine && firstLine.startsWith('cpu ')) {
+                const parts = firstLine.trim().split(/\s+/).slice(1).map(Number);
+                const idle = (parts[3] || 0) + (parts[4] || 0); // idle + iowait
+                const total = parts.reduce((acc, val) => acc + (val || 0), 0);
+
+                if (prevCpuTimes) {
+                    const idleDiff = idle - prevCpuTimes.idle;
+                    const totalDiff = total - prevCpuTimes.total;
+                    if (totalDiff > 0) {
+                        const usage = Math.max(0, Math.min(100, Math.round(((totalDiff - idleDiff) / totalDiff) * 100)));
+                        currentCpuPercent = Math.max(1, usage);
+                    }
+                }
+                prevCpuTimes = { idle, total };
+                return;
+            }
         }
+        // Fallback: os.loadavg
+        const load = os.loadavg()[0];
+        const cpus = os.cpus().length || 8;
+        currentCpuPercent = Math.max(1, Math.min(100, Math.round((load / cpus) * 100)));
     });
 }
 updateCpuUsage();
-setInterval(updateCpuUsage, 3000);
+setInterval(updateCpuUsage, 10000);
 
 // 실시간 메모리(RAM) /proc/meminfo 정밀 수집기
 function getRealMemoryInfo() {
