@@ -151,7 +151,7 @@
                     height: 36px !important;
                 }
             }
-            /* 3) 하단 티커 바 레이아웃 사전 확보 및 덜컥거림 방지 */
+            /* 3) 하단 티커 바 레이아웃 사전 확보 및 FOUC(텍스트 일괄 쏟아짐) 0ms 원천 차단 */
             #jg-global-ticker-bar {
                 position: fixed !important;
                 bottom: 0 !important;
@@ -166,6 +166,42 @@
                 align-items: center !important;
                 padding: 0 12px !important;
                 box-sizing: border-box !important;
+                overflow: hidden !important;
+                contain: paint !important;
+            }
+            .jg-ticker-meta-row {
+                display: flex !important;
+                align-items: center !important;
+                flex-shrink: 0 !important;
+            }
+            .jg-ticker-news-row {
+                display: flex !important;
+                align-items: center !important;
+                flex: 1 !important;
+                min-width: 0 !important;
+                overflow: hidden !important;
+            }
+            .jg-ticker-scroll-area {
+                flex: 1 !important;
+                min-width: 0 !important;
+                overflow: hidden !important;
+                white-space: nowrap !important;
+                position: relative !important;
+                display: flex !important;
+                align-items: center !important;
+            }
+            .jg-ticker-track {
+                display: inline-flex !important;
+                white-space: nowrap !important;
+                align-items: center !important;
+                will-change: transform !important;
+            }
+            .jg-ticker-link {
+                display: inline-flex !important;
+                align-items: center !important;
+                white-space: nowrap !important;
+                text-decoration: none !important;
+                color: #f1f5f9 !important;
             }
             body:has(.bottom-nav) #jg-global-ticker-bar,
             body:has(.admin-bottom-nav) #jg-global-ticker-bar {
@@ -179,6 +215,13 @@
                     justify-content: center !important;
                     gap: 2px !important;
                 }
+                .jg-ticker-meta-row {
+                    width: 100% !important;
+                    justify-content: space-between !important;
+                }
+                .jg-ticker-news-row {
+                    width: 100% !important;
+                }
             }
             #jg-global-breaking-bar {
                 position: fixed !important;
@@ -188,9 +231,20 @@
                 height: 36px !important;
                 z-index: 1000002 !important;
                 display: none;
+                overflow: hidden !important;
+                contain: paint !important;
             }
             #jg-global-breaking-bar.jg-breaking-active {
                 display: flex !important;
+            }
+            .jg-breaking-track {
+                display: inline-flex !important;
+                white-space: nowrap !important;
+            }
+            .jg-breaking-link {
+                display: inline-flex !important;
+                white-space: nowrap !important;
+                text-decoration: none !important;
             }
             body:has(.bottom-nav) #jg-global-breaking-bar,
             body:has(.admin-bottom-nav) #jg-global-breaking-bar {
@@ -281,6 +335,8 @@
         if (document.body) reserveBottomPadding();
         else window.addEventListener('DOMContentLoaded', reserveBottomPadding);
 
+        // 🛡️ 하단 티커 스타일시트를 스크립트보다 먼저 즉시 주입 (FOUC 원천 차단)
+        injectStylesheet(`${origin}/css/news-ticker.css?v=${JG_UI_VERSION}`);
         injectScript(`${origin}/js/news-ticker.js?v=${JG_UI_VERSION}`);
     }
 

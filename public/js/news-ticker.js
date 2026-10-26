@@ -64,7 +64,8 @@
                 baseOrigin = new URL(scriptEl.src).origin;
             } catch (e) {}
         }
-        link.href = (baseOrigin || '') + '/css/news-ticker.css';
+        const v = window.__JG_UI_VERSION__ || '';
+        link.href = (baseOrigin || '') + '/css/news-ticker.css' + (v ? ('?v=' + v) : '');
         document.head.appendChild(link);
     }
 
@@ -73,13 +74,14 @@
     let currentBreakingSignature = '';
     const breakingBar = document.createElement('div');
     breakingBar.id = 'jg-global-breaking-bar';
+    breakingBar.style.cssText = 'overflow:hidden !important; contain:paint !important;';
     breakingBar.innerHTML = `
         <div class="jg-breaking-badge">
             <span class="jg-ticker-dot" style="background:#b91c1c !important;"></span>
             <span>🚨 긴급 속보</span>
         </div>
-        <div class="jg-ticker-scroll-area">
-            <div id="jg-breaking-track" class="jg-breaking-track"></div>
+        <div class="jg-ticker-scroll-area" style="overflow:hidden !important; white-space:nowrap !important;">
+            <div id="jg-breaking-track" class="jg-breaking-track" style="display:inline-flex !important; white-space:nowrap !important;"></div>
         </div>
         <div class="jg-breaking-actions">
             <a href="https://j-jg.cc/go/news?path=/breaking" class="jg-breaking-more" title="실시간 속보 바로가기">
@@ -107,6 +109,7 @@
     // 5. 기본 하단 티커 바 DOM 생성 (데스크톱: 좌측 시계 - 가운데 뉴스 - 우측 날씨/증시 / 모바일: 2줄)
     const tickerBar = document.createElement('div');
     tickerBar.id = 'jg-global-ticker-bar';
+    tickerBar.style.cssText = 'overflow:hidden !important; contain:paint !important;';
     tickerBar.innerHTML = `
         <div class="jg-ticker-meta-row">
             <div class="jg-ticker-left" id="jg-ticker-clock" title="현재 한국 표준시 (KST, 24시간제)">
@@ -122,14 +125,14 @@
                 </div>
             </div>
         </div>
-        <div class="jg-ticker-news-row">
+        <div class="jg-ticker-news-row" style="overflow:hidden !important;">
             <div class="jg-ticker-badge">
                 <span class="jg-ticker-dot"></span>
                 <span class="jg-badge-text-full">뉴스룸</span>
                 <span class="jg-badge-text-mobile" style="display:none;">뉴스</span>
             </div>
-            <div class="jg-ticker-scroll-area">
-                <div id="jg-track" class="jg-ticker-track">
+            <div class="jg-ticker-scroll-area" style="overflow:hidden !important; white-space:nowrap !important;">
+                <div id="jg-track" class="jg-ticker-track" style="display:inline-flex !important; white-space:nowrap !important;">
                     <span class="jg-ticker-link">실시간 최신 뉴스를 준비 중입니다...</span>
                 </div>
             </div>
