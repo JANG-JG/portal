@@ -12,7 +12,7 @@
     window.__JG_UI_LOADER_INITIALIZED__ = true;
 
     // 🎯 중앙 집중 단일 버전 상수 (여기서 버전만 올리면 전 사이트 자동 갱신!)
-    const JG_UI_VERSION = '20261028_220856';
+    const JG_UI_VERSION = '20261028_233819';
     window.__JG_UI_VERSION__ = JG_UI_VERSION;
 
     // 0. 🛡️ [FOUC & 거대 로고 방지 동기 크리티컬 인라인 CSS 즉시 주입 (0ms 무지연 가드)]
