@@ -8,12 +8,13 @@
  * ==============================================================================
  */
 
+const fs = require('fs');
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { db } = require('../../services/db');
-const { JWT_SECRET } = require('../../config/constants');
+const { JWT_SECRET, ALBUM_DB_PATH } = require('../../config/constants');
 
 // 전화번호 단방향 해시 헬퍼 (평문 전화번호 서버 미저장)
 function hashPhoneNumber(phone) {
@@ -185,6 +186,21 @@ router.put('/members/:username', (req, res) => {
         [adminMemo, nickname, email, birthdate, servicesJson, targetUsername],
         function (err) {
             if (err) return res.status(500).json({ success: false, message: '정보 수정 실패: ' + err.message });
+
+            // 가족 앨범 DB(family_members)도 실시간 닉네임 동기화
+            if (fs.existsSync(ALBUM_DB_PATH)) {
+                const sqlite3 = require('sqlite3').verbose();
+                const albumDb = new sqlite3.Database(ALBUM_DB_PATH, (aErr) => {
+                    if (!aErr) {
+                        albumDb.run(
+                            'UPDATE family_members SET nickname = ? WHERE user_id = ?',
+                            [nickname, targetUsername],
+                            () => { albumDb.close(); }
+                        );
+                    }
+                });
+            }
+
             res.json({ success: true, message: '가족 정보가 성공적으로 수정되었습니다.' });
         }
     );
