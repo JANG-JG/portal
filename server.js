@@ -7,7 +7,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261028_212426';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261028_213250';
 const {
     PORT,
     JWT_SECRET,
