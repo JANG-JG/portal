@@ -143,7 +143,7 @@ async function fetchNewsFileLogs() {
 // 3-4. 뉴스 즉시 수집 트리거
 async function triggerNewsCollection(mode) {
     const promptMsg = mode === 'briefing'
-        ? '뉴스 기사 수집 및 AI 요약 텔레그램 모닝 브리핑 발송을 즉시 실행하시겠습니까?'
+        ? '뉴스 기사 수집 및 텔레그램 모닝 브리핑 발송을 즉시 실행하시겠습니까?'
         : '텔레그램 발송 없이 최신 뉴스 기사만 DB로 수집하시겠습니까?';
     if (!confirm(promptMsg)) return;
 
