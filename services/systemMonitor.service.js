@@ -144,11 +144,24 @@ async function getRealServerUptime() {
     });
 }
 
-// 3) RAM(메모리) 상위 점유 프로세스 TOP 10 실시간 수집기
+// 3) RAM(메모리) 상위 점유 프로세스 TOP 10 실시간 수집기 (15초 캐시)
+let topMemCache = {
+    timestamp: 0,
+    list: []
+};
+
 async function getTopMemoryProcesses() {
+    const now = Date.now();
+    if (topMemCache.list.length > 0 && (now - topMemCache.timestamp < 15000)) {
+        return topMemCache.list;
+    }
+
     return new Promise((resolve) => {
         exec('ps -eo pid,user,%cpu,%mem,rss,args --sort=-%mem | head -n 11', { timeout: 3000 }, (err, stdout) => {
-            if (err || !stdout) return resolve([]);
+            if (err || !stdout) {
+                topMemCache.timestamp = now;
+                return resolve(topMemCache.list);
+            }
             try {
                 const lines = stdout.trim().split('\n').slice(1);
                 const pidCpuMap = {};
@@ -185,15 +198,20 @@ async function getTopMemoryProcesses() {
                     const cpus = os.cpus().length || 8;
                     currentCpuPercent = Math.max(1, Math.min(100, Math.round(cpuSum / cpus)));
                 }
+                topMemCache = {
+                    timestamp: now,
+                    list
+                };
                 resolve(list);
             } catch (e) {
-                resolve([]);
+                topMemCache.timestamp = now;
+                resolve(topMemCache.list);
             }
         });
     });
 }
 
-// 4) CPU 하드웨어 온도 측정
+// 4) CPU 하드웨어 온도 측정 (실패 시에도 60초간 재시도 차단)
 let cpuTempCache = {
     timestamp: 0,
     temp: null,
@@ -202,12 +220,13 @@ let cpuTempCache = {
 
 async function getCpuTemperature() {
     const now = Date.now();
-    if (cpuTempCache.temp !== null && (now - cpuTempCache.timestamp < 60000)) {
+    if (now - cpuTempCache.timestamp < 60000) {
         return cpuTempCache;
     }
 
     return new Promise((resolve) => {
-        exec('sensors -j', { timeout: 3000 }, (err, stdout) => {
+        exec('sensors -j', { timeout: 2000 }, (err, stdout) => {
+            cpuTempCache.timestamp = now; // 실패 또는 미설치 시에도 60초간 재시도 방어
             if (err || !stdout) {
                 return resolve(cpuTempCache);
             }
@@ -261,7 +280,7 @@ async function getCpuTemperature() {
     });
 }
 
-// 5) 디스크 용량 측정
+// 5) 디스크 용량 측정 (30초 캐시)
 let diskCache = {
     timestamp: 0,
     used: '0 GB',
@@ -272,7 +291,7 @@ let diskCache = {
 
 async function getDiskUsage() {
     const now = Date.now();
-    if (diskCache.percentNum > 0 && (now - diskCache.timestamp < 5000)) {
+    if (diskCache.percentNum > 0 && (now - diskCache.timestamp < 30000)) {
         return diskCache;
     }
 

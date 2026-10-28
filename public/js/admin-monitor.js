@@ -245,7 +245,7 @@ async function loadOverviewData() {
     }
 }
 
-// 5. 5초 주기 실시간 자동 갱신 폴링
+// 5. 10초 주기 실시간 자동 갱신 폴링
 let overviewPollTimer = null;
 function startOverviewPolling() {
     if (overviewPollTimer) clearInterval(overviewPollTimer);
@@ -254,7 +254,7 @@ function startOverviewPolling() {
         if (overviewPane && overviewPane.classList.contains('active')) {
             loadOverviewData();
         }
-    }, 5000);
+    }, 10000);
 }
 
 // 6. PM2 프로세스 개별 제어 (시작, 중지, 재기동)

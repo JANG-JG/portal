@@ -36,7 +36,7 @@ router.get('/overview', async (req, res) => {
     try {
         const now = Date.now();
         const force = req.query.force === '1' || req.query.force === 'true';
-        if (!force && adminOverviewCache && (now - adminOverviewCacheTime < 3000 || isAdminOverviewUpdating)) {
+        if (!force && adminOverviewCache && (now - adminOverviewCacheTime < 8000 || isAdminOverviewUpdating)) {
             return res.json(adminOverviewCache);
         }
         isAdminOverviewUpdating = true;
@@ -52,7 +52,7 @@ router.get('/overview', async (req, res) => {
         const currentCpuPercent = getCurrentCpuPercent();
         const latestPidCpuMap = getLatestPidCpuMap();
 
-        exec('pm2 jlist', (err, stdout) => {
+        exec('pm2 jlist', { timeout: 3000 }, (err, stdout) => {
             let processes = [];
             if (!err && stdout) {
                 try {

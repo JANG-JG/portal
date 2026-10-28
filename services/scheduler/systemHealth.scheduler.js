@@ -3,9 +3,14 @@ const { sendServerTelegram } = require('../telegramAlert.service');
 
 const pm2DownAlertState = {};
 let lastDiskAlertDate = '';
+let lastPm2CheckTimestamp = 0;
 
 function checkPm2Health(currentTargetDateTime, sendBroadcastPush) {
-    exec('pm2 jlist', (err, stdout) => {
+    const now = Date.now();
+    if (now - lastPm2CheckTimestamp < 30000) return;
+    lastPm2CheckTimestamp = now;
+
+    exec('pm2 jlist', { timeout: 3000 }, (err, stdout) => {
         if (err || !stdout) return;
         try {
             const procList = JSON.parse(stdout);
