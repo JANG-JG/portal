@@ -24,6 +24,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`ALTER TABLE users ADD COLUMN locked_until DATETIME DEFAULT NULL`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN phone_hash TEXT DEFAULT ''`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN avatar_emoji TEXT DEFAULT ''`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN created_at DATETIME`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN last_login_at DATETIME`, () => {});
             db.run(`ALTER TABLE users ADD COLUMN email TEXT DEFAULT ''`, () => {});
