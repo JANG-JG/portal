@@ -1,4 +1,4 @@
-const { newsDb } = require('./db');
+const { newsDb, db } = require('./db');
 
 // 전국 주요 시·군·구 한글명 및 위경도 좌표 데이터베이스 모듈 임포트
 const { CITY_KO_MAP, CITY_COORDS } = require('./weather.coords');
@@ -238,6 +238,85 @@ async function getLiveWeatherData(requestedCity) {
     return freshData || DEFAULT_SEOUL_FALLBACK;
 }
 
+/**
+ * 📍 주기적 갱신 대상 도시 목록 추출
+ * 1) 기본 시스템 도시 (system_settings의 weather_city)
+ * 2) 사용자 DB(users)에 등록된 개별 날씨 설정 도시
+ * 3) 서울(Seoul) 및 계룡(Gyeryong) 기본 포함
+ */
+async function getActiveWeatherCities() {
+    const citySet = new Set(['Seoul', 'Gyeryong']);
+    try {
+        const defaultCity = await getDefaultWeatherCity();
+        if (defaultCity) citySet.add(normalizeCityCode(defaultCity));
+    } catch (e) {}
+
+    try {
+        if (db) {
+            const userCities = await new Promise((resolve) => {
+                db.all("SELECT DISTINCT weather_city FROM users WHERE weather_city IS NOT NULL AND weather_city != ''", [], (err, rows) => {
+                    if (err || !Array.isArray(rows)) return resolve([]);
+                    resolve(rows.map(r => r.weather_city && r.weather_city.trim()).filter(Boolean));
+                });
+            });
+            for (const c of userCities) {
+                citySet.add(normalizeCityCode(c));
+            }
+        }
+    } catch (e) {}
+
+    return Array.from(citySet);
+}
+
+/**
+ * 🔄 활성 도시 날씨 일괄 백그라운드 갱신
+ */
+async function refreshAllActiveWeather() {
+    try {
+        const cities = await getActiveWeatherCities();
+        const results = [];
+        for (const city of cities) {
+            try {
+                const korName = CITY_KO_MAP[city] || city;
+                const data = await refreshWeatherInBackground(city, korName);
+                if (data && data.temp) {
+                    results.push(`${data.city || korName}(${data.temp})`);
+                }
+            } catch (err) {
+                // 개별 도시 실패 시에도 다음 도시 계속 진행
+            }
+        }
+        if (results.length > 0) {
+            console.log(`[WeatherService] 🌤️ 날씨 주기적 자동 갱신 완료 (${results.length}개 지역: ${results.join(', ')})`);
+        }
+    } catch (err) {
+        console.error('[WeatherService] 날씨 주기적 자동 갱신 중 오류:', err.message);
+    }
+}
+
+let autoRefreshTimer = null;
+
+/**
+ * ⏰ 날씨 주기적 자동 갱신 스케줄러 (기본 10분 주기)
+ */
+function initWeatherAutoRefresh(intervalMs = 10 * 60 * 1000) {
+    if (autoRefreshTimer) return;
+    // 서버 기동 1.5초 후 초기 1회 즉시 갱신
+    setTimeout(() => {
+        refreshAllActiveWeather().catch(() => {});
+    }, 1500);
+
+    // 10분 주기 자동 갱신 등록
+    autoRefreshTimer = setInterval(() => {
+        refreshAllActiveWeather().catch(() => {});
+    }, intervalMs);
+
+    if (autoRefreshTimer.unref) {
+        autoRefreshTimer.unref();
+    }
+    console.log(`[WeatherService] ⏰ 주기적 날씨 자동 갱신 스케줄러 등록 완료 (주기: ${Math.round(intervalMs / 60000)}분)`);
+}
+
 module.exports = {
     CITY_KO_MAP,
     CITY_COORDS,
@@ -245,5 +324,8 @@ module.exports = {
     normalizeCityCode,
     getDefaultWeatherCity,
     getLiveWeatherData,
-    refreshWeatherInBackground
+    refreshWeatherInBackground,
+    getActiveWeatherCities,
+    refreshAllActiveWeather,
+    initWeatherAutoRefresh
 };

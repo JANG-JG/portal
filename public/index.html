@@ -90,13 +90,13 @@
             <!-- 3. 우측 컨트롤 (날씨 + 검색 + 로그아웃 + 9-dot 서브 앱 런처) -->
             <div class="cmd-nav-right">
                 <div class="weather-nav-container">
-                    <button type="button" class="cmd-nav-weather font-mono" id="welcomeWeatherBadge" onclick="openWeatherCityModal(event)" title="날씨 지역 설정 및 실시간 날씨 브리핑">
+                    <a href="/go/news?path=/weather" class="cmd-nav-weather font-mono" id="welcomeWeatherBadge" title="실시간 날씨 & 레이더 바로가기">
                         <span class="weather-pin-icon" style="font-size:0.8rem; line-height:1;">📍</span>
                         <span id="welcomeWeatherCity" style="font-weight:700; color:#38bdf8;">서울</span>
                         <span id="welcomeWeatherIcon">🌤️</span>
                         <span id="welcomeWeatherTemp" class="weather-compact-temp font-mono">-</span>
                         <span id="welcomeWeatherDesc" style="display:none;">-</span>
-                    </button>
+                    </a>
                 </div>
 
                 <button type="button" class="cmd-nav-search-btn" onclick="openQuickSearchModal()" title="통합 검색 (단축키: Ctrl+K)">

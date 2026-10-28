@@ -17,7 +17,7 @@ const {
 
 // 🗄️ 데이터베이스 및 서비스
 const { db } = require('./services/db');
-const { getLiveWeatherData } = require('./services/weather.service');
+const { getLiveWeatherData, initWeatherAutoRefresh } = require('./services/weather.service');
 const { getLiveMarketData } = require('./services/market.service');
 const { sendUnifiedPushNotification } = require('./services/push.service');
 const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
@@ -328,7 +328,7 @@ if (!isDevInstance && isPrimaryWorker) {
 // 서버 기동
 app.listen(PORT, () => {
     console.log(`🚀 JG 통합 포털 서버 구동 완료 (Port: ${PORT}, Cookie Domain: ${COOKIE_DOMAIN})`);
-    // 백그라운드 캐시 사전 웜업
-    getLiveWeatherData().catch(() => {});
+    // 백그라운드 캐시 사전 웜업 및 주기적 자동 갱신 스케줄러 기동
+    initWeatherAutoRefresh();
     getLiveMarketData().catch(() => {});
 });
