@@ -7,7 +7,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261031_134843';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261031_160641';
 const {
     PORT,
     JWT_SECRET,
@@ -39,6 +39,7 @@ const memoRoutes = require('./routes/memo.routes');
 const pushRoutes = require('./routes/push.routes');
 const searchRoutes = require('./routes/search.routes');
 const adminRoutes = require('./routes/admin.routes');
+const wikiProxyRoutes = require('./routes/wiki.proxy.routes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -281,6 +282,9 @@ app.use('/api/notification', pushRoutes);
 
 // 통합 검색 API (/api/search/unified)
 app.use('/api/search', searchRoutes);
+
+// 보조서버 가족 위키 및 REST API 프록시 (/wiki, /api/wiki/*)
+app.use('/', wikiProxyRoutes);
 
 // 관리자 관제 API (/api/admin/*)
 app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
