@@ -133,6 +133,14 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
         db.all(query, [], (err, rows) => {
             if (err || !rows || rows.length === 0) {
                 console.log(`[UnifiedPush] 발송 대상 구독 기기 없음 (type: ${type}, user: ${userId || 'all'})`);
+                saveNotificationHistory({
+                    userId: userId || 'admin',
+                    type,
+                    title: cleanTitle,
+                    body: cleanBody,
+                    icon: 'https://j-jg.cc/icon-monochrome.png',
+                    url: targetUrl
+                });
                 return resolve({ success: true, count: 0, targetCount: 0 });
             }
 
