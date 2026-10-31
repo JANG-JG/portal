@@ -150,14 +150,20 @@ router.all('/api/wiki/*', authenticateToken, (req, res) => {
 });
 
 // ------------------------------------------------------------------------------
-// 3. 위키 정적 자원 프록시 (/static/css/wiki.css, /static/js/wiki.js)
+// 3. 위키 정적 자원 프록시 (/static/css/wiki.css, /static/js/wiki.js, /static/uploads/*)
 // ------------------------------------------------------------------------------
 router.get('/static/css/wiki.css', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     forwardToSecondaryWiki(req, res, '/static/css/wiki.css');
 });
 
 router.get('/static/js/wiki.js', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     forwardToSecondaryWiki(req, res, '/static/js/wiki.js');
+});
+
+router.get('/static/uploads/*', (req, res) => {
+    forwardToSecondaryWiki(req, res, req.originalUrl);
 });
 
 // ------------------------------------------------------------------------------
