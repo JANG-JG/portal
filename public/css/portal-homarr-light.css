@@ -51,41 +51,60 @@ body {
     color: var(--hm-text-main) !important;
 }
 
-/* 🌐 내비게이션 바 소프트 라이트 글래스모피즘 */
+/* 🏛️ 상단 단일 통합 커맨드 내비게이션 바: 딥 블랙 커맨드 센터 스타일 원상복구 */
 .cmd-navbar {
-    background: rgba(255, 255, 255, 0.94) !important;
+    background: rgba(9, 9, 11, 0.96) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
-    border-bottom: 1px solid var(--hm-border) !important;
-    box-shadow: var(--hm-shadow-sm) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
 }
 .cmd-brand-title {
-    color: var(--hm-text-main) !important;
+    color: #f8fafc !important;
     font-weight: 800 !important;
+}
+.cmd-brand-badge {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #34d399 !important;
 }
 .cmd-nav-tabs .portal-tab-btn,
 .cmd-nav-mobile-strip .portal-tab-btn {
-    color: var(--hm-text-muted) !important;
+    color: #94a3b8 !important;
+    background: transparent !important;
 }
 .cmd-nav-tabs .portal-tab-btn:hover,
 .cmd-nav-mobile-strip .portal-tab-btn:hover {
-    color: var(--hm-text-main) !important;
-    background: var(--hm-bg-subtle) !important;
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.08) !important;
 }
 .cmd-nav-tabs .portal-tab-btn.active,
 .cmd-nav-mobile-strip .portal-tab-btn.active {
-    color: var(--hm-blue) !important;
-    background: var(--hm-blue-bg) !important;
-    border-color: var(--hm-blue-border) !important;
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    font-weight: 700 !important;
+}
+.cmd-nav-mobile-strip {
+    background: #09090b !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 .cmd-nav-weather,
 .cmd-nav-search-btn,
 .cmd-nav-notif-btn,
 .cmd-nav-logout,
 .cmd-launcher-btn {
-    background: var(--hm-bg-subtle) !important;
-    border: 1px solid var(--hm-border) !important;
-    color: var(--hm-text-body) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    color: #e2e8f0 !important;
+}
+.cmd-nav-weather:hover,
+.cmd-nav-search-btn:hover,
+.cmd-nav-notif-btn:hover,
+.cmd-nav-logout:hover,
+.cmd-launcher-btn:hover {
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #ffffff !important;
 }
 
 /* ==============================================================================
@@ -294,9 +313,10 @@ body {
 }
 
 /* 📱 모바일 360px 반응형 */
+/* 📱 모바일 360px 반응형 (상단 고정 2단 헤더 높이 90px 완벽 상쇄) */
 @media (max-width: 768px) {
     .main-shell {
-        padding: calc(48px + 0.85rem) 0.75rem 4.5rem !important;
+        padding: calc(90px + 1rem) 0.75rem 4.5rem !important;
     }
     .homarr-hero-card {
         grid-template-columns: 1fr;
@@ -320,5 +340,18 @@ body {
     }
     .homarr-card {
         padding: 1rem;
+    }
+}
+
+/* 📱 360px 초소형 모바일 뷰포트 최적화 */
+@media (max-width: 380px) {
+    .main-shell {
+        padding: calc(88px + 0.75rem) 0.5rem 4.5rem !important;
+    }
+    .homarr-hero-card {
+        padding: 0.85rem;
+    }
+    .homarr-card {
+        padding: 0.85rem;
     }
 }

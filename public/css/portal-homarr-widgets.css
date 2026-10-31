@@ -23,6 +23,9 @@
     border-radius: var(--hm-radius-btn);
     padding: 0.65rem 0.85rem;
     min-height: 44px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
     transition: all 0.2s;
 }
 .portal-todo-row:hover {
@@ -41,6 +44,7 @@
     cursor: pointer;
     flex: 1;
     min-width: 0;
+    margin-right: 0.5rem;
 }
 .portal-todo-check-input {
     width: 20px;
@@ -133,6 +137,9 @@
     padding: 0.65rem 0.85rem;
     cursor: pointer;
     min-height: 44px;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
     transition: all 0.2s;
 }
 .portal-imminent-chip:hover {
@@ -282,193 +289,83 @@
     flex-direction: column;
     gap: 0.5rem;
 }
-.calendar-event-item {
-    background: var(--hm-bg-subtle);
-    border: 1px solid var(--hm-border);
-    border-radius: var(--hm-radius-btn);
-    padding: 0.65rem 0.85rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    color: var(--hm-text-main);
-}
-.news-rec-item {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--hm-border-subtle);
-}
-.news-rec-link {
-    color: var(--hm-text-main);
-    text-decoration: none;
-    font-size: 0.88rem;
-    font-weight: 600;
-    line-height: 1.4;
-    transition: color 0.15s;
-}
-.news-rec-link:hover {
-    color: var(--hm-blue);
-    text-decoration: underline;
-}
-
-/* ==============================================================================
- * 💰 4. 자산, 📰 뉴스, 🖥️ 서버 인프라 라이트 테마
- * ============================================================================== */
-.bento-asset-summary {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    margin-bottom: 0.75rem;
-}
-.bento-asset-big-val {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--hm-text-main);
-}
-.bento-asset-diff-tag {
-    background: var(--hm-bg-subtle);
-    border: 1px solid var(--hm-border);
-    color: var(--hm-text-body);
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-}
-.bento-market-ticker-box {
-    background: var(--hm-bg-subtle);
-    border: 1px solid var(--hm-border);
-    border-radius: var(--hm-radius-btn);
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 0.65rem;
-    color: var(--hm-text-body);
-}
-.news-market-bar {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-}
-.news-market-chip {
-    flex: 1;
-    background: var(--hm-bg-subtle);
-    border: 1px solid var(--hm-border);
-    border-radius: var(--hm-radius-btn);
-    padding: 0.5rem 0.75rem;
-    text-decoration: none;
-    color: inherit;
-}
-.market-name {
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: var(--hm-text-muted);
-}
-.market-price {
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: var(--hm-text-main);
-}
-.server-dual-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.85rem;
-}
-@media (max-width: 640px) {
-    .server-dual-grid {
-        grid-template-columns: 1fr;
-    }
-}
-.server-unit-card {
-    background: var(--hm-bg-subtle);
-    border: 1px solid var(--hm-border);
-    border-radius: var(--hm-radius-btn);
-    padding: 0.85rem;
-}
-.server-unit-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.65rem;
-}
-.server-unit-title {
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: var(--hm-text-main);
-}
-.server-metric-item {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8rem;
-    color: var(--hm-text-body);
-    margin-bottom: 3px;
-}
-.server-sub-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--hm-text-muted);
-    margin-bottom: 2px;
-}
-.bento-card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.78rem;
-    color: var(--hm-text-muted);
-    border-top: 1px solid var(--hm-border-subtle);
-    margin-top: auto;
-    padding-top: 0.65rem;
-}
-
-/* 뱃지 호환 */
-.bento-badge {
-    padding: 3px 8px !important;
-    border-radius: 6px !important;
-    font-size: 0.75rem !important;
-    font-weight: 700 !important;
-}
-.badge-emerald {
-    background: var(--hm-emerald-bg) !important;
-    color: var(--hm-emerald) !important;
-    border: 1px solid var(--hm-emerald-border) !important;
-}
-.badge-amber {
-    background: var(--hm-amber-bg) !important;
-    color: var(--hm-amber) !important;
-    border: 1px solid var(--hm-amber-border) !important;
-}
-.badge-rose {
-    background: var(--hm-rose-bg) !important;
-    color: var(--hm-rose) !important;
-    border: 1px solid var(--hm-rose-border) !important;
-}
-.badge-blue {
-    background: var(--hm-blue-bg) !important;
-    color: var(--hm-blue) !important;
-    border: 1px solid var(--hm-blue-border) !important;
-}
-.cmd-strip {
-    background: var(--hm-bg-card) !important;
+.cal-upcoming-card {
+    background: #ffffff !important;
     border: 1px solid var(--hm-border) !important;
-    border-radius: var(--hm-radius-card) !important;
+    border-radius: var(--hm-radius-btn) !important;
+    padding: 0.65rem 0.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    text-decoration: none !important;
+    color: inherit !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+    transition: all 0.15s ease !important;
+}
+.cal-upcoming-card:hover {
+    background: #f8fafc !important;
+    border-color: var(--hm-border-strong) !important;
     box-shadow: var(--hm-shadow-sm) !important;
 }
-.cmd-strip-header {
-    border-bottom: 1px solid var(--hm-border-subtle) !important;
-    color: var(--hm-text-main) !important;
-}
-.cmd-strip-btn {
+.cal-upcoming-date-box {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
     background: var(--hm-bg-subtle) !important;
     border: 1px solid var(--hm-border) !important;
-    color: var(--hm-text-body) !important;
+    padding: 0.35rem 0.5rem !important;
+    border-radius: 6px !important;
+    min-width: 44px !important;
+    flex-shrink: 0 !important;
 }
-.cmd-strip-btn:hover {
-    background: #eef2f6 !important;
+.cal-upcoming-month {
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    color: var(--hm-text-muted) !important;
+    line-height: 1 !important;
+}
+.cal-upcoming-day {
+    font-size: 1.15rem !important;
+    font-weight: 800 !important;
     color: var(--hm-text-main) !important;
-    border-color: var(--hm-border-strong) !important;
+    line-height: 1.1 !important;
 }
-.breaking-banner-bar {
-    background: var(--hm-bg-card) !important;
+.cal-upcoming-body {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.2rem !important;
+}
+.cal-upcoming-title {
+    font-size: 0.88rem !important;
+    font-weight: 700 !important;
+    color: var(--hm-text-main) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+.cal-upcoming-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    font-size: 0.72rem !important;
+    color: var(--hm-text-muted) !important;
+}
+.cal-dday-badge {
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    padding: 1px 6px !important;
+    border-radius: 4px !important;
+    background: var(--hm-bg-subtle) !important;
     border: 1px solid var(--hm-border) !important;
-    border-radius: var(--hm-radius-card) !important;
-    box-shadow: var(--hm-shadow-sm) !important;
+    color: var(--hm-blue) !important;
 }
-.breaking-item-title {
-    color: var(--hm-text-main) !important;
+.cal-dday-badge.today {
+    background: var(--hm-blue-bg) !important;
+    border-color: var(--hm-blue-border) !important;
+    color: var(--hm-blue) !important;
+    font-weight: 800 !important;
 }
+

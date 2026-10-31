@@ -144,8 +144,8 @@ function loadSummary() {
                         <div class="market-ticker-inner font-mono" id="assetTickerRow">
                             <span class="ticker-label" style="flex-shrink:0;">보유종목</span>
                             <span class="ticker-val" id="assetTickerBox" style="min-width:0; overflow:hidden; white-space:nowrap;">
-                                <span class="stock-kor-name" title="${first.name}" style="color:var(--text-primary); font-weight:700; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis;">${first.name}</span>
-                                <span class="stock-price" style="color:var(--text-primary); font-weight:700; font-size:0.75rem; flex-shrink:0;">${first.formattedTotal}</span>
+                                <span class="stock-kor-name" title="${first.name}" style="color:var(--hm-text-main, #0f172a); font-weight:700; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis;">${first.name}</span>
+                                <span class="stock-price" style="color:var(--hm-text-main, #0f172a); font-weight:700; font-size:0.75rem; flex-shrink:0;">${first.formattedTotal}</span>
                                 <span class="stock-diff ${first.direction}" style="font-size:0.72rem; flex-shrink:0;">${dirSymbol} ${first.diffPercent}</span>
                             </span>
                         </div>
@@ -166,9 +166,9 @@ function loadSummary() {
                 const recListEl = document.getElementById('newsRecommendedList');
                 if (recListEl && data.news.recommendedArticles && data.news.recommendedArticles.length > 0) {
                     recListEl.innerHTML = data.news.recommendedArticles.slice(0, 3).map(a => `
-                        <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="bento-news-row" style="text-decoration:none; padding:0.45rem 0.6rem; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:0.82rem; color:var(--text-primary); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75%;">${a.title}</span>
-                            <span style="font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono);">${a.media_name || '뉴스'}</span>
+                        <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="bento-news-row" style="text-decoration:none; padding:0.45rem 0.6rem; border-bottom:1px solid var(--hm-border, #e2e8f0); display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:0.82rem; color:var(--hm-text-main, #0f172a); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75%;">${a.title}</span>
+                            <span style="font-size:0.72rem; color:var(--hm-text-muted, #64748b); font-family:var(--font-mono);">${a.media_name || '뉴스'}</span>
                         </a>
                     `).join('');
                 }

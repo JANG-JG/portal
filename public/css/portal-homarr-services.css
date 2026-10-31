@@ -1,0 +1,266 @@
+/* ==============================================================================
+ * 🌟 JG 포털 대시보드: 금융·뉴스·인프라 서비스 카드 Stylesheet (portal-homarr-services.css)
+ * ------------------------------------------------------------------------------
+ * [규칙 3] 500줄 이하 모듈화 준수 (현재 약 250줄)
+ * [규칙 6] 모바일 360px 무넘침 보장 (터치 타겟 42px+, box-sizing)
+ * ============================================================================== */
+
+/* ==============================================================================
+ * 📰 1. 실시간 주요 뉴스 & 증시/환율 칩 (검은 배경/흰 글씨 완벽 소탕)
+ * ============================================================================== */
+.news-market-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.news-market-chip {
+    flex: 1;
+    background: var(--hm-bg-subtle) !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: var(--hm-radius-btn);
+    padding: 0.5rem 0.75rem;
+    text-decoration: none;
+    color: var(--hm-text-main) !important;
+    transition: all 0.15s ease;
+}
+.news-market-chip:hover {
+    background: #eef2f6 !important;
+    border-color: var(--hm-border-strong) !important;
+}
+.market-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--hm-text-muted);
+}
+.market-price {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--hm-text-main) !important;
+}
+
+/* 뉴스 기사 리스트 */
+.news-rec-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.25rem !important;
+}
+.news-rec-item,
+.bento-news-row {
+    background: #ffffff !important;
+    color: var(--hm-text-main) !important;
+    border-bottom: 1px solid var(--hm-border-subtle) !important;
+    padding: 0.5rem 0.6rem !important;
+    border-radius: 6px !important;
+    transition: background 0.12s ease !important;
+    text-decoration: none !important;
+}
+.news-rec-item:hover,
+.bento-news-row:hover {
+    background: var(--hm-bg-subtle) !important;
+}
+.news-rec-text,
+.bento-news-row span {
+    color: var(--hm-text-main) !important;
+    font-weight: 600 !important;
+}
+.news-cat-badge {
+    background: var(--hm-bg-subtle) !important;
+    border: 1px solid var(--hm-border) !important;
+    color: var(--hm-text-muted) !important;
+}
+.news-rec-media {
+    color: var(--hm-text-muted) !important;
+}
+.news-rec-loading {
+    color: var(--hm-text-muted) !important;
+    text-align: center;
+    padding: 1.5rem 0;
+    font-size: 0.85rem;
+}
+
+/* ==============================================================================
+ * 💰 2. 총 자산 포트폴리오 & 시장지표 롤링 바
+ * ============================================================================== */
+.bento-asset-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 0.75rem;
+}
+.bento-asset-big-val {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--hm-text-main) !important;
+}
+.bento-asset-diff-tag {
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    color: var(--hm-text-body);
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+.bento-market-ticker-box {
+    background: var(--hm-bg-subtle) !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: var(--hm-radius-btn);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.65rem;
+    color: var(--hm-text-body) !important;
+}
+.ticker-label {
+    color: var(--hm-blue) !important;
+    font-weight: 700 !important;
+}
+.ticker-val,
+.market-ticker-val,
+.stock-kor-name,
+.stock-price {
+    color: var(--hm-text-main) !important;
+}
+
+/* ==============================================================================
+ * 🖥️ 3. 서버 인프라 관리 카드 (주서버 & 보조서버 듀얼 뷰)
+ * ============================================================================== */
+.server-dual-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+}
+@media (max-width: 640px) {
+    .server-dual-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.server-unit-card {
+    background: #ffffff !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: var(--hm-radius-btn);
+    padding: 0.85rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+.server-unit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+}
+.server-unit-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--hm-text-main) !important;
+}
+.server-metric-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--hm-text-body);
+    margin-bottom: 3px;
+}
+.server-metric-item .metric-label {
+    color: var(--hm-text-muted) !important;
+    font-size: 0.68rem !important;
+}
+.server-metric-item .metric-val {
+    color: var(--hm-text-main) !important;
+    font-weight: 800 !important;
+    font-size: 1.05rem !important;
+}
+.server-unit-sub-details {
+    border-top: 1px solid var(--hm-border-subtle) !important;
+}
+.server-sub-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+}
+.server-sub-row .sub-label {
+    color: var(--hm-text-muted) !important;
+}
+.server-sub-row .sub-val {
+    color: var(--hm-text-body) !important;
+    font-weight: 600 !important;
+}
+.server-pill-btn {
+    background: var(--hm-bg-subtle) !important;
+    border: 1px solid var(--hm-border) !important;
+    color: var(--hm-text-body) !important;
+}
+.server-pill-btn.active {
+    background: var(--hm-blue) !important;
+    color: #ffffff !important;
+    border-color: var(--hm-blue) !important;
+    font-weight: 700 !important;
+}
+
+/* ==============================================================================
+ * 🏷️ 4. 뱃지 & 커맨드 스트립 & 푸터 라이트 테마
+ * ============================================================================== */
+.bento-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--hm-text-muted);
+    border-top: 1px solid var(--hm-border-subtle);
+    margin-top: auto;
+    padding-top: 0.65rem;
+}
+
+.bento-badge {
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+}
+.badge-emerald {
+    background: var(--hm-emerald-bg) !important;
+    color: var(--hm-emerald) !important;
+    border: 1px solid var(--hm-emerald-border) !important;
+}
+.badge-amber {
+    background: var(--hm-amber-bg) !important;
+    color: var(--hm-amber) !important;
+    border: 1px solid var(--hm-amber-border) !important;
+}
+.badge-rose {
+    background: var(--hm-rose-bg) !important;
+    color: var(--hm-rose) !important;
+    border: 1px solid var(--hm-rose-border) !important;
+}
+.badge-blue {
+    background: var(--hm-blue-bg) !important;
+    color: var(--hm-blue) !important;
+    border: 1px solid var(--hm-blue-border) !important;
+}
+.cmd-strip {
+    background: var(--hm-bg-card) !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: var(--hm-radius-card) !important;
+    box-shadow: var(--hm-shadow-sm) !important;
+}
+.cmd-strip-header {
+    border-bottom: 1px solid var(--hm-border-subtle) !important;
+    color: var(--hm-text-main) !important;
+}
+.cmd-strip-btn {
+    background: var(--hm-bg-subtle) !important;
+    border: 1px solid var(--hm-border) !important;
+    color: var(--hm-text-body) !important;
+}
+.cmd-strip-btn:hover {
+    background: #eef2f6 !important;
+    color: var(--hm-text-main) !important;
+    border-color: var(--hm-border-strong) !important;
+}
+.breaking-banner-bar {
+    background: var(--hm-bg-card) !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: var(--hm-radius-card) !important;
+    box-shadow: var(--hm-shadow-sm) !important;
+}
+.breaking-item-title {
+    color: var(--hm-text-main) !important;
+}
