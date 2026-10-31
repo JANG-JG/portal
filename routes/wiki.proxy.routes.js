@@ -17,6 +17,15 @@ const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// HTTP Keep-Alive Agent: Wi-Fi 구간 반복 TCP 3-way 핸드셰이크 제거 (응답 속도 가속)
+const wikiKeepAliveAgent = new http.Agent({
+    keepAlive: true,
+    keepAliveMsecs: 30000,
+    maxSockets: 50,
+    maxFreeSockets: 10,
+    timeout: 6000
+});
+
 // 대시보드 요약 SWR 캐시 (Wi-Fi 지연 시 무중단 폴백)
 let summaryCache = {
     data: null,
@@ -24,7 +33,7 @@ let summaryCache = {
 };
 
 /**
- * 범용 HTTP 리버스 프록시 포워더
+ * 범용 HTTP 리버스 프록시 포워더 (Keep-Alive 소켓 재사용)
  */
 function forwardToSecondaryWiki(req, res, targetPath) {
     const options = {
@@ -32,6 +41,7 @@ function forwardToSecondaryWiki(req, res, targetPath) {
         port: WIKI_PORT,
         path: targetPath,
         method: req.method,
+        agent: wikiKeepAliveAgent,
         headers: {
             ...req.headers,
             host: `${WIKI_HOST}:${WIKI_PORT}`,
@@ -102,7 +112,7 @@ router.get('/api/wiki/dashboard-summary', async (req, res) => {
     try {
         const fetchPromise = new Promise((resolve, reject) => {
             const reqUrl = `http://${WIKI_HOST}:${WIKI_PORT}/api/wiki/dashboard-summary`;
-            const clientReq = http.get(reqUrl, { timeout: 3500 }, (clientRes) => {
+            const clientReq = http.get(reqUrl, { agent: wikiKeepAliveAgent, timeout: 3500 }, (clientRes) => {
                 let rawData = '';
                 clientRes.on('data', chunk => { rawData += chunk; });
                 clientRes.on('end', () => {
@@ -150,19 +160,29 @@ router.all('/api/wiki/*', authenticateToken, (req, res) => {
 });
 
 // ------------------------------------------------------------------------------
-// 3. 위키 정적 자원 프록시 (/static/css/wiki.css, /static/js/wiki.js, /static/uploads/*)
+// 3. 위키 정적 자원 프록시 (/static/css/*, /static/js/*, /static/uploads/*)
 // ------------------------------------------------------------------------------
-router.get('/static/css/wiki.css', (req, res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    forwardToSecondaryWiki(req, res, '/static/css/wiki.css');
+router.get('/static/css/*', (req, res) => {
+    // 버전 쿼리(?v=...)가 있으면 24시간 브라우저 캐싱 허용, 없으면 재검증 ([규칙 4] 준수)
+    if (req.query.v) {
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+    } else {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+    forwardToSecondaryWiki(req, res, req.originalUrl);
 });
 
-router.get('/static/js/wiki.js', (req, res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    forwardToSecondaryWiki(req, res, '/static/js/wiki.js');
+router.get('/static/js/*', (req, res) => {
+    if (req.query.v) {
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+    } else {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    }
+    forwardToSecondaryWiki(req, res, req.originalUrl);
 });
 
 router.get('/static/uploads/*', (req, res) => {
+    res.setHeader('Cache-Control', 'public, max-age=86400');
     forwardToSecondaryWiki(req, res, req.originalUrl);
 });
 
