@@ -1,0 +1,25 @@
+    <!-- ========================================== -->
+    <!-- 🚪 로그아웃 확인 모달 -->
+    <!-- ========================================== -->
+    <div class="logout-modal-backdrop" id="logoutModal" style="display: none;" onclick="if(event.target === this) closeLogoutModal()">
+        <div class="logout-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle">
+            <div class="logout-modal-header">
+                <div class="logout-modal-icon-badge">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </div>
+                <button type="button" class="logout-modal-close" onclick="closeLogoutModal()" title="닫기" aria-label="닫기">✕</button>
+            </div>
+            <div class="logout-modal-body">
+                <h3 class="logout-modal-title" id="logoutModalTitle">정말 로그아웃 할까요?</h3>
+                <p class="logout-modal-desc">로그아웃 시 현재 세션이 안전하게 종료되며 로그인 화면으로 이동합니다.</p>
+            </div>
+            <div class="logout-modal-actions">
+                <button type="button" class="logout-btn-cancel" onclick="closeLogoutModal()">취소</button>
+                <button type="button" class="logout-btn-confirm" id="btnConfirmLogout" onclick="executeLogout()">로그아웃</button>
+            </div>
+        </div>
+    </div>

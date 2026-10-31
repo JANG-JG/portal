@@ -113,12 +113,37 @@ function assembleAdminHtml() {
     return shell.replace('<!-- @@ADMIN_TAB_PANES@@ -->', panes);
 }
 
+// 🧩 메인 포털 홈(views/header-navbar.html, views/modal-*.html) SSR 결합 엔진 (파일당 500줄 이하 모듈화)
+function assemblePortalHtml() {
+    const portalIndex = path.join(__dirname, 'public', 'index.html');
+    let shell = fs.readFileSync(portalIndex, 'utf8');
+    const viewsDir = path.join(__dirname, 'public', 'views');
+    const components = {
+        '<!-- @@PORTAL_NAVBAR@@ -->': 'header-navbar.html',
+        '<!-- @@MODAL_BPGUIDE@@ -->': 'modal-bpguide.html',
+        '<!-- @@MODAL_LOGOUT@@ -->': 'modal-logout.html',
+        '<!-- @@MODAL_NOTIFICATION@@ -->': 'modal-notification.html',
+        '<!-- @@MODAL_QUICKSEARCH@@ -->': 'modal-quicksearch.html',
+        '<!-- @@MODAL_WEATHER@@ -->': 'modal-weather.html'
+    };
+
+    for (const [placeholder, file] of Object.entries(components)) {
+        const filePath = path.join(viewsDir, file);
+        if (fs.existsSync(filePath)) {
+            shell = shell.replace(placeholder, fs.readFileSync(filePath, 'utf8'));
+        }
+    }
+    return shell;
+}
+
 function sendHtml(res, fileName) {
     const filePath = path.join(__dirname, 'public', fileName);
     try {
         let html;
         if (fileName === 'admin.html' || fileName === 'admin/index.html') {
             html = assembleAdminHtml();
+        } else if (fileName === 'index.html') {
+            html = assemblePortalHtml();
         } else {
             html = fs.readFileSync(filePath, 'utf8');
         }

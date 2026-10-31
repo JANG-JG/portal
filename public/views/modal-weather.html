@@ -1,0 +1,41 @@
+    <!-- 🌤️ 날씨 지역 설정 모달 (실시간 지역 검색 및 빠른 선택) -->
+    <div id="weatherCityModal" class="weather-modal-overlay" style="display:none;" onclick="if(event.target === this) closeWeatherCityModal()">
+        <div class="weather-modal-card">
+            <div class="weather-modal-header">
+                <div class="weather-modal-title">
+                    <span>📍</span> <span>날씨 지역 설정</span>
+                </div>
+                <button type="button" class="weather-modal-close" onclick="closeWeatherCityModal()" title="닫기">✕</button>
+            </div>
+            <p class="weather-modal-desc">포털 상단과 하단 뉴스바에 연동할 지역을 검색하거나 선택하세요.</p>
+
+            <!-- 🔍 실시간 지역 검색 입력창 -->
+            <div class="weather-search-wrap">
+                <span class="weather-search-icon">🔍</span>
+                <input type="text" id="weatherCitySearchInput" class="weather-search-input" placeholder="시·군·구 지역명 검색 (예: 계룡, 대전, 제주, 강남)..." oninput="filterWeatherCities(this.value)" autocomplete="off">
+                <button type="button" id="weatherCitySearchClear" class="weather-search-clear" onclick="clearWeatherCitySearch()" style="display:none;" title="검색어 지우기">✕</button>
+            </div>
+
+            <!-- 자주 찾는 주요 도시 칩 그룹 -->
+            <div class="weather-quick-chips-wrap">
+                <span class="weather-quick-chips-label">자주 찾는 지역</span>
+                <div class="weather-quick-chips" id="weatherQuickChips">
+                    <!-- JS에서 동적 생성 -->
+                </div>
+            </div>
+
+            <!-- 전체/검색 결과 도시 그리드 -->
+            <div class="weather-city-grid-wrap">
+                <div class="weather-city-grid" id="weatherCityGrid">
+                    <!-- JS에서 동적 주입 -->
+                </div>
+            </div>
+
+            <!-- 하단 날씨 브리핑 바로가기 링크 -->
+            <div class="weather-modal-footer">
+                <a href="https://news.j-jg.cc/weather" target="_blank" rel="noopener" class="btn-weather-briefing-link">
+                    <span>🌦️</span> <span>실시간 상세 날씨 브리핑 & 비구름 레이더 보기 →</span>
+                </a>
+            </div>
+        </div>
+    </div>

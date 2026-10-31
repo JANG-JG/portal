@@ -1,0 +1,69 @@
+    <!-- ========================================== -->
+    <!-- 🩸 대한고혈압학회 혈압 판정 기준표 모달 -->
+    <!-- ========================================== -->
+    <div class="bp-modal-backdrop" id="bpGuideModal" style="display: none !important;" onclick="if(event.target === this) closeBpGuideModal()">
+        <div class="bp-modal-dialog">
+            <div class="bp-modal-header">
+                <div class="bp-modal-title">
+                    <span>🩸</span>
+                    <span>대한고혈압학회 혈압 분류 기준표</span>
+                </div>
+                <button type="button" class="bp-modal-close" onclick="closeBpGuideModal()" title="닫기">&times;</button>
+            </div>
+            <div class="bp-modal-body">
+                <table class="bp-guide-table">
+                    <thead>
+                        <tr>
+                            <th>분류</th>
+                            <th>수축기 (최고)</th>
+                            <th>구분</th>
+                            <th>이완기 (최저)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="bp-badge-normal">정상 혈압</span></td>
+                            <td class="font-mono">&lt; 120 mmHg</td>
+                            <td class="bp-sep-and">그리고</td>
+                            <td class="font-mono">&lt; 80 mmHg</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-elevated">주의 혈압</span></td>
+                            <td class="font-mono">120 ~ 129</td>
+                            <td class="bp-sep-and">그리고</td>
+                            <td class="font-mono">&lt; 80</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-pre">고혈압 전단계</span></td>
+                            <td class="font-mono">130 ~ 139</td>
+                            <td class="bp-sep-or-amber">또는</td>
+                            <td class="font-mono">80 ~ 89</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-stage1">1기 고혈압</span></td>
+                            <td class="font-mono">140 ~ 159</td>
+                            <td class="bp-sep-or-rose">또는</td>
+                            <td class="font-mono">90 ~ 99</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-stage2">2기 고혈압</span></td>
+                            <td class="font-mono">&ge; 160</td>
+                            <td class="bp-sep-or-rose">또는</td>
+                            <td class="font-mono">&ge; 100</td>
+                        </tr>
+                        <tr>
+                            <td><span class="bp-badge-low">저혈압</span></td>
+                            <td class="font-mono">&lt; 90</td>
+                            <td class="bp-sep-or-blue">또는</td>
+                            <td class="font-mono">&lt; 60</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="bp-guide-notice-box">
+                    <strong>💡 판정 원칙 (대한고혈압학회 2022 진료지침)</strong><br>
+                    • 수축기(최고)와 이완기(최저)의 해당 단계가 서로 다를 경우, <strong>더 높은 단계</strong>를 기준으로 최종 판정합니다.<br>
+                    • 예: <strong>120 / 87 mmHg</strong>의 경우, 수축기는 '주의'이지만 이완기가 80~89 구간이므로 <strong>'고혈압 전단계'</strong>로 판정됩니다.
+                </div>
+            </div>
+        </div>
+    </div>

@@ -1,0 +1,94 @@
+    <!-- ============================================================================== -->
+    <!-- 🔍 통합 퀵 검색 (Ctrl+K) Command Palette 모달 -->
+    <!-- ============================================================================== -->
+    <div class="qs-modal-backdrop" id="qsModalBackdrop" onclick="handleQsBackdropClick(event)">
+        <div class="qs-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="qsInput">
+            <!-- 검색 헤더 -->
+            <div class="qs-header">
+                <span class="qs-header-icon">🔍</span>
+                <input type="text" id="qsInput" class="qs-input" placeholder="메모, 뉴스 기사, 병원 일정, 보유 자산 검색..." autocomplete="off" spellcheck="false">
+                <button type="button" class="qs-clear-btn" id="qsClearBtn" style="display:none;" onclick="clearQsInput()" title="입력 지우기">✕</button>
+                <button type="button" class="qs-close-btn" onclick="closeQuickSearchModal()" title="검색창 닫기" style="background:transparent; border:none; color:var(--text-muted); font-size:1.15rem; cursor:pointer; padding:2px 8px; line-height:1;">✕</button>
+                <kbd class="qs-close-kbd" onclick="closeQuickSearchModal()">ESC</kbd>
+            </div>
+
+            <!-- 카테고리 탭 필터 -->
+            <div class="qs-tabs" id="qsTabs">
+                <button type="button" class="qs-tab active" data-category="all" onclick="selectQsCategory('all')">
+                    전체 <span class="qs-tab-badge" id="qsBadgeAll">0</span>
+                </button>
+                <button type="button" class="qs-tab" data-category="memo" onclick="selectQsCategory('memo')">
+                    📝 메모 <span class="qs-tab-badge" id="qsBadgeMemo">0</span>
+                </button>
+                <button type="button" class="qs-tab" data-category="news" onclick="selectQsCategory('news')">
+                    📰 뉴스 <span class="qs-tab-badge" id="qsBadgeNews">0</span>
+                </button>
+                <button type="button" class="qs-tab" data-category="hospital" data-service="blood" onclick="selectQsCategory('hospital')">
+                    🏥 병원 <span class="qs-tab-badge" id="qsBadgeHospital">0</span>
+                </button>
+                <button type="button" class="qs-tab" data-category="asset" data-service="asset" onclick="selectQsCategory('asset')">
+                    💰 자산 <span class="qs-tab-badge" id="qsBadgeAsset">0</span>
+                </button>
+            </div>
+
+            <!-- 결과 본문 컨테이너 -->
+            <div class="qs-body" id="qsBody">
+                <!-- 기본 초기 상태: 빠른 서비스 바로가기 -->
+                <div class="qs-empty-state" id="qsInitialState">
+                    <div class="qs-empty-title">⚡ 빠른 서비스 바로가기</div>
+                    <div class="qs-quick-actions">
+                        <a href="/memo" class="qs-quick-btn">
+                            <span class="qs-quick-icon">📝</span>
+                            <span class="qs-quick-label">새 메모 작성</span>
+                        </a>
+                        <a href="/go/economy" class="qs-quick-btn">
+                            <span class="qs-quick-icon">📈</span>
+                            <span class="qs-quick-label">경제 & 증시</span>
+                        </a>
+                        <a href="https://album.j-jg.cc" class="qs-quick-btn">
+                            <span class="qs-quick-icon">📸</span>
+                            <span class="qs-quick-label">가족 앨범</span>
+                        </a>
+                        <a href="/calendar" class="qs-quick-btn">
+                            <span class="qs-quick-icon">📅</span>
+                            <span class="qs-quick-label">스마트 캘린더</span>
+                        </a>
+                        <a href="https://blood.j-jg.cc/hospital.html" class="qs-quick-btn" data-service="blood">
+                            <span class="qs-quick-icon">🏥</span>
+                            <span class="qs-quick-label">병원 진료 일정</span>
+                        </a>
+                        <a href="https://asset.j-jg.cc" class="qs-quick-btn" data-service="asset">
+                            <span class="qs-quick-icon">💰</span>
+                            <span class="qs-quick-label">자산 대시보드</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 검색 결과 리스트 동적 렌더링 영역 -->
+                <div id="qsResultsList" style="display:none;"></div>
+
+                <!-- 검색 결과 없음 안내 -->
+                <div class="qs-no-results" id="qsNoResults" style="display:none;">
+                    <div class="qs-no-results-icon">🔎</div>
+                    <div class="qs-no-results-text" id="qsNoResultsQuery">검색 결과가 없습니다.</div>
+                    <div class="qs-no-results-sub">다른 키워드로 검색해 보세요.</div>
+                </div>
+
+                <!-- 검색 로딩 인디케이터 -->
+                <div class="qs-no-results" id="qsLoading" style="display:none;">
+                    <div class="qs-no-results-icon">⏳</div>
+                    <div class="qs-no-results-text">검색 중...</div>
+                </div>
+            </div>
+
+            <!-- 키보드 안내 푸터 -->
+            <div class="qs-footer">
+                <div class="qs-footer-keys">
+                    <span class="qs-footer-key-item"><kbd class="qs-footer-kbd">↑</kbd><kbd class="qs-footer-kbd">↓</kbd> 이동</span>
+                    <span class="qs-footer-key-item"><kbd class="qs-footer-kbd">↵</kbd> 선택</span>
+                    <span class="qs-footer-key-item"><kbd class="qs-footer-kbd">ESC</kbd> 닫기</span>
+                </div>
+                <div style="font-size:0.72rem; color:#94a3b8;">JG 통합 빠른 검색</div>
+            </div>
+        </div>
+    </div>
