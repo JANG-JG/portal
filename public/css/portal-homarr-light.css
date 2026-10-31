@@ -256,12 +256,28 @@ body {
 }
 
 /* ==============================================================================
- * 🍱 2. HOMARR 2-COLUMN GRID SYSTEM
+ * 🍱 2. HOMARR 2-COLUMN GRID SYSTEM (360px 가로 무넘침 보장)
  * ============================================================================== */
+.main-shell {
+    width: 100% !important;
+    max-width: 1280px !important;
+    margin: 0 auto !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+.bento-command-center {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
 .homarr-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1.25rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .homarr-card {
     background: var(--hm-bg-card);
@@ -271,7 +287,11 @@ body {
     box-shadow: var(--hm-shadow-md);
     display: flex;
     flex-direction: column;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
 .homarr-card:hover {
@@ -285,43 +305,60 @@ body {
     margin-bottom: 1rem;
     padding-bottom: 0.65rem;
     border-bottom: 1px solid var(--hm-border-subtle);
+    min-width: 0;
 }
 .homarr-card-title-group {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    min-width: 0;
 }
 .homarr-card-icon {
     font-size: 1.15rem;
     line-height: 1;
+    flex-shrink: 0;
 }
 .homarr-card-title {
     font-size: 1rem;
     font-weight: 700;
     color: var(--hm-text-main);
     margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .homarr-card-link {
     font-size: 0.8rem;
     font-weight: 600;
     color: var(--hm-blue);
     text-decoration: none;
+    flex-shrink: 0;
     transition: color 0.15s;
 }
 .homarr-card-link:hover {
     text-decoration: underline;
 }
 
-/* 📱 모바일 360px 반응형 */
-/* 📱 모바일 360px 반응형 (상단 고정 2단 헤더 높이 90px 완벽 상쇄) */
+/* 📱 모바일 360px 반응형 (상단 고정 2단 헤더 높이 90px 완벽 상쇄 & 카드 넘침 원천 차단) */
 @media (max-width: 768px) {
     .main-shell {
-        padding: calc(90px + 1rem) 0.75rem 4.5rem !important;
+        padding: calc(90px + 0.85rem) 0.65rem 4.5rem !important;
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+    }
+    .bento-command-center {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
     }
     .homarr-hero-card {
-        grid-template-columns: 1fr;
-        padding: 1rem;
-        gap: 1rem;
+        grid-template-columns: 1fr !important;
+        padding: 0.85rem !important;
+        gap: 0.85rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
     .homarr-ring-box {
         border-right: none;
@@ -335,23 +372,36 @@ body {
         gap: 0.65rem;
     }
     .homarr-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr) !important;
         gap: 0.85rem;
+        width: 100% !important;
+        max-width: 100% !important;
     }
     .homarr-card {
-        padding: 1rem;
+        padding: 0.85rem !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+    .cmd-strip-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 0.4rem !important;
     }
 }
 
 /* 📱 360px 초소형 모바일 뷰포트 최적화 */
 @media (max-width: 380px) {
     .main-shell {
-        padding: calc(88px + 0.75rem) 0.5rem 4.5rem !important;
+        padding: calc(88px + 0.65rem) 0.4rem 4.5rem !important;
     }
     .homarr-hero-card {
-        padding: 0.85rem;
+        padding: 0.75rem !important;
     }
     .homarr-card {
-        padding: 0.85rem;
+        padding: 0.75rem !important;
+    }
+    .cmd-strip-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 0.3rem !important;
     }
 }

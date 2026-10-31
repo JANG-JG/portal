@@ -1,19 +1,24 @@
 /* ==============================================================================
- * 🔔 JG 포털 통합 알림 센터 모달: 소프트 클린 화이트 테마
+ * 🔔 JG 포털 통합 알림 센터 모달: 소프트 클린 화이트 테마 (portal-homarr-notif.css)
  * ------------------------------------------------------------------------------
- * [규칙 3] 500줄 이하 모듈화 준수 (현재 약 200줄)
+ * [규칙 3] 500줄 이하 모듈화 준수 (약 320줄)
  * [규칙 6] 모바일 360px 무넘침 보장 (터치 타겟 42px+, box-sizing)
+ * [우선순위] unified-nav.css의 다크징크 잔재를 100% 완벽 오버라이드
  * ============================================================================== */
 
-/* 1. 모달 배경 및 다이얼로그 */
+/* 1. 모달 배경 및 다이얼로그 (화이트 소프트 캔버스) */
 #notificationModal.notif-modal-backdrop,
+#notificationModal.dark-zinc.notif-modal-backdrop,
 .notif-modal-backdrop {
-    background: rgba(15, 23, 42, 0.48) !important;
+    background: rgba(15, 23, 42, 0.5) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
 }
 
 #notificationModal .notif-modal-dialog,
+#notificationModal.dark-zinc .notif-modal-dialog,
+#notificationModal.theme-dark .notif-modal-dialog,
+body.dark #notificationModal .notif-modal-dialog,
 .notif-modal-dialog {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
@@ -22,23 +27,29 @@
     color: #0f172a !important;
 }
 
-/* 2. 모달 헤더 */
+/* 2. 모달 상단 헤더 */
+#notificationModal .notif-modal-header,
+#notificationModal.dark-zinc .notif-modal-header,
+#notificationModal.theme-dark .notif-modal-header,
 .notif-modal-header {
     background: #ffffff !important;
     border-bottom: 1px solid #e2e8f0 !important;
     padding: 0.85rem 1.25rem !important;
 }
-.notif-header-title {
+#notificationModal .notif-header-title,
+#notificationModal.dark-zinc .notif-header-title {
     color: #0f172a !important;
     font-size: 1.05rem !important;
     font-weight: 800 !important;
 }
-.notif-master-toggle-label {
+#notificationModal .notif-master-toggle-label,
+#notificationModal.dark-zinc .notif-master-toggle-label {
     color: #475569 !important;
     font-size: 0.82rem !important;
     font-weight: 600 !important;
 }
-.notif-close-x {
+#notificationModal .notif-close-x,
+#notificationModal.dark-zinc .notif-close-x {
     background: #f1f5f9 !important;
     border: 1px solid #e2e8f0 !important;
     color: #64748b !important;
@@ -47,17 +58,20 @@
     border-radius: 50% !important;
     transition: all 0.15s !important;
 }
-.notif-close-x:hover {
+#notificationModal .notif-close-x:hover,
+#notificationModal.dark-zinc .notif-close-x:hover {
     background: #e2e8f0 !important;
     color: #0f172a !important;
 }
 
-/* 3. 메인 탭 */
-.notif-main-tabs {
+/* 3. 메인 탭 전환 바 */
+#notificationModal .notif-main-tabs,
+#notificationModal.dark-zinc .notif-main-tabs {
     background: #f8fafc !important;
     border-bottom: 1px solid #e2e8f0 !important;
 }
-.notif-tab-item {
+#notificationModal .notif-tab-item,
+#notificationModal.dark-zinc .notif-tab-item {
     color: #64748b !important;
     background: transparent !important;
     border-bottom: 2px solid transparent !important;
@@ -65,56 +79,65 @@
     font-weight: 600 !important;
     transition: all 0.15s !important;
 }
-.notif-tab-item:hover {
+#notificationModal .notif-tab-item:hover,
+#notificationModal.dark-zinc .notif-tab-item:hover {
     color: #0f172a !important;
     background: #f1f5f9 !important;
 }
-.notif-tab-item.active {
+#notificationModal .notif-tab-item.active,
+#notificationModal.dark-zinc .notif-tab-item.active {
     color: #2563eb !important;
     background: #ffffff !important;
     border-bottom-color: #2563eb !important;
     font-weight: 700 !important;
 }
-.notif-tab-badge {
+#notificationModal .notif-tab-badge,
+#notificationModal.dark-zinc .notif-tab-badge {
     background: #e2e8f0 !important;
     color: #334155 !important;
     font-weight: 700 !important;
     border-radius: 10px !important;
     padding: 1px 7px !important;
 }
-.notif-tab-item.active .notif-tab-badge {
+#notificationModal .notif-tab-item.active .notif-tab-badge,
+#notificationModal.dark-zinc .notif-tab-item.active .notif-tab-badge {
     background: #eff6ff !important;
     color: #2563eb !important;
 }
 
 /* 4. 스크롤 캔버스 */
-.notif-modal-scroll {
+#notificationModal .notif-modal-scroll,
+#notificationModal.dark-zinc .notif-modal-scroll {
     background: #f8fafc !important;
     color: #0f172a !important;
     padding: 1rem !important;
 }
 
 /* 브라우저 권한 배너 */
-.notif-perm-banner {
+#notificationModal .notif-perm-banner,
+#notificationModal.dark-zinc .notif-perm-banner {
     background: #eff6ff !important;
     border: 1px solid #bfdbfe !important;
     border-radius: 10px !important;
-    color: #1e40af !important;
     padding: 0.75rem 1rem !important;
-    font-size: 0.85rem !important;
+    color: #1e40af !important;
+    margin-bottom: 1rem !important;
 }
-.notif-perm-banner button {
+#notificationModal .notif-perm-banner button,
+#notificationModal.dark-zinc .notif-perm-banner button {
     background: #2563eb !important;
     color: #ffffff !important;
     border: none !important;
+    padding: 6px 12px !important;
     border-radius: 6px !important;
-    padding: 4px 10px !important;
+    font-size: 0.8rem !important;
     font-weight: 700 !important;
     cursor: pointer !important;
 }
 
-/* 5. 알림 설정 카드 그룹 */
-.notif-card-group {
+/* 5. 알림 맞춤 설정 카드 */
+#notificationModal .notif-card-group,
+#notificationModal.dark-zinc .notif-card-group {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 12px !important;
@@ -123,31 +146,37 @@
     padding: 0.85rem 1rem !important;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
 }
-.notif-card-group.admin-only-section {
+#notificationModal .notif-card-group.admin-only-section,
+#notificationModal.dark-zinc .notif-card-group.admin-only-section {
     background: #fffbeb !important;
     border-color: #fde68a !important;
 }
-.notif-toggle-content strong {
+#notificationModal .notif-toggle-content strong,
+#notificationModal.dark-zinc .notif-toggle-content strong {
     color: #0f172a !important;
     font-weight: 700 !important;
 }
-.notif-toggle-content p {
+#notificationModal .notif-toggle-content p,
+#notificationModal.dark-zinc .notif-toggle-content p {
     color: #64748b !important;
     font-size: 0.8rem !important;
     margin: 3px 0 0 0 !important;
 }
-.notif-sub-option-box {
+#notificationModal .notif-sub-option-box,
+#notificationModal.dark-zinc .notif-sub-option-box {
     background: #f8fafc !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 8px !important;
 }
-.notif-time-box {
+#notificationModal .notif-time-box,
+#notificationModal.dark-zinc .notif-time-box {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 10px !important;
     padding: 0.75rem !important;
 }
-.btn-time-add {
+#notificationModal .btn-time-add,
+#notificationModal.dark-zinc .btn-time-add {
     background: #2563eb !important;
     color: #ffffff !important;
     border-radius: 6px !important;
@@ -159,13 +188,15 @@
 }
 
 /* 설정 저장 & 테스트 액션 */
-.notif-settings-actions {
+#notificationModal .notif-settings-actions,
+#notificationModal.dark-zinc .notif-settings-actions {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
     border-radius: 12px !important;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
 }
-.btn-notif-save {
+#notificationModal .btn-notif-save,
+#notificationModal.dark-zinc .btn-notif-save {
     background: #2563eb !important;
     color: #ffffff !important;
     border: none !important;
@@ -175,7 +206,8 @@
     font-weight: 700 !important;
     cursor: pointer !important;
 }
-.btn-notif-test {
+#notificationModal .btn-notif-test,
+#notificationModal.dark-zinc .btn-notif-test {
     background: #f1f5f9 !important;
     color: #334155 !important;
     border: 1px solid #e2e8f0 !important;
@@ -185,18 +217,24 @@
     font-weight: 700 !important;
     cursor: pointer !important;
 }
-.btn-notif-test:hover {
+#notificationModal .btn-notif-test:hover,
+#notificationModal.dark-zinc .btn-notif-test:hover {
     background: #e2e8f0 !important;
     color: #0f172a !important;
 }
 
-/* 6. 수신 내역 뷰 */
-.notif-category-bar {
+/* 6. 수신 내역 뷰: 카테고리 필터 칩 바 */
+#notificationModal .notif-category-bar,
+#notificationModal.dark-zinc .notif-category-bar,
+#notificationModal.theme-dark .notif-category-bar {
     background: #ffffff !important;
     border-bottom: 1px solid #e2e8f0 !important;
     padding: 0.5rem 0.75rem !important;
+    box-shadow: none !important;
 }
-.notif-cat-chip {
+#notificationModal .notif-cat-chip,
+#notificationModal.dark-zinc .notif-cat-chip,
+#notificationModal.theme-dark .notif-cat-chip {
     background: #f1f5f9 !important;
     border: 1px solid #e2e8f0 !important;
     color: #475569 !important;
@@ -204,37 +242,47 @@
     font-weight: 600 !important;
     font-size: 0.8rem !important;
 }
-.notif-cat-chip:hover {
+#notificationModal .notif-cat-chip:hover,
+#notificationModal.dark-zinc .notif-cat-chip:hover {
     background: #e2e8f0 !important;
     color: #0f172a !important;
 }
-.notif-cat-chip.active {
+#notificationModal .notif-cat-chip.active,
+#notificationModal.dark-zinc .notif-cat-chip.active,
+#notificationModal.theme-dark .notif-cat-chip.active {
     background: #2563eb !important;
     color: #ffffff !important;
     border-color: #2563eb !important;
     font-weight: 700 !important;
+    box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2) !important;
 }
-.notif-cat-badge {
+#notificationModal .notif-cat-badge,
+#notificationModal.dark-zinc .notif-cat-badge {
     background: #e2e8f0 !important;
     color: #475569 !important;
 }
-.notif-cat-chip.active .notif-cat-badge {
+#notificationModal .notif-cat-chip.active .notif-cat-badge,
+#notificationModal.dark-zinc .notif-cat-chip.active .notif-cat-badge {
     background: rgba(255, 255, 255, 0.25) !important;
     color: #ffffff !important;
 }
 
 /* 툴바 */
-.notif-subtoolbar {
+#notificationModal .notif-subtoolbar,
+#notificationModal.dark-zinc .notif-subtoolbar,
+#notificationModal.theme-dark .notif-subtoolbar {
     background: #f8fafc !important;
     border-bottom: 1px solid #e2e8f0 !important;
     padding: 0.5rem 0.85rem !important;
 }
-.notif-count-label {
-    color: #64748b !important;
+#notificationModal .notif-count-label,
+#notificationModal.dark-zinc .notif-count-label {
+    color: #475569 !important;
     font-size: 0.82rem !important;
     font-weight: 700 !important;
 }
-.btn-history-tool {
+#notificationModal .btn-history-tool,
+#notificationModal.dark-zinc .btn-history-tool {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
     color: #475569 !important;
@@ -244,78 +292,114 @@
     padding: 4px 8px !important;
     cursor: pointer !important;
 }
-.btn-history-tool:hover {
+#notificationModal .btn-history-tool:hover,
+#notificationModal.dark-zinc .btn-history-tool:hover {
     background: #f1f5f9 !important;
     color: #0f172a !important;
     border-color: #cbd5e1 !important;
 }
-.btn-danger-tool {
+#notificationModal .btn-danger-tool,
+#notificationModal.dark-zinc .btn-danger-tool {
     color: #e11d48 !important;
     border-color: #fecdd3 !important;
     background: #fff1f2 !important;
 }
-.btn-danger-tool:hover {
+#notificationModal .btn-danger-tool:hover,
+#notificationModal.dark-zinc .btn-danger-tool:hover {
     background: #ffe4e6 !important;
     color: #be123c !important;
 }
-.notif-info-btn {
+#notificationModal .notif-info-btn,
+#notificationModal.dark-zinc .notif-info-btn {
     background: #f1f5f9 !important;
     border: 1px solid #e2e8f0 !important;
     color: #64748b !important;
     border-radius: 50% !important;
 }
 
-/* 알림 카드 목록 */
-.notif-history-scroll {
+/* 7. 알림 카드 목록 (어두운 쥐색/블랙 완벽 제거 -> 소프트 화이트 고대비 카드) */
+#notificationModal .notif-history-scroll,
+#notificationModal.dark-zinc .notif-history-scroll {
     background: #f8fafc !important;
     padding: 0.75rem !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 0.5rem !important;
 }
-.notif-card-item {
+#notificationModal .notif-card-item,
+#notificationModal.dark-zinc .notif-card-item,
+#notificationModal.theme-dark .notif-card-item,
+body.dark #notificationModal .notif-card-item {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
     color: #0f172a !important;
     border-radius: 10px !important;
     padding: 0.75rem 0.95rem !important;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03) !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    opacity: 1 !important;
     transition: all 0.15s !important;
 }
-.notif-card-item:hover {
+#notificationModal .notif-card-item:hover,
+#notificationModal.dark-zinc .notif-card-item:hover {
     border-color: #cbd5e1 !important;
-    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05) !important;
+    background: #f8fafc !important;
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06) !important;
 }
-.notif-card-item.is-unread {
+#notificationModal .notif-card-item.is-unread,
+#notificationModal.dark-zinc .notif-card-item.is-unread {
     background: #f0fdf4 !important;
     border-left: 4px solid #10b981 !important;
     border-color: #bbf7d0 !important;
 }
-.notif-card-item.is-read {
+#notificationModal .notif-card-item.is-read,
+#notificationModal.dark-zinc .notif-card-item.is-read {
     background: #ffffff !important;
     border: 1px solid #e2e8f0 !important;
-    opacity: 0.85 !important;
+    opacity: 0.9 !important;
 }
-.notif-card-title {
+#notificationModal .notif-card-title,
+#notificationModal.dark-zinc .notif-card-title,
+#notificationModal.theme-dark .notif-card-title {
     color: #0f172a !important;
     font-weight: 700 !important;
     font-size: 0.88rem !important;
 }
-.notif-card-body {
+#notificationModal .notif-card-body,
+#notificationModal.dark-zinc .notif-card-body {
     color: #334155 !important;
     font-size: 0.82rem !important;
-    line-height: 1.4 !important;
+    line-height: 1.45 !important;
 }
-.notif-card-time {
+#notificationModal .notif-card-time,
+#notificationModal.dark-zinc .notif-card-time {
     color: #64748b !important;
     font-size: 0.72rem !important;
 }
-.notif-del-btn {
+#notificationModal .btn-notif-more,
+#notificationModal.dark-zinc .btn-notif-more {
     color: #94a3b8 !important;
     background: transparent !important;
     border: none !important;
     cursor: pointer !important;
 }
-.notif-del-btn:hover {
-    color: #e11d48 !important;
+#notificationModal .btn-notif-more:hover,
+#notificationModal.dark-zinc .btn-notif-more:hover {
+    color: #0f172a !important;
+}
+#notificationModal .notif-dropdown-menu,
+#notificationModal.dark-zinc .notif-dropdown-menu {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 8px !important;
+}
+#notificationModal .notif-dropdown-btn,
+#notificationModal.dark-zinc .notif-dropdown-btn {
+    color: #334155 !important;
+    background: transparent !important;
+}
+#notificationModal .notif-dropdown-btn:hover,
+#notificationModal.dark-zinc .notif-dropdown-btn:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
 }

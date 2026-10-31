@@ -212,25 +212,42 @@
 }
 
 /* ==============================================================================
- * 📸 3. 앨범 & 📅 캘린더 라이트 테마
+ * 📸 3. 앨범 & 📅 캘린더 라이트 테마 (모바일 360px 무넘침 & 터치 스크롤 강화)
  * ============================================================================== */
 .album-thumb-strip-container {
     background: var(--hm-bg-subtle);
     border: 1px solid var(--hm-border);
     border-radius: var(--hm-radius-btn);
     padding: 0.75rem;
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 .album-thumb-track {
     display: flex;
     gap: 0.75rem;
-    overflow-x: auto;
-    scrollbar-width: thin;
-    padding-bottom: 4px;
+    overflow-x: scroll !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    overscroll-behavior-x: contain !important;
+    scroll-behavior: smooth;
+    padding-bottom: 6px;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: grab;
+    user-select: none;
+}
+.album-thumb-track:active {
+    cursor: grabbing;
 }
 .album-thumb-card {
     display: flex;
     flex-direction: column;
-    width: 105px;
+    width: 110px;
+    min-width: 110px;
     flex-shrink: 0;
     text-decoration: none;
     color: inherit;
@@ -238,6 +255,7 @@
     border: 1px solid var(--hm-border);
     border-radius: 10px;
     overflow: hidden;
+    box-sizing: border-box;
     transition: transform 0.18s, box-shadow 0.18s;
 }
 .album-thumb-card:hover {
@@ -283,11 +301,16 @@
     background: var(--hm-bg-subtle);
     border-radius: var(--hm-radius-btn);
     width: 100%;
+    box-sizing: border-box;
 }
 .calendar-upcoming-grid {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
 }
 .cal-upcoming-card {
     background: #ffffff !important;
@@ -301,6 +324,10 @@
     color: inherit !important;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
     transition: all 0.15s ease !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
 }
 .cal-upcoming-card:hover {
     background: #f8fafc !important;
@@ -334,9 +361,11 @@
 .cal-upcoming-body {
     flex: 1 !important;
     min-width: 0 !important;
+    max-width: 100% !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 0.2rem !important;
+    overflow: hidden !important;
 }
 .cal-upcoming-title {
     font-size: 0.88rem !important;
@@ -345,6 +374,7 @@
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
+    max-width: 100% !important;
 }
 .cal-upcoming-meta {
     display: flex !important;
@@ -352,6 +382,9 @@
     gap: 0.4rem !important;
     font-size: 0.72rem !important;
     color: var(--hm-text-muted) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 .cal-dday-badge {
     font-size: 0.68rem !important;

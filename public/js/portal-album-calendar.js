@@ -61,10 +61,58 @@ async function loadRecentAlbumPhotos() {
             `;
         }).join('');
 
+        bindAlbumDragScroll();
     } catch (err) {
         console.error('최근 앨범 사진 로드 오류:', err);
         track.innerHTML = `<div class="album-thumb-placeholder">사진을 불러오는 중 네트워크 오류가 발생했습니다.</div>`;
     }
+}
+
+// 📸 가족 앨범 가로 드래그 & 스와이프 스크롤 엔진
+function bindAlbumDragScroll() {
+    const track = document.getElementById('albumThumbTrack');
+    if (!track || track.dataset.dragBound) return;
+    track.dataset.dragBound = '1';
+
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let isDragging = false;
+
+    track.addEventListener('mousedown', (e) => {
+        isDown = true;
+        isDragging = false;
+        track.style.cursor = 'grabbing';
+        startX = e.pageX - track.offsetLeft;
+        scrollLeft = track.scrollLeft;
+    });
+
+    track.addEventListener('mouseleave', () => {
+        isDown = false;
+        track.style.cursor = 'grab';
+    });
+
+    track.addEventListener('mouseup', () => {
+        isDown = false;
+        track.style.cursor = 'grab';
+    });
+
+    track.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - track.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        if (Math.abs(walk) > 5) isDragging = true;
+        track.scrollLeft = scrollLeft - walk;
+    });
+
+    track.addEventListener('click', (e) => {
+        if (isDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+            isDragging = false;
+        }
+    }, true);
 }
 
 // 2. 다가오는 스마트 캘린더 일정 로드 (오늘 및 향후 7일간 일정)
