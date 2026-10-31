@@ -142,9 +142,12 @@ function renderPortalWikiWidget(data) {
                         <input type="checkbox" ${isDone ? 'checked' : ''} onchange="togglePortalTodo(${todo.id})" class="portal-todo-check-input">
                         <span class="portal-todo-text ${isDone ? 'line-through text-muted' : ''}">${escapeHtml(todo.content)}</span>
                     </label>
-                    <span class="portal-todo-type-badge ${isRoutine ? 'type-routine' : 'type-todo'}">
-                        ${isRoutine ? '매일 루틴' : '장보기'}
-                    </span>
+                    <div class="flex items-center gap-1 flex-shrink-0">
+                        ${todo.assignee_info ? `<span class="portal-todo-assignee" style="background:${todo.assignee_info.bg}; color:${todo.assignee_info.color}; font-size:10px; font-weight:600; padding:1px 5px; border-radius:4px;">${todo.assignee_info.icon} ${todo.assignee_info.name}</span>` : ''}
+                        <span class="portal-todo-type-badge ${isRoutine ? 'type-routine' : 'type-todo'}">
+                            ${todo.schedule_info ? todo.schedule_info.text : (isRoutine ? '루틴' : '장보기')}
+                        </span>
+                    </div>
                 </div>
                 `;
             }).join('');
