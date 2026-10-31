@@ -1,0 +1,474 @@
+/* ==============================================================================
+ * 🌟 JG 포털 대시보드: Homarr & Apple 스타일 위젯 세부 Stylesheet
+ * ------------------------------------------------------------------------------
+ * [규칙 3] 500줄 이하 모듈화 준수 (현재 약 280줄)
+ * [규칙 6] 모바일 360px 무넘침 보장 (터치 타겟 42px+, word-break)
+ * ============================================================================== */
+
+/* ==============================================================================
+ * ✅ 1. 루틴 체크리스트 & 인라인 폼
+ * ============================================================================== */
+.portal-todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+.portal-todo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.65rem 0.85rem;
+    min-height: 44px;
+    transition: all 0.2s;
+}
+.portal-todo-row:hover {
+    background: #eef2f6;
+    border-color: var(--hm-border-strong);
+}
+.portal-todo-row.is-completed {
+    background: #f8fafc;
+    border-color: var(--hm-border-subtle);
+    opacity: 0.65;
+}
+.portal-todo-touch-label {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+.portal-todo-check-input {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    accent-color: var(--hm-emerald);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.portal-todo-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--hm-text-body);
+    word-break: break-word;
+}
+.portal-todo-text.line-through {
+    text-decoration: line-through;
+    color: var(--hm-text-muted);
+}
+.portal-todo-type-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.portal-todo-type-badge.type-routine {
+    background: var(--hm-blue-bg);
+    color: var(--hm-blue);
+    border: 1px solid var(--hm-blue-border);
+}
+.portal-todo-type-badge.type-todo {
+    background: var(--hm-amber-bg);
+    color: var(--hm-amber);
+    border: 1px solid var(--hm-amber-border);
+}
+
+.portal-quick-todo-form {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: auto;
+}
+.portal-quick-todo-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.65rem 0.85rem;
+    font-size: 0.88rem;
+    color: var(--hm-text-main);
+    outline: none;
+    transition: border-color 0.2s;
+}
+.portal-quick-todo-input:focus {
+    border-color: var(--hm-blue);
+    background: #ffffff;
+}
+.portal-quick-todo-btn {
+    padding: 0.65rem 1.15rem;
+    background: var(--hm-blue);
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: var(--hm-radius-btn);
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.2s;
+}
+.portal-quick-todo-btn:hover {
+    opacity: 0.92;
+}
+
+/* ==============================================================================
+ * ⏳ 2. D-DAY 소모품 칩
+ * ============================================================================== */
+.portal-dday-chips-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.portal-imminent-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.65rem 0.85rem;
+    cursor: pointer;
+    min-height: 44px;
+    transition: all 0.2s;
+}
+.portal-imminent-chip:hover {
+    border-color: var(--hm-border-strong);
+    background: #eef2f6;
+}
+.portal-imminent-chip.badge-overdue {
+    border-left: 4px solid var(--hm-rose);
+    background: var(--hm-rose-bg);
+}
+.portal-imminent-chip.badge-imminent {
+    border-left: 4px solid var(--hm-amber);
+    background: var(--hm-amber-bg);
+}
+.portal-imminent-chip-badge {
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 6px;
+    white-space: nowrap;
+}
+.badge-overdue .portal-imminent-chip-badge {
+    background: var(--hm-rose);
+    color: #ffffff;
+}
+.badge-imminent .portal-imminent-chip-badge {
+    background: var(--hm-amber);
+    color: #ffffff;
+}
+.portal-imminent-chip-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--hm-text-main);
+    flex: 1;
+    min-width: 0;
+}
+.portal-imminent-cycle {
+    font-size: 0.75rem;
+    color: var(--hm-text-muted);
+    white-space: nowrap;
+}
+.portal-imminent-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid var(--hm-border);
+    color: var(--hm-emerald);
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+.portal-imminent-safe-bar {
+    padding: 1.5rem 1rem;
+    text-align: center;
+    background: var(--hm-bg-subtle);
+    border-radius: var(--hm-radius-btn);
+    color: var(--hm-text-muted);
+    font-size: 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.portal-safe-sub {
+    font-size: 0.8rem;
+    color: var(--hm-blue);
+    font-weight: 600;
+}
+
+/* ==============================================================================
+ * 📸 3. 앨범 & 📅 캘린더 라이트 테마
+ * ============================================================================== */
+.album-thumb-strip-container {
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.75rem;
+}
+.album-thumb-track {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding-bottom: 4px;
+}
+.album-thumb-card {
+    display: flex;
+    flex-direction: column;
+    width: 105px;
+    flex-shrink: 0;
+    text-decoration: none;
+    color: inherit;
+    background: #ffffff;
+    border: 1px solid var(--hm-border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.18s, box-shadow 0.18s;
+}
+.album-thumb-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--hm-shadow-sm);
+    border-color: var(--hm-border-strong);
+}
+.album-thumb-img-wrap {
+    width: 100%;
+    height: 80px;
+    position: relative;
+    background: #f1f5f9;
+}
+.album-thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.album-thumb-meta {
+    padding: 5px 6px;
+}
+.album-thumb-caption {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--hm-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.album-thumb-author-row {
+    font-size: 0.68rem;
+    color: var(--hm-text-muted);
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2px;
+}
+.album-thumb-placeholder,
+.calendar-upcoming-empty {
+    padding: 1.25rem;
+    text-align: center;
+    color: var(--hm-text-muted);
+    font-size: 0.85rem;
+    background: var(--hm-bg-subtle);
+    border-radius: var(--hm-radius-btn);
+    width: 100%;
+}
+.calendar-upcoming-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.calendar-event-item {
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.65rem 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--hm-text-main);
+}
+.news-rec-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--hm-border-subtle);
+}
+.news-rec-link {
+    color: var(--hm-text-main);
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    line-height: 1.4;
+    transition: color 0.15s;
+}
+.news-rec-link:hover {
+    color: var(--hm-blue);
+    text-decoration: underline;
+}
+
+/* ==============================================================================
+ * 💰 4. 자산, 📰 뉴스, 🖥️ 서버 인프라 라이트 테마
+ * ============================================================================== */
+.bento-asset-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 0.75rem;
+}
+.bento-asset-big-val {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--hm-text-main);
+}
+.bento-asset-diff-tag {
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    color: var(--hm-text-body);
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+}
+.bento-market-ticker-box {
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.65rem;
+    color: var(--hm-text-body);
+}
+.news-market-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.news-market-chip {
+    flex: 1;
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.5rem 0.75rem;
+    text-decoration: none;
+    color: inherit;
+}
+.market-name {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--hm-text-muted);
+}
+.market-price {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--hm-text-main);
+}
+.server-dual-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+}
+@media (max-width: 640px) {
+    .server-dual-grid {
+        grid-template-columns: 1fr;
+    }
+}
+.server-unit-card {
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.85rem;
+}
+.server-unit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.65rem;
+}
+.server-unit-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--hm-text-main);
+}
+.server-metric-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    color: var(--hm-text-body);
+    margin-bottom: 3px;
+}
+.server-sub-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--hm-text-muted);
+    margin-bottom: 2px;
+}
+.bento-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--hm-text-muted);
+    border-top: 1px solid var(--hm-border-subtle);
+    margin-top: auto;
+    padding-top: 0.65rem;
+}
+
+/* 뱃지 호환 */
+.bento-badge {
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+}
+.badge-emerald {
+    background: var(--hm-emerald-bg) !important;
+    color: var(--hm-emerald) !important;
+    border: 1px solid var(--hm-emerald-border) !important;
+}
+.badge-amber {
+    background: var(--hm-amber-bg) !important;
+    color: var(--hm-amber) !important;
+    border: 1px solid var(--hm-amber-border) !important;
+}
+.badge-rose {
+    background: var(--hm-rose-bg) !important;
+    color: var(--hm-rose) !important;
+    border: 1px solid var(--hm-rose-border) !important;
+}
+.badge-blue {
+    background: var(--hm-blue-bg) !important;
+    color: var(--hm-blue) !important;
+    border: 1px solid var(--hm-blue-border) !important;
+}
+.cmd-strip {
+    background: var(--hm-bg-card) !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: var(--hm-radius-card) !important;
+    box-shadow: var(--hm-shadow-sm) !important;
+}
+.cmd-strip-header {
+    border-bottom: 1px solid var(--hm-border-subtle) !important;
+    color: var(--hm-text-main) !important;
+}
+.cmd-strip-btn {
+    background: var(--hm-bg-subtle) !important;
+    border: 1px solid var(--hm-border) !important;
+    color: var(--hm-text-body) !important;
+}
+.cmd-strip-btn:hover {
+    background: #eef2f6 !important;
+    color: var(--hm-text-main) !important;
+    border-color: var(--hm-border-strong) !important;
+}
+.breaking-banner-bar {
+    background: var(--hm-bg-card) !important;
+    border: 1px solid var(--hm-border) !important;
+    border-radius: var(--hm-radius-card) !important;
+    box-shadow: var(--hm-shadow-sm) !important;
+}
+.breaking-item-title {
+    color: var(--hm-text-main) !important;
+}

@@ -106,12 +106,26 @@ function renderPortalWikiWidget(data) {
     const todoContainer = document.getElementById('portalWidgetTodoList');
     const routineStats = document.getElementById('portalWidgetRoutineStats');
     const progressBar = document.getElementById('portalWidgetProgressBar');
+    const ringBar = document.getElementById('portalRingProgress');
+    const ringDesc = document.getElementById('homarrRingDesc');
 
-    if (data.routine_stats && routineStats) {
+    if (data.routine_stats) {
         const stats = data.routine_stats;
-        routineStats.textContent = `${stats.percent}% (${stats.completed}/${stats.total} 완료)`;
+        const percent = Math.min(Math.max(stats.percent || 0, 0), 100);
+
+        if (routineStats) {
+            routineStats.textContent = `${percent}%`;
+        }
+        if (ringDesc) {
+            ringDesc.textContent = `${stats.completed}/${stats.total}개 완료됨`;
+        }
         if (progressBar) {
-            progressBar.style.width = `${stats.percent}%`;
+            progressBar.style.width = `${percent}%`;
+        }
+        if (ringBar) {
+            // 원형 둘레 C = 2 * PI * 40 ~= 251.2
+            const offset = 251.2 * (1 - percent / 100);
+            ringBar.style.strokeDashoffset = offset;
         }
     }
 

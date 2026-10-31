@@ -8,13 +8,13 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#09090b">
+    <meta name="theme-color" content="#f8fafc">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JG 포털">
-    <meta name="color-scheme" content="dark">
-    <!-- 🛡️ FOUC 원천 차단: 외부 CSS 파싱 전 브라우저 기본 흰 화면/미적용 텍스트 노출 방지 다크 캔버스 가드 -->
-    <style>html,body{background-color:#09090b !important;color:#f4f4f5 !important;}</style>
+    <meta name="color-scheme" content="light">
+    <!-- 🛡️ FOUC 원천 차단: 소프트 클린 라이트 캔버스 가드 -->
+    <style>html,body{background-color:#f8fafc !important;color:#0f172a !important;}</style>
     <!-- 🚀 경량 WOFF2 서브셋 폰트 사전 로드 (FOUT 깜빡임 0ms 차단) -->
     <link rel="preload" href="/fonts/Pretendard-Regular.subset.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/Pretendard-SemiBold.subset.woff2" as="font" type="font/woff2" crossorigin>
@@ -22,6 +22,8 @@
     <link rel="stylesheet" href="/css/unified-nav.css">
     <link rel="stylesheet" href="/css/news-ticker.css">
     <link rel="stylesheet" href="/css/index.css">
+    <link rel="stylesheet" href="/css/portal-homarr-light.css">
+    <link rel="stylesheet" href="/css/portal-homarr-widgets.css">
     <!-- 🛡️ 권한 기반 UI 즉시 적용 (FOUC / 메뉴 깜빡임 원천 차단) -->
     <script>
         (function() {
@@ -201,8 +203,66 @@
         <!-- ===================================================================== -->
         <div class="bento-command-center" id="portal-bento-root">
             
+            <!-- ================================================================= -->
+            <!-- 🌟 1. APPLE / HOMARR HERO HEADER: 일과 & 활동 링 브리핑 카드 -->
+            <!-- ================================================================= -->
+            <div class="homarr-hero-card" id="homarrHeroCard">
+                <!-- 좌측: 루틴 달성률 원형 링 게이지 (Apple Activity Ring) -->
+                <div class="homarr-ring-box">
+                    <div class="homarr-ring-wrapper">
+                        <svg class="homarr-ring-svg" viewBox="0 0 100 100">
+                            <circle class="homarr-ring-bg" cx="50" cy="50" r="40" />
+                            <circle class="homarr-ring-bar" id="portalRingProgress" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="251.2" />
+                        </svg>
+                        <div class="homarr-ring-inner">
+                            <span class="homarr-ring-percent font-mono" id="portalWidgetRoutineStats">0%</span>
+                            <span class="homarr-ring-sub">달성</span>
+                        </div>
+                    </div>
+                    <div class="homarr-ring-info">
+                        <div class="homarr-ring-title">오늘의 가족 루틴</div>
+                        <div class="homarr-ring-desc" id="homarrRingDesc">할 일을 체크해보세요</div>
+                        <!-- 기존 JS 바인딩 호환용 프로그레스 바 DOM -->
+                        <div class="portal-progress-track" style="display:none;"><div id="portalWidgetProgressBar" class="portal-progress-fill"></div></div>
+                    </div>
+                </div>
+
+                <!-- 우측: 오늘 복약 & 혈압 퀵 체크 -->
+                <div class="homarr-health-summary-box">
+                    <!-- 복약 관리 -->
+                    <div class="homarr-med-action-card">
+                        <div class="homarr-med-info">
+                            <span class="homarr-label">💊 복약 관리</span>
+                            <div class="homarr-med-title" id="widgetMedStatusText">조회 중...</div>
+                            <div class="homarr-med-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
+                        </div>
+                        <div class="homarr-med-btn-wrap" style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+                            <span class="bento-badge badge-emerald" id="widgetMedBadge">확인 중</span>
+                            <button type="button" class="btn-widget-quick-med homarr-btn-med" id="btnWidgetQuickMed" onclick="recordQuickMedication();" style="display:none;">
+                                💊 약 먹었어요
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 최근 혈압 상태 (클릭 시 혈압 앱 이동) -->
+                    <div class="homarr-blood-mini-card" onclick="location.href='/go/blood'" title="혈압 관리 앱 바로가기">
+                        <div class="homarr-blood-info">
+                            <span class="homarr-label">🩸 최근 혈압</span>
+                            <div class="homarr-blood-val font-mono" id="widgetBloodValMain">- / - <span class="bento-stat-unit" style="font-size:0.75rem; font-weight:600; color:var(--hm-text-muted);">mmHg</span></div>
+                            <div class="homarr-blood-sub" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
+                        </div>
+                        <span class="bento-badge badge-emerald" id="widgetBloodStatusTag">안정</span>
+                        <!-- 기존 JS 바인딩 호환용 DOM -->
+                        <span id="widgetBloodSummaryTitle" style="display:none;">혈압 상태</span>
+                        <span id="widgetHospitalDDayText" style="display:none;">-</span>
+                        <span id="widgetHospitalSubText" style="display:none;">-</span>
+                        <button type="button" class="btn-quick-med" id="btnQuickMed" onclick="recordQuickMedication(); event.stopPropagation();" style="display:none;"></button>
+                    </div>
+                </div>
+            </div>
+
             <!-- ⚡ 12-Column 원터치 퀵 커맨드 스트립 -->
-            <div class="cmd-strip" role="navigation" aria-label="빠른 바로가기">
+            <div class="cmd-strip" role="navigation" aria-label="빠른 바로가기" style="margin-bottom: 0.85rem;">
                 <div class="cmd-strip-header">
                     <span>빠른 실행</span>
                     <span class="text-muted">원터치 바로가기</span>
@@ -244,7 +304,7 @@
             </div>
 
             <!-- 🚨 실시간 속보 한줄 롤링 배너 & 호버 전체목록 드롭다운 -->
-            <div class="breaking-banner-bar" id="breakingBannerBar" style="display: none; margin-bottom: 0.65rem;">
+            <div class="breaking-banner-bar" id="breakingBannerBar" style="display: none; margin-bottom: 1.25rem;">
                 <div class="breaking-badge">
                     <span class="breaking-pulse-dot"></span>
                     <span class="breaking-badge-text-full">🚨 실시간 속보</span>
@@ -274,104 +334,120 @@
                 </div>
             </div>
 
-            <!-- 🍱 BENTO GRID CORE (12-Column High-Density Layout - 2 Rows) -->
-            <div class="bento-grid">
+            <!-- ================================================================= -->
+            <!-- 🍱 2. HOMARR 2-COLUMN MAIN GRID -->
+            <!-- ================================================================= -->
+            <div class="homarr-grid">
                 
-                <!-- Bento 1: 🩸💊 혈압·건강 & 약·병원 일정 통합 카드 (col-span-6) -->
-                <div class="bento-card col-health" id="bento-blood" data-service="blood">
-                    <div>
-                        <div class="bento-card-header">
-                            <div class="bento-card-title-group">
-                                <span class="cmd-dot-pulse"></span>
-                                <h3 class="bento-card-title">혈압·건강 & 약·병원 일정</h3>
-                            </div>
-                            <div style="display:flex; align-items:center; gap:0.5rem; flex-shrink:0; white-space:nowrap;">
-                                <a href="/go/blood" class="bento-card-link" title="혈압 관리 앱 바로가기">혈압 앱 →</a>
-                                <a href="/calendar" class="bento-card-link" title="캘린더 바로가기">캘린더 →</a>
-                            </div>
+                <!-- [그리드 1-1] ✅ 오늘의 가족 루틴 & 장보기 체크리스트 (핵심) -->
+                <div class="homarr-card card-routine" id="bento-wiki">
+                    <div class="homarr-card-header">
+                        <div class="homarr-card-title-group">
+                            <span class="homarr-card-icon">✅</span>
+                            <h3 class="homarr-card-title">오늘의 가족 루틴 &amp; 장보기</h3>
                         </div>
-
-                        <!-- 2분할 통합 건강 그리드: 좌측 혈압 관리 / 우측 약·병원 일정 -->
-                        <div class="bento-health-grid">
-                            <!-- 좌측: 최근 혈압 측정 수치 및 임상 상태 -->
-                            <div class="bento-health-col">
-                                <div class="bento-stat-label">최근 혈압 측정 수치</div>
-                                <div class="bento-stat-val font-mono" id="widgetBloodValMain" style="margin-bottom:0.35rem;">- / - <span class="bento-stat-unit">mmHg</span></div>
-                                <div class="bento-ops-item" style="padding:0.45rem 0.6rem;">
-                                    <div class="bento-ops-info">
-                                        <div class="bento-ops-name" id="widgetBloodSummaryTitle">혈압 상태 평가</div>
-                                        <div class="bento-ops-sub" id="widgetBloodSubText">맥박 -회 · 측정일 -</div>
-                                    </div>
-                                    <span class="bento-badge badge-emerald" id="widgetBloodStatusTag">안정</span>
-                                </div>
-                            </div>
-
-                            <!-- 우측: 약 챙겨먹기 및 병원 예약 일정 -->
-                            <div class="bento-health-col">
-                                <div class="bento-stat-label">오늘 복약 & 병원 일정</div>
-                                <div class="bento-ops-item" style="padding:0.45rem 0.6rem; margin-bottom:0.35rem;">
-                                    <div class="bento-ops-info">
-                                        <div class="bento-ops-name" id="widgetMedStatusText">조회 중...</div>
-                                        <div class="bento-ops-sub" id="widgetMedSubText">최근 복용 기록 확인 중</div>
-                                    </div>
-                                    <span class="bento-badge badge-emerald" id="widgetMedBadge">확인 중</span>
-                                    <button type="button" class="btn-widget-quick-med" id="btnWidgetQuickMed" onclick="recordQuickMedication();" style="display:none; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; background:var(--status-emerald); color:#fff; border:none; cursor:pointer;">
-                                        💊 복용 완료
-                                    </button>
-                                </div>
-                                <div class="bento-ops-item" style="padding:0.45rem 0.6rem;">
-                                    <div class="bento-ops-info">
-                                        <div class="bento-ops-name" id="widgetHospitalDDayText">-</div>
-                                        <div class="bento-ops-sub" id="widgetHospitalSubText">약 잔여 -일분</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <a href="/wiki" class="homarr-card-link">위키 바로가기 →</a>
                     </div>
 
-                    <div class="bento-card-footer">
-                        <button type="button" class="btn-bp-guide-inline" onclick="openBpGuideModal()" title="혈압 판정 기준표 보기">
-                            📋 혈압 기준표 ℹ️
-                        </button>
-                        <button type="button" class="btn-quick-med" id="btnQuickMed" onclick="recordQuickMedication()" style="padding:3px 10px; font-size:0.78rem;">
-                            💊 약 복용 기록
-                        </button>
+                    <!-- 체크리스트 목록 (큰 터치 영역 44px+) -->
+                    <div class="portal-todo-list" id="portalWidgetTodoList">
+                        <div class="portal-wiki-empty">루틴 및 할 일을 불러오는 중...</div>
+                    </div>
+
+                    <!-- 빠른 추가 인라인 폼 -->
+                    <form onsubmit="handlePortalQuickTodo(event)" class="portal-quick-todo-form">
+                        <input type="text" id="portalWidgetTodoInput" placeholder="장보기 또는 오늘 할 일 빠른 입력..." class="portal-quick-todo-input">
+                        <button type="submit" class="portal-quick-todo-btn">추가</button>
+                    </form>
+                </div>
+
+                <!-- [그리드 1-2] ⏳ 소모품 & 계약 만료 D-Day 알림 -->
+                <div class="homarr-card card-dday">
+                    <div class="homarr-card-header">
+                        <div class="homarr-card-title-group">
+                            <span class="homarr-card-icon">⏳</span>
+                            <h3 class="homarr-card-title">소모품 &amp; 계약 D-Day</h3>
+                            <span class="portal-imminent-count" id="portalWidgetDdayCount" style="font-size:0.75rem; font-weight:700; color:var(--hm-rose); background:var(--hm-rose-bg); padding:2px 8px; border-radius:6px; margin-left:6px;">조회 중...</span>
+                        </div>
+                        <a href="/wiki" class="homarr-card-link">전체 주기 보기 →</a>
+                    </div>
+                    
+                    <div class="portal-imminent-dday-box" id="portalImminentDdayBox" style="border:none; padding:0; background:transparent;">
+                        <div class="portal-dday-chips-row" id="portalWidgetDdayList">
+                            <div class="portal-wiki-empty">소모품 주기 데이터를 불러오는 중...</div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Bento 2: 💰 개인 자산 포트폴리오 (col-span-6) -->
-                <div class="bento-card col-asset" id="bento-asset" data-service="asset">
-                    <div>
-                        <div class="bento-card-header">
-                            <div class="bento-card-title-group">
-                                <span class="cmd-dot-pulse" style="background-color:var(--status-rose);"></span>
-                                <h3 class="bento-card-title">총 자산 포트폴리오</h3>
-                            </div>
-                            <a href="/go/asset" class="bento-card-link" title="자산 관리 앱 바로가기">앱 열기 →</a>
+                <!-- [그리드 2-1] 📅 스마트 캘린더 다가오는 일정 -->
+                <div class="homarr-card card-calendar" id="bento-calendar">
+                    <div class="homarr-card-header">
+                        <div class="homarr-card-title-group">
+                            <span class="homarr-card-icon">📅</span>
+                            <h3 class="homarr-card-title">스마트 캘린더 다가오는 일정</h3>
                         </div>
-
-                        <div class="bento-asset-summary">
-                            <div>
-                                <div class="bento-stat-label">평가 총액</div>
-                                <div class="bento-asset-big-val font-mono" id="widgetAssetTotalMain">-</div>
-                            </div>
-                            <div style="text-align: right;">
-                                <div class="bento-stat-label" style="margin-bottom: 3px;">보유 종목</div>
-                                <div class="bento-asset-diff-tag font-mono" id="widgetAssetCountText">14개 종목</div>
-                            </div>
-                        </div>
-
-                        <!-- 🔄 실시간 시장지표(국내지수/미국지수/환율) 롤링 티커 바 -->
-                        <div class="bento-market-ticker-box" id="bentoMarketTickerBox">
-                            <div class="market-ticker-inner font-mono" id="marketTickerContent">
-                                <span class="ticker-label">시장지표</span>
-                                <span class="ticker-val" id="marketTickerVal">지표 로딩 중...</span>
-                            </div>
-                        </div>
-
-                        <!-- 보유 종목 페이드 티커 -->
-                        <div id="assetSummary" style="min-height:28px;"></div>
+                        <a href="/calendar" class="homarr-card-link">캘린더 열기 →</a>
                     </div>
+                    <div class="calendar-upcoming-grid" id="calendarUpcomingGrid">
+                        <div class="calendar-upcoming-loading">다가오는 일정을 불러오는 중입니다...</div>
+                    </div>
+                    <div class="bento-card-footer">
+                        <span id="calendarUpcomingCount">이번 주 일정 안내</span>
+                        <a href="/calendar" style="color:var(--hm-blue); text-decoration:none; font-weight:600;">📅 새 일정 등록 ↗</a>
+                    </div>
+                </div>
+
+                <!-- [그리드 2-2] 📸 가족 앨범 최신 사진 -->
+                <div class="homarr-card card-album" id="bento-album" data-service="album">
+                    <div class="homarr-card-header">
+                        <div class="homarr-card-title-group">
+                            <span class="homarr-card-icon">📸</span>
+                            <h3 class="homarr-card-title">가족 앨범 최신 사진</h3>
+                        </div>
+                        <a href="https://album.j-jg.cc" class="homarr-card-link">앨범 열기 →</a>
+                    </div>
+                    <div class="album-thumb-strip-container" id="albumThumbStripContainer">
+                        <div class="album-thumb-track" id="albumThumbTrack">
+                            <div class="album-thumb-placeholder">최근 사진을 불러오는 중입니다...</div>
+                        </div>
+                    </div>
+                    <div class="bento-card-footer">
+                        <span id="albumRecentCount">가족들의 소중한 순간</span>
+                        <a href="https://album.j-jg.cc" style="color:var(--hm-blue); text-decoration:none; font-weight:600;">📸 사진 올리기 ↗</a>
+                    </div>
+                </div>
+
+                <!-- [그리드 3-1] 💰 총 자산 포트폴리오 -->
+                <div class="homarr-card card-asset" id="bento-asset" data-service="asset">
+                    <div class="homarr-card-header">
+                        <div class="homarr-card-title-group">
+                            <span class="homarr-card-icon">💰</span>
+                            <h3 class="homarr-card-title">총 자산 포트폴리오</h3>
+                        </div>
+                        <a href="/go/asset" class="homarr-card-link">자산 앱 열기 →</a>
+                    </div>
+
+                    <div class="bento-asset-summary">
+                        <div>
+                            <div class="homarr-label">평가 총액</div>
+                            <div class="bento-asset-big-val font-mono" id="widgetAssetTotalMain">-</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="homarr-label" style="margin-bottom: 3px;">보유 종목</div>
+                            <div class="bento-asset-diff-tag font-mono" id="widgetAssetCountText">14개 종목</div>
+                        </div>
+                    </div>
+
+                    <!-- 실시간 시장지표 롤링 바 -->
+                    <div class="bento-market-ticker-box" id="bentoMarketTickerBox">
+                        <div class="market-ticker-inner font-mono" id="marketTickerContent">
+                            <span class="ticker-label" style="font-weight:700; color:var(--hm-blue); margin-right:6px;">시장지표</span>
+                            <span class="ticker-val" id="marketTickerVal">지표 로딩 중...</span>
+                        </div>
+                    </div>
+
+                    <!-- 종목 요약 -->
+                    <div id="assetSummary" style="min-height:28px;"></div>
 
                     <div class="bento-card-footer">
                         <a href="/go/economy" style="color:inherit; text-decoration:none; font-family:var(--font-mono);">📈 경제 & 증시 ↗</a>
@@ -379,262 +455,126 @@
                     </div>
                 </div>
 
-                <!-- Bento: 📸 가족 앨범 최신 사진 (전폭 스트립) -->
-                <div class="bento-card col-album" id="bento-album" data-service="album" style="grid-column: 1 / -1;">
-                    <div>
-                        <div class="bento-card-header">
-                            <div class="bento-card-title-group">
-                                <span class="cmd-dot-pulse" style="background-color:#ec4899;"></span>
-                                <h3 class="bento-card-title">가족 앨범 최신 사진</h3>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <a href="https://album.j-jg.cc" class="bento-card-link" style="color:#ec4899;">앨범 열기 →</a>
-                            </div>
+                <!-- [그리드 3-2] 📰 실시간 주요 뉴스 -->
+                <div class="homarr-card card-news" id="bento-news">
+                    <div class="homarr-card-header">
+                        <div class="homarr-card-title-group">
+                            <span class="homarr-card-icon">📰</span>
+                            <h3 class="homarr-card-title">실시간 주요 뉴스</h3>
                         </div>
-
-                        <!-- 앨범 썸네일 가로 스와이프 스트립 -->
-                        <div class="album-thumb-strip-container" id="albumThumbStripContainer">
-                            <div class="album-thumb-track" id="albumThumbTrack">
-                                <div class="album-thumb-placeholder">최근 사진을 불러오는 중입니다...</div>
-                            </div>
-                        </div>
+                        <a href="/go/news" class="homarr-card-link">뉴스룸 →</a>
                     </div>
 
-                    <div class="bento-card-footer">
-                        <span id="albumRecentCount">가족들의 소중한 순간</span>
-                        <a href="https://album.j-jg.cc" style="color:inherit; text-decoration:none;">📸 사진 올리기 ↗</a>
-                    </div>
-                </div>
-
-                <!-- Bento: 📅 스마트 캘린더 다가오는 일정 (전폭 카드) -->
-                <div class="bento-card col-calendar" id="bento-calendar" style="grid-column: 1 / -1;">
-                    <div>
-                        <div class="bento-card-header">
-                            <div class="bento-card-title-group">
-                                <span class="cmd-dot-pulse" style="background-color:#6366f1;"></span>
-                                <h3 class="bento-card-title">스마트 캘린더 다가오는 일정</h3>
+                    <!-- 실시간 시장 지표 미니 칩 바 -->
+                    <div class="news-market-bar" id="newsMarketBar">
+                        <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 바로가기">
+                            <div class="market-name" id="marketIndexName">코스피</div>
+                            <div class="market-val-row" id="marketIndexBox" style="display:flex; justify-content:space-between; align-items:baseline;">
+                                <span class="market-price font-mono" id="kospiPrice">-</span>
+                                <span class="market-diff font-mono" id="kospiDiff" style="font-size:0.75rem;">-</span>
                             </div>
-                            <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <a href="/calendar" class="bento-card-link" style="color:#6366f1;">캘린더 열기 →</a>
+                        </a>
+                        <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 바로가기">
+                            <div class="market-name" id="marketFxName">USD/KRW</div>
+                            <div class="market-val-row" id="marketFxBox" style="display:flex; justify-content:space-between; align-items:baseline;">
+                                <span class="market-price font-mono" id="fxPrice">-</span>
+                                <span class="market-diff font-mono" id="fxDiff" style="font-size:0.75rem;">-</span>
                             </div>
-                        </div>
-
-                        <!-- 캘린더 이번 주 / 다가오는 일정 타임라인 그리드 -->
-                        <div class="calendar-upcoming-grid" id="calendarUpcomingGrid">
-                            <div class="calendar-upcoming-loading">다가오는 일정을 불러오는 중입니다...</div>
-                        </div>
+                        </a>
                     </div>
 
-                    <div class="bento-card-footer">
-                        <span id="calendarUpcomingCount">이번 주 일정 안내</span>
-                        <a href="/calendar" style="color:inherit; text-decoration:none;">📅 새 일정 등록 ↗</a>
-                    </div>
-                </div>
-
-                <!-- Bento: 🏡 오늘 가족 루틴 & 소모품 D-Day 주기 (전폭 카드) -->
-                <div class="bento-card col-wiki" id="bento-wiki" style="grid-column: 1 / -1;">
-                    <div>
-                        <div class="bento-card-header">
-                            <div class="bento-card-title-group">
-                                <span class="cmd-dot-pulse" style="background-color:#10b981;"></span>
-                                <h3 class="bento-card-title">오늘 가족 루틴 &amp; D-Day 소모품</h3>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <a href="/wiki" class="bento-card-link" style="color:#10b981;">가족 위키 전체보기 →</a>
-                            </div>
-                        </div>
-
-                        <!-- 1. 🚨 D-7 이내 임박 소모품 / D-Day 하이라이트 띠 -->
-                        <div class="portal-imminent-dday-box" id="portalImminentDdayBox">
-                            <div class="portal-imminent-header">
-                                <div class="portal-imminent-title">
-                                    <span class="portal-imminent-icon">⏳</span>
-                                    <span>임박 소모품 교체 주기</span>
-                                    <span class="portal-imminent-count" id="portalWidgetDdayCount">조회 중...</span>
-                                </div>
-                                <a href="/wiki" class="portal-imminent-more" title="전체 소모품 주기 보기">위키 목록 ›</a>
-                            </div>
-                            <!-- 가로 칩 리스트 (D-7 이내 항목 큼직한 뱃지) -->
-                            <div class="portal-dday-chips-row" id="portalWidgetDdayList">
-                                <div class="portal-wiki-empty">소모품 주기 데이터를 불러오는 중...</div>
-                            </div>
-                        </div>
-
-                        <!-- 2. ✅ 메인: 오늘 가족 루틴 & 장보기 체크리스트 (전면 집중 배치) -->
-                        <div class="portal-routine-main-card">
-                            <div class="portal-routine-header-row">
-                                <div class="portal-routine-title-box">
-                                    <span style="font-size:1.1rem;">✅</span>
-                                    <span class="portal-routine-main-title">오늘의 가족 루틴 &amp; 장보기</span>
-                                </div>
-                                <div class="portal-routine-progress-info">
-                                    <span class="portal-routine-percent font-mono" id="portalWidgetRoutineStats">-</span>
-                                </div>
-                            </div>
-
-                            <!-- 프로그레스 바 -->
-                            <div class="portal-progress-track">
-                                <div id="portalWidgetProgressBar" class="portal-progress-fill"></div>
-                            </div>
-
-                            <!-- 체크리스트 목록 (시원한 터치 영역) -->
-                            <div class="portal-todo-list" id="portalWidgetTodoList">
-                                <div class="portal-wiki-empty">루틴 및 할 일을 불러오는 중...</div>
-                            </div>
-
-                            <!-- 빠른 추가 인라인 폼 (터치 친화적 전폭 행) -->
-                            <form onsubmit="handlePortalQuickTodo(event)" class="portal-quick-todo-form">
-                                <input type="text" id="portalWidgetTodoInput" placeholder="장보기 또는 오늘 할 일 빠른 입력..."
-                                    class="portal-quick-todo-input">
-                                <button type="submit" class="portal-quick-todo-btn">
-                                    추가
-                                </button>
-                            </form>
-                        </div>
-
-                    </div>
-
-                    <div class="bento-card-footer">
-                        <span>보조서버 연동 (매일 자정 루틴 자동 리셋)</span>
-                        <a href="/wiki/new" style="color:inherit; text-decoration:none;">✍️ 새 위키 문서 작성 ↗</a>
-                    </div>
-                </div>
-
-                <!-- Bento 4: 📰 실시간 주요 뉴스 (col-span-7) -->
-                <div class="bento-card col-news" id="bento-news">
-                    <div>
-                        <div class="bento-card-header">
-                            <div class="bento-card-title-group">
-                                <span class="cmd-dot-pulse" style="background-color:var(--status-rose);"></span>
-                                <h3 class="bento-card-title">실시간 주요 뉴스</h3>
-                            </div>
-                            <div style="display:flex; gap:0.5rem; align-items:center;">
-                                <a href="/go/economy" class="bento-card-link" style="color:var(--status-rose);">증시·환율 ↗</a>
-                                <a href="/go/news" class="bento-card-link">뉴스룸 →</a>
-                            </div>
-                        </div>
-
-                        <!-- 실시간 시장 지표 미니 칩 바 -->
-                        <div class="news-market-bar" id="newsMarketBar">
-                            <a href="/go/economy" class="news-market-chip" id="marketIndexChip" title="실시간 증시 바로가기">
-                                <div class="market-name" id="marketIndexName">코스피</div>
-                                <div class="market-val-row" id="marketIndexBox">
-                                    <span class="market-price font-mono" id="kospiPrice">-</span>
-                                    <span class="market-diff font-mono" id="kospiDiff">-</span>
-                                </div>
-                            </a>
-                            <a href="/go/economy" class="news-market-chip" id="marketFxChip" title="실시간 환율 바로가기">
-                                <div class="market-name" id="marketFxName">USD/KRW</div>
-                                <div class="market-val-row" id="marketFxBox">
-                                    <span class="market-price font-mono" id="fxPrice">-</span>
-                                    <span class="market-diff font-mono" id="fxDiff">-</span>
-                                </div>
-                            </a>
-                        </div>
-
-                        <!-- 관심분야 추천 기사 리스트 -->
-                        <div class="news-rec-list" id="newsRecommendedList" style="margin-bottom:0.5rem;">
-                            <div class="news-rec-loading">주요 기사 불러오는 중...</div>
-                        </div>
+                    <!-- 추천 기사 리스트 -->
+                    <div class="news-rec-list" id="newsRecommendedList" style="margin-bottom:0.5rem; min-height:80px;">
+                        <div class="news-rec-loading">주요 기사 불러오는 중...</div>
                     </div>
 
                     <div class="bento-card-footer">
                         <span>실시간 자동 수집 엔진</span>
-                        <a href="https://news.j-jg.cc/breaking" style="color:var(--text-muted); text-decoration:none;">🚨 실시간 속보 ↗</a>
+                        <a href="https://news.j-jg.cc/breaking" style="color:var(--hm-text-muted); text-decoration:none;">🚨 실시간 속보 ↗</a>
                     </div>
                 </div>
 
-                <!-- Bento 5: 🖥️ 서버 인프라 관리 (col-span-5) - 주서버/보조서버 균일 2단 & 단추 전환 지원 -->
-                <div class="bento-card col-ops" id="bento-ops" data-service="ops">
-                    <div>
-                        <div class="bento-card-header">
-                            <div class="bento-card-title-group">
-                                <span class="cmd-dot-pulse"></span>
-                                <h3 class="bento-card-title">서버 인프라 관리</h3>
-                                <!-- 서버 전환 단추 (통합 / 주서버 / 보조서버) -->
-                                <div class="server-pill-toggle">
-                                    <button type="button" class="server-pill-btn active" id="btnServerDual" onclick="setServerViewMode('dual')">통합</button>
-                                    <button type="button" class="server-pill-btn" id="btnServerPri" onclick="setServerViewMode('pri')">주서버</button>
-                                    <button type="button" class="server-pill-btn" id="btnServerSec" onclick="setServerViewMode('sec')">보조서버</button>
-                                </div>
+                <!-- [그리드 4] 🖥️ 서버 인프라 관리 (듀얼 2단 카드) -->
+                <div class="homarr-card card-ops" id="bento-ops" data-service="ops" style="grid-column: 1 / -1;">
+                    <div class="homarr-card-header">
+                        <div class="homarr-card-title-group">
+                            <span class="homarr-card-icon">🖥️</span>
+                            <h3 class="homarr-card-title">서버 인프라 관리</h3>
+                            <div class="server-pill-toggle" style="margin-left:10px; display:inline-flex; gap:4px;">
+                                <button type="button" class="server-pill-btn active" id="btnServerDual" onclick="setServerViewMode('dual')" style="padding:2px 8px; border-radius:4px; font-size:0.72rem; border:1px solid var(--hm-border); background:var(--hm-bg-subtle); cursor:pointer;">통합</button>
+                                <button type="button" class="server-pill-btn" id="btnServerPri" onclick="setServerViewMode('pri')" style="padding:2px 8px; border-radius:4px; font-size:0.72rem; border:1px solid var(--hm-border); background:var(--hm-bg-subtle); cursor:pointer;">주서버</button>
+                                <button type="button" class="server-pill-btn" id="btnServerSec" onclick="setServerViewMode('sec')" style="padding:2px 8px; border-radius:4px; font-size:0.72rem; border:1px solid var(--hm-border); background:var(--hm-bg-subtle); cursor:pointer;">보조서버</button>
                             </div>
-                            <a href="/admin" class="bento-card-link">관리자 →</a>
                         </div>
+                        <a href="/admin" class="homarr-card-link">관리자 →</a>
+                    </div>
 
-                        <!-- 균일 2단 서버 현황 뷰 (주서버 & 보조서버 균일 배치) -->
-                        <div class="server-dual-grid" id="serverDualGrid">
-                            <!-- 주서버 (갤럭시 노트 9) -->
-                            <div class="server-unit-card" id="serverUnitPri">
-                                <div class="server-unit-header">
-                                    <span class="server-unit-title"><span class="cmd-dot-pulse"></span> 주서버 (갤럭시 노트 9)</span>
-                                    <span class="bento-badge badge-emerald" id="serverPriBadge">상시 가동</span>
+                    <!-- 주서버 & 보조서버 균일 2단 배치 -->
+                    <div class="server-dual-grid" id="serverDualGrid">
+                        <!-- 주서버 (갤럭시 노트 9) -->
+                        <div class="server-unit-card" id="serverUnitPri">
+                            <div class="server-unit-header">
+                                <span class="server-unit-title">📱 주서버 (갤럭시 노트 9)</span>
+                                <span class="bento-badge badge-emerald" id="serverPriBadge">상시 가동</span>
+                            </div>
+                            <div class="server-unit-metrics">
+                                <div class="server-metric-item">
+                                    <span class="metric-label">CPU 사용량</span>
+                                    <span class="metric-val font-mono" id="serverPriCpu">0.0%</span>
                                 </div>
-                                <div class="server-unit-metrics">
-                                    <div class="server-metric-item">
-                                        <span class="metric-label">CPU 사용량</span>
-                                        <span class="metric-val font-mono" id="serverPriCpu">0.0%</span>
-                                    </div>
-                                    <div class="server-metric-item">
-                                        <span class="metric-label">메모리 사용량</span>
-                                        <span class="metric-val font-mono" id="serverPriRam">44.7%</span>
-                                    </div>
-                                </div>
-                                <div class="server-unit-sub-details">
-                                    <div class="server-sub-row">
-                                        <span class="sub-label">저장공간</span>
-                                        <span class="sub-val font-mono" id="serverPriDisk">42% (26.8GB / 64.0GB)</span>
-                                    </div>
-                                    <div class="server-sub-row">
-                                        <span class="sub-label">네트워크</span>
-                                        <span class="sub-val" id="serverPriNet">정상 (온라인)</span>
-                                    </div>
+                                <div class="server-metric-item">
+                                    <span class="metric-label">메모리 사용량</span>
+                                    <span class="metric-val font-mono" id="serverPriRam">44.7%</span>
                                 </div>
                             </div>
-
-                            <!-- 보조서버 (구형 노트북) -->
-                            <div class="server-unit-card" id="serverUnitSec">
-                                <div class="server-unit-header">
-                                    <span class="server-unit-title"><span class="cmd-dot-pulse" style="background:#38bdf8;"></span> 보조서버 (구형 노트북)</span>
-                                    <span class="bento-badge badge-gray" id="serverSecBadge">백업 대기</span>
+                            <div class="server-unit-sub-details" style="margin-top:6px; border-top:1px solid var(--hm-border-subtle); padding-top:4px;">
+                                <div class="server-sub-row">
+                                    <span class="sub-label">저장공간</span>
+                                    <span class="sub-val font-mono" id="serverPriDisk">42% (26.8GB / 64.0GB)</span>
                                 </div>
-                                <div class="server-unit-metrics">
-                                    <div class="server-metric-item">
-                                        <span class="metric-label">CPU 사용량</span>
-                                        <span class="metric-val font-mono" id="serverSecCpu">대기 중</span>
-                                    </div>
-                                    <div class="server-metric-item">
-                                        <span class="metric-label">메모리 사용량</span>
-                                        <span class="metric-val font-mono" id="serverSecRam">대기 중</span>
-                                    </div>
-                                </div>
-                                <div class="server-unit-sub-details">
-                                    <div class="server-sub-row">
-                                        <span class="sub-label">저장공간</span>
-                                        <span class="sub-val font-mono" id="serverSecDisk">2.1% (9.6GB / 456GB)</span>
-                                    </div>
-                                    <div class="server-sub-row">
-                                        <span class="sub-label">네트워크</span>
-                                        <span class="sub-val" id="serverSecNet">백업 대기 (새벽 04:00)</span>
-                                    </div>
-                                    <div class="server-sub-row">
-                                        <span class="sub-label">CPU 온도</span>
-                                        <span class="sub-val font-mono" id="serverSecTemp" style="color:var(--status-emerald);">38.5°C</span>
-                                    </div>
+                                <div class="server-sub-row">
+                                    <span class="sub-label">네트워크</span>
+                                    <span class="sub-val" id="serverPriNet">정상 (온라인)</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bento-infra-services" style="margin-top:0.6rem;">
-                            <span class="bento-infra-pill"><span class="cmd-dot-pulse"></span> PORTAL (3004)</span>
-                            <span class="bento-infra-pill"><span class="cmd-dot-pulse"></span> BLOOD (3000)</span>
-                            <span class="bento-infra-pill"><span class="cmd-dot-pulse"></span> ASSET (3003)</span>
-                            <span class="bento-infra-pill"><span class="cmd-dot-pulse"></span> NEWS (5050)</span>
+                        <!-- 보조서버 (구형 노트북) -->
+                        <div class="server-unit-card" id="serverUnitSec">
+                            <div class="server-unit-header">
+                                <span class="server-unit-title">💻 보조서버 (구형 노트북)</span>
+                                <span class="bento-badge badge-gray" id="serverSecBadge" style="background:#e2e8f0; color:#475569; padding:2px 8px; border-radius:6px; font-size:0.75rem; font-weight:700;">대기 중</span>
+                            </div>
+                            <div class="server-unit-metrics">
+                                <div class="server-metric-item">
+                                    <span class="metric-label">CPU 사용량</span>
+                                    <span class="metric-val font-mono" id="serverSecCpu">대기 중</span>
+                                </div>
+                                <div class="server-metric-item">
+                                    <span class="metric-label">메모리 사용량</span>
+                                    <span class="metric-val font-mono" id="serverSecRam">대기 중</span>
+                                </div>
+                            </div>
+                            <div class="server-unit-sub-details" style="margin-top:6px; border-top:1px solid var(--hm-border-subtle); padding-top:4px;">
+                                <div class="server-sub-row">
+                                    <span class="sub-label">저장공간</span>
+                                    <span class="sub-val font-mono" id="serverSecDisk">2.1% (9.6GB / 456GB)</span>
+                                </div>
+                                <div class="server-sub-row">
+                                    <span class="sub-label">네트워크</span>
+                                    <span class="sub-val" id="serverSecNet">백업 대기 (새벽 04:00)</span>
+                                </div>
+                                <div class="server-sub-row">
+                                    <span class="sub-label">CPU 온도</span>
+                                    <span class="sub-val font-mono" id="serverSecTemp" style="color:var(--hm-emerald);">38.5°C</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="bento-card-footer">
                         <span>클러스터 모니터링</span>
-                        <span style="color:var(--status-emerald); font-weight:700;" id="serverClusterStatus">노드 정상 가동 중</span>
+                        <span style="color:var(--hm-emerald); font-weight:700;" id="serverClusterStatus">노드 정상 가동 중</span>
                     </div>
                 </div>
 

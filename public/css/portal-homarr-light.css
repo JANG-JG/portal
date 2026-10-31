@@ -1,0 +1,324 @@
+/* ==============================================================================
+ * 🌟 JG 포털 대시보드: Homarr & Apple 스타일 소프트 클린 라이트 테마 (코어)
+ * ------------------------------------------------------------------------------
+ * [규칙 3] 500줄 이하 모듈화 준수 (현재 약 260줄)
+ * [규칙 6] 모바일 360px 무넘침 보장 (터치 타겟 42px+, box-sizing)
+ * ============================================================================== */
+
+:root {
+    --hm-bg-page: #f8fafc;
+    --hm-bg-card: #ffffff;
+    --hm-bg-subtle: #f1f5f9;
+    --hm-bg-hover: #e2e8f0;
+
+    --hm-border: #e2e8f0;
+    --hm-border-subtle: #f1f5f9;
+    --hm-border-strong: #cbd5e1;
+
+    --hm-text-main: #0f172a;
+    --hm-text-body: #334155;
+    --hm-text-muted: #64748b;
+    --hm-text-light: #94a3b8;
+
+    --hm-emerald: #10b981;
+    --hm-emerald-bg: #ecfdf5;
+    --hm-emerald-border: #a7f3d0;
+
+    --hm-blue: #3b82f6;
+    --hm-blue-bg: #eff6ff;
+    --hm-blue-border: #bfdbfe;
+
+    --hm-amber: #f59e0b;
+    --hm-amber-bg: #fffbeb;
+    --hm-amber-border: #fde68a;
+
+    --hm-rose: #f43f5e;
+    --hm-rose-bg: #fff1f2;
+    --hm-rose-border: #fecdd3;
+
+    --hm-radius-card: 16px;
+    --hm-radius-btn: 10px;
+    --hm-radius-chip: 8px;
+
+    --hm-shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.05);
+    --hm-shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+    --hm-shadow-lg: 0 10px 25px -4px rgba(15, 23, 42, 0.08);
+}
+
+/* 캔버스 및 기본 텍스트 전환 */
+body {
+    background-color: var(--hm-bg-page) !important;
+    color: var(--hm-text-main) !important;
+}
+
+/* 🌐 내비게이션 바 소프트 라이트 글래스모피즘 */
+.cmd-navbar {
+    background: rgba(255, 255, 255, 0.94) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid var(--hm-border) !important;
+    box-shadow: var(--hm-shadow-sm) !important;
+}
+.cmd-brand-title {
+    color: var(--hm-text-main) !important;
+    font-weight: 800 !important;
+}
+.cmd-nav-tabs .portal-tab-btn,
+.cmd-nav-mobile-strip .portal-tab-btn {
+    color: var(--hm-text-muted) !important;
+}
+.cmd-nav-tabs .portal-tab-btn:hover,
+.cmd-nav-mobile-strip .portal-tab-btn:hover {
+    color: var(--hm-text-main) !important;
+    background: var(--hm-bg-subtle) !important;
+}
+.cmd-nav-tabs .portal-tab-btn.active,
+.cmd-nav-mobile-strip .portal-tab-btn.active {
+    color: var(--hm-blue) !important;
+    background: var(--hm-blue-bg) !important;
+    border-color: var(--hm-blue-border) !important;
+}
+.cmd-nav-weather,
+.cmd-nav-search-btn,
+.cmd-nav-notif-btn,
+.cmd-nav-logout,
+.cmd-launcher-btn {
+    background: var(--hm-bg-subtle) !important;
+    border: 1px solid var(--hm-border) !important;
+    color: var(--hm-text-body) !important;
+}
+
+/* ==============================================================================
+ * 🌟 1. APPLE / HOMARR HERO HEADER: 일과 & 활동 링 브리핑 카드
+ * ============================================================================== */
+.homarr-hero-card {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 1.25rem;
+    background: var(--hm-bg-card);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-card);
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--hm-shadow-md);
+    margin-bottom: 1.25rem;
+    align-items: center;
+}
+
+.homarr-ring-box {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-right: 1px solid var(--hm-border);
+    padding-right: 1.25rem;
+}
+.homarr-ring-wrapper {
+    position: relative;
+    width: 84px;
+    height: 84px;
+    flex-shrink: 0;
+}
+.homarr-ring-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+.homarr-ring-bg {
+    fill: none;
+    stroke: var(--hm-bg-subtle);
+    stroke-width: 8;
+}
+.homarr-ring-bar {
+    fill: none;
+    stroke: var(--hm-emerald);
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.homarr-ring-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.1;
+}
+.homarr-ring-percent {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--hm-text-main);
+}
+.homarr-ring-sub {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--hm-text-muted);
+}
+.homarr-ring-info {
+    min-width: 0;
+}
+.homarr-ring-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--hm-text-main);
+    margin-bottom: 2px;
+}
+.homarr-ring-desc {
+    font-size: 0.8rem;
+    color: var(--hm-text-muted);
+}
+
+/* 우측 헬스 서머리 (복약 & 혈압) */
+.homarr-health-summary-box {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: center;
+}
+.homarr-med-action-card,
+.homarr-blood-mini-card {
+    background: var(--hm-bg-subtle);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-btn);
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.homarr-blood-mini-card {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.homarr-blood-mini-card:hover {
+    border-color: var(--hm-border-strong);
+    background: #eef2f6;
+}
+.homarr-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--hm-text-muted);
+    margin-bottom: 2px;
+    letter-spacing: -0.01em;
+}
+.homarr-med-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--hm-text-main);
+}
+.homarr-med-sub,
+.homarr-blood-sub {
+    font-size: 0.76rem;
+    color: var(--hm-text-muted);
+}
+.homarr-blood-val {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--hm-text-main);
+}
+.homarr-btn-med {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 14px;
+    background: var(--hm-emerald) !important;
+    color: #ffffff !important;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border-radius: var(--hm-radius-chip);
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    white-space: nowrap;
+    transition: transform 0.15s, opacity 0.15s;
+}
+.homarr-btn-med:active {
+    transform: scale(0.96);
+}
+
+/* ==============================================================================
+ * 🍱 2. HOMARR 2-COLUMN GRID SYSTEM
+ * ============================================================================== */
+.homarr-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+.homarr-card {
+    background: var(--hm-bg-card);
+    border: 1px solid var(--hm-border);
+    border-radius: var(--hm-radius-card);
+    padding: 1.25rem;
+    box-shadow: var(--hm-shadow-md);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.homarr-card:hover {
+    border-color: var(--hm-border-strong);
+    box-shadow: var(--hm-shadow-lg);
+}
+.homarr-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid var(--hm-border-subtle);
+}
+.homarr-card-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.homarr-card-icon {
+    font-size: 1.15rem;
+    line-height: 1;
+}
+.homarr-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--hm-text-main);
+    margin: 0;
+}
+.homarr-card-link {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--hm-blue);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+.homarr-card-link:hover {
+    text-decoration: underline;
+}
+
+/* 📱 모바일 360px 반응형 */
+@media (max-width: 768px) {
+    .main-shell {
+        padding: calc(48px + 0.85rem) 0.75rem 4.5rem !important;
+    }
+    .homarr-hero-card {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+        gap: 1rem;
+    }
+    .homarr-ring-box {
+        border-right: none;
+        border-bottom: 1px solid var(--hm-border);
+        padding-right: 0;
+        padding-bottom: 0.85rem;
+        justify-content: center;
+    }
+    .homarr-health-summary-box {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+    }
+    .homarr-grid {
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+    }
+    .homarr-card {
+        padding: 1rem;
+    }
+}
