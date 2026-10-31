@@ -58,7 +58,13 @@ function forwardToSecondaryWiki(req, res, targetPath) {
             proxyRes.headers.location = proxyRes.headers.location.replace(`http://${WIKI_HOST}:${WIKI_PORT}`, '');
         }
 
-        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        const outHeaders = { ...proxyRes.headers };
+        // 정적 자원에 버전 쿼리(?v=...)가 있는 경우 24시간 브라우저 캐싱 보장 ([규칙 4] 준수)
+        if (targetPath.startsWith('/static/') && req.query.v) {
+            outHeaders['cache-control'] = 'public, max-age=86400, immutable';
+        }
+
+        res.writeHead(proxyRes.statusCode, outHeaders);
         proxyRes.pipe(res, { end: true });
     });
 
