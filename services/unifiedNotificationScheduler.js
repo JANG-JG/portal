@@ -7,6 +7,7 @@ const { portalDb } = require('./db');
 const { ipv4HttpsAgent, sendServerTelegram } = require('./telegramAlert.service');
 const { checkAndDispatchHospitalVisit } = require('./scheduler/hospitalVisit.scheduler');
 const { checkAndDispatchCalendarEvents } = require('./scheduler/calendarEvent.scheduler');
+const { checkAndDispatchWikiDday } = require('./scheduler/wikiDday.scheduler');
 const { checkPm2Health, checkDiskHealth } = require('./scheduler/systemHealth.scheduler');
 
 // ==============================================================================
@@ -326,6 +327,11 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                 // 7. 📅 캘린더 개인 일정 알림 (종일 및 시간 지정 일정 / 사전 및 다회 발송)
                 // ------------------------------------------------------------------
                 checkAndDispatchCalendarEvents(portalDb || db, userId, kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush, sentHistoryCache);
+
+                // ------------------------------------------------------------------
+                // 8. ⏳ 위키 생활 D-Day 및 소모품 교체 주기 임박 알림 (D-7, D-3, D-1, 당일)
+                // ------------------------------------------------------------------
+                checkAndDispatchWikiDday(userId, kstDateStr, kstTimeStr, sendBroadcastPush, sentHistoryCache);
             });
         });
 

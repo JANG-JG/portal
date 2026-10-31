@@ -81,7 +81,7 @@
             return { key: 'album', label: '가족앨범', icon: '📸', colorClass: 'cat-album' };
         }
         if (type === 'breaking' || full.includes('속보')) return { key: 'breaking', label: '속보', icon: '🚨', colorClass: 'cat-breaking' };
-        if (type === 'calendar' || full.includes('일정') || full.includes('캘린더')) return { key: 'calendar', label: '일정', icon: '📅', colorClass: 'cat-calendar' };
+        if (type === 'calendar' || type === 'dday' || full.includes('일정') || full.includes('캘린더') || full.includes('d-day') || full.includes('디데이') || full.includes('소모품')) return { key: 'calendar', label: '일정', icon: '📅', colorClass: 'cat-calendar' };
         if (type === 'weather' || full.includes('날씨') || full.includes('기온') || full.includes('미세먼지') || full.includes('강수')) return { key: 'weather', label: '날씨', icon: '🌤️', colorClass: 'cat-weather' };
         if (['asset', 'economy', 'finance', 'stock'].includes(type) || full.includes('증시') || full.includes('환율') || full.includes('코스피') || full.includes('주가')) return { key: 'finance', label: '금융', icon: '💰', colorClass: 'cat-finance' };
         if (['blood_pressure', 'medication', 'hospital'].includes(type) || full.includes('혈압') || full.includes('복약') || full.includes('병원') || full.includes('약 복용')) return { key: 'health', label: '건강', icon: '🩸', colorClass: 'cat-health' };
