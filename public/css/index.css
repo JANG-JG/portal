@@ -4193,169 +4193,308 @@ html.role-pending [data-service="ops"] {
     }
 }
 
-/* 🏡 가족 루틴 & 소모품 D-Day 주기 위젯 */
+/* 🏡 오늘 가족 루틴 & 소모품 D-Day 주기 위젯 */
 .col-wiki {
     grid-column: 1 / -1;
 }
-.portal-wiki-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-top: 0.35rem;
-}
-@media (max-width: 768px) {
-    .portal-wiki-grid {
-        grid-template-columns: 1fr;
-        gap: 0.85rem;
-    }
-}
 
-.portal-wiki-section {
-    background: rgba(15, 23, 42, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+/* 1. 상단 임박 소모품 / D-Day 하이라이트 띠 */
+.portal-imminent-dday-box {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: var(--radius-md, 8px);
-    padding: 0.75rem 0.85rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-width: 0;
+    padding: 0.65rem 0.85rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.85rem;
 }
-.portal-wiki-sec-header {
+.portal-imminent-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 0.78rem;
-    color: var(--text-muted, #94a3b8);
-    font-weight: 600;
+    margin-bottom: 0.45rem;
 }
-
-/* D-Day 칩 리스트 */
-.portal-dday-list {
+.portal-imminent-title {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 0.4rem;
-    max-height: 200px;
-    overflow-y: auto;
-}
-.portal-dday-chip {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
-    padding: 0.45rem 0.6rem;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-.portal-dday-chip:hover {
-    background: rgba(30, 41, 59, 0.9);
-    border-color: rgba(56, 189, 248, 0.3);
-}
-.portal-dday-badge {
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 0.2rem 0.45rem;
-    border-radius: 4px;
-    flex-shrink: 0;
-}
-.portal-dday-info {
-    flex: 1;
-    min-width: 0;
-}
-.portal-dday-title {
     font-size: 0.78rem;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-primary, #f8fafc);
 }
-.portal-dday-sub {
+.portal-imminent-count {
     font-size: 0.68rem;
-    color: var(--text-muted, #94a3b8);
-    display: flex;
-    gap: 0.35rem;
-}
-.portal-dday-check-btn {
-    width: 22px;
-    height: 22px;
+    padding: 0.1rem 0.4rem;
     border-radius: 4px;
-    background: rgba(255, 255, 255, 0.05);
+    font-weight: 700;
+}
+.count-alert {
+    background: rgba(244, 63, 94, 0.2);
+    color: #f43f5e;
+    border: 1px solid rgba(244, 63, 94, 0.35);
+}
+.count-normal {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.portal-imminent-more {
+    font-size: 0.72rem;
+    color: #38bdf8;
+    text-decoration: none;
+    font-weight: 600;
+}
+.portal-imminent-more:hover {
+    text-decoration: underline;
+}
+
+/* 가로 칩 리스트 */
+.portal-dday-chips-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scrollbar-width: thin;
+}
+.portal-imminent-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: rgba(30, 41, 59, 0.8);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: var(--text-muted, #94a3b8);
+    border-radius: 8px;
+    padding: 0.4rem 0.65rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    max-width: 280px;
+    transition: all 0.15s ease;
+}
+.portal-imminent-chip:hover {
+    background: rgba(30, 41, 59, 1);
+    border-color: rgba(56, 189, 248, 0.4);
+}
+.badge-overdue .portal-imminent-chip-badge {
+    background: rgba(244, 63, 94, 0.25);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.4);
+}
+.badge-today .portal-imminent-chip-badge {
+    background: rgba(245, 158, 11, 0.25);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+.badge-imminent .portal-imminent-chip-badge {
+    background: rgba(6, 182, 212, 0.2);
+    color: #22d3ee;
+    border: 1px solid rgba(6, 182, 212, 0.35);
+}
+.portal-imminent-chip-badge {
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+.portal-imminent-chip-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+.portal-imminent-cycle {
+    font-size: 0.68rem;
+    color: #10b981;
+    white-space: nowrap;
+}
+.portal-imminent-action-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #cbd5e1;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     cursor: pointer;
-    flex-shrink: 0;
+    margin-left: 0.2rem;
 }
-.portal-dday-check-btn:hover {
-    background: rgba(16, 185, 129, 0.2);
-    border-color: #10b981;
+.portal-imminent-action-btn:hover {
+    background: rgba(16, 185, 129, 0.3);
     color: #10b981;
+    border-color: #10b981;
+}
+.portal-imminent-safe-bar {
+    font-size: 0.76rem;
+    color: #94a3b8;
+    padding: 0.4rem 0.2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+.portal-safe-sub {
+    color: #64748b;
+    font-size: 0.72rem;
 }
 
-/* 오늘 루틴 & 할 일 */
-.portal-todo-list {
+/* 2. 메인: 오늘 가족 루틴 & 장보기 체크리스트 */
+.portal-routine-main-card {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-md, 8px);
+    padding: 0.85rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    max-height: 180px;
-    overflow-y: auto;
+    gap: 0.65rem;
 }
-.portal-todo-item {
+.portal-routine-header-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
-    background: rgba(30, 41, 59, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 6px;
-    padding: 0.4rem 0.6rem;
 }
-.portal-todo-label {
+.portal-routine-title-box {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
+}
+.portal-routine-main-title {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+.portal-routine-percent {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #10b981;
+}
+
+/* 프로그레스 바 */
+.portal-progress-track {
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.portal-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #10b981, #06b6d4);
+    transition: width 0.4s ease;
+}
+
+/* 체크리스트 목록 (시원한 터치 영역) */
+.portal-todo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.portal-todo-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+    min-height: 42px;
+    transition: all 0.15s ease;
+}
+.portal-todo-row:hover {
+    background: rgba(30, 41, 59, 0.75);
+    border-color: rgba(255, 255, 255, 0.12);
+}
+.portal-todo-row.is-completed {
+    opacity: 0.55;
+    background: rgba(15, 23, 42, 0.35);
+}
+.portal-todo-touch-label {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
     flex: 1;
     min-width: 0;
     cursor: pointer;
+    user-select: none;
 }
-.portal-todo-cb {
-    width: 15px;
-    height: 15px;
+.portal-todo-check-input {
+    width: 18px;
+    height: 18px;
     accent-color: #10b981;
     cursor: pointer;
+    flex-shrink: 0;
 }
 .portal-todo-text {
-    font-size: 0.76rem;
-    color: var(--text-primary, #f8fafc);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #f8fafc;
+    word-break: break-all;
+    line-height: 1.35;
 }
-.portal-todo-tag {
-    font-size: 0.64rem;
-    padding: 0.15rem 0.35rem;
+.portal-todo-type-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
     border-radius: 4px;
     flex-shrink: 0;
 }
-.tag-routine {
-    background: rgba(16, 185, 129, 0.15);
+.type-routine {
+    background: rgba(16, 185, 129, 0.18);
     color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.3);
+    border: 1px solid rgba(16, 185, 129, 0.35);
 }
-.tag-todo {
-    background: rgba(148, 163, 184, 0.1);
-    color: #94a3b8;
-    border: 1px solid rgba(148, 163, 184, 0.2);
+.type-todo {
+    background: rgba(148, 163, 184, 0.12);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* 빠른 추가 인라인 폼 */
+.portal-quick-todo-form {
+    display: flex;
+    gap: 0.45rem;
+    margin-top: 0.35rem;
+}
+.portal-quick-todo-input {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.78rem;
+    color: #fff;
+    outline: none;
+    min-height: 38px;
+}
+.portal-quick-todo-input:focus {
+    border-color: #10b981;
+    background: rgba(15, 23, 42, 0.95);
+}
+.portal-quick-todo-btn {
+    padding: 0 0.9rem;
+    border-radius: 8px;
+    background: #10b981;
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 0.78rem;
+    border: none;
+    cursor: pointer;
+    min-height: 38px;
+    transition: background 0.15s ease;
+}
+.portal-quick-todo-btn:hover {
+    background: #059669;
 }
 
 .portal-wiki-empty {
-    font-size: 0.74rem;
-    color: var(--text-muted, #94a3b8);
+    font-size: 0.76rem;
+    color: #94a3b8;
     text-align: center;
-    padding: 0.75rem;
+    padding: 0.85rem;
 }
 
 

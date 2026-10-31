@@ -2,9 +2,9 @@
  * ==============================================================================
  * JG 포털: 가족 위키 & 데일리 루틴/D-Day 대시보드 위젯 엔진 (portal-wiki.js)
  * ------------------------------------------------------------------------------
- * [규칙 3] 500줄 이하 모듈화 준수 (약 180줄)
+ * [규칙 3] 500줄 이하 모듈화 준수 (약 200줄)
  * [규칙 2] 100% 한국어 및 일상 친화적 용어
- * [규칙 6] 모바일 퍼스트 360px 무넘침 보장
+ * [규칙 6] 모바일 퍼스트 360px 무넘침 보장 (40px+ 터치 타겟)
  * ==============================================================================
  */
 
@@ -33,52 +33,83 @@ async function initFamilyWikiWidget() {
 
 // 2. 위젯 UI 렌더링
 function renderPortalWikiWidget(data) {
-    // 2-1. D-Day 소모품 주기 바인딩
+    // -------------------------------------------------------------------------
+    // 2-1. D-Day 소모품 주기: [D-7 이내 임박 항목] 집중 렌더링
+    // -------------------------------------------------------------------------
     const ddayContainer = document.getElementById('portalWidgetDdayList');
     const ddayCount = document.getElementById('portalWidgetDdayCount');
 
     if (ddayContainer && data.dday) {
+        // D-7 이내이거나 이미 날짜 지난(overdue) 임박 항목 필터링
+        const imminentItems = data.dday.filter(item => {
+            const info = item.dday_info || {};
+            return info.is_imminent === true || (info.days_diff !== undefined && info.days_diff <= 7);
+        });
+
         if (ddayCount) {
-            ddayCount.textContent = `${data.dday.length}개 임박`;
+            if (imminentItems.length > 0) {
+                ddayCount.textContent = `${imminentItems.length}건 임박`;
+                ddayCount.className = 'portal-imminent-count count-alert';
+            } else {
+                ddayCount.textContent = '임박 일정 없음';
+                ddayCount.className = 'portal-imminent-count count-normal';
+            }
         }
 
-        if (data.dday.length === 0) {
-            ddayContainer.innerHTML = '<div class="portal-wiki-empty">현재 예정된 D-Day가 없습니다.</div>';
-        } else {
-            ddayContainer.innerHTML = data.dday.map(item => {
+        if (imminentItems.length > 0) {
+            // 임박한 항목들 큼직하고 직관적인 가로 칩 카드로 표시
+            ddayContainer.innerHTML = imminentItems.map(item => {
                 const info = item.dday_info || {};
-                const isImminent = info.is_imminent;
-                const badgeStyle = isImminent
-                    ? 'background:rgba(244,63,94,0.18); color:#f43f5e; border:1px solid rgba(244,63,94,0.4); font-weight:700;'
-                    : 'background:rgba(6,182,212,0.15); color:#22d3ee; border:1px solid rgba(6,182,212,0.3);';
+                const isOverdue = info.is_overdue;
+                const isToday = info.days_diff === 0;
+                
+                let badgeClass = 'badge-imminent';
+                let icon = '⏳';
+                if (isOverdue) {
+                    badgeClass = 'badge-overdue';
+                    icon = '🚨';
+                } else if (isToday) {
+                    badgeClass = 'badge-today';
+                    icon = '🔥';
+                }
 
                 return `
-                <div class="portal-dday-chip" onclick="handlePortalDdayClick(${item.id}, '${escapeHtml(item.title)}', ${item.cycle_days})" title="클릭하여 완료 및 주기 갱신">
-                    <div class="portal-dday-badge font-mono" style="${badgeStyle}">
-                        ${info.text || 'D-Day'}
-                    </div>
-                    <div class="portal-dday-info">
-                        <div class="portal-dday-title truncate">${escapeHtml(item.title)}</div>
-                        <div class="portal-dday-sub">
-                            <span>${item.target_date}</span>
-                            ${item.cycle_days > 0 ? `<span style="color:#10b981;">(${item.cycle_days}일 주기)</span>` : ''}
-                        </div>
-                    </div>
-                    <button type="button" class="portal-dday-check-btn" title="완료 처리">✓</button>
+                <div class="portal-imminent-chip ${badgeClass}" onclick="handlePortalDdayClick(${item.id}, '${escapeHtml(item.title)}', ${item.cycle_days})" title="클릭하여 교체 완료 및 다음 주기 갱신">
+                    <span class="portal-imminent-chip-badge font-mono">
+                        ${icon} ${info.text || 'D-Day'}
+                    </span>
+                    <span class="portal-imminent-chip-title truncate">${escapeHtml(item.title)}</span>
+                    ${item.cycle_days > 0 ? `<span class="portal-imminent-cycle font-mono">${item.cycle_days}일 주기</span>` : ''}
+                    <button type="button" class="portal-imminent-action-btn" title="완료 처리">✓</button>
                 </div>
                 `;
             }).join('');
+        } else {
+            // 임박한 항목이 없을 때: 가장 가까운 일정 1개 안내 및 여유 상태 표시
+            const nextItem = data.dday[0];
+            const nextText = nextItem 
+                ? `(다음 교체: <b>${escapeHtml(nextItem.title)}</b> ${nextItem.dday_info ? nextItem.dday_info.text : ''})`
+                : '';
+
+            ddayContainer.innerHTML = `
+            <div class="portal-imminent-safe-bar">
+                <span>✨ 7일 이내 예정된 긴급 소모품 교체 일정이 없습니다.</span>
+                ${nextText ? `<span class="portal-safe-sub">${nextText}</span>` : ''}
+            </div>
+            `;
         }
     }
 
-    // 2-2. 오늘 가족 루틴 및 장보기 체크리스트 바인딩
+    // -------------------------------------------------------------------------
+    // 2-2. 메인: 오늘 가족 루틴 & 장보기 체크리스트 (전면 집중)
+    // -------------------------------------------------------------------------
     const todoContainer = document.getElementById('portalWidgetTodoList');
     const routineStats = document.getElementById('portalWidgetRoutineStats');
     const progressBar = document.getElementById('portalWidgetProgressBar');
 
     if (data.routine_stats && routineStats) {
         const stats = data.routine_stats;
-        routineStats.textContent = `${stats.percent}% (${stats.completed}/${stats.total})`;
+        routineStats.textContent = `${stats.percent}% (${stats.completed}/${stats.total} 완료)`;
         if (progressBar) {
             progressBar.style.width = `${stats.percent}%`;
         }
@@ -92,13 +123,13 @@ function renderPortalWikiWidget(data) {
                 const isRoutine = todo.is_routine === 1;
                 const isDone = todo.is_completed === 1;
                 return `
-                <div class="portal-todo-item ${isDone ? 'done' : ''}" id="portal-todo-${todo.id}">
-                    <label class="portal-todo-label">
-                        <input type="checkbox" ${isDone ? 'checked' : ''} onchange="togglePortalTodo(${todo.id})" class="portal-todo-cb">
+                <div class="portal-todo-row ${isDone ? 'is-completed' : ''}" id="portal-todo-${todo.id}">
+                    <label class="portal-todo-touch-label">
+                        <input type="checkbox" ${isDone ? 'checked' : ''} onchange="togglePortalTodo(${todo.id})" class="portal-todo-check-input">
                         <span class="portal-todo-text ${isDone ? 'line-through text-muted' : ''}">${escapeHtml(todo.content)}</span>
                     </label>
-                    <span class="portal-todo-tag ${isRoutine ? 'tag-routine' : 'tag-todo'}">
-                        ${isRoutine ? '루틴' : '장보기'}
+                    <span class="portal-todo-type-badge ${isRoutine ? 'type-routine' : 'type-todo'}">
+                        ${isRoutine ? '매일 루틴' : '장보기'}
                     </span>
                 </div>
                 `;
@@ -111,14 +142,16 @@ function renderPortalWikiWidget(data) {
 async function togglePortalTodo(id) {
     const row = document.getElementById(`portal-todo-${id}`);
     const text = row ? row.querySelector('.portal-todo-text') : null;
-    const cb = row ? row.querySelector('.portal-todo-cb') : null;
+    const cb = row ? row.querySelector('.portal-todo-check-input') : null;
     const currentChecked = cb ? cb.checked : false;
 
     // 즉시 UI 반영
-    if (text) {
+    if (row && text) {
         if (currentChecked) {
+            row.classList.add('is-completed');
             text.classList.add('line-through', 'text-muted');
         } else {
+            row.classList.remove('is-completed');
             text.classList.remove('line-through', 'text-muted');
         }
     }
@@ -129,6 +162,7 @@ async function togglePortalTodo(id) {
         if (!resData.success) {
             // 실패 시 롤백
             if (cb) cb.checked = !currentChecked;
+            if (row) row.classList.toggle('is-completed');
             if (text) text.classList.toggle('line-through');
         } else {
             // 통계 갱신
@@ -143,7 +177,7 @@ async function togglePortalTodo(id) {
 // 4. D-Day 항목 클릭 완료 처리
 async function handlePortalDdayClick(id, title, cycleDays) {
     const confirmMsg = cycleDays > 0
-        ? `[${title}]\n소모품 교체를 완료하셨습니까?\n완료 시 다음 주기(${cycleDays}일 후)로 자동 갱신됩니다.`
+        ? `[${title}]\n소모품 교체를 완료하셨습니까?\n확인 시 다음 주기(${cycleDays}일 후)로 자동 갱신됩니다.`
         : `[${title}]\n해당 일정을 완료 처리하시겠습니까?`;
 
     if (!confirm(confirmMsg)) return;

@@ -431,61 +431,71 @@
                     </div>
                 </div>
 
-                <!-- Bento: 🏡 가족 루틴 & 소모품 D-Day 주기 (전폭 카드) -->
+                <!-- Bento: 🏡 오늘 가족 루틴 & 소모품 D-Day 주기 (전폭 카드) -->
                 <div class="bento-card col-wiki" id="bento-wiki" style="grid-column: 1 / -1;">
                     <div>
                         <div class="bento-card-header">
                             <div class="bento-card-title-group">
                                 <span class="cmd-dot-pulse" style="background-color:#10b981;"></span>
-                                <h3 class="bento-card-title">가족 루틴 &amp; D-Day 소모품 주기</h3>
+                                <h3 class="bento-card-title">오늘 가족 루틴 &amp; D-Day 소모품</h3>
                             </div>
                             <div style="display:flex; gap:0.5rem; align-items:center;">
                                 <a href="/wiki" class="bento-card-link" style="color:#10b981;">가족 위키 전체보기 →</a>
                             </div>
                         </div>
 
-                        <!-- 2분할 그리드: 좌측 소모품 D-Day / 우측 오늘 가족 루틴 & 장보기 -->
-                        <div class="portal-wiki-grid">
-                            
-                            <!-- 좌측: 소모품 주기 & D-Day 뱃지 -->
-                            <div class="portal-wiki-section">
-                                <div class="portal-wiki-sec-header">
-                                    <span>⏳ 소모품 교체 주기 &amp; D-Day</span>
-                                    <span id="portalWidgetDdayCount" style="color:#06b6d4;">조회 중...</span>
+                        <!-- 1. 🚨 D-7 이내 임박 소모품 / D-Day 하이라이트 띠 -->
+                        <div class="portal-imminent-dday-box" id="portalImminentDdayBox">
+                            <div class="portal-imminent-header">
+                                <div class="portal-imminent-title">
+                                    <span class="portal-imminent-icon">⏳</span>
+                                    <span>임박 소모품 교체 주기</span>
+                                    <span class="portal-imminent-count" id="portalWidgetDdayCount">조회 중...</span>
                                 </div>
-                                <div class="portal-dday-list" id="portalWidgetDdayList">
-                                    <div class="portal-wiki-empty">소모품 주기 데이터를 불러오는 중...</div>
-                                </div>
+                                <a href="/wiki" class="portal-imminent-more" title="전체 소모품 주기 보기">위키 목록 ›</a>
                             </div>
-
-                            <!-- 우측: 오늘 루틴 & 장보기 체크리스트 -->
-                            <div class="portal-wiki-section">
-                                <div class="portal-wiki-sec-header">
-                                    <span>✅ 오늘 가족 루틴 &amp; 장보기</span>
-                                    <span id="portalWidgetRoutineStats" style="color:#10b981; font-weight:700;">-</span>
-                                </div>
-                                <!-- 프로그레스 바 -->
-                                <div style="width:100%; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden;">
-                                    <div id="portalWidgetProgressBar" style="height:100%; width:0%; background:linear-gradient(90deg, #10b981, #06b6d4); transition:width 0.4s ease;"></div>
-                                </div>
-                                <div class="portal-todo-list" id="portalWidgetTodoList">
-                                    <div class="portal-wiki-empty">루틴 및 할 일을 불러오는 중...</div>
-                                </div>
-                                <!-- 빠른 추가 인라인 폼 -->
-                                <form onsubmit="handlePortalQuickTodo(event)" style="display:flex; gap:0.35rem; margin-top:0.25rem;">
-                                    <input type="text" id="portalWidgetTodoInput" placeholder="장보기 또는 할 일 빠른 입력..."
-                                        style="flex:1; background:rgba(15,23,42,0.8); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:0.35rem 0.55rem; font-size:0.75rem; color:#fff; outline:none;">
-                                    <button type="submit" style="padding:0.35rem 0.65rem; border-radius:6px; background:#10b981; color:#0f172a; font-weight:700; font-size:0.75rem; border:none; cursor:pointer;">
-                                        추가
-                                    </button>
-                                </form>
+                            <!-- 가로 칩 리스트 (D-7 이내 항목 큼직한 뱃지) -->
+                            <div class="portal-dday-chips-row" id="portalWidgetDdayList">
+                                <div class="portal-wiki-empty">소모품 주기 데이터를 불러오는 중...</div>
                             </div>
-
                         </div>
+
+                        <!-- 2. ✅ 메인: 오늘 가족 루틴 & 장보기 체크리스트 (전면 집중 배치) -->
+                        <div class="portal-routine-main-card">
+                            <div class="portal-routine-header-row">
+                                <div class="portal-routine-title-box">
+                                    <span style="font-size:1.1rem;">✅</span>
+                                    <span class="portal-routine-main-title">오늘의 가족 루틴 &amp; 장보기</span>
+                                </div>
+                                <div class="portal-routine-progress-info">
+                                    <span class="portal-routine-percent font-mono" id="portalWidgetRoutineStats">-</span>
+                                </div>
+                            </div>
+
+                            <!-- 프로그레스 바 -->
+                            <div class="portal-progress-track">
+                                <div id="portalWidgetProgressBar" class="portal-progress-fill"></div>
+                            </div>
+
+                            <!-- 체크리스트 목록 (시원한 터치 영역) -->
+                            <div class="portal-todo-list" id="portalWidgetTodoList">
+                                <div class="portal-wiki-empty">루틴 및 할 일을 불러오는 중...</div>
+                            </div>
+
+                            <!-- 빠른 추가 인라인 폼 (터치 친화적 전폭 행) -->
+                            <form onsubmit="handlePortalQuickTodo(event)" class="portal-quick-todo-form">
+                                <input type="text" id="portalWidgetTodoInput" placeholder="장보기 또는 오늘 할 일 빠른 입력..."
+                                    class="portal-quick-todo-input">
+                                <button type="submit" class="portal-quick-todo-btn">
+                                    추가
+                                </button>
+                            </form>
+                        </div>
+
                     </div>
 
                     <div class="bento-card-footer">
-                        <span>보조서버(HP 노트북) 연동</span>
+                        <span>보조서버 연동 (매일 자정 루틴 자동 리셋)</span>
                         <a href="/wiki/new" style="color:inherit; text-decoration:none;">✍️ 새 위키 문서 작성 ↗</a>
                     </div>
                 </div>
