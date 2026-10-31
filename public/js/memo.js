@@ -1,4 +1,13 @@
 // 전역 상태 관리 (유틸 및 상수는 memo-utils.js 참조)
+let memoQuill = null;
+let editMemoQuill = null;
+let allMemosFullList = [];
+let allMemosCache = [];
+let currentMemoCategory = 'all';
+let currentMemoSearch = '';
+let memoSearchTimeout = null;
+let currentViewMode = localStorage.getItem('memo_view_mode') || 'grid';
+
 // 1. 초기화
 document.addEventListener('DOMContentLoaded', () => {
     initQuillEditors();

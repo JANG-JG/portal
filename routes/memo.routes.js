@@ -8,10 +8,11 @@ const { encryptMemoText, decryptMemoText } = require('../services/crypto.service
 // 1. 메모 목록 조회 (상단 고정 우선, 최신 수정순 정렬, AES-256-GCM 복호화)
 router.get('/', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
+    const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const { category, search } = req.query;
 
-    let query = "SELECT * FROM user_memos WHERE (user_id = ? OR user_id = 'admin')";
-    const params = [userId];
+    let query = "SELECT * FROM user_memos WHERE (user_id = ? OR user_id = 'admin' OR ? = 1)";
+    const params = [userId, isAdmin];
 
     if (category && category !== 'all') {
         if (category === 'pinned') {

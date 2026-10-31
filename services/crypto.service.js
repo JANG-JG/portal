@@ -1,3 +1,4 @@
+require('dotenv').config();
 const crypto = require('crypto');
 
 function getMasterSecret() {
@@ -140,15 +141,16 @@ function decryptMemoText(cipherText, userId) {
         decrypted += decipher.final('utf8');
         return decrypted;
     } catch (err) {
-        // 작성자 키로 복호화 실패 시 admin 키로 폴백 시도
-        if (userId !== 'admin') {
+        // 작성자 키로 복호화 실패 시 다른 관리자 키('admin', 'upt0731' 등)로 다중 폴백 시도
+        const fallbackUsers = ['admin', 'upt0731'].filter(u => u !== userId);
+        for (const fbUser of fallbackUsers) {
             try {
-                const adminKey = deriveKeyForMemo('admin');
-                const decipherAdmin = crypto.createDecipheriv(ALGORITHM, adminKey, Buffer.from(ivHex, 'hex'));
-                decipherAdmin.setAuthTag(Buffer.from(tagHex, 'hex'));
-                let decAdmin = decipherAdmin.update(dataHex, 'hex', 'utf8');
-                decAdmin += decipherAdmin.final('utf8');
-                return decAdmin;
+                const fbKey = deriveKeyForMemo(fbUser);
+                const decipherFb = crypto.createDecipheriv(ALGORITHM, fbKey, Buffer.from(ivHex, 'hex'));
+                decipherFb.setAuthTag(Buffer.from(tagHex, 'hex'));
+                let decFb = decipherFb.update(dataHex, 'hex', 'utf8');
+                decFb += decipherFb.final('utf8');
+                return decFb;
             } catch (e2) {}
         }
         return '🔒 [암호화된 메모]';
