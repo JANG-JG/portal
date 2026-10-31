@@ -12,6 +12,7 @@
 
 const express = require('express');
 const http = require('http');
+const querystring = require('querystring');
 const { WIKI_HOST, WIKI_PORT, WIKI_BASE_URL } = require('../config/constants');
 const { authenticateToken } = require('../middleware/auth');
 
@@ -23,7 +24,7 @@ const wikiKeepAliveAgent = new http.Agent({
     keepAliveMsecs: 30000,
     maxSockets: 50,
     maxFreeSockets: 10,
-    timeout: 6000
+    timeout: 10000
 });
 
 // 대시보드 요약 SWR 캐시 (Wi-Fi 지연 시 무중단 폴백)
@@ -36,20 +37,28 @@ let summaryCache = {
  * 범용 HTTP 리버스 프록시 포워더 (Keep-Alive 소켓 재사용)
  */
 function forwardToSecondaryWiki(req, res, targetPath) {
+    const rawContentType = req.headers['content-type'] || '';
+    const isFormUrlEncoded = rawContentType.toLowerCase().includes('application/x-www-form-urlencoded');
+    const isJson = rawContentType.toLowerCase().includes('application/json');
+
+    // 클라이언트 헤더 복사 및 호스트/길이 헤더 정돈
+    const forwardHeaders = { ...req.headers };
+    delete forwardHeaders['host'];
+    delete forwardHeaders['content-length']; // 바디 직렬화 후 재계산 주입
+
+    forwardHeaders['host'] = `${WIKI_HOST}:${WIKI_PORT}`;
+    forwardHeaders['x-forwarded-for'] = req.ip || req.connection.remoteAddress;
+    forwardHeaders['x-forwarded-proto'] = req.protocol;
+    forwardHeaders['x-forwarded-host'] = req.get('host');
+
     const options = {
         hostname: WIKI_HOST,
         port: WIKI_PORT,
         path: targetPath,
         method: req.method,
         agent: wikiKeepAliveAgent,
-        headers: {
-            ...req.headers,
-            host: `${WIKI_HOST}:${WIKI_PORT}`,
-            'x-forwarded-for': req.ip || req.connection.remoteAddress,
-            'x-forwarded-proto': req.protocol,
-            'x-forwarded-host': req.get('host')
-        },
-        timeout: 6000
+        headers: forwardHeaders,
+        timeout: 10000
     };
 
     const proxyReq = http.request(options, (proxyRes) => {
@@ -88,17 +97,38 @@ function forwardToSecondaryWiki(req, res, targetPath) {
         }
     });
 
-    // 요청 바디 스트리밍
-    if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+    // 요청 바디 직렬화 및 전송 ([규칙 3, 5] 504 타임아웃 원천 방지)
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
         if (req.body && Object.keys(req.body).length > 0) {
-            const bodyData = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-            if (!req.headers['content-type']) {
-                proxyReq.setHeader('Content-Type', 'application/json');
+            let bodyBuffer;
+            if (isFormUrlEncoded) {
+                const encoded = querystring.stringify(req.body);
+                bodyBuffer = Buffer.from(encoded, 'utf-8');
+                proxyReq.setHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+            } else if (isJson) {
+                const jsonStr = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+                bodyBuffer = Buffer.from(jsonStr, 'utf-8');
+                proxyReq.setHeader('Content-Type', 'application/json; charset=UTF-8');
+            } else if (typeof req.body === 'string') {
+                bodyBuffer = Buffer.from(req.body, 'utf-8');
+                if (rawContentType) proxyReq.setHeader('Content-Type', rawContentType);
+            } else if (Buffer.isBuffer(req.body)) {
+                bodyBuffer = req.body;
+                if (rawContentType) proxyReq.setHeader('Content-Type', rawContentType);
+            } else {
+                const jsonStr = JSON.stringify(req.body);
+                bodyBuffer = Buffer.from(jsonStr, 'utf-8');
+                proxyReq.setHeader('Content-Type', 'application/json; charset=UTF-8');
             }
-            proxyReq.write(bodyData);
+
+            proxyReq.setHeader('Content-Length', bodyBuffer.byteLength);
+            proxyReq.write(bodyBuffer);
             proxyReq.end();
-        } else {
+        } else if (req.readable && !req.readableEnded) {
             req.pipe(proxyReq, { end: true });
+        } else {
+            proxyReq.setHeader('Content-Length', 0);
+            proxyReq.end();
         }
     } else {
         proxyReq.end();
