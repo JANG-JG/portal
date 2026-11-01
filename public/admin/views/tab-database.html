@@ -3,38 +3,39 @@
         <!-- 🗄️ [탭 8] 경량 SQLite DB 매니저 (tab-database) -->
         <!-- ========================================== -->
         <div id="tab-database" class="admin-tab-pane">
-            <!-- 🗄️ DB 매니저 상단 통합 선택 바 (2줄 컴팩트 최적화) -->
+            <!-- 🗄️ DB 매니저 상단 통합 선택 바 (모바일 360px 무넘침 및 전폭 보장) -->
             <div class="admin-card db-unified-control-card" style="margin-bottom: 0.85rem;">
                 <div class="db-control-two-rows">
-                    <!-- 1행: DB 선택 (전폭) + 데이터 새로고침 버튼 -->
-                    <div class="db-control-row">
-                        <div class="db-control-field db-field-main">
-                            <label class="db-control-label"><span>🗄️</span> <span>데이터베이스</span></label>
-                            <select id="dbSelect" class="db-control-select" onchange="DbManager.switchDb(this.value)">
-                                <option value="">데이터베이스 불러오는 중...</option>
-                            </select>
-                        </div>
-                        <div class="db-control-action-btn-wrap" style="display:flex; gap:0.35rem;">
-                            <button type="button" id="btnDbSync" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.syncRemoteDb()" style="display:none; color:#0284c7; border-color:#bae6fd;" title="HP 보조 서버 DB 최신 동기화">
-                                🔄 보조서버 동기화
-                            </button>
-                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm btn-db-refresh" onclick="DbManager.loadTableData()" title="데이터 새로고침">
-                                🔄 새로고침
-                            </button>
-                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.downloadCurrentDb()" title="현재 선택된 데이터베이스 파일 다운로드">
-                                💾 DB 다운로드
-                            </button>
-                        </div>
+                    <!-- 1행: DB 선택 (100% 전폭 단독 배치로 긴 이름 및 터치 보장) -->
+                    <div class="db-control-field" style="width:100%; min-width:0;">
+                        <label class="db-control-label"><span>🗄️</span> <span>데이터베이스</span></label>
+                        <select id="dbSelect" class="db-control-select" onchange="DbManager.switchDb(this.value)" style="width:100%; min-width:0;">
+                            <option value="">데이터베이스 불러오는 중...</option>
+                        </select>
                     </div>
+
+                    <!-- 1-1행: DB 액션 버튼 툴바 (보조서버 동기화, 새로고침, DB 다운로드) -->
+                    <div class="db-control-action-btn-wrap" style="display:flex; gap:0.4rem; justify-content:flex-end; flex-wrap:wrap; width:100%;">
+                        <button type="button" id="btnDbSync" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.syncRemoteDb()" style="display:none; color:#0284c7; border-color:#bae6fd; font-size:0.78rem; padding:0.35rem 0.65rem;" title="HP 보조 서버 DB 최신 동기화">
+                            🔄 보조서버 동기화
+                        </button>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm btn-db-refresh" onclick="DbManager.loadTableData()" style="font-size:0.78rem; padding:0.35rem 0.65rem;" title="데이터 새로고침">
+                            🔄 새로고침
+                        </button>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.downloadCurrentDb()" style="font-size:0.78rem; padding:0.35rem 0.65rem;" title="현재 선택된 데이터베이스 파일 다운로드">
+                            💾 DB 다운로드
+                        </button>
+                    </div>
+
                     <!-- 2행: 테이블 선택 (전폭) + 뷰 모드 스위처 (카드 / 표) -->
-                    <div class="db-control-row">
-                        <div class="db-control-field db-field-main">
+                    <div class="db-control-row" style="display:flex; align-items:flex-end; gap:0.5rem; flex-wrap:wrap; margin-top:0.35rem;">
+                        <div class="db-control-field db-field-main" style="flex:1 1 180px; min-width:0;">
                             <label class="db-control-label"><span>📋</span> <span>테이블 선택</span></label>
-                            <select id="tableSelect" class="db-control-select" onchange="DbManager.switchTable(this.value)">
+                            <select id="tableSelect" class="db-control-select" onchange="DbManager.switchTable(this.value)" style="width:100%; min-width:0;">
                                 <option value="">테이블 선택</option>
                             </select>
                         </div>
-                        <div class="server-tab-container db-view-switcher" style="margin:0; width:auto;">
+                        <div class="server-tab-container db-view-switcher" style="margin:0; width:auto; flex-shrink:0;">
                             <button type="button" id="btnViewModeCard" class="server-tab-btn active" onclick="DbManager.setViewMode('card')">
                                 <span>📱</span> <span class="server-tab-label">카드</span>
                             </button>

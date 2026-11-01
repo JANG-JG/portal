@@ -216,8 +216,8 @@ const DbManager = {
                                 ${cols.filter(c => c.name !== primaryField).map(c => `
                                     <div class="db-record-field-row">
                                         <span class="db-field-key">${escapeHtml(c.name)}</span>
-                                        <span class="db-field-val" title="${escapeHtml(String(row[c.name] ?? ''))}">
-                                            ${row[c.name] === null ? '<em style="color:#94a3b8;">NULL</em>' : escapeHtml(String(row[c.name]))}
+                                        <span class="db-field-val">
+                                            ${this.formatCellVal(c.name, row[c.name], row)}
                                         </span>
                                     </div>
                                 `).join('')}
@@ -262,8 +262,8 @@ const DbManager = {
                                 </td>
                                 <td><span class="db-rowid-badge">#${row._rowid_}</span></td>
                                 ${cols.map(c => `
-                                    <td class="db-cell-val" title="${escapeHtml(String(row[c.name] ?? ''))}">
-                                        ${row[c.name] === null ? '<em style="color:#94a3b8;">NULL</em>' : escapeHtml(String(row[c.name]))}
+                                    <td class="db-cell-val">
+                                        ${this.formatCellVal(c.name, row[c.name], row)}
                                     </td>
                                 `).join('')}
                             </tr>
@@ -273,6 +273,20 @@ const DbManager = {
             </div>
         `;
         container.innerHTML = html;
+    },
+
+    // 민감 정보(비밀번호/토큰/암호문) 자동 마스킹 렌더러
+    formatCellVal(colName, val, row) {
+        if (val === null || val === undefined) return '<em style="color:#94a3b8;">NULL</em>';
+        const strVal = String(val);
+        const col = String(colName).toLowerCase();
+        const isSecret = col.includes('password') || col.includes('secret') || col === 'wifi_pw' ||
+            (row && (row.config_key === 'wifi_pw' || (row.card_key === 'wifi' && col === 'line2_val'))) ||
+            strVal.startsWith('ENC:v1:');
+        if (isSecret && strVal) {
+            return `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-family:monospace; padding:1px 6px; border-radius:4px; font-size:0.75rem; cursor:pointer;" title="클릭하여 확인/숨기기" onclick="this.textContent = (this.textContent === '🔒 ••••••••' ? '${escapeHtml(strVal)}' : '🔒 ••••••••')">🔒 ••••••••</span>`;
+        }
+        return escapeHtml(strVal);
     },
 
     getSortIcon(col) {

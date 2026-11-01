@@ -2421,6 +2421,15 @@ thead th.sticky-action-col {
     .db-control-two-rows {
         gap: 0.5rem;
     }
+    .db-control-action-btn-wrap {
+        gap: 0.35rem;
+    }
+    .db-control-action-btn-wrap button {
+        flex: 1 1 auto;
+        min-width: 0;
+        justify-content: center;
+        text-align: center;
+    }
     .db-control-row {
         gap: 0.45rem;
     }
