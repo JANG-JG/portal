@@ -50,11 +50,14 @@ const DbManager = {
     renderDbSelector() {
         const select = document.getElementById('dbSelect');
         if (!select) return;
-        select.innerHTML = this.state.databases.map(db => `
-            <option value="${db.key}" ${db.key === this.state.currentDb ? 'selected' : ''}>
-                ${escapeHtml(db.name)} (${db.size})
-            </option>
-        `).join('');
+        select.innerHTML = this.state.databases.map(db => {
+            const remoteBadge = db.isRemote ? '🌐 [HP 보조서버] ' : '';
+            return `
+                <option value="${db.key}" ${db.key === this.state.currentDb ? 'selected' : ''}>
+                    ${remoteBadge}${escapeHtml(db.name)} (${db.size})
+                </option>
+            `;
+        }).join('');
     },
 
     // DB 전환
@@ -65,6 +68,13 @@ const DbManager = {
         this.state.sort = '';
         const searchInput = document.getElementById('dbSearchInput');
         if (searchInput) searchInput.value = '';
+
+        // 원격 DB 여부에 따른 보조서버 동기화 버튼 토글
+        const curDbObj = this.state.databases.find(d => d.key === dbKey);
+        const syncBtn = document.getElementById('btnDbSync');
+        if (syncBtn) {
+            syncBtn.style.display = (curDbObj && curDbObj.isRemote) ? 'inline-block' : 'none';
+        }
 
         try {
             const res = await fetch(`/api/admin/db/${dbKey}/tables`);
@@ -436,6 +446,29 @@ const DbManager = {
         }
         if (typeof showToast === 'function') showToast(`[${this.state.currentDb}] 데이터베이스 파일을 다운로드합니다...`);
         window.location.href = `/api/admin/db/${this.state.currentDb}/download`;
+    },
+
+    // 🌐 보조 서버 원격 DB 최신 수동 동기화 (Pull)
+    async syncRemoteDb() {
+        const btn = document.getElementById('btnDbSync');
+        if (btn) btn.disabled = true;
+        if (typeof showToast === 'function') showToast('🔄 HP 보조 서버로부터 최신 DB 동기화 중...');
+
+        try {
+            const res = await fetch(`/api/admin/db/${this.state.currentDb}/sync`, { method: 'POST' });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || data.error || '동기화 실패');
+
+            if (typeof showToast === 'function') {
+                showToast(data.message || '보조 서버 DB가 최신 상태로 동기화되었습니다.');
+            }
+            await this.loadDatabases();
+            await this.switchDb(this.state.currentDb);
+        } catch (err) {
+            if (typeof showToast === 'function') showToast('보조 서버 동기화 실패: ' + err.message, true);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
     },
 
     clearViews() {

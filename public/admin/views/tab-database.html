@@ -15,6 +15,9 @@
                             </select>
                         </div>
                         <div class="db-control-action-btn-wrap" style="display:flex; gap:0.35rem;">
+                            <button type="button" id="btnDbSync" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.syncRemoteDb()" style="display:none; color:#0284c7; border-color:#bae6fd;" title="HP 보조 서버 DB 최신 동기화">
+                                🔄 보조서버 동기화
+                            </button>
                             <button type="button" class="btn-admin btn-admin-outline btn-admin-sm btn-db-refresh" onclick="DbManager.loadTableData()" title="데이터 새로고침">
                                 🔄 새로고침
                             </button>

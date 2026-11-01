@@ -6,6 +6,7 @@ const os = require('os');
 const sqlite3 = require('sqlite3').verbose();
 const { WORKSPACE_ROOT } = require('../../config/constants');
 const { getAllModules } = require('../../services/moduleRegistry.service');
+const { isRemoteDb, pullRemoteDb, pushRemoteDb, getSyncStatus } = require('../../services/remoteDbSync.service');
 
 // 동적 등록된 서비스 모듈 DB 인스턴스 캐시 풀 (절대 경로별 인스턴스 싱글톤 관리)
 const DYNAMIC_DB_POOL = new Map();
@@ -41,6 +42,8 @@ function getDynamicDbMap() {
         allMods.forEach(mod => {
             if (!mod.dbPath) return;
             const resolved = resolveDbPath(mod.dbPath);
+            const isRemote = isRemoteDb(mod);
+
             if (resolved && fs.existsSync(resolved)) {
                 const dbConn = getDbConnection(resolved);
                 const isFirst = !seenPaths.has(resolved);
@@ -51,7 +54,10 @@ function getDynamicDbMap() {
                     name: `${mod.icon || '📦'} ${mod.name} (${path.basename(resolved)})`,
                     db: dbConn,
                     path: resolved,
-                    isPrimaryForPath: isFirst
+                    isPrimaryForPath: isFirst,
+                    isRemote,
+                    serverName: mod.serverName || (isRemote ? 'HP 보조 서버 (192.168.50.75)' : '메인 서버 (로컬)'),
+                    remoteHost: mod.remoteHost || null
                 };
             }
         });
@@ -87,10 +93,21 @@ function getFileSizeStr(filePath) {
 }
 
 /**
- * 1. 데이터베이스 목록 조회 (모듈 레지스트리 기반 100% 동적 수집)
+ * 1. 데이터베이스 목록 조회 (모듈 레지스트리 기반 100% 동적 수집 + 보조 서버 원격 DB 자동 감지)
  * GET /api/admin/db/databases
  */
-router.get('/databases', (req, res) => {
+router.get('/databases', async (req, res) => {
+    // 원격 DB(wiki)가 아직 로컬에 없을 경우 1회 자동 동기화 시도
+    const allMods = getAllModules(true);
+    for (const mod of allMods) {
+        if (isRemoteDb(mod)) {
+            const resolved = resolveDbPath(mod.dbPath);
+            if (!resolved || !fs.existsSync(resolved)) {
+                await pullRemoteDb(mod.id, false);
+            }
+        }
+    }
+
     const dynamicMap = getDynamicDbMap();
     // 동일 DB 파일 중복 노출을 방지하고 유효 DB만 고유하게 목록화
     const list = Object.values(dynamicMap)
@@ -99,7 +116,10 @@ router.get('/databases', (req, res) => {
             key: item.key,
             name: item.name,
             size: getFileSizeStr(item.path),
-            path: item.path
+            path: item.path,
+            isRemote: Boolean(item.isRemote),
+            serverName: item.serverName,
+            syncStatus: item.isRemote ? getSyncStatus(item.key) : null
         }));
     res.json({ success: true, databases: list });
 });
@@ -127,6 +147,19 @@ router.get('/:dbKey/download', (req, res) => {
     }
     const filename = `${target.key}_${path.basename(target.path)}`;
     res.download(target.path, filename);
+});
+
+/**
+ * 1-2. 보조 서버 원격 DB 수동 즉시 동기화 (Pull)
+ * POST /api/admin/db/:dbKey/sync
+ */
+router.post('/:dbKey/sync', async (req, res) => {
+    const target = req.targetDb;
+    if (!target.isRemote) {
+        return res.json({ success: true, message: '로컬 메인 서버 데이터베이스입니다. (원격 동기화 불필요)' });
+    }
+    const result = await pullRemoteDb(target.key, true);
+    res.json(result);
 });
 
 /**
@@ -301,6 +334,9 @@ router.post('/:dbKey/query', (req, res) => {
             if (err) {
                 return res.status(400).json({ success: false, message: err.message, elapsed_ms: elapsed });
             }
+            if (target.isRemote && this.changes > 0) {
+                pushRemoteDb(target.key).catch(() => {});
+            }
             res.json({
                 success: true,
                 is_select: false,
@@ -344,6 +380,7 @@ router.put('/:dbKey/table/:table/row', (req, res) => {
 
     target.db.run(sql, values, function(err) {
         if (err) return res.status(500).json({ success: false, message: '행 수정 실패: ' + err.message });
+        if (target.isRemote && this.changes > 0) pushRemoteDb(target.key).catch(() => {});
         res.json({ success: true, message: '레코드가 성공적으로 수정되었습니다.', changes: this.changes });
     });
 });
@@ -376,6 +413,7 @@ router.post('/:dbKey/table/:table/row', (req, res) => {
 
     target.db.run(sql, values, function(err) {
         if (err) return res.status(500).json({ success: false, message: '행 삽입 실패: ' + err.message });
+        if (target.isRemote && this.lastID) pushRemoteDb(target.key).catch(() => {});
         res.json({ success: true, message: '새 레코드가 등록되었습니다.', lastID: this.lastID });
     });
 });
@@ -396,6 +434,7 @@ router.delete('/:dbKey/table/:table/row', (req, res) => {
     const sql = `DELETE FROM "${tableName}" WHERE rowid = ?`;
     target.db.run(sql, [rowid], function(err) {
         if (err) return res.status(500).json({ success: false, message: '행 삭제 실패: ' + err.message });
+        if (target.isRemote && this.changes > 0) pushRemoteDb(target.key).catch(() => {});
         res.json({ success: true, message: '레코드가 성공적으로 삭제되었습니다.', changes: this.changes });
     });
 });

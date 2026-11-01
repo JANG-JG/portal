@@ -512,6 +512,10 @@
         }
       ]
     },
-    "dbPath": "family-wiki/wiki.db"
+    "dbPath": "family-wiki/wiki.db",
+    "isRemote": true,
+    "remoteServer": "secondary",
+    "remoteHost": "192.168.50.75",
+    "serverName": "HP 보조 서버"
   }
 ]
