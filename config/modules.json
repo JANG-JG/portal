@@ -454,5 +454,51 @@
     "remoteServer": "secondary",
     "remoteHost": "192.168.50.75",
     "serverName": "HP 보조 서버"
+  },
+  {
+    "id": "kindergarten",
+    "name": "유치원 사진 다운로더",
+    "icon": "🏫",
+    "description": "유치원 사진 다운로더",
+    "category": "가족",
+    "entryUrl": "/kindergarten",
+    "baseUrl": "",
+    "ssoEnabled": false,
+    "adminOnly": true,
+    "defaultFamilyAllowed": false,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "유치원 사진 다운로더",
+      "entryUrl": "/kindergarten",
+      "subLinks": []
+    },
+    "quickStrip": [
+      {
+        "id": "kindergarten-quick",
+        "label": "유치원 사진 다운로더",
+        "icon": "🏫",
+        "type": "link",
+        "url": "/kindergarten"
+      }
+    ],
+    "portalWidget": null,
+    "admin": {
+      "enabled": true,
+      "title": "유치원 사진 다운로더 제어",
+      "icon": "🏫",
+      "tabId": "tab-kindergarten",
+      "subMenus": [
+        {
+          "id": "subpane-kindergarten-main",
+          "title": "현황 및 관리",
+          "icon": "📊",
+          "type": "iframe",
+          "src": "/kindergarten"
+        }
+      ]
+    },
+    "dbPath": "",
+    "order": 90
   }
 ]
