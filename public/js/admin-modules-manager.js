@@ -142,6 +142,9 @@
                     </td>
                     <td style="text-align:center;">
                         <div style="display:inline-flex; gap:4px; align-items:center;">
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 6px; font-size:0.75rem;" onclick="if(typeof openModuleKpiModal==='function')openModuleKpiModal('${m.id}', '${escapeHtml(m.name)}')" title="실시간 Bento KPI 지표 보기">
+                                📊
+                            </button>
                             <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 6px; font-size:0.75rem;" onclick="openModuleModal('${m.id}')" title="설정 수정">
                                 ✏️
                             </button>

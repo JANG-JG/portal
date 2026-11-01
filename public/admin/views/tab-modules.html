@@ -198,3 +198,40 @@ GET /api/{service}/summary<br>
         </div>
     </div>
 </div>
+
+<!-- 📊 서비스 실시간 KPI 메트릭 팝업 모달 (Bento KPI) -->
+<div id="moduleKpiModal" class="admin-modal-backdrop" style="display:none;" onclick="if(event.target===this)closeModuleKpiModal()">
+    <div class="admin-modal-dialog" style="max-width:680px;">
+        <div class="admin-modal-header">
+            <h3 id="moduleKpiModalTitle">📊 실시간 핵심 지표 (Bento KPI)</h3>
+            <button type="button" class="admin-modal-close-btn" onclick="closeModuleKpiModal()" title="창 닫기">✕</button>
+        </div>
+        <div class="admin-modal-body">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                <span style="font-size:0.82rem; color:#64748b;">
+                    💡 서비스 운영 상태 및 SQLite DB 실시간 분석 지표입니다.
+                </span>
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="refreshCurrentModuleKpi()">
+                    🔄 새로고침
+                </button>
+            </div>
+
+            <!-- Bento KPI 카드 마운트 컨테이너 -->
+            <div id="moduleKpiCardsContainer" style="margin-bottom:1.25rem;">
+                <!-- JS 동적 마운트 -->
+            </div>
+
+            <div style="display:flex; gap:0.5rem; justify-content:flex-end; border-top:1px solid #f1f5f9; padding-top:0.85rem; flex-wrap:wrap;">
+                <button type="button" id="moduleKpiDbLinkBtn" class="btn-admin btn-admin-outline btn-admin-sm" style="display:none;">
+                    🗄️ DB 관리자로 이동
+                </button>
+                <a id="moduleKpiEntryLinkBtn" href="#" target="_blank" class="btn-admin btn-admin-primary btn-admin-sm" style="display:none; text-decoration:none;">
+                    🌐 서비스 열기 ↗
+                </a>
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="closeModuleKpiModal()">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

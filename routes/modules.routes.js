@@ -13,6 +13,7 @@ const {
     deleteModule,
     CORE_MODULE_IDS
 } = require('../services/moduleRegistry.service');
+const { getModuleMetrics, getAllModulesKpiSummary } = require('../services/moduleMetrics.service');
 
 /**
  * DB에서 사용자의 최신 allowed_services 및 role을 가져오는 헬퍼
@@ -162,6 +163,26 @@ router.delete('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
         });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message || '모듈 삭제 실패' });
+    }
+});
+
+// 10. 관리자/사용자: 특정 모듈 표준 KPI 메트릭 조회
+router.get('/:id/metrics', authenticateToken, async (req, res) => {
+    try {
+        const metrics = await getModuleMetrics(req.params.id);
+        res.json(metrics);
+    } catch (err) {
+        res.status(404).json({ success: false, message: err.message || '메트릭 조회 실패' });
+    }
+});
+
+// 11. 관리자: 전체 모듈 KPI 종합 요약 조회
+router.get('/admin/kpis', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const summary = await getAllModulesKpiSummary();
+        res.json(summary);
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'KPI 집계 실패' });
     }
 });
 
