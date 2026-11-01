@@ -101,7 +101,7 @@ async function checkAiHealth() {
 /**
  * 2. LG EXAONE 기반 맞춤형 데일리 건강/일정 브리핑 문장 생성
  */
-async function generateAiDailyBriefing({ blood, medication, weather, todayEvents = [], userName = '가족' }, forceRefresh = false) {
+async function generateAiDailyBriefing({ blood, medication, weather, todayEvents = [], asset = null, userName = '가족' }, forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && cachedAiBriefing && (now - cachedAiBriefingTime < CACHE_TTL_MS)) {
         return cachedAiBriefing;
@@ -113,6 +113,7 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         : '혈압 정보 없음.';
     const medText = medication && medication.is_today_taken ? '오늘 복약 완료.' : '오늘 혈압약 아직 미복용(주의 필요).';
     const weatherText = weather ? `현재 날씨: ${weather.city || '서울'} ${weather.temp || ''}, ${weather.condition || '맑음'}.` : '날씨 정보 없음.';
+    const assetText = (asset && asset.totalKrw) ? `가족 총 자산: ${asset.totalKrw}` : '';
     
     let eventText = '오늘 예정된 특별한 일정 없음.';
     if (Array.isArray(todayEvents) && todayEvents.length > 0) {
@@ -121,7 +122,7 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
 
     const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 다정하고 유능한 가족 전용 AI 비서(LG EXAONE)입니다.
 가족 구성원에게 다정한 한국어 경어(존댓말)로 말하세요.
-주어진 건강, 날씨, 일정 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 건강 조언을 작성하세요.
+주어진 건강, 날씨, 일정, 자산 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 조언과 인사를 작성하세요.
 답변에는 불필요한 서론이나 자기소개 없이 바로 다정한 인사와 조언만 말하세요.`;
 
     const userPrompt = `[상황 데이터]
@@ -129,7 +130,7 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
 - 날씨: ${weatherText}
 - 복약: ${medText}
 - 혈압: ${bloodText}
-- 일정: ${eventText}
+- 일정: ${eventText}${assetText ? `\n- 자산: ${assetText}` : ''}
 
 위 상황을 보고 ${userName}님에게 건넬 다정하고 따뜻한 2~3문장 조언을 작성해 주세요.`;
 
@@ -165,7 +166,7 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
 }
 
 /**
- * 3. 우리 집 AI 챗봇 실시간 대화
+ * 3. 우리 집 AI 챗봇 실시간 대화 (전체 서브 서비스 통합 분석가)
  */
 async function askAiAssistant({ prompt, history = [], summaryContext = null, userName = '가족' }) {
     if (!prompt || !prompt.trim()) {
@@ -174,23 +175,68 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
 
     let contextGuide = '';
     if (summaryContext) {
-        const { blood, medication, weather, todayEvents } = summaryContext;
-        const bloodInfo = blood ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'})` : '기록 없음';
-        const medInfo = medication && medication.is_today_taken ? '오늘 복약 완료' : '오늘 미복용';
-        const weatherInfo = weather ? `${weather.city || '서울'} ${weather.temp || ''} (${weather.condition || ''})` : '날씨 정보 없음';
-        const eventsInfo = Array.isArray(todayEvents) && todayEvents.length > 0 ? todayEvents.map(e => e.title).join(', ') : '오늘 일정 없음';
+        const { blood, medication, hospital, memo, asset, news, system, weather, todayEvents } = summaryContext;
 
-        contextGuide = `\n[우리 집 실시간 현황 참고 데이터]
-- 최근 혈압: ${bloodInfo}
-- 오늘 복약 여부: ${medInfo}
-- 실시간 날씨: ${weatherInfo}
-- 오늘 가족 일정: ${eventsInfo}\n`;
+        // 1. 자산 관리 현황
+        let assetInfo = '자산 정보 없음';
+        if (asset && asset.totalKrw) {
+            const topItems = Array.isArray(asset.items) ? asset.items.slice(0, 5).map(i => `${i.name}(${i.symbol}): ${i.formattedTotal} (${i.diffPercent})`).join(', ') : '';
+            assetInfo = `총 자산 평가액 ${asset.totalKrw} (보유 종목 ${asset.count || 0}개)` + (topItems ? ` | 주요 종목: ${topItems}` : '');
+        }
+
+        // 2. 건강 & 복약 & 병원 진료
+        const bloodInfo = blood ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'}) - ${blood.is_today_measured ? '오늘 측정 완료' : '오늘 미측정'}` : '기록 없음';
+        const medInfo = medication && medication.is_today_taken ? '오늘 복약 완료 ✅' : '오늘 혈압약 아직 미복용 ⚠️';
+        let hospInfo = '예정된 진료 없음';
+        if (hospital) {
+            hospInfo = `다음 진료: ${hospital.displayNextVisit || '미정'} (${hospital.nextVisitDDay || 'D-Day 미정'}), 처방 잔여 약: ${hospital.remainingPills || 0}일분`;
+        }
+
+        // 3. 가족 일정 & 메모
+        const eventsInfo = Array.isArray(todayEvents) && todayEvents.length > 0 
+            ? todayEvents.map(e => `${e.event_time ? e.event_time.slice(0, 5) + ' ' : ''}${e.title}`).join(', ') 
+            : '오늘 예정된 특별한 일정 없음';
+        let memoInfo = '등록된 메모 없음';
+        if (memo && Array.isArray(memo.recent) && memo.recent.length > 0) {
+            memoInfo = memo.recent.map(m => `[${m.category || '일반'}] ${m.title}`).join(', ');
+        }
+
+        // 4. 실시간 날씨 & 시장 지표 & 최신 뉴스
+        const weatherInfo = weather ? `${weather.city || '서울'} ${weather.temp || ''} (${weather.condition || '맑음'}), 습도 ${weather.humidity || '-'}` : '날씨 정보 없음';
+        let marketNewsInfo = '';
+        if (news) {
+            const m = news.market;
+            const marketStr = m ? `코스피 ${m.kospi || '-'}, 코스닥 ${m.kosdaq || '-'}, 환율 ${m.usdkrw || '-'}원` : '';
+            const topNews = Array.isArray(news.recommendedArticles) ? news.recommendedArticles.slice(0, 3).map(a => a.title).join(' / ') : '';
+            const breaking = Array.isArray(news.breakingArticles) && news.breakingArticles.length > 0 ? `🚨 속보: ${news.breakingArticles[0].title}` : '';
+            marketNewsInfo = [marketStr, breaking, topNews ? `주요 뉴스: ${topNews}` : ''].filter(Boolean).join(' | ');
+        }
+
+        // 5. 서버 듀얼 인프라 상태
+        let systemInfo = '서버 정보 없음';
+        if (system) {
+            const pri = system.primary ? `주서버(노트9): CPU ${system.primary.cpu}, RAM ${system.primary.ram}, 디스크 ${system.primary.disk}` : '';
+            const sec = system.secondary ? `보조서버(노트북): ${system.secondary.statusText || '대기'} (CPU ${system.secondary.cpu}, RAM ${system.secondary.ram})` : '';
+            systemInfo = [pri, sec].filter(Boolean).join(' | ');
+        }
+
+        contextGuide = `\n[우리 집 JG 홈서버 실시간 통합 현황]
+- 💰 자산 현황: ${assetInfo}
+- 🩺 혈압 건강: ${bloodInfo}
+- 💊 오늘 복약: ${medInfo}
+- 🏥 병원/처방약: ${hospInfo}
+- 📅 오늘 가족 일정: ${eventsInfo}
+- 📝 가족 메모: ${memoInfo}
+- 🌤️ 날씨: ${weatherInfo}
+- 📰 시장/뉴스: ${marketNewsInfo || '정보 없음'}
+- 🖥️ 서버 인프라: ${systemInfo}\n`;
     }
 
-    const systemPrompt = `당신은 JG 포털의 전용 AI 비서(LG EXAONE 3.5)입니다.
-- 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
-- 질문자가 가족 구성원이므로, 마치 든든하고 똑똑한 가족 비서처럼 따뜻하고 명확하게 답변해 주세요.
-- 건강, 일정, 생활에 관련된 질문에 친절히 조언해 주세요.${contextGuide}`;
+    const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 3.5)입니다.
+- 질문자가 가족 구성원이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
+- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 뉴스 및 서버 인프라 현황 데이터를 완벽하게 파악하고 있습니다.
+- 자산, 서버, 건강, 일정 관련 질문이 들어오면 위의 [실시간 통합 현황] 데이터를 적극 참조하여 명확한 수치와 함께 똑똑하고 따뜻하게 분석·브리핑해 주세요.
+- 데이터에 없는 내용은 추측하지 말고 솔직하고 친절하게 안내하세요.${contextGuide}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
     
@@ -214,7 +260,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         keep_alive: '60m',
         options: {
             temperature: 0.7,
-            num_predict: 250
+            num_predict: 350
         }
     }, 25000);
 

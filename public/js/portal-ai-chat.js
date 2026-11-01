@@ -49,22 +49,24 @@
             <div class="ai-chat-messages" id="aiChatMessages">
                 <div class="ai-bubble-row assistant">
                     <div class="ai-bubble">
-                        안녕하세요! JG 포털의 전용 AI 비서(LG EXAONE 3.5)입니다. 🇰🇷<br>
-                        오늘 가족 일정이나 혈압 건강 관리, 날씨 등 궁금하신 점을 언제든 편하게 물어보세요! 😊
+                        안녕하세요! JG 포털 전용 AI 비서(LG EXAONE 3.5)입니다. 🇰🇷<br>
+                        우리 집 <strong>자산 현황, 혈압 건강, 오늘 일정, 서버 인프라 상태, 최신 뉴스</strong>까지 무엇이든 편하게 물어보세요! 😊
                     </div>
                 </div>
             </div>
 
-            <!-- 빠른 질문 칩 바 -->
+            <!-- 빠른 질문 칩 바 (전체 서비스 통합) -->
             <div class="ai-quick-prompts">
-                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 챙겨야 할 가족 일정 알려줘')">📅 오늘 일정</button>
-                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('최근 혈압 상태와 건강 조언해 줘')">🩺 혈압 조언</button>
+                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('우리 집 총 자산과 주요 주식 현황 분석해줘')">💰 자산 현황</button>
+                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('최근 혈압 상태와 오늘 복약 여부 알려줘')">🩺 혈압·복약</button>
+                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 챙겨야 할 가족 일정과 메모 알려줘')">📅 오늘 일정</button>
+                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('주서버와 보조서버 가동 상태 알려줘')">🖥️ 서버 상태</button>
+                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 주요 뉴스와 실시간 속보 알려줘')">📰 주요 뉴스</button>
                 <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 날씨와 외출 옷차림 팁 알려줘')">🌤️ 날씨 팁</button>
-                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('혈압 낮추는 데 좋은 생활 습관 알려줘')">💡 혈압 관리법</button>
             </div>
 
             <form class="ai-chat-input-bar" onsubmit="handleSendAiMessage(event)">
-                <input type="text" id="aiChatInput" class="ai-chat-input" placeholder="AI 비서에게 물어보세요..." autocomplete="off">
+                <input type="text" id="aiChatInput" class="ai-chat-input" placeholder="AI 비서에게 물어보세요 (예: 내 자산 얼마야?)..." autocomplete="off">
                 <button type="submit" id="aiChatSendBtn" class="ai-chat-send-btn">전송</button>
             </form>
         `;

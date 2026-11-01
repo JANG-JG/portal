@@ -32,6 +32,7 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
             medication: summary.medication,
             weather: summary.weather,
             todayEvents: summary.todayEvents || [],
+            asset: summary.asset,
             userName
         }, forceRefresh);
 
