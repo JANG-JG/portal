@@ -8,6 +8,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { getLiveWeatherData, CITY_LIST, normalizeCityCode, getDefaultWeatherCity } = require('../services/weather.service');
 const { getPortalSummary, invalidateSummaryCache } = require('../services/portalSummary.service');
 const { getTickerData, invalidateTickerCache } = require('../services/portalTicker.service');
+const { getModuleById, isServiceAllowed } = require('../services/moduleRegistry.service');
 
 // 1. 요약 데이터 조회 API (메인 대시보드 카드용, SWR 60초 캐시 및 백그라운드 무기다림 갱신)
 router.get('/api/summary', authenticateToken, async (req, res) => {
@@ -175,6 +176,10 @@ router.get('/go/:service', authenticateToken, (req, res) => {
         else if (service === 'asset') baseUrl = 'https://asset.j-jg.cc';
         else if (service === 'blood') baseUrl = 'https://blood.j-jg.cc';
         else if (service === 'album') baseUrl = 'https://album.j-jg.cc';
+        else {
+            const mod = getModuleById(service);
+            if (mod && mod.baseUrl) baseUrl = mod.baseUrl;
+        }
 
         if (baseUrl) {
             let destUrl = baseUrl;
@@ -212,7 +217,11 @@ router.get('/go/:service', authenticateToken, (req, res) => {
 
             const serviceKey = (service === 'economy' ? 'news' : service);
             if (!allowed.includes('all') && !allowed.includes(serviceKey)) {
-                return res.redirect('/?notice=unauthorized_service');
+                // 모듈 레지스트리 기반 접근 권한 검사 (신규 서비스 자동 연동)
+                const isAllowed = isServiceAllowed({ role: req.user.role, allowed_services: userRow?.allowed_services }, serviceKey);
+                if (!isAllowed) {
+                    return res.redirect('/?notice=unauthorized_service');
+                }
             }
             executeSso(userRow?.nickname);
         });

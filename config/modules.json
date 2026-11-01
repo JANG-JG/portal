@@ -1,0 +1,428 @@
+[
+  {
+    "id": "blood",
+    "name": "혈압·건강 관리",
+    "icon": "🩸",
+    "description": "실시간 혈압·맥박 기록 및 진료 리포트, 복약 알림",
+    "category": "건강",
+    "entryUrl": "/go/blood",
+    "baseUrl": "https://blood.j-jg.cc",
+    "ssoEnabled": true,
+    "adminOnly": true,
+    "defaultFamilyAllowed": false,
+    "order": 10,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "혈압·건강·약",
+      "entryUrl": "/go/blood?path=/dashboard.html",
+      "subLinks": [
+        {
+          "name": "혈압 측정 및 관리",
+          "url": "/go/blood?path=/dashboard.html",
+          "icon": "📋",
+          "desc": "실시간 혈압·맥박 대시보드 및 기록"
+        },
+        {
+          "name": "진료 리포트",
+          "url": "/go/blood?path=/report.html",
+          "icon": "📊",
+          "desc": "기간별 혈압 분석 및 의사 진료 리포트"
+        },
+        {
+          "name": "약 복용 & 병원 일정",
+          "url": "/go/blood?path=/hospital.html",
+          "icon": "🏥",
+          "desc": "진료 방문 내역 및 복약 기반 일정 관리"
+        }
+      ]
+    },
+    "quickStrip": [
+      {
+        "id": "blood-measure",
+        "label": "혈압 측정",
+        "icon": "🩸",
+        "type": "link",
+        "url": "/go/blood"
+      },
+      {
+        "id": "blood-med",
+        "label": "약 복용",
+        "icon": "💊",
+        "type": "action",
+        "action": "recordQuickMedication()"
+      }
+    ],
+    "portalWidget": {
+      "enabled": true,
+      "type": "hero-health",
+      "cardId": "homarrHeroCard",
+      "apiEndpoint": "/api/summary"
+    },
+    "admin": {
+      "enabled": true,
+      "title": "혈압 관리 제어",
+      "icon": "🩸",
+      "tabId": "tab-blood",
+      "subMenus": [
+        { "id": "subpane-blood-backup", "title": "데이터 백업 & CSV 복구", "icon": "💾" },
+        { "id": "subpane-blood-threshold", "title": "혈압 위험 기준치 설정", "icon": "⚙️" },
+        { "id": "subpane-blood-records", "title": "최근 혈압 측정 기록", "icon": "🩸" }
+      ]
+    }
+  },
+  {
+    "id": "asset",
+    "name": "자산·금융 관리",
+    "icon": "💰",
+    "description": "국내/미국 주식, 가상자산 및 포트폴리오 통합 분석",
+    "category": "자산",
+    "entryUrl": "/go/asset",
+    "baseUrl": "https://asset.j-jg.cc",
+    "ssoEnabled": true,
+    "adminOnly": false,
+    "defaultFamilyAllowed": false,
+    "order": 20,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "자산·금융",
+      "entryUrl": "/go/asset",
+      "subLinks": [
+        {
+          "name": "자산 현황 및 포트폴리오",
+          "url": "/go/asset",
+          "icon": "🏠",
+          "desc": "총 자산 현황 및 포트폴리오 요약"
+        },
+        {
+          "name": "증권 계좌별 현황",
+          "url": "/go/asset#portfolio-view",
+          "icon": "💼",
+          "desc": "계좌별 보유 자산 및 비중 분석"
+        },
+        {
+          "name": "보유 종목 상세",
+          "url": "/go/asset#holdings-view",
+          "icon": "📈",
+          "desc": "실시간 시세 연동 및 개별 종목 수익률"
+        }
+      ]
+    },
+    "quickStrip": [
+      {
+        "id": "asset-portfolio",
+        "label": "자산 분석",
+        "icon": "💰",
+        "type": "link",
+        "url": "/go/asset"
+      }
+    ],
+    "portalWidget": {
+      "enabled": true,
+      "type": "bento-card",
+      "cardId": "bento-asset",
+      "title": "총 자산 포트폴리오",
+      "viewMoreUrl": "/go/asset",
+      "apiEndpoint": "/api/summary"
+    },
+    "admin": {
+      "enabled": true,
+      "title": "자산 관리 제어",
+      "icon": "💰",
+      "tabId": "tab-asset",
+      "subMenus": [
+        { "id": "subpane-asset-summary", "title": "포트폴리오 & DB 백업", "icon": "📊" },
+        { "id": "subpane-asset-accounts", "title": "증권 계좌별 현황", "icon": "📂" },
+        { "id": "subpane-asset-holdings", "title": "보유 종목 상세 (한글명)", "icon": "💼" }
+      ]
+    }
+  },
+  {
+    "id": "news",
+    "name": "실시간 뉴스룸",
+    "icon": "📰",
+    "description": "경제, 정치, IT 주요 뉴스 및 속보 실시간 브리핑",
+    "category": "정보",
+    "entryUrl": "/go/news",
+    "baseUrl": "https://news.j-jg.cc",
+    "ssoEnabled": true,
+    "adminOnly": false,
+    "defaultFamilyAllowed": true,
+    "order": 30,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "뉴스룸",
+      "entryUrl": "/go/news",
+      "subLinks": [
+        {
+          "name": "실시간 주요 뉴스",
+          "url": "/go/news",
+          "icon": "📰",
+          "desc": "실시간 수집된 주요 뉴스 브리핑"
+        },
+        {
+          "name": "속보 뉴스 피드",
+          "url": "https://news.j-jg.cc/breaking",
+          "icon": "🚨",
+          "desc": "실시간 긴급 속보 스트림"
+        },
+        {
+          "name": "경제 & 증시 브리핑",
+          "url": "/go/news?path=/economy",
+          "icon": "📊",
+          "desc": "국내외 증시 및 금융 지표"
+        }
+      ]
+    },
+    "quickStrip": [
+      {
+        "id": "news-briefing",
+        "label": "뉴스룸",
+        "icon": "📰",
+        "type": "link",
+        "url": "/go/news"
+      }
+    ],
+    "portalWidget": {
+      "enabled": true,
+      "type": "ticker",
+      "cardId": "breakingBannerBar",
+      "apiEndpoint": "/api/ticker"
+    },
+    "admin": {
+      "enabled": true,
+      "title": "뉴스 브리핑 제어",
+      "icon": "📰",
+      "tabId": "tab-news",
+      "subMenus": [
+        { "id": "subpane-news-collect", "title": "즉시 수집 & DB 현황", "icon": "🚀" },
+        { "id": "subpane-news-articles", "title": "최근 수집 기사 (10선)", "icon": "📑" },
+        { "id": "subpane-news-history", "title": "수집 이력 & 로그 콘솔", "icon": "📋" }
+      ]
+    }
+  },
+  {
+    "id": "calendar",
+    "name": "스마트 캘린더",
+    "icon": "📅",
+    "description": "가족 일정 공유, 진료 일정, 기념일 및 카테고리별 일정 관리",
+    "category": "라이프",
+    "entryUrl": "/calendar",
+    "baseUrl": "",
+    "ssoEnabled": false,
+    "adminOnly": false,
+    "defaultFamilyAllowed": true,
+    "order": 40,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "캘린더",
+      "entryUrl": "/calendar",
+      "subLinks": [
+        {
+          "name": "전체 월간 일정",
+          "url": "/calendar",
+          "icon": "📅",
+          "desc": "월별/주별 일정 캘린더 뷰"
+        },
+        {
+          "name": "새 일정 등록",
+          "url": "/calendar#new",
+          "icon": "➕",
+          "desc": "병원, 가족 행사, 기념일 추가"
+        }
+      ]
+    },
+    "quickStrip": [
+      {
+        "id": "calendar-quick",
+        "label": "캘린더",
+        "icon": "📅",
+        "type": "link",
+        "url": "/calendar"
+      }
+    ],
+    "portalWidget": {
+      "enabled": true,
+      "type": "bento-card",
+      "cardId": "bento-calendar",
+      "title": "스마트 캘린더 다가오는 일정",
+      "viewMoreUrl": "/calendar",
+      "apiEndpoint": "/api/calendar/events"
+    },
+    "admin": null
+  },
+  {
+    "id": "memo",
+    "name": "아이디어 메모장",
+    "icon": "💡",
+    "description": "빠른 메모 기록, 서식 편집, 핀 고정 및 카테고리 정리",
+    "category": "라이프",
+    "entryUrl": "/memo",
+    "baseUrl": "",
+    "ssoEnabled": false,
+    "adminOnly": false,
+    "defaultFamilyAllowed": true,
+    "order": 50,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "메모장",
+      "entryUrl": "/memo",
+      "subLinks": [
+        {
+          "name": "전체 메모 보관함",
+          "url": "/memo",
+          "icon": "💡",
+          "desc": "작성된 메모 목록 및 검색"
+        },
+        {
+          "name": "새 메모 작성",
+          "url": "/memo#new",
+          "icon": "✏️",
+          "desc": "간편 서식 에디터로 메모 작성"
+        }
+      ]
+    },
+    "quickStrip": [
+      {
+        "id": "memo-quick",
+        "label": "메모 작성",
+        "icon": "💡",
+        "type": "link",
+        "url": "/memo"
+      }
+    ],
+    "portalWidget": null,
+    "admin": null
+  },
+  {
+    "id": "album",
+    "name": "우리 가족 사진첩",
+    "icon": "📸",
+    "description": "가족 사진 및 영상 아카이브, 반응, 댓글, 썸네일 스트립",
+    "category": "가족",
+    "entryUrl": "/go/album",
+    "baseUrl": "https://album.j-jg.cc",
+    "ssoEnabled": true,
+    "adminOnly": false,
+    "defaultFamilyAllowed": true,
+    "order": 60,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "가족 앨범",
+      "entryUrl": "/go/album",
+      "subLinks": [
+        {
+          "name": "가족 사진첩 홈",
+          "url": "/go/album",
+          "icon": "📸",
+          "desc": "최근 등록된 가족 사진 피드"
+        },
+        {
+          "name": "새 사진 업로드",
+          "url": "https://album.j-jg.cc/upload",
+          "icon": "⬆️",
+          "desc": "소중한 순간 사진 및 동영상 등록"
+        }
+      ]
+    },
+    "quickStrip": [
+      {
+        "id": "album-quick",
+        "label": "가족 앨범",
+        "icon": "📸",
+        "type": "link",
+        "url": "/go/album"
+      }
+    ],
+    "portalWidget": {
+      "enabled": true,
+      "type": "bento-card",
+      "cardId": "bento-album",
+      "title": "가족 앨범 최신 사진",
+      "viewMoreUrl": "https://album.j-jg.cc",
+      "apiEndpoint": "/api/portal/recent-photos"
+    },
+    "admin": {
+      "enabled": true,
+      "title": "가족 사진첩 제어",
+      "icon": "📸",
+      "tabId": "tab-album",
+      "subMenus": [
+        { "id": "subpane-album-summary", "title": "사진첩 통계 & 스토리지", "icon": "📊" },
+        { "id": "subpane-album-photos", "title": "최근 업로드 사진 관리", "icon": "🖼️" },
+        { "id": "subpane-album-members", "title": "가족 구성원 활동 현황", "icon": "👥" }
+      ]
+    }
+  },
+  {
+    "id": "wiki",
+    "name": "가족 지식창고",
+    "icon": "📚",
+    "description": "가족 루틴 체크리스트, 장보기 목록, 소모품/계약 D-Day 관리",
+    "category": "지식",
+    "entryUrl": "/wiki",
+    "baseUrl": "",
+    "ssoEnabled": false,
+    "adminOnly": false,
+    "defaultFamilyAllowed": true,
+    "order": 70,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "가족 위키",
+      "entryUrl": "/wiki",
+      "subLinks": [
+        {
+          "name": "가족 위키 홈",
+          "url": "/wiki",
+          "icon": "📚",
+          "desc": "가족 공용 문서 및 가이드"
+        },
+        {
+          "name": "루틴 & 장보기",
+          "url": "/wiki#routine",
+          "icon": "✅",
+          "desc": "오늘의 반복 할 일 및 구매 품목"
+        },
+        {
+          "name": "소모품 & 계약 주기",
+          "url": "/wiki#dday",
+          "icon": "⏳",
+          "desc": "필터 교체, 정기 결제 D-Day"
+        }
+      ]
+    },
+    "quickStrip": [
+      {
+        "id": "wiki-quick",
+        "label": "가족 위키",
+        "icon": "📚",
+        "type": "link",
+        "url": "/wiki"
+      }
+    ],
+    "portalWidget": {
+      "enabled": true,
+      "type": "bento-card",
+      "cardId": "bento-wiki",
+      "title": "오늘의 가족 루틴 & 장보기",
+      "viewMoreUrl": "/wiki",
+      "apiEndpoint": "/api/wiki/routines"
+    },
+    "admin": {
+      "enabled": true,
+      "title": "가족 위키 제어",
+      "icon": "📖",
+      "tabId": "tab-wiki",
+      "subMenus": [
+        { "id": "subpane-wiki-overview", "title": "위키 현황 & 퀵카드", "icon": "📊" },
+        { "id": "subpane-wiki-documents", "title": "가족 문서 아카이브", "icon": "📑" }
+      ]
+    }
+  }
+]
