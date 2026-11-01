@@ -38,6 +38,12 @@
             min-height: 100vh;
             padding-bottom: 60px;
         }
+        /* 🖥️ 데스크톱(768px 이상) 화면 120% 확대 적용 */
+        @media (min-width: 768px) {
+            body {
+                zoom: 1.2;
+            }
+        }
         @media (prefers-color-scheme: dark) {
             body { background: #0f172a; }
         }
