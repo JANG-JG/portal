@@ -7,7 +7,11 @@ const CONFIG_PATH = path.join(__dirname, '../config/kindergarten.json');
 const PYTHON_PATH = path.join(__dirname, '../venv/bin/python3');
 const CRAWLER_PATH = path.join(__dirname, '../scripts/kindergarten_crawler.py');
 
-// 싱글톤 상태 객체
+// 로컬 환경 판별: /mnt/hdd 가 직접 연결된 PC인지, 아니면 원격 메인 서버(노트9)인지 자동 감지
+const isLocalWorker = process.env.IS_KINDERGARTEN_LOCAL_AGENT === 'true' || fs.existsSync('/mnt/hdd');
+const LOCAL_AGENT_URL = process.env.KINDERGARTEN_AGENT_URL || 'http://192.168.50.164:5055';
+
+// 싱글톤 상태 객체 (로컬 워커용)
 const state = {
     isRunning: false,
     process: null,
@@ -92,12 +96,13 @@ function getPublicConfig() {
         hasUserId: Boolean(cfg.USER_ID_ENC),
         hasUserPw: hasPw,
         targetBoards: cfg.TARGET_BOARDS || {},
-        lastRun: cfg.LAST_RUN || null
+        lastRun: cfg.LAST_RUN || null,
+        isLocalWorker
     };
 }
 
 // 사용자 설정 저장 (아이디/비번 암호화)
-function saveCredentialsAndSettings({ userId, userPw, targetBoards, hddBasePath }) {
+async function saveCredentialsAndSettings({ userId, userPw, targetBoards, hddBasePath }) {
     const cfg = loadConfig();
 
     if (userId !== undefined && userId.trim() !== '') {
@@ -114,6 +119,22 @@ function saveCredentialsAndSettings({ userId, userPw, targetBoards, hddBasePath 
     }
 
     const ok = updateConfig(cfg);
+
+    // 원격 서버(노트9)에서 실행된 경우 로컬 PC 에이전트에도 동기화 전달 시도
+    if (!isLocalWorker) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            await fetch(`${LOCAL_AGENT_URL}/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, userPw, targetBoards, hddBasePath }),
+                signal: controller.signal
+            }).catch(() => {});
+            clearTimeout(timeout);
+        } catch (e) {}
+    }
+
     return { success: ok, config: getPublicConfig() };
 }
 
@@ -147,7 +168,28 @@ function appendLog(line) {
 }
 
 // 크롤러 실행
-function startCrawler() {
+async function startCrawler() {
+    // 1. 원격 서버(노트9)인 경우: 로컬 PC 에이전트로 스마트 위임
+    if (!isLocalWorker) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
+            const res = await fetch(`${LOCAL_AGENT_URL}/run`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal
+            });
+            clearTimeout(timeout);
+            return await res.json();
+        } catch (err) {
+            return {
+                success: false,
+                message: '로컬 PC(HP 노트북)가 오프라인 상태이거나 에이전트가 꺼져 있습니다. PC 전원을 켜주세요.'
+            };
+        }
+    }
+
+    // 2. 로컬 PC인 경우: 직접 크롤러 프로세스 구동
     if (state.isRunning) {
         return { success: false, message: '이미 사진 수집이 실행 중입니다.' };
     }
@@ -206,7 +248,6 @@ function startCrawler() {
                     isJsonSection = false;
                     try {
                         state.lastResult = JSON.parse(jsonBuffer);
-                        // config 에도 마지막 실행 기록 저장
                         cfg.LAST_RUN = state.lastResult;
                         updateConfig(cfg);
                     } catch (e) {
@@ -251,7 +292,31 @@ function startCrawler() {
 }
 
 // 현재 상태 및 최근 로그 반환
-function getStatus() {
+async function getStatus() {
+    // 1. 원격 서버(노트9)인 경우: 로컬 PC 에이전트로부터 상태 조회
+    if (!isLocalWorker) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            const res = await fetch(`${LOCAL_AGENT_URL}/status`, { signal: controller.signal });
+            clearTimeout(timeout);
+            const data = await res.json();
+            if (data.success) {
+                return data.status;
+            }
+        } catch (e) {
+            const cfg = loadConfig();
+            return {
+                isRunning: false,
+                isOffline: true,
+                message: '로컬 PC(HP 노트북)가 꺼져 있습니다.',
+                logs: [{ time: '--:--', text: '[안내] 로컬 PC가 오프라인 상태입니다.' }],
+                lastResult: cfg.LAST_RUN || null
+            };
+        }
+    }
+
+    // 2. 로컬 PC인 경우: 로컬 상태 반환
     const cfg = loadConfig();
     return {
         isRunning: state.isRunning,
@@ -263,7 +328,20 @@ function getStatus() {
 }
 
 // 누적 로그 파일 읽기
-function getCumulativeHistoryLog() {
+async function getCumulativeHistoryLog() {
+    if (!isLocalWorker) {
+        try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 3000);
+            const res = await fetch(`${LOCAL_AGENT_URL}/history-log`, { signal: controller.signal });
+            clearTimeout(timeout);
+            const data = await res.json();
+            if (data.success) return data.log;
+        } catch (e) {
+            return { exists: false, content: '로컬 PC가 오프라인 상태이거나 응답하지 않습니다.' };
+        }
+    }
+
     const cfg = loadConfig();
     const basePath = cfg.HDD_BASE_PATH || '/mnt/hdd';
     const logPath = path.join(basePath, '유치원_사진_다운로드', 'collection_history.log');
@@ -274,7 +352,6 @@ function getCumulativeHistoryLog() {
         }
         const fullContent = fs.readFileSync(logPath, 'utf8');
         const lines = fullContent.split('\n');
-        // 최근 60줄 반환
         const recent = lines.slice(-60).join('\n');
         return { exists: true, content: recent };
     } catch (err) {

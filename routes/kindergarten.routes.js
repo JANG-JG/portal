@@ -14,10 +14,10 @@ router.get('/config', authenticateToken, (req, res) => {
 });
 
 // 2. 유치원 수집기 설정 저장 (계정 암호화, 게시판 목록 업데이트)
-router.post('/config', authenticateToken, (req, res) => {
+router.post('/config', authenticateToken, async (req, res) => {
     try {
         const { userId, userPw, targetBoards, hddBasePath } = req.body;
-        const result = kindergartenService.saveCredentialsAndSettings({
+        const result = await kindergartenService.saveCredentialsAndSettings({
             userId,
             userPw,
             targetBoards,
@@ -33,9 +33,9 @@ router.post('/config', authenticateToken, (req, res) => {
 });
 
 // 3. 사진 수집 프로세스 실행
-router.post('/run', authenticateToken, (req, res) => {
+router.post('/run', authenticateToken, async (req, res) => {
     try {
-        const result = kindergartenService.startCrawler();
+        const result = await kindergartenService.startCrawler();
         if (!result.success) {
             return res.status(400).json(result);
         }
@@ -46,9 +46,9 @@ router.post('/run', authenticateToken, (req, res) => {
 });
 
 // 4. 실시간 상태 및 최근 로그 조회
-router.get('/status', authenticateToken, (req, res) => {
+router.get('/status', authenticateToken, async (req, res) => {
     try {
-        const status = kindergartenService.getStatus();
+        const status = await kindergartenService.getStatus();
         return res.json({ success: true, status });
     } catch (err) {
         return res.status(500).json({ success: false, error: '상태 조회 실패: ' + err.message });
@@ -56,9 +56,9 @@ router.get('/status', authenticateToken, (req, res) => {
 });
 
 // 5. 누적 로그 파일(collection_history.log) 조회
-router.get('/history-log', authenticateToken, (req, res) => {
+router.get('/history-log', authenticateToken, async (req, res) => {
     try {
-        const logData = kindergartenService.getCumulativeHistoryLog();
+        const logData = await kindergartenService.getCumulativeHistoryLog();
         return res.json({ success: true, log: logData });
     } catch (err) {
         return res.status(500).json({ success: false, error: '누적 로그 조회 실패: ' + err.message });
