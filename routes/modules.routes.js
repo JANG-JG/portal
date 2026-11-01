@@ -16,6 +16,7 @@ const {
     CORE_MODULE_IDS
 } = require('../services/moduleRegistry.service');
 const { getModuleMetrics, getAllModulesKpiSummary } = require('../services/moduleMetrics.service');
+const { getDashboardConfig, saveDashboardConfig, resetDashboardConfig } = require('../services/dashboardConfig.service');
 
 /**
  * DB에서 사용자의 최신 allowed_services 및 role을 가져오는 헬퍼
@@ -221,6 +222,48 @@ router.get('/admin/kpis', authenticateToken, requireAdmin, async (req, res) => {
         res.json(summary);
     } catch (err) {
         res.status(500).json({ success: false, message: 'KPI 집계 실패' });
+    }
+});
+
+// 12. 공통: 대시보드 위젯 배치 설정 조회
+router.get('/dashboard/config', (req, res) => {
+    try {
+        const widgets = getDashboardConfig();
+        res.json({ success: true, count: widgets.length, widgets });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '대시보드 위젯 설정 조회 실패' });
+    }
+});
+
+// 13. 관리자: 대시보드 위젯 배치 일괄 저장
+router.put('/dashboard/config', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const { widgets } = req.body;
+        if (!Array.isArray(widgets)) {
+            return res.status(400).json({ success: false, message: 'widgets 배열이 필요합니다.' });
+        }
+        const saved = saveDashboardConfig(widgets);
+        res.json({
+            success: true,
+            message: '메인 대시보드 위젯 설정이 성공적으로 저장되었습니다.',
+            widgets: saved
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '대시보드 설정 저장 실패' });
+    }
+});
+
+// 14. 관리자: 대시보드 위젯 기본 배치로 초기화
+router.post('/dashboard/reset', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const restored = resetDashboardConfig();
+        res.json({
+            success: true,
+            message: '대시보드 위젯 배치가 기본값으로 복원되었습니다.',
+            widgets: restored
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '기본값 복원 실패' });
     }
 });
 

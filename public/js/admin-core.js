@@ -55,6 +55,7 @@ const SUBTABS_CONFIG = {
     ],
     'tab-modules': [
         { id: 'subpane-modules-list', label: '서비스 모듈 목록', icon: '📋' },
+        { id: 'subpane-modules-widgets', label: '대시보드 위젯 배치', icon: '🍱' },
         { id: 'subpane-modules-guide', label: '모듈 개발 가이드', icon: '📖' }
     ]
 };
@@ -242,6 +243,11 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
     try {
         localStorage.setItem('admin_last_sub', subId);
     } catch (e) {}
+
+    // 대시보드 위젯 배치 탭 진입 시 실시간 데이터 로드
+    if (subId === 'subpane-modules-widgets' && typeof window.loadDashboardWidgetsList === 'function') {
+        window.loadDashboardWidgetsList();
+    }
 }
 
 // 사이드바에서 대메뉴 & 서브메뉴 동시 전환
