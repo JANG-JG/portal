@@ -1,6 +1,7 @@
 {
   "HDD_BASE_PATH": "/mnt/hdd",
   "ROOT_URL": "https://www.bonbu.kr/",
+  "AGENT_URL": "http://192.168.50.164:5055",
   "USER_ID_ENC": "",
   "USER_PW_ENC": "",
   "TARGET_BOARDS": {

@@ -9,7 +9,11 @@ const CRAWLER_PATH = path.join(__dirname, '../scripts/kindergarten_crawler.py');
 
 // 로컬 환경 판별: /mnt/hdd 가 직접 연결된 PC인지, 아니면 원격 메인 서버(노트9)인지 자동 감지
 const isLocalWorker = process.env.IS_KINDERGARTEN_LOCAL_AGENT === 'true' || fs.existsSync('/mnt/hdd');
-const LOCAL_AGENT_URL = process.env.KINDERGARTEN_AGENT_URL || 'http://localhost:5055';
+
+function getAgentUrl() {
+    const cfg = loadConfig();
+    return process.env.KINDERGARTEN_AGENT_URL || cfg.AGENT_URL || 'http://localhost:5055';
+}
 
 // 싱글톤 상태 객체 (로컬 워커용)
 const state = {
@@ -125,7 +129,7 @@ async function saveCredentialsAndSettings({ userId, userPw, targetBoards, hddBas
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
-            await fetch(`${LOCAL_AGENT_URL}/config`, {
+            await fetch(`${getAgentUrl()}/config`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, userPw, targetBoards, hddBasePath }),
@@ -174,7 +178,7 @@ async function startCrawler() {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 4000);
-            const res = await fetch(`${LOCAL_AGENT_URL}/run`, {
+            const res = await fetch(`${getAgentUrl()}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 signal: controller.signal
@@ -298,7 +302,7 @@ async function getStatus() {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
-            const res = await fetch(`${LOCAL_AGENT_URL}/status`, { signal: controller.signal });
+            const res = await fetch(`${getAgentUrl()}/status`, { signal: controller.signal });
             clearTimeout(timeout);
             const data = await res.json();
             if (data.success) {
@@ -333,7 +337,7 @@ async function getCumulativeHistoryLog() {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
-            const res = await fetch(`${LOCAL_AGENT_URL}/history-log`, { signal: controller.signal });
+            const res = await fetch(`${getAgentUrl()}/history-log`, { signal: controller.signal });
             clearTimeout(timeout);
             const data = await res.json();
             if (data.success) return data.log;
