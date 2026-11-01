@@ -282,8 +282,11 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
     };
 }
 
+const knowledgeService = require('./aiKnowledge.service');
+
 module.exports = {
     checkAiHealth,
     generateAiDailyBriefing,
-    askAiAssistant
+    askAiAssistant,
+    ...knowledgeService
 };

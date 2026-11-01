@@ -203,6 +203,20 @@
             <div class="memo-modal-body">
                 <input type="hidden" id="editMemoId">
                 
+                <!-- 🤖 AI 지식/루틴 스마트 도구 바 -->
+                <div class="memo-ai-tools-bar">
+                    <span class="memo-ai-tools-label">🤖 AI 스마트 도구:</span>
+                    <button type="button" class="memo-ai-tool-btn" onclick="triggerMemoToWiki()" title="이 메모를 정돈된 가족 위키 문서로 발행">
+                        <span>📚 위키 정리</span>
+                    </button>
+                    <button type="button" class="memo-ai-tool-btn" onclick="triggerExtractRoutine()" title="메모 속 반복 루틴과 일정을 감지하여 등록">
+                        <span>⏱️ 루틴 추출</span>
+                    </button>
+                    <button type="button" class="memo-ai-tool-btn" onclick="triggerSummarizeMemo()" title="메모 내용을 3줄 핵심으로 요약">
+                        <span>📑 3줄 요약</span>
+                    </button>
+                </div>
+
                 <div class="memo-modal-title-wrap">
                     <input type="text" id="editMemoTitle" class="memo-modal-title-input" placeholder="제목을 입력하세요 (선택)..." maxlength="100">
                 </div>
@@ -284,6 +298,7 @@
     <script src="/js/quill.js"></script>
     <script src="/js/memo-utils.js"></script>
     <script src="/js/memo.js"></script>
+    <script src="/js/memo-ai.js"></script>
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 + 하단 뉴스/속보 티커 자동 로드) -->
     <script src="/api/jg-ui" defer></script>

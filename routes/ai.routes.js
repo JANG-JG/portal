@@ -7,7 +7,15 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, getClientIp } = require('../middleware/auth');
-const { checkAiHealth, generateAiDailyBriefing, askAiAssistant } = require('../services/aiAssistant.service');
+const {
+    checkAiHealth,
+    generateAiDailyBriefing,
+    askAiAssistant,
+    refineMemoToWiki,
+    extractRoutineAndTodos,
+    summarizeText,
+    generateWikiDraft
+} = require('../services/aiAssistant.service');
 const { getPortalSummary } = require('../services/portalSummary.service');
 
 // 🛡️ [보안 강화] AI 채팅 레이트 리미터 & 동시성 제어 (로컬 PC 과부하 및 DoS 방어)
@@ -143,6 +151,107 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
             message: 'AI 비서와의 연결에 실패했습니다. (로컬 PC의 Ollama 상태를 확인하세요)',
             error: err.message
         });
+    }
+});
+
+// 4. 메모 ➔ 위키 정돈 API
+router.post('/api/ai/memo-to-wiki', authenticateToken, async (req, res) => {
+    try {
+        const { title, content } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ success: false, message: '정리할 메모 내용이 없습니다.' });
+        }
+
+        if (activeAiRequests >= MAX_CONCURRENT_AI) {
+            return res.status(503).json({ success: false, message: 'AI 엔진이 다른 작업을 처리 중입니다. 잠시 후 시도해 주세요.' });
+        }
+
+        activeAiRequests++;
+        try {
+            const userName = req.user?.nickname || req.user?.username || '가족';
+            const result = await refineMemoToWiki({ title, content, userName });
+            res.json(result);
+        } finally {
+            activeAiRequests = Math.max(0, activeAiRequests - 1);
+        }
+    } catch (err) {
+        console.error('[API /api/ai/memo-to-wiki] 오류:', err);
+        res.status(500).json({ success: false, message: '위키 문서 변환 실패: ' + err.message });
+    }
+});
+
+// 5. 메모에서 루틴 및 할 일 자동 감지 API
+router.post('/api/ai/extract-routine', authenticateToken, async (req, res) => {
+    try {
+        const { title, content } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ success: false, message: '분석할 메모 내용이 없습니다.' });
+        }
+
+        if (activeAiRequests >= MAX_CONCURRENT_AI) {
+            return res.status(503).json({ success: false, message: 'AI 엔진이 다른 작업을 처리 중입니다. 잠시 후 시도해 주세요.' });
+        }
+
+        activeAiRequests++;
+        try {
+            const result = await extractRoutineAndTodos({ title, content });
+            res.json(result);
+        } finally {
+            activeAiRequests = Math.max(0, activeAiRequests - 1);
+        }
+    } catch (err) {
+        console.error('[API /api/ai/extract-routine] 오류:', err);
+        res.status(500).json({ success: false, message: '루틴 분석 실패: ' + err.message });
+    }
+});
+
+// 6. 3줄 핵심 요약 API
+router.post('/api/ai/summarize', authenticateToken, async (req, res) => {
+    try {
+        const { text, maxLines = 3 } = req.body;
+        if (!text || !text.trim()) {
+            return res.status(400).json({ success: false, message: '요약할 본문 내용이 없습니다.' });
+        }
+
+        if (activeAiRequests >= MAX_CONCURRENT_AI) {
+            return res.status(503).json({ success: false, message: 'AI 엔진이 다른 작업을 처리 중입니다. 잠시 후 시도해 주세요.' });
+        }
+
+        activeAiRequests++;
+        try {
+            const result = await summarizeText({ text, maxLines });
+            res.json(result);
+        } finally {
+            activeAiRequests = Math.max(0, activeAiRequests - 1);
+        }
+    } catch (err) {
+        console.error('[API /api/ai/summarize] 오류:', err);
+        res.status(500).json({ success: false, message: '요약 생성 실패: ' + err.message });
+    }
+});
+
+// 7. 프롬프트 기반 위키 초안 자동 작성 API
+router.post('/api/ai/wiki-draft', authenticateToken, async (req, res) => {
+    try {
+        const { prompt, category = '생활' } = req.body;
+        if (!prompt || !prompt.trim()) {
+            return res.status(400).json({ success: false, message: '작성할 주제를 입력해 주세요.' });
+        }
+
+        if (activeAiRequests >= MAX_CONCURRENT_AI) {
+            return res.status(503).json({ success: false, message: 'AI 엔진이 다른 작업을 처리 중입니다. 잠시 후 시도해 주세요.' });
+        }
+
+        activeAiRequests++;
+        try {
+            const result = await generateWikiDraft({ prompt, category });
+            res.json(result);
+        } finally {
+            activeAiRequests = Math.max(0, activeAiRequests - 1);
+        }
+    } catch (err) {
+        console.error('[API /api/ai/wiki-draft] 오류:', err);
+        res.status(500).json({ success: false, message: '위키 초안 작성 실패: ' + err.message });
     }
 });
 

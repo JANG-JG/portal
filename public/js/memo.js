@@ -190,6 +190,9 @@ function renderMemos(memos) {
                             ${m.is_pinned ? '<span class="memo-pin-pill">📌 고정됨</span>' : ''}
                         </div>
                         <div class="memo-card-actions">
+                            <button type="button" class="memo-action-btn" onclick="openMemoAiQuickMenu(event, ${m.id})" title="AI 스마트 도구 (위키 정리 / 루틴 추출)">
+                                🤖
+                            </button>
                             <button type="button" class="memo-action-btn btn-pin ${m.is_pinned ? 'is-active' : ''}" onclick="toggleMemoPin(${m.id})" title="${m.is_pinned ? '고정 해제' : '상단 고정'}">
                                 📌
                             </button>
