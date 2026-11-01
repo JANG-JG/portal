@@ -77,7 +77,7 @@
             title: customTitle || '새 대화',
             createdAt: now,
             updatedAt: now,
-            messages: [Object.assign({}, DEFAULT_WELCOME_MSG)]
+            messages: [Object.assign({}, DEFAULT_WELCOME_MSG, { timestamp: now })]
         };
 
         sessions.unshift(newSession);
@@ -116,7 +116,7 @@
     /**
      * 활성 세션에 메시지 추가 및 제목 자동 갱신
      */
-    function addMessageToActiveSession(role, content) {
+    function addMessageToActiveSession(role, content, timestamp) {
         const sessions = loadAllSessions();
         let activeId = getActiveSessionId();
         let session = sessions.find(s => s.id === activeId);
@@ -127,8 +127,9 @@
             activeId = session.id;
         }
 
-        session.messages.push({ role, content });
-        session.updatedAt = Date.now();
+        const msgTime = timestamp || Date.now();
+        session.messages.push({ role, content, timestamp: msgTime });
+        session.updatedAt = msgTime;
 
         // 사용자의 첫 질문인 경우 대화 세션 제목 자동 업데이트
         if (role === 'user' && session.title === '새 대화') {
@@ -270,6 +271,25 @@
             .replace(/'/g, '&#039;');
     }
 
+    /**
+     * 메시지 날짜/시간 포맷팅 (예: "11월 2일 오전 4:08")
+     */
+    function formatMessageDateTime(ts) {
+        if (!ts) ts = Date.now();
+        const d = new Date(ts);
+        if (isNaN(d.getTime())) return '';
+
+        const month = d.getMonth() + 1;
+        const date = d.getDate();
+        let hours = d.getHours();
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? '오후' : '오전';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+
+        return `${month}월 ${date}일 ${ampm} ${hours}:${minutes}`;
+    }
+
     // 전역 네임스페이스 등록
     window.JgAiHistory = {
         loadAllSessions,
@@ -281,6 +301,7 @@
         deleteSession,
         renderHistoryList,
         formatRelativeTime,
+        formatMessageDateTime,
         DEFAULT_WELCOME_MSG
     };
 

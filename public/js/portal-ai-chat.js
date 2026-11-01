@@ -238,13 +238,13 @@
 
         if (session && Array.isArray(session.messages)) {
             session.messages.forEach(msg => {
-                appendMessageBubble(msg.role, msg.content);
-                chatHistory.push({ role: msg.role, content: msg.content });
+                appendMessageBubble(msg.role, msg.content, msg.timestamp || session.createdAt);
+                chatHistory.push({ role: msg.role, content: msg.content, timestamp: msg.timestamp });
             });
             updateSessionTitleUI(session.title);
         } else {
             const welcome = window.JgAiHistory.DEFAULT_WELCOME_MSG;
-            appendMessageBubble(welcome.role, welcome.content);
+            appendMessageBubble(welcome.role, welcome.content, Date.now());
             updateSessionTitleUI('새 대화');
         }
         scrollMessagesToBottom();
@@ -327,11 +327,12 @@
         const text = input.value.trim();
         if (!text) return;
 
-        // 1. 사용자 메시지 버블 추가 및 세션 보관
-        appendMessageBubble('user', text);
-        chatHistory.push({ role: 'user', content: text });
+        // 1. 사용자 메시지 버블 추가 및 세션 보관 (프롬프트 입력 날짜/시각 기록)
+        const userTimestamp = Date.now();
+        appendMessageBubble('user', text, userTimestamp);
+        chatHistory.push({ role: 'user', content: text, timestamp: userTimestamp });
         if (window.JgAiHistory) {
-            const updated = window.JgAiHistory.addMessageToActiveSession('user', text);
+            const updated = window.JgAiHistory.addMessageToActiveSession('user', text, userTimestamp);
             if (updated) updateSessionTitleUI(updated.title);
         }
         input.value = '';
@@ -356,24 +357,25 @@
 
             removeTypingIndicator(typingId);
 
+            const aiTimestamp = Date.now();
             if (!res.ok) {
-                appendMessageBubble('assistant', '죄송합니다. 로컬 AI 비서 응답 중 일시적인 오류가 발생했습니다.');
+                appendMessageBubble('assistant', '죄송합니다. 로컬 AI 비서 응답 중 일시적인 오류가 발생했습니다.', aiTimestamp);
                 return;
             }
 
             const data = await res.json();
             if (data.success && data.answer) {
-                appendMessageBubble('assistant', data.answer);
-                chatHistory.push({ role: 'assistant', content: data.answer });
+                appendMessageBubble('assistant', data.answer, aiTimestamp);
+                chatHistory.push({ role: 'assistant', content: data.answer, timestamp: aiTimestamp });
                 if (window.JgAiHistory) {
-                    window.JgAiHistory.addMessageToActiveSession('assistant', data.answer);
+                    window.JgAiHistory.addMessageToActiveSession('assistant', data.answer, aiTimestamp);
                 }
             } else {
-                appendMessageBubble('assistant', data.message || '답변을 생성하지 못했습니다.');
+                appendMessageBubble('assistant', data.message || '답변을 생성하지 못했습니다.', aiTimestamp);
             }
         } catch (err) {
             removeTypingIndicator(typingId);
-            appendMessageBubble('assistant', '로컬 PC와의 연결이 원활하지 않습니다. (PC의 Ollama 구동 상태를 확인해 주세요)');
+            appendMessageBubble('assistant', '로컬 PC와의 연결이 원활하지 않습니다. (PC의 Ollama 구동 상태를 확인해 주세요)', Date.now());
         } finally {
             isSending = false;
             if (sendBtn) sendBtn.disabled = false;
@@ -381,7 +383,7 @@
         }
     };
 
-    function appendMessageBubble(role, text) {
+    function appendMessageBubble(role, text, timestamp) {
         const msgContainer = document.getElementById('aiChatMessages');
         if (!msgContainer) return;
 
@@ -395,7 +397,17 @@
         } else {
             htmlContent = escapeHtml(text).replace(/\n/g, '<br>');
         }
-        row.innerHTML = `<div class="ai-bubble">${htmlContent}</div>`;
+
+        const timeStr = (window.JgAiHistory && window.JgAiHistory.formatMessageDateTime)
+            ? window.JgAiHistory.formatMessageDateTime(timestamp)
+            : '';
+
+        row.innerHTML = `
+            <div class="ai-bubble-wrap">
+                <div class="ai-bubble">${htmlContent}</div>
+                ${timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : ''}
+            </div>
+        `;
         msgContainer.appendChild(row);
     }
 
