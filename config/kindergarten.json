@@ -2,8 +2,8 @@
   "HDD_BASE_PATH": "/mnt/hdd",
   "ROOT_URL": "https://www.bonbu.kr/",
   "AGENT_URL": "http://192.168.50.164:5055",
-  "USER_ID_ENC": "",
-  "USER_PW_ENC": "",
+  "USER_ID_ENC": "enc:v1:2e4a6e9b8f2744151b195b75:b3b0a44abf1f11c780b8c4993cf64509:f83fb320fed6",
+  "USER_PW_ENC": "enc:v1:84050d830d288341132c55b8:c47d746f548b134cddac8f7de6e37209:4d04467dfe6208ea96d023",
   "TARGET_BOARDS": {
     "소망반_16번게시판": "https://www.bonbu.kr/main/sub.html?boardID=www16",
     "열매반_17번게시판": "https://www.bonbu.kr/main/sub.html?boardID=www17"

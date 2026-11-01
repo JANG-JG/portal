@@ -4,11 +4,11 @@
     "name": "포털 시스템 메인",
     "icon": "🏠",
     "description": "포털 사용자 계정, 통합 인증, 시스템 설정 및 공통 데이터 관리",
-    "category": "시스템",
+    "category": "라이프",
     "entryUrl": "/",
     "baseUrl": "https://j-jg.cc",
-    "ssoEnabled": false,
-    "adminOnly": true,
+    "ssoEnabled": true,
+    "adminOnly": false,
     "defaultFamilyAllowed": true,
     "order": 10,
     "enabled": true,
@@ -19,9 +19,18 @@
     "portalWidget": null,
     "admin": {
       "enabled": true,
-      "title": "포털 시스템 설정",
-      "icon": "⚙️",
-      "tabId": "tab-overview"
+      "title": "포털 시스템 메인 제어",
+      "icon": "🏠",
+      "tabId": "tab-portal",
+      "subMenus": [
+        {
+          "id": "subpane-portal-main",
+          "title": "현황 및 관리",
+          "icon": "📊",
+          "type": "iframe",
+          "src": "/"
+        }
+      ]
     },
     "dbPath": "portal/portal.db"
   },
@@ -119,39 +128,20 @@
     "entryUrl": "/go/asset",
     "baseUrl": "https://asset.j-jg.cc",
     "ssoEnabled": true,
-    "adminOnly": false,
+    "adminOnly": true,
     "defaultFamilyAllowed": false,
     "order": 30,
     "enabled": true,
     "nav": {
       "enabled": true,
-      "label": "자산·금융",
+      "label": "자산·금융 관리",
       "entryUrl": "/go/asset",
-      "subLinks": [
-        {
-          "name": "자산 현황 및 포트폴리오",
-          "url": "/go/asset",
-          "icon": "🏠",
-          "desc": "총 자산 현황 및 포트폴리오 요약"
-        },
-        {
-          "name": "증권 계좌별 현황",
-          "url": "/go/asset#portfolio-view",
-          "icon": "💼",
-          "desc": "계좌별 보유 자산 및 비중 분석"
-        },
-        {
-          "name": "보유 종목 상세",
-          "url": "/go/asset#holdings-view",
-          "icon": "📈",
-          "desc": "실시간 시세 연동 및 개별 종목 수익률"
-        }
-      ]
+      "subLinks": []
     },
     "quickStrip": [
       {
-        "id": "asset-portfolio",
-        "label": "자산 분석",
+        "id": "asset-quick",
+        "label": "자산·금융 관리",
         "icon": "💰",
         "type": "link",
         "url": "/go/asset"
@@ -159,32 +149,22 @@
     ],
     "portalWidget": {
       "enabled": true,
-      "type": "bento-card",
-      "cardId": "bento-asset",
-      "title": "총 자산 포트폴리오",
+      "title": "자산·금융 관리 현황",
       "viewMoreUrl": "/go/asset",
-      "apiEndpoint": "/api/summary"
+      "apiEndpoint": "/api/asset/summary"
     },
     "admin": {
       "enabled": true,
-      "title": "자산 관리 제어",
+      "title": "자산·금융 관리 제어",
       "icon": "💰",
       "tabId": "tab-asset",
       "subMenus": [
         {
-          "id": "subpane-asset-summary",
-          "title": "포트폴리오 & DB 백업",
-          "icon": "📊"
-        },
-        {
-          "id": "subpane-asset-accounts",
-          "title": "증권 계좌별 현황",
-          "icon": "📂"
-        },
-        {
-          "id": "subpane-asset-holdings",
-          "title": "보유 종목 상세 (한글명)",
-          "icon": "💼"
+          "id": "subpane-asset-main",
+          "title": "현황 및 관리",
+          "icon": "📊",
+          "type": "iframe",
+          "src": "/go/asset"
         }
       ]
     },
@@ -449,7 +429,7 @@
     "baseUrl": "",
     "ssoEnabled": false,
     "adminOnly": false,
-    "defaultFamilyAllowed": false,
+    "defaultFamilyAllowed": true,
     "order": 80,
     "enabled": true,
     "nav": {
