@@ -420,3 +420,44 @@ html.hide-blood .homarr-ring-box {
         gap: 0.3rem !important;
     }
 }
+
+/* ==============================================================================
+ * 🖥️ 데스크탑 고해상도 120% 스케일링 (모바일 360px 무결성 100% 보존)
+ * - 사용자 브라우저 기본 100% 배율에서도 120% 수준의 시원한 가독성 제공
+ * ============================================================================== */
+@media (min-width: 1024px) {
+    html {
+        font-size: 17.5px;
+    }
+    .main-shell,
+    .cmd-nav-container {
+        max-width: 1360px !important;
+    }
+}
+
+@media (min-width: 1280px) {
+    html {
+        font-size: 19.2px; /* 16px의 정확한 1.2배 (120% 스케일) */
+    }
+    .main-shell,
+    .cmd-nav-container {
+        max-width: 1480px !important;
+    }
+    .cmd-navbar {
+        min-height: 56px !important;
+    }
+    .cmd-nav-container {
+        height: 56px !important;
+    }
+    .main-shell {
+        padding-top: calc(56px + 1.25rem) !important;
+    }
+}
+
+@media (min-width: 1600px) {
+    .main-shell,
+    .cmd-nav-container {
+        max-width: 1560px !important;
+    }
+}
+
