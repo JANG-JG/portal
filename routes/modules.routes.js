@@ -96,7 +96,7 @@ router.get('/detail/:id', authenticateToken, (req, res) => {
 // 5. 관리자 전용 전체 모듈 목록 조회 (비활성 모듈 및 관리자 설정 포함)
 router.get('/admin/all', authenticateToken, requireAdmin, (req, res) => {
     try {
-        const all = getAllModules();
+        const all = getAllModules(true);
         res.json({
             success: true,
             count: all.length,

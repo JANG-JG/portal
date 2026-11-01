@@ -60,11 +60,13 @@ function parseAllowedServices(allowedServices) {
 }
 
 /**
- * 전체 활성 모듈 목록 조회 (관리자용)
+ * 전체 모듈 목록 조회 (includeDisabled = true 시 비활성 모듈 포함)
+ * @param {boolean} includeDisabled 
  * @returns {Array}
  */
-function getAllModules() {
+function getAllModules(includeDisabled = false) {
     const modules = loadModulesConfig();
+    if (includeDisabled) return [...modules];
     return modules.filter(m => m.enabled !== false);
 }
 

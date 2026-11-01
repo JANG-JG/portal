@@ -65,9 +65,21 @@
       "icon": "🩸",
       "tabId": "tab-blood",
       "subMenus": [
-        { "id": "subpane-blood-backup", "title": "데이터 백업 & CSV 복구", "icon": "💾" },
-        { "id": "subpane-blood-threshold", "title": "혈압 위험 기준치 설정", "icon": "⚙️" },
-        { "id": "subpane-blood-records", "title": "최근 혈압 측정 기록", "icon": "🩸" }
+        {
+          "id": "subpane-blood-backup",
+          "title": "데이터 백업 & CSV 복구",
+          "icon": "💾"
+        },
+        {
+          "id": "subpane-blood-threshold",
+          "title": "혈압 위험 기준치 설정",
+          "icon": "⚙️"
+        },
+        {
+          "id": "subpane-blood-records",
+          "title": "최근 혈압 측정 기록",
+          "icon": "🩸"
+        }
       ]
     }
   },
@@ -132,9 +144,21 @@
       "icon": "💰",
       "tabId": "tab-asset",
       "subMenus": [
-        { "id": "subpane-asset-summary", "title": "포트폴리오 & DB 백업", "icon": "📊" },
-        { "id": "subpane-asset-accounts", "title": "증권 계좌별 현황", "icon": "📂" },
-        { "id": "subpane-asset-holdings", "title": "보유 종목 상세 (한글명)", "icon": "💼" }
+        {
+          "id": "subpane-asset-summary",
+          "title": "포트폴리오 & DB 백업",
+          "icon": "📊"
+        },
+        {
+          "id": "subpane-asset-accounts",
+          "title": "증권 계좌별 현황",
+          "icon": "📂"
+        },
+        {
+          "id": "subpane-asset-holdings",
+          "title": "보유 종목 상세 (한글명)",
+          "icon": "💼"
+        }
       ]
     }
   },
@@ -197,9 +221,21 @@
       "icon": "📰",
       "tabId": "tab-news",
       "subMenus": [
-        { "id": "subpane-news-collect", "title": "즉시 수집 & DB 현황", "icon": "🚀" },
-        { "id": "subpane-news-articles", "title": "최근 수집 기사 (10선)", "icon": "📑" },
-        { "id": "subpane-news-history", "title": "수집 이력 & 로그 콘솔", "icon": "📋" }
+        {
+          "id": "subpane-news-collect",
+          "title": "즉시 수집 & DB 현황",
+          "icon": "🚀"
+        },
+        {
+          "id": "subpane-news-articles",
+          "title": "최근 수집 기사 (10선)",
+          "icon": "📑"
+        },
+        {
+          "id": "subpane-news-history",
+          "title": "수집 이력 & 로그 콘솔",
+          "icon": "📋"
+        }
       ]
     }
   },
@@ -353,9 +389,21 @@
       "icon": "📸",
       "tabId": "tab-album",
       "subMenus": [
-        { "id": "subpane-album-summary", "title": "사진첩 통계 & 스토리지", "icon": "📊" },
-        { "id": "subpane-album-photos", "title": "최근 업로드 사진 관리", "icon": "🖼️" },
-        { "id": "subpane-album-members", "title": "가족 구성원 활동 현황", "icon": "👥" }
+        {
+          "id": "subpane-album-summary",
+          "title": "사진첩 통계 & 스토리지",
+          "icon": "📊"
+        },
+        {
+          "id": "subpane-album-photos",
+          "title": "최근 업로드 사진 관리",
+          "icon": "🖼️"
+        },
+        {
+          "id": "subpane-album-members",
+          "title": "가족 구성원 활동 현황",
+          "icon": "👥"
+        }
       ]
     }
   },
@@ -420,8 +468,16 @@
       "icon": "📖",
       "tabId": "tab-wiki",
       "subMenus": [
-        { "id": "subpane-wiki-overview", "title": "위키 현황 & 퀵카드", "icon": "📊" },
-        { "id": "subpane-wiki-documents", "title": "가족 문서 아카이브", "icon": "📑" }
+        {
+          "id": "subpane-wiki-overview",
+          "title": "위키 현황 & 퀵카드",
+          "icon": "📊"
+        },
+        {
+          "id": "subpane-wiki-documents",
+          "title": "가족 문서 아카이브",
+          "icon": "📑"
+        }
       ]
     }
   }
