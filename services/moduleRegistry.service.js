@@ -168,6 +168,123 @@ function getQuickStripItems(user) {
     return items;
 }
 
+const CORE_MODULE_IDS = new Set(['blood', 'asset', 'news', 'album', 'wiki', 'calendar', 'memo']);
+
+/**
+ * modules.json 안전 저장 (백업 생성 + 캐시 동기화)
+ * @param {Array} modules 
+ */
+function saveModulesConfig(modules) {
+    try {
+        if (!Array.isArray(modules)) throw new Error('모듈 데이터는 배열이어야 합니다.');
+        
+        // 1) 안전 백업 (.bak)
+        if (fs.existsSync(MODULES_CONFIG_PATH)) {
+            const bakPath = `${MODULES_CONFIG_PATH}.bak`;
+            fs.copyFileSync(MODULES_CONFIG_PATH, bakPath);
+        }
+
+        // 2) 순서 정렬 후 저장
+        const sorted = modules.sort((a, b) => (Number(a.order) || 999) - (Number(b.order) || 999));
+        fs.writeFileSync(MODULES_CONFIG_PATH, JSON.stringify(sorted, null, 2), 'utf8');
+
+        // 3) 캐시 즉시 갱신
+        cachedModules = sorted;
+        const stat = fs.statSync(MODULES_CONFIG_PATH);
+        lastMtime = stat.mtimeMs;
+        return true;
+    } catch (err) {
+        console.error('[ModuleRegistry] 저장 실패:', err.message);
+        throw err;
+    }
+}
+
+/**
+ * 특정 모듈 On/Off 활성화 토글
+ * @param {string} moduleId 
+ * @returns {object} 업데이트된 모듈
+ */
+function toggleModuleEnabled(moduleId) {
+    const modules = loadModulesConfig();
+    const target = modules.find(m => m.id === moduleId);
+    if (!target) throw new Error('해당 모듈을 찾을 수 없습니다.');
+
+    target.enabled = (target.enabled === false);
+    saveModulesConfig(modules);
+    return target;
+}
+
+/**
+ * 신규 모듈 등록 또는 기존 모듈 수정
+ * @param {object} data 
+ * @param {boolean} isNew 
+ * @returns {object}
+ */
+function createOrUpdateModule(data, isNew = false) {
+    if (!data.id || !data.name || !data.entryUrl) {
+        throw new Error('모듈 ID, 한글명, 진입 URL은 필수 입력 항목입니다.');
+    }
+
+    const cleanId = String(data.id).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (!cleanId) throw new Error('모듈 ID는 영문 소문자, 숫자, 하이픈(-)만 가능합니다.');
+
+    const modules = loadModulesConfig();
+    const existingIdx = modules.findIndex(m => m.id === cleanId);
+
+    if (isNew && existingIdx !== -1) {
+        throw new Error(`이미 존재하는 모듈 ID입니다: ${cleanId}`);
+    }
+
+    const modPayload = {
+        id: cleanId,
+        name: String(data.name).trim(),
+        icon: data.icon ? String(data.icon).trim() : '📦',
+        description: data.description ? String(data.description).trim() : '',
+        category: data.category ? String(data.category).trim() : '라이프',
+        entryUrl: String(data.entryUrl).trim(),
+        baseUrl: data.baseUrl ? String(data.baseUrl).trim() : '',
+        ssoEnabled: Boolean(data.ssoEnabled),
+        adminOnly: Boolean(data.adminOnly),
+        defaultFamilyAllowed: Boolean(data.defaultFamilyAllowed),
+        order: Number(data.order) || 50,
+        enabled: data.enabled !== false,
+        nav: data.nav || { enabled: true, label: data.name, entryUrl: data.entryUrl, subLinks: [] },
+        quickStrip: Array.isArray(data.quickStrip) ? data.quickStrip : [
+            { id: `${cleanId}-quick`, label: data.name, icon: data.icon || '📦', type: 'link', url: data.entryUrl }
+        ],
+        portalWidget: data.portalWidget || null,
+        admin: data.admin || null
+    };
+
+    if (existingIdx !== -1) {
+        modules[existingIdx] = { ...modules[existingIdx], ...modPayload };
+    } else {
+        modules.push(modPayload);
+    }
+
+    saveModulesConfig(modules);
+    return modPayload;
+}
+
+/**
+ * 모듈 삭제 (핵심 7대 코어 모듈은 삭제 차단)
+ * @param {string} moduleId 
+ */
+function deleteModule(moduleId) {
+    if (CORE_MODULE_IDS.has(moduleId)) {
+        throw new Error('시스템 핵심 서비스는 삭제할 수 없습니다. (비활성화 스위치를 사용하세요)');
+    }
+
+    const modules = loadModulesConfig();
+    const nextModules = modules.filter(m => m.id !== moduleId);
+    if (nextModules.length === modules.length) {
+        throw new Error('삭제할 모듈을 찾을 수 없습니다.');
+    }
+
+    saveModulesConfig(nextModules);
+    return true;
+}
+
 module.exports = {
     loadModulesConfig,
     getAllModules,
@@ -175,5 +292,10 @@ module.exports = {
     getModuleById,
     isServiceAllowed,
     getNavModules,
-    getQuickStripItems
+    getQuickStripItems,
+    saveModulesConfig,
+    toggleModuleEnabled,
+    createOrUpdateModule,
+    deleteModule,
+    CORE_MODULE_IDS
 };

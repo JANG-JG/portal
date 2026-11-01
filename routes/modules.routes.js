@@ -7,7 +7,11 @@ const {
     getUserModules,
     getNavModules,
     getQuickStripItems,
-    getModuleById
+    getModuleById,
+    toggleModuleEnabled,
+    createOrUpdateModule,
+    deleteModule,
+    CORE_MODULE_IDS
 } = require('../services/moduleRegistry.service');
 
 /**
@@ -96,11 +100,68 @@ router.get('/admin/all', authenticateToken, requireAdmin, (req, res) => {
         res.json({
             success: true,
             count: all.length,
-            modules: all
+            modules: all,
+            coreModuleIds: Array.from(CORE_MODULE_IDS)
         });
     } catch (err) {
         console.error('[API /api/modules/admin/all] 오류:', err);
         res.status(500).json({ success: false, message: '관리자 모듈 목록 조회 실패' });
+    }
+});
+
+// 6. 관리자: 모듈 On/Off 활성화 토글
+router.patch('/admin/:id/toggle', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const updated = toggleModuleEnabled(req.params.id);
+        res.json({
+            success: true,
+            message: `모듈 [${updated.name}] 상태가 [${updated.enabled ? '활성화' : '비활성화'}] 되었습니다.`,
+            module: updated
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '상태 변경 실패' });
+    }
+});
+
+// 7. 관리자: 신규 서비스 모듈 등록
+router.post('/admin', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const created = createOrUpdateModule(req.body, true);
+        res.json({
+            success: true,
+            message: `신규 서비스 [${created.name}] 모듈이 성공적으로 등록되었습니다.`,
+            module: created
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '모듈 등록 실패' });
+    }
+});
+
+// 8. 관리자: 기존 모듈 설정 수정
+router.put('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const payload = { ...req.body, id: req.params.id };
+        const updated = createOrUpdateModule(payload, false);
+        res.json({
+            success: true,
+            message: `서비스 [${updated.name}] 모듈 정보가 성공적으로 수정되었습니다.`,
+            module: updated
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '모듈 수정 실패' });
+    }
+});
+
+// 9. 관리자: 모듈 삭제 (코어 모듈 보호)
+router.delete('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        deleteModule(req.params.id);
+        res.json({
+            success: true,
+            message: `모듈 [${req.params.id}]이(가) 안전하게 삭제되었습니다.`
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '모듈 삭제 실패' });
     }
 });
 

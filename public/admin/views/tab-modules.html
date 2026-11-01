@@ -1,0 +1,194 @@
+<!-- ==========================================
+     🧩 탭: 통합 서비스 모듈 관리 (tab-modules.html)
+     ========================================== -->
+<div id="tab-modules" class="admin-tab-pane">
+    <!-- 서브 1: 등록된 모듈 목록 및 On/Off 제어 -->
+    <div id="subpane-modules-list" class="admin-sub-pane">
+        <div class="admin-card">
+            <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                    <h3>🧩 통합 서비스 모듈 관리</h3>
+                    <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
+                        포털 내비게이션, 원터치 빠른 실행, 대시보드 위젯 및 관리자 센터에 마운트되는 서비스를 웹에서 직접 제어합니다.
+                    </p>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="openModuleModal(null)">
+                        ➕ 새 서비스 등록
+                    </button>
+                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminModulesList()">
+                        🔄 새로고침
+                    </button>
+                </div>
+            </div>
+
+            <!-- 모듈 요약 통계 뱃지 바 -->
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.75rem; margin-bottom:0.5rem; font-size:0.82rem;">
+                <span class="badge" style="background:#e0f2fe; color:#0369a1; padding:4px 10px; border-radius:6px; font-weight:700;">
+                    전체 모듈: <span id="moduleTotalCount">0</span>개
+                </span>
+                <span class="badge" style="background:#dcfce7; color:#15803d; padding:4px 10px; border-radius:6px; font-weight:700;">
+                    활성 운영 중: <span id="moduleActiveCount">0</span>개
+                </span>
+                <span class="badge" style="background:#fef3c7; color:#b45309; padding:4px 10px; border-radius:6px; font-weight:700;">
+                    비활성(숨김): <span id="moduleInactiveCount">0</span>개
+                </span>
+            </div>
+
+            <!-- 모듈 목록 테이블 -->
+            <div class="admin-table-container admin-table-scroll" style="margin-top:0.5rem;">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50px; text-align:center;">순서</th>
+                            <th>서비스 명칭 / ID</th>
+                            <th>카테고리</th>
+                            <th>진입 경로</th>
+                            <th>접근 권한</th>
+                            <th>포털 연동</th>
+                            <th style="text-align:center;">활성 상태</th>
+                            <th style="text-align:center;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminModulesTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding:2rem; color:#64748b;">
+                                서비스 모듈 목록을 불러오는 중입니다...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 서브 2: 신규 서비스 모듈 개발 가이드 -->
+    <div id="subpane-modules-guide" class="admin-sub-pane hidden-pane">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h3>📖 그누보드식 신규 서비스 플러그인 개발 가이드</h3>
+            </div>
+            <div style="font-size:0.875rem; color:#334155; line-height:1.65;">
+                <p>
+                    JG Server는 <strong>선언형 모듈 매니페스트 아키텍처</strong>를 채택하여, 새 서비스를 만들 때 포털의 메인 HTML이나 관리자 코드를 전혀 수정할 필요가 없습니다.
+                </p>
+
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1.25rem; margin:1rem 0;">
+                    <h4 style="margin:0 0 0.5rem; color:#0f172a; font-size:0.95rem;">🚀 3분 완성 신규 서비스 등록 절차:</h4>
+                    <ol style="margin:0; padding-left:1.2rem; font-size:0.85rem; color:#475569; display:flex; flex-direction:column; gap:0.4rem;">
+                        <li><strong>서비스 개발</strong>: 새 폴더(예: <code>car/</code>)를 만들고 웹 앱을 개발합니다.</li>
+                        <li><strong>관리자 화면 작성</strong>: 서비스 폴더 안에 <code>admin-embed.html</code>을 생성합니다.</li>
+                        <li><strong>모듈 등록</strong>: 위 <code>[+ 새 서비스 등록]</code> 버튼을 눌러 ID, 이름, URL, 아이콘을 입력하면 포털과 관리자에 100% 자동 연동됩니다!</li>
+                    </ol>
+                </div>
+
+                <div style="background:#f1f5f9; border-radius:0.5rem; padding:1rem; font-family:monospace; font-size:0.8rem; overflow-x:auto;">
+// 💡 표준 요약 API 응답 규격 (메인 대시보드 위젯 연동)<br>
+GET /api/{service}/summary<br>
+{<br>
+&nbsp;&nbsp;"success": true,<br>
+&nbsp;&nbsp;"mainVal": "주요 수치 (예: 14.2 km/L)",<br>
+&nbsp;&nbsp;"subVal": "보조 설명 (예: 최근 주유 3일 전)",<br>
+&nbsp;&nbsp;"badge": "안정"<br>
+}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ✏️ 모듈 등록 및 수정 모달 -->
+<div id="moduleEditModal" class="admin-modal-backdrop" style="display:none;">
+    <div class="admin-modal-dialog" style="max-width:580px;">
+        <div class="admin-modal-header">
+            <h3 id="moduleModalTitle">➕ 새 서비스 모듈 등록</h3>
+            <button type="button" class="admin-modal-close-btn" onclick="closeModuleModal()" title="창 닫기">✕</button>
+        </div>
+        <div class="admin-modal-body">
+            <form id="moduleEditForm" onsubmit="submitModuleForm(event)">
+                <input type="hidden" id="inputModIsEdit" value="false">
+
+                <div class="admin-grid-2" style="gap:0.75rem; margin-bottom:0.75rem;">
+                    <div>
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">서비스 영문 ID *</label>
+                        <input type="text" id="inputModId" placeholder="예: car, pet" required style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        <small style="color:#64748b; font-size:0.72rem;">영문 소문자, 숫자, 하이픈(-)만 가능</small>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">한글 서비스명 *</label>
+                        <input type="text" id="inputModName" placeholder="예: 차량 관리" required style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                </div>
+
+                <div class="admin-grid-2" style="gap:0.75rem; margin-bottom:0.75rem;">
+                    <div>
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">대표 이모지 아이콘</label>
+                        <input type="text" id="inputModIcon" placeholder="예: 🚗, 🐶, 🌿" value="📦" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">카테고리</label>
+                        <select id="inputModCategory" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box; background:#fff;">
+                            <option value="건강">건강 / 의료</option>
+                            <option value="자산">금융 / 자산</option>
+                            <option value="정보">뉴스 / 정보</option>
+                            <option value="가족">가족 / 소통</option>
+                            <option value="지식">문서 / 지식</option>
+                            <option value="라이프" selected>라이프 / 도구</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:0.75rem;">
+                    <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">진입 URL (경로 또는 전체 주소) *</label>
+                    <input type="text" id="inputModEntryUrl" placeholder="예: /go/car 또는 /car" required style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                </div>
+
+                <div class="admin-grid-2" style="gap:0.75rem; margin-bottom:0.75rem;">
+                    <div>
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">SSO 원본 베이스 URL (선택)</label>
+                        <input type="text" id="inputModBaseUrl" placeholder="예: https://car.j-jg.cc" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">노출 정렬 순서</label>
+                        <input type="number" id="inputModOrder" value="50" min="1" max="999" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom:0.85rem;">
+                    <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">서비스 한 줄 요약 설명</label>
+                    <input type="text" id="inputModDesc" placeholder="서비스에 대한 간단한 설명을 입력하세요" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                </div>
+
+                <!-- 권한 및 포털 노출 옵션 -->
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem; margin-bottom:1rem;">
+                    <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.4rem;">권한 및 노출 옵션</label>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; font-size:0.82rem; color:#334155;">
+                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                            <input type="checkbox" id="chkModAdminOnly"> <span>🔒 관리자 전용 서비스</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                            <input type="checkbox" id="chkModFamilyDefault" checked> <span>👨‍👩‍👧 가족 계정 기본 허용</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                            <input type="checkbox" id="chkModNav" checked> <span>🌐 상단 내비바 노출</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                            <input type="checkbox" id="chkModQuick" checked> <span>⚡ 원터치 빠른 실행 노출</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                            <input type="checkbox" id="chkModWidget" checked> <span>🍱 대시보드 위젯 활성화</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                            <input type="checkbox" id="chkModAdminTab" checked> <span>⚙️ 관리자 제어 센터 연동</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                    <button type="button" class="btn-admin btn-admin-outline" onclick="closeModuleModal()">취소</button>
+                    <button type="submit" class="btn-admin btn-admin-primary">💾 설정 저장 완료</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

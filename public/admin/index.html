@@ -231,6 +231,25 @@
                     </button>
                 </div>
             </div>
+
+            <!-- 그룹 10: 서비스 모듈 관리 -->
+            <div class="admin-sidebar-group" id="sidebar-group-modules">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('modules')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>🧩</span>
+                        <span>서비스 모듈 관리</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-modules" data-sub="subpane-modules-list" onclick="switchAdminTabAndSub('tab-modules', 'subpane-modules-list')">
+                        <span>📋</span> 서비스 모듈 목록
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-modules" data-sub="subpane-modules-guide" onclick="switchAdminTabAndSub('tab-modules', 'subpane-modules-guide')">
+                        <span>📖</span> 모듈 개발 가이드
+                    </button>
+                </div>
+            </div>
         </nav>
         <div class="admin-sidebar-footer">
             <button class="btn-admin btn-admin-success btn-admin-sm" onclick="downloadAllDatabases()" style="width:100%; justify-content:center;">
@@ -298,6 +317,9 @@
                 </button>
                 <button class="admin-tab-btn" data-tab="tab-security" onclick="switchAdminTab('tab-security', this)">
                     👤 보안 및 계정
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-modules" onclick="switchAdminTab('tab-modules', this)">
+                    🧩 서비스 모듈
                 </button>
             </nav>
             <!-- 2단 서브메뉴 탭 (선택된 대메뉴에 따라 동적 주입) -->
@@ -513,6 +535,7 @@
     <script src="/js/admin-db-manager.js"></script>
     <script src="/js/admin-db-sql.js"></script>
     <script src="/js/admin-modules.js"></script>
+    <script src="/js/admin-modules-manager.js"></script>
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>

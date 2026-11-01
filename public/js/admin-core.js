@@ -52,6 +52,10 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-security-logs', label: '최근 로그인 시도 이력', icon: '🔒' },
         { id: 'subpane-security-stack', label: 'SSO & 기술 스택 명세', icon: '🛡️' },
         { id: 'action-password-modal', label: '마스터 비밀번호 변경 (팝업)', icon: '🔑', isModal: true }
+    ],
+    'tab-modules': [
+        { id: 'subpane-modules-list', label: '서비스 모듈 목록', icon: '📋' },
+        { id: 'subpane-modules-guide', label: '모듈 개발 가이드', icon: '📖' }
     ]
 };
 
