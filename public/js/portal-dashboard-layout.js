@@ -85,21 +85,31 @@
     }
 
     /**
-     * 관리자용 대시보드 위젯 설정 바로가기 링크
+     * 관리자용 대시보드 화면 편집 및 위젯 설정 바로가기 링크
      */
     function renderAdminWidgetQuickLink() {
-        if (document.getElementById('adminWidgetQuickConfigBtn')) return;
+        if (document.getElementById('adminWidgetQuickConfigGroup')) return;
         const targetContainer = document.querySelector('.cmd-strip-header');
         if (!targetContainer) return;
 
-        const link = document.createElement('a');
-        link.id = 'adminWidgetQuickConfigBtn';
-        link.href = '/admin#tab-modules:subpane-modules-widgets';
-        link.title = '대시보드 위젯 순서 및 노출 설정';
-        link.style.cssText = 'font-size:0.75rem; color:#2563eb; text-decoration:none; display:inline-flex; align-items:center; gap:3px; margin-left:auto; font-weight:600; padding:2px 8px; border-radius:4px; background:#eff6ff; border:1px solid #dbeafe;';
-        link.innerHTML = '<span>⚙️</span><span>위젯 설정</span>';
+        const group = document.createElement('div');
+        group.id = 'adminWidgetQuickConfigGroup';
+        group.style.cssText = 'display:inline-flex; align-items:center; gap:6px; margin-left:auto;';
 
-        targetContainer.appendChild(link);
+        group.innerHTML = `
+            <button type="button" id="btnLiveDashboardEdit" onclick="if(typeof toggleDashboardEditMode==='function')toggleDashboardEditMode(true)" 
+                title="메인 화면에서 카드를 직접 배치하고 조절합니다"
+                style="font-size:0.75rem; color:#fff; background:#2563eb; border:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; padding:2px 9px; border-radius:4px; cursor:pointer; box-shadow:0 1px 4px rgba(37,99,235,0.3);">
+                <span>🎨</span><span>화면 편집</span>
+            </button>
+            <a href="/admin#tab-modules:subpane-modules-widgets" id="adminWidgetQuickConfigBtn" 
+                title="관리자 센터 대시보드 위젯 설정으로 이동"
+                style="font-size:0.72rem; color:#64748b; text-decoration:none; display:inline-flex; align-items:center; gap:2px; font-weight:500; padding:2px 6px; border-radius:4px; background:#f1f5f9; border:1px solid #e2e8f0;">
+                <span>⚙️</span><span>설정</span>
+            </a>
+        `;
+
+        targetContainer.appendChild(group);
     }
 
     if (document.readyState === 'loading') {
