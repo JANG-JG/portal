@@ -1,17 +1,22 @@
 /**
- * ==============================================================================
  * 관리자 페이지 가족 구성원 및 권한(RBAC) 관리 전용 스크립트 (admin-family.js)
- * ------------------------------------------------------------------------------
- * [규칙 2] 100% 친근하고 일상 친화적인 한국어 인터페이스 준수
- * [규칙 3] 파일당 500줄 이하 모듈화 준수 (약 200줄)
- * [규칙 6] 가로 360px 모바일 화면 반응형 및 터치 최적화
- * ==============================================================================
+ * [규칙 2] 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 반응형
  */
-
 let cachedFamilyMembers = [];
+let cachedModuleList = [];
+
+async function loadModulesForAdmin() {
+    try {
+        const res = await fetch('/api/modules/admin/all');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.modules)) {
+            cachedModuleList = data.modules;
+        }
+    } catch (e) {}
+}
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 보안 탭 활성화 시 또는 초기 로드 시 가족 목록 로드
+    loadModulesForAdmin();
     loadFamilyMembers();
 });
 
@@ -62,6 +67,11 @@ function renderFamilyMembersTable(members) {
         'blood': '🩸 혈압 관리',
         'asset': '💰 자산 관리'
     };
+    if (Array.isArray(cachedModuleList)) {
+        cachedModuleList.forEach(mod => {
+            serviceLabels[mod.id] = `${mod.icon || ''} ${mod.name}`.trim();
+        });
+    }
 
 
     tableBody.innerHTML = members.map(m => {
@@ -206,6 +216,45 @@ function copyViaFallback(text, nickname) {
 }
 
 /**
+ * 서비스 모듈 체크박스 동적 렌더링 및 수집 헬퍼
+ */
+function renderModuleCheckboxes(containerId, selectedServices = [], prefix = 'chk') {
+    const container = document.getElementById(containerId);
+    if (!container || !Array.isArray(cachedModuleList) || cachedModuleList.length === 0) return;
+
+    const isAll = selectedServices.includes('all');
+    container.innerHTML = cachedModuleList.map(mod => {
+        const isChecked = isAll || selectedServices.includes(mod.id);
+        const inputId = `${prefix}Service_${mod.id}`;
+        const descSuffix = mod.adminOnly ? ' (관리자 전용 비공개 권장)' : '';
+        const colorStyle = mod.adminOnly ? 'color:#94a3b8;' : 'color:#334155;';
+
+        return `
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; ${colorStyle}">
+                <input type="checkbox" id="${inputId}" data-service-id="${mod.id}" ${isChecked ? 'checked' : ''}>
+                <span>${mod.icon || '📦'} ${mod.name}${descSuffix}</span>
+            </label>
+        `;
+    }).join('');
+}
+
+function collectSelectedServicesFromContainer(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    const checkedInputs = container.querySelectorAll('input[data-service-id]:checked');
+    if (checkedInputs.length > 0) {
+        return Array.from(checkedInputs).map(inp => inp.getAttribute('data-service-id')).filter(Boolean);
+    }
+    const fallback = [];
+    if (container.querySelector('#chkAddServiceAlbum, #chkEditServiceAlbum')?.checked) fallback.push('album');
+    if (container.querySelector('#chkAddServiceWiki, #chkEditServiceWiki')?.checked) fallback.push('wiki');
+    if (container.querySelector('#chkAddServiceNews, #chkEditServiceNews')?.checked) fallback.push('news');
+    if (container.querySelector('#chkAddServiceAsset, #chkEditServiceAsset')?.checked) fallback.push('asset');
+    if (container.querySelector('#chkAddServiceBlood, #chkEditServiceBlood')?.checked) fallback.push('blood');
+    return fallback;
+}
+
+/**
  * 3. 가족 초대 링크 생성 모달
  */
 function openAddFamilyModal() {
@@ -213,9 +262,12 @@ function openAddFamilyModal() {
     const form = document.getElementById('addFamilyForm');
     if (!modal || !form) return;
     form.reset();
-    document.getElementById('chkAddServiceAlbum').checked = true;
-    if (document.getElementById('chkAddServiceWiki')) document.getElementById('chkAddServiceWiki').checked = true;
-    document.getElementById('chkAddServiceNews').checked = true;
+
+    const defaultServices = (cachedModuleList && cachedModuleList.length > 0)
+        ? cachedModuleList.filter(m => m.defaultFamilyAllowed).map(m => m.id)
+        : ['album', 'wiki', 'news'];
+    renderModuleCheckboxes('addFamilyServiceCheckboxList', defaultServices, 'chkAdd');
+
     modal.style.display = 'flex';
     modal.classList.add('active');
     const nickInput = document.getElementById('inputAddNickname');
@@ -233,14 +285,7 @@ function closeAddFamilyModal() {
 async function submitAddFamily(e) {
     e.preventDefault();
     const nickname = document.getElementById('inputAddNickname').value.trim();
-
-    const allowedServices = [];
-    if (document.getElementById('chkAddServiceAlbum')?.checked) allowedServices.push('album');
-    if (document.getElementById('chkAddServiceWiki')?.checked) allowedServices.push('wiki');
-    if (document.getElementById('chkAddServiceNews')?.checked) allowedServices.push('news');
-    if (document.getElementById('chkAddServiceAsset')?.checked) allowedServices.push('asset');
-    if (document.getElementById('chkAddServiceBlood')?.checked) allowedServices.push('blood');
-
+    const allowedServices = collectSelectedServicesFromContainer('addFamilyServiceCheckboxList');
 
     if (!nickname) {
         alert('관리용 명칭(가족 호칭)을 입력해 주세요.');
@@ -287,12 +332,7 @@ function openEditFamilyModal(username) {
     document.getElementById('inputEditBirthdate').value = member.birthdate || '';
 
     const services = member.allowedServices || ['album', 'news'];
-    const isAll = services.includes('all');
-    document.getElementById('chkEditServiceAlbum').checked = isAll || services.includes('album');
-    if (document.getElementById('chkEditServiceWiki')) document.getElementById('chkEditServiceWiki').checked = isAll || services.includes('wiki');
-    document.getElementById('chkEditServiceNews').checked = isAll || services.includes('news');
-    document.getElementById('chkEditServiceAsset').checked = isAll || services.includes('asset');
-    document.getElementById('chkEditServiceBlood').checked = isAll || services.includes('blood');
+    renderModuleCheckboxes('editFamilyServiceCheckboxList', services, 'chkEdit');
 
     const modal = document.getElementById('editFamilyModal');
     if (modal) {
@@ -316,13 +356,7 @@ async function submitEditFamily(e) {
     const nickname = (document.getElementById('inputEditNickname')?.value || '').trim() || adminMemo;
     const email = document.getElementById('inputEditEmail').value.trim();
     const birthdate = document.getElementById('inputEditBirthdate').value.trim();
-
-    const allowedServices = [];
-    if (document.getElementById('chkEditServiceAlbum')?.checked) allowedServices.push('album');
-    if (document.getElementById('chkEditServiceWiki')?.checked) allowedServices.push('wiki');
-    if (document.getElementById('chkEditServiceNews')?.checked) allowedServices.push('news');
-    if (document.getElementById('chkEditServiceAsset')?.checked) allowedServices.push('asset');
-    if (document.getElementById('chkEditServiceBlood')?.checked) allowedServices.push('blood');
+    const allowedServices = collectSelectedServicesFromContainer('editFamilyServiceCheckboxList');
 
 
     try {

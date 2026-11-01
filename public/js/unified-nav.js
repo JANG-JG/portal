@@ -83,7 +83,7 @@
         if (!document.querySelector('link[href*="pretendard.css"]')) addLink(`${baseUrl}/css/pretendard.css?v=${UNAV_VERSION}`);
         if (!document.querySelector('link[href*="unified-nav.css"]')) addLink(`${baseUrl}/css/unified-nav.css?v=${UNAV_VERSION}`);
 
-        ['unified-nav-push.js', 'unified-nav-modal.js', 'unified-nav-history.js'].forEach(scriptName => {
+        ['unified-nav-push.js', 'unified-nav-modal.js', 'unified-nav-history.js', 'unified-nav-modules.js'].forEach(scriptName => {
             if (!document.querySelector(`script[src*="${scriptName}"]`)) {
                 const s = document.createElement('script');
                 s.src = `${baseUrl}/js/${scriptName}?v=${UNAV_VERSION}`;

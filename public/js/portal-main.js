@@ -228,4 +228,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof loadSummary === 'function') {
         loadSummary();
     }
+
+    // 4-5. 모듈 레지스트리 기반 원터치 빠른 실행 동적 동기화
+    loadDynamicQuickStrip();
 });
+
+// 🌟 5. 모듈 레지스트리 기반 원터치 빠른 실행(Quick Strip) 동적 로드 (신규 서비스 자동 연동)
+async function loadDynamicQuickStrip() {
+    const grid = document.getElementById('portalQuickStripGrid');
+    if (!grid) return;
+    try {
+        const res = await fetch('/api/modules/quick-strip');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.quickItems) && data.quickItems.length > 0) {
+            grid.innerHTML = data.quickItems.map(item => {
+                const icon = item.icon || '🚀';
+                const label = item.label || '바로가기';
+                const modId = item.moduleId || '';
+                if (item.type === 'action') {
+                    return `
+                        <button type="button" class="cmd-strip-btn" onclick="${item.action}" title="${label}" data-service="${modId}">
+                            <span class="cmd-strip-icon">${icon}</span>
+                            <span>${label}</span>
+                        </button>
+                    `;
+                }
+                const url = item.url || '#';
+                return `
+                    <a href="${url}" class="cmd-strip-btn" title="${label}" data-service="${modId}">
+                        <span class="cmd-strip-icon">${icon}</span>
+                        <span>${label}</span>
+                    </a>
+                `;
+            }).join('');
+        }
+    } catch (e) {}
+}
