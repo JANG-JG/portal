@@ -20,7 +20,7 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1시간
 /**
  * Ollama 서버에 HTTP POST 요청을 보내는 경량 헬퍼 (의존성 제로)
  */
-function sendOllamaRequest(endpoint, payload, timeoutMs = 15000) {
+function sendOllamaRequest(endpoint, payload, timeoutMs = 45000) {
     return new Promise((resolve, reject) => {
         try {
             const urlObj = new URL(endpoint, OLLAMA_HOST);
@@ -148,13 +148,13 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
             model: OLLAMA_MODEL,
             prompt: `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`,
             stream: false,
-            keep_alive: '60m',
+            keep_alive: '24h',
             options: {
                 temperature: 0.7,
                 top_p: 0.9,
                 num_predict: 120
             }
-        }, 15000);
+        }, 45000);
 
         if (result && result.response) {
             const cleanText = result.response.trim();
@@ -268,12 +268,12 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         model: OLLAMA_MODEL,
         prompt: fullPrompt,
         stream: false,
-        keep_alive: '60m',
+        keep_alive: '24h',
         options: {
             temperature: 0.7,
             num_predict: 350
         }
-    }, 25000);
+    }, 75000);
 
     return {
         success: true,
