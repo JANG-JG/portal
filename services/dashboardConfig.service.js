@@ -7,6 +7,16 @@ const BACKUP_PATH = path.join(__dirname, '..', 'config', 'dashboard.json.bak');
 
 const DEFAULT_WIDGETS = [
     {
+        id: 'smartDailyBriefingCard',
+        title: '스마트 데일리 브리핑 (능동 비서)',
+        icon: '🤖',
+        enabled: true,
+        order: 0,
+        colSpan: 2,
+        selector: '#smartDailyBriefingCard',
+        desc: '시간대별 인사, 날씨 팁, 복약/혈압 능동 리마인드 및 오늘 일정 요약'
+    },
+    {
         id: 'homarrHeroCard',
         title: '일과 & 활동 링 / 복약 요약',
         icon: '🌟',

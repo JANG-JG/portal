@@ -4,6 +4,7 @@ const { getLiveMarketData, getKoreanStockName, enrichAssetsWithQuotes } = requir
 const { getCurrentCpuPercent, getRealMemoryInfo, getSecondaryServerStatus, getDiskUsage } = require('./systemMonitor.service');
 const { decryptMemoText } = require('./crypto.service');
 const { calculateReservationOpenDate, classifyBloodPressure } = require('./bloodClassifier.util');
+const { generateDailyBriefing } = require('./dailyBriefing.service');
 
 // KST (Asia/Seoul) 기준 현재 또는 오프셋 시각 문자열 생성 헬퍼 (YYYY-MM-DD HH:mm:ss)
 function getKstDateTimeString(offsetMinutes = 0) {
@@ -216,7 +217,16 @@ async function buildSummaryData() {
     // 7) 실시간 시장 지표 Promise
     const marketPromise = getLiveMarketData();
 
-    const [blood, medication, hospital, memoData, assetQuoteResult, weather, newsRecommendation, breakingArticles, marketData] = await Promise.all([
+    // 8) 오늘 캘린더 일정 Promise
+    const calendarPromise = new Promise((resolve) => {
+        db.all(
+            "SELECT id, title, event_date, event_time, category, color, is_all_day FROM calendar_events WHERE event_date = ? ORDER BY is_all_day DESC, event_time ASC LIMIT 5",
+            [todayKst],
+            (cErr, rows) => resolve(rows || [])
+        );
+    });
+
+    const [blood, medication, hospital, memoData, assetQuoteResult, weather, newsRecommendation, breakingArticles, marketData, todayEvents] = await Promise.all([
         bloodPromise,
         medicationPromise,
         hospitalPromise,
@@ -225,7 +235,8 @@ async function buildSummaryData() {
         weatherPromise,
         newsPromise,
         breakingPromise,
-        marketPromise
+        marketPromise,
+        calendarPromise
     ]);
 
     const enrichedAssets = (assetQuoteResult && assetQuoteResult.enrichedAssets) ? assetQuoteResult.enrichedAssets : [];
@@ -375,7 +386,8 @@ async function buildSummaryData() {
                 status: secondaryStatus.online ? 'online' : 'standby',
                 statusText: secondaryStatus.online ? '정상 가동' : '백업 대기'
             }
-        }
+        },
+        todayEvents: todayEvents || []
     };
 }
 
@@ -423,6 +435,16 @@ async function attachUserWeather(baseSummary, reqUser) {
         result.medication = null;
         result.hospital = null;
     }
+
+    // 🌅 능동형 스마트 데일리 브리핑 객체 생성 및 첨부
+    const userRole = reqUser ? reqUser.role : 'admin';
+    const userName = (reqUser && (reqUser.nickname || reqUser.username)) ? (reqUser.nickname || reqUser.username) : '가족';
+    result.briefing = generateDailyBriefing({
+        summary: result,
+        todayEvents: baseSummary.todayEvents || [],
+        userRole,
+        userName
+    });
 
     return result;
 }

@@ -43,6 +43,11 @@ function loadSummary() {
                 data = getFallbackSummaryData();
             }
 
+            // 1-0. 🌅 능동형 스마트 데일리 브리핑 카드 바인딩
+            if (typeof window.renderDailyBriefing === 'function' && data.briefing) {
+                window.renderDailyBriefing(data.briefing);
+            }
+
             // 1-1. 상단 날씨 뱃지 바인딩
             if (data.weather) {
                 updateWeatherBadge(data.weather);

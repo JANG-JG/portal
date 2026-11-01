@@ -26,6 +26,7 @@
     <link rel="stylesheet" href="/css/portal-homarr-widgets.css">
     <link rel="stylesheet" href="/css/portal-homarr-services.css">
     <link rel="stylesheet" href="/css/portal-homarr-notif.css">
+    <link rel="stylesheet" href="/css/portal-daily-briefing.css">
     <!-- 🛡️ 권한 기반 UI 즉시 적용 (FOUC / 메뉴 깜빡임 원천 차단) -->
     <script>
         (function() {
@@ -71,6 +72,74 @@
         <!-- ===================================================================== -->
         <div class="bento-command-center" id="portal-bento-root">
             
+            <!-- ================================================================= -->
+            <!-- 🌅 0. 능동형 스마트 데일리 브리핑 카드 (Smart Daily Briefing) -->
+            <!-- ================================================================= -->
+            <div class="card-daily-briefing" id="smartDailyBriefingCard" role="region" aria-label="오늘의 스마트 브리핑">
+                <div class="briefing-header">
+                    <div class="briefing-title-group">
+                        <div class="briefing-avatar-badge" id="briefingTimeSlotIcon">🌅</div>
+                        <span class="briefing-tag" id="briefingTimeSlotTag">🌅 상쾌한 아침</span>
+                    </div>
+                    <div class="briefing-actions">
+                        <button type="button" class="briefing-btn-icon" id="btnRefreshBriefing" onclick="refreshDailyBriefing()" title="브리핑 새로고침">
+                            <span>🔄</span><span>새로고침</span>
+                        </button>
+                        <button type="button" class="briefing-btn-icon" id="btnToggleBriefing" onclick="toggleDailyBriefingCollapse()" title="브리핑 내용 접기/펼치기">
+                            <span>▲</span><span>접기</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="briefingBodyWrapper">
+                    <div class="briefing-greeting-text" id="briefingGreetingText">
+                        오늘도 건강하고 활기찬 하루 시작하세요!
+                    </div>
+
+                    <div class="briefing-chips-grid">
+                        <div class="briefing-chip" id="briefingChipHealth">
+                            <div class="briefing-chip-left">
+                                <span class="briefing-chip-icon" id="briefingChipHealthIcon">💊</span>
+                                <div class="briefing-chip-content">
+                                    <div class="briefing-chip-title" id="briefingChipHealthTitle">복약 상태 확인 중...</div>
+                                    <div class="briefing-chip-desc" id="briefingChipHealthDesc">오늘 복약 및 혈압 기록을 조회하고 있습니다.</div>
+                                </div>
+                            </div>
+                            <div id="briefingChipHealthAction"></div>
+                        </div>
+
+                        <a href="/calendar" class="briefing-chip" id="briefingChipSchedule" style="text-decoration:none;" title="스마트 캘린더로 이동">
+                            <div class="briefing-chip-left">
+                                <span class="briefing-chip-icon" id="briefingChipScheduleIcon">📅</span>
+                                <div class="briefing-chip-content">
+                                    <div class="briefing-chip-title" id="briefingChipScheduleTitle">오늘 일정 조회 중...</div>
+                                    <div class="briefing-chip-desc" id="briefingChipScheduleDesc">캘린더 일정을 불러오고 있습니다.</div>
+                                </div>
+                            </div>
+                            <span style="font-size:0.75rem; color:var(--hm-text-muted);">이동 ›</span>
+                        </a>
+
+                        <div class="briefing-chip" id="briefingChipWeather">
+                            <div class="briefing-chip-left">
+                                <span class="briefing-chip-icon" id="briefingChipWeatherIcon">🌤️</span>
+                                <div class="briefing-chip-content">
+                                    <div class="briefing-chip-title" id="briefingChipWeatherTitle">날씨 정보 로드 중...</div>
+                                    <div class="briefing-chip-desc" id="briefingChipWeatherDesc">실시간 기상 및 생활 가이드를 준비하고 있습니다.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="briefing-footer-bar">
+                        <div class="briefing-footer-left">
+                            <span>💡</span>
+                            <span class="briefing-footer-text" id="briefingNaturalSummaryText">오늘의 맞춤형 일과 가이드를 준비하고 있습니다.</span>
+                        </div>
+                        <span class="briefing-ai-chip">스마트 비서 v1.0</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- ================================================================= -->
             <!-- 🌟 1. APPLE / HOMARR HERO HEADER: 일과 & 활동 링 브리핑 카드 -->
             <!-- ================================================================= -->
@@ -471,6 +540,7 @@
     <script src="/js/portal-market.js"></script>
     <script src="/js/portal-infra.js"></script>
     <script src="/js/portal-modals.js"></script>
+    <script src="/js/portal-daily-briefing.js"></script>
     <script src="/js/portal-summary.js"></script>
     <script src="/js/portal-main.js"></script>
     <script src="/js/portal-notification-history.js"></script>
