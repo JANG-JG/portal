@@ -260,9 +260,13 @@
                     bottom: 114px !important;
                 }
             }
+            @media (min-width: 1024px) {
+                #jg-global-ticker-bar { height: 50px !important; }
+                #jg-global-breaking-bar { bottom: 50px !important; height: 42px !important; }
+            }
             @media (min-width: 1280px) {
-                #jg-global-ticker-bar { height: 53px !important; }
-                #jg-global-breaking-bar { bottom: 53px !important; height: 43px !important; }
+                #jg-global-ticker-bar { height: 58px !important; }
+                #jg-global-breaking-bar { bottom: 58px !important; height: 46px !important; }
             }
         `;
         (document.head || document.documentElement).appendChild(style);

@@ -420,24 +420,46 @@
             }
         }
 
-        /* 🖥️ [데스크톱 와이드 화면: 1280px+] 120% 시원한 확대 스케일링 */
-        @media (min-width: 1280px) {
-            #jg-global-ticker-bar { height: 53px !important; padding: 0 18px !important; font-size: 14.5px !important; }
-            .jg-ticker-left { font-size: 14px !important; gap: 8px !important; height: 34px !important; margin-right: 18px !important; padding-right: 18px !important; }
-            .jg-clock-icon { font-size: 15px !important; }
-            .jg-clock-date { font-size: 14px !important; }
-            .jg-clock-time { font-size: 15px !important; letter-spacing: 0.6px !important; }
-            .jg-ticker-badge { font-size: 13px !important; padding: 4px 10px !important; border-radius: 7px !important; margin-right: 16px !important; gap: 6px !important; }
+        /* 🖥️ [데스크톱 일반 화면: 1024px+] */
+        @media (min-width: 1024px) {
+            #jg-global-ticker-bar { height: 50px !important; padding: 0 16px !important; font-size: 15px !important; }
+            .jg-ticker-left { font-size: 14.5px !important; gap: 8px !important; height: 34px !important; margin-right: 16px !important; padding-right: 16px !important; }
+            .jg-clock-icon { font-size: 16px !important; }
+            .jg-clock-date { font-size: 14.5px !important; }
+            .jg-clock-time { font-size: 16px !important; letter-spacing: 0.6px !important; }
+            .jg-ticker-badge { font-size: 13.5px !important; padding: 4.5px 11px !important; border-radius: 7px !important; margin-right: 16px !important; gap: 6px !important; }
             .jg-ticker-dot { width: 7px !important; height: 7px !important; }
-            .jg-ticker-link { font-size: 14.5px !important; margin-right: 30px !important; gap: 8px !important; }
-            .jg-ticker-cat { font-size: 12px !important; padding: 2px 7px !important; border-radius: 5px !important; }
-            .jg-ticker-right { height: 36px !important; margin-left: 18px !important; padding-left: 18px !important; }
-            .jg-v-box { height: 36px !important; width: 220px !important; }
-            .jg-v-item { font-size: 13.5px !important; gap: 8px !important; padding: 0 10px !important; border-radius: 7px !important; }
-            #jg-global-breaking-bar { bottom: 53px !important; height: 43px !important; padding: 0 18px !important; font-size: 14px !important; }
-            .jg-breaking-badge { font-size: 12.5px !important; padding: 3.5px 9px !important; border-radius: 6px !important; margin-right: 14px !important; gap: 6px !important; }
-            .jg-breaking-link { font-size: 14px !important; margin-right: 28px !important; gap: 8px !important; }
+            .jg-ticker-link { font-size: 15.5px !important; font-weight: 550 !important; margin-right: 32px !important; gap: 8px !important; }
+            .jg-ticker-cat { font-size: 12.5px !important; padding: 2px 7px !important; border-radius: 5px !important; }
+            .jg-ticker-right { height: 36px !important; margin-left: 16px !important; padding-left: 16px !important; }
+            .jg-v-box { height: 36px !important; width: 230px !important; }
+            .jg-v-item { font-size: 14px !important; gap: 8px !important; padding: 0 10px !important; border-radius: 7px !important; }
+            #jg-global-breaking-bar { bottom: 50px !important; height: 42px !important; padding: 0 16px !important; font-size: 14.5px !important; }
+            .jg-breaking-badge { font-size: 13px !important; padding: 3.5px 9px !important; border-radius: 6px !important; margin-right: 14px !important; gap: 6px !important; }
+            .jg-breaking-link { font-size: 14.5px !important; margin-right: 28px !important; gap: 8px !important; }
             .jg-breaking-actions { gap: 8px !important; margin-left: 10px !important; }
-            .jg-breaking-more { padding: 3px 9px !important; font-size: 12.5px !important; border-radius: 5px !important; }
-            .jg-breaking-close-btn { padding: 3px 9px !important; font-size: 12.5px !important; border-radius: 5px !important; gap: 4px !important; }
+            .jg-breaking-more { padding: 3px 9px !important; font-size: 13px !important; border-radius: 5px !important; }
+            .jg-breaking-close-btn { padding: 3px 9px !important; font-size: 13px !important; border-radius: 5px !important; gap: 4px !important; }
+        }
+
+        /* 🖥️ [데스크톱 와이드 대화면: 1280px+] 큼직하고 시원한 17px 폰트 및 58px 높이 */
+        @media (min-width: 1280px) {
+            #jg-global-ticker-bar { height: 58px !important; padding: 0 20px !important; font-size: 16.5px !important; }
+            .jg-ticker-left { font-size: 15.5px !important; gap: 10px !important; height: 38px !important; margin-right: 20px !important; padding-right: 20px !important; }
+            .jg-clock-icon { font-size: 18px !important; }
+            .jg-clock-date { font-size: 15.5px !important; }
+            .jg-clock-time { font-size: 18px !important; letter-spacing: 0.8px !important; font-weight: 800 !important; }
+            .jg-ticker-badge { font-size: 14.5px !important; padding: 5px 13px !important; border-radius: 8px !important; margin-right: 18px !important; gap: 7px !important; }
+            .jg-ticker-dot { width: 8px !important; height: 8px !important; }
+            .jg-ticker-link { font-size: 17px !important; font-weight: 600 !important; margin-right: 36px !important; gap: 10px !important; }
+            .jg-ticker-cat { font-size: 13.5px !important; padding: 2.5px 8px !important; border-radius: 6px !important; }
+            .jg-ticker-right { height: 40px !important; margin-left: 20px !important; padding-left: 20px !important; }
+            .jg-v-box { height: 40px !important; width: 260px !important; }
+            .jg-v-item { font-size: 15px !important; gap: 10px !important; padding: 0 12px !important; border-radius: 8px !important; font-weight: 600 !important; }
+            #jg-global-breaking-bar { bottom: 58px !important; height: 46px !important; padding: 0 20px !important; font-size: 15.5px !important; }
+            .jg-breaking-badge { font-size: 13.5px !important; padding: 4px 10px !important; border-radius: 6px !important; margin-right: 16px !important; gap: 7px !important; }
+            .jg-breaking-link { font-size: 15.5px !important; margin-right: 32px !important; gap: 10px !important; }
+            .jg-breaking-actions { gap: 10px !important; margin-left: 12px !important; }
+            .jg-breaking-more { padding: 4px 10px !important; font-size: 13.5px !important; border-radius: 6px !important; }
+            .jg-breaking-close-btn { padding: 4px 10px !important; font-size: 13.5px !important; border-radius: 6px !important; gap: 5px !important; }
         }

@@ -386,6 +386,15 @@ body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-chat-window {
     .ai-chat-input {
         font-size: 0.92rem;
     }
+    .ai-fab-btn {
+        bottom: 64px;
+    }
+    body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-fab-btn {
+        bottom: 108px;
+    }
+    .ai-chat-window {
+        bottom: 122px;
+    }
 }
 
 @media (min-width: 1280px) {
@@ -449,13 +458,13 @@ body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-chat-window {
         border-radius: 12px;
     }
     .ai-fab-btn {
-        bottom: 68px;
+        bottom: 74px;
     }
     body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-fab-btn {
-        bottom: 112px;
+        bottom: 124px;
     }
     .ai-chat-window {
-        bottom: 128px;
+        bottom: 136px;
     }
 }
 
