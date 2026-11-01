@@ -1,0 +1,11 @@
+{
+  "HDD_BASE_PATH": "/mnt/hdd",
+  "ROOT_URL": "https://www.bonbu.kr/",
+  "USER_ID_ENC": "",
+  "USER_PW_ENC": "",
+  "TARGET_BOARDS": {
+    "소망반_16번게시판": "https://www.bonbu.kr/main/sub.html?boardID=www16",
+    "열매반_17번게시판": "https://www.bonbu.kr/main/sub.html?boardID=www17"
+  },
+  "LAST_RUN": null
+}

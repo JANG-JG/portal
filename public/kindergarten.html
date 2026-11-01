@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>유치원 사진 수집 관리 - JG 포털</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="stylesheet" href="/css/portal.css">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-card: rgba(255, 255, 255, 0.95);
+            --border-color: #e5e7eb;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-card: rgba(30, 41, 59, 0.95);
+                --border-color: #334155;
+                --text-main: #f1f5f9;
+                --text-sub: #94a3b8;
+            }
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif;
+            background: #f8fafc;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 60px;
+        }
+        @media (prefers-color-scheme: dark) {
+            body { background: #0f172a; }
+        }
+        .container {
+            width: 100%;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            font-size: 0.875rem;
+            color: var(--text-sub);
+            text-decoration: none;
+            background: rgba(125, 125, 125, 0.1);
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .btn-back:hover {
+            background: rgba(125, 125, 125, 0.2);
+            color: var(--text-main);
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 18px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .badge {
+            display: inline-block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 9999px;
+            background: #e2e8f0;
+            color: #475569;
+        }
+        .badge.running {
+            background: #fef3c7;
+            color: #b45309;
+            animation: pulse 1.5s infinite;
+        }
+        .badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .badge.failed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .btn-primary {
+            width: 100%;
+            height: 48px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-hover);
+        }
+        .btn-primary:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .summary-item {
+            background: rgba(125, 125, 125, 0.05);
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+        }
+        .summary-label {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-bottom: 4px;
+        }
+        .summary-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+        .log-box {
+            background: #0f172a;
+            color: #38bdf8;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.5;
+            padding: 12px;
+            border-radius: 10px;
+            height: 240px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 10px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text-main);
+        }
+        .form-control {
+            width: 100%;
+            height: 42px;
+            padding: 0 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: transparent;
+            color: var(--text-main);
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        .form-tip {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-top: 4px;
+        }
+        .board-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .board-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 12px;
+            background: rgba(125, 125, 125, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+        .board-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .board-name {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .board-url {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-danger {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+        .btn-secondary {
+            background: rgba(125, 125, 125, 0.15);
+            color: var(--text-main);
+        }
+        .new-board-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr auto;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        @media (max-width: 480px) {
+            .new-board-grid {
+                grid-template-columns: 1fr;
+            }
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .path-badge {
+            display: inline-block;
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--primary);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            word-break: break-all;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 상단 헤더 -->
+        <header class="header">
+            <h1>🏫 유치원 사진 자동 수집</h1>
+            <a href="/" class="btn-back">← 포털 홈</a>
+        </header>
+
+        <!-- 1. 실행 및 상태 카드 -->
+        <section class="card">
+            <div class="card-title">
+                <span>사진 수집 제어</span>
+                <span id="statusBadge" class="badge">상태 확인 중</span>
+            </div>
+
+            <button id="btnRunCrawler" class="btn-primary" onclick="runCrawler()">
+                <span id="btnIcon">▶</span>
+                <span id="btnText">사진 수집 시작</span>
+            </button>
+
+            <!-- 요약 리포트 -->
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">최근 실행 결과</div>
+                    <div id="lastRunStatus" class="summary-value">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">마지막 수집 일시</div>
+                    <div id="lastRunTime" class="summary-value" style="font-size: 0.9rem;">-</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">신규 다운로드 사진</div>
+                    <div id="totalDownloaded" class="summary-value">0 장</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">중복 건너뛴 게시글</div>
+                    <div id="totalSkipped" class="summary-value">0 개</div>
+                </div>
+            </div>
+
+            <div style="margin-top: 12px;">
+                <div style="font-size: 0.8rem; color: var(--text-sub);">내 PC 저장 위치:</div>
+                <div id="hddPathDisplay" class="path-badge">/mnt/hdd/유치원_사진_다운로드</div>
+            </div>
+        </section>
+
+        <!-- 2. 실시간 로그 창 -->
+        <section class="card">
+            <div class="card-title">
+                <span>실시간 수집 로그</span>
+                <div style="display: flex; gap: 6px;">
+                    <button class="btn-sm btn-secondary" onclick="fetchStatus()">새로고침</button>
+                    <button class="btn-sm btn-secondary" onclick="viewHistoryLog()">누적 일지 보기</button>
+                </div>
+            </div>
+            <div id="logBox" class="log-box">대기 중...</div>
+        </section>
+
+        <!-- 3. 설정 관리 (계정 암호화 및 반/게시판 관리) -->
+        <section class="card">
+            <div class="card-title">
+                <span>⚙️ 수집기 설정 (학년/반 & 계정 관리)</span>
+            </div>
+
+            <!-- 계정 설정 -->
+            <form id="credForm" onsubmit="saveCredentials(event)">
+                <div class="form-group">
+                    <label>유치원 홈페이지 로그인 아이디</label>
+                    <input type="text" id="userIdInput" class="form-control" placeholder="아이디 입력">
+                    <div id="userIdHint" class="form-tip">저장된 아이디: 확인 중</div>
+                </div>
+                <div class="form-group">
+                    <label>로그인 비밀번호</label>
+                    <input type="password" id="userPwInput" class="form-control" placeholder="비밀번호 변경 시에만 입력">
+                    <div class="form-tip">🔒 입력하신 비밀번호는 AES-256-GCM 최고 수준으로 안전하게 암호화되어 보관됩니다.</div>
+                </div>
+                <button type="submit" class="btn-sm btn-secondary" style="width: 100%; height: 38px;">계정 정보 안전 저장</button>
+            </form>
+
+            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 20px 0;">
+
+            <!-- 반/게시판 관리 -->
+            <div>
+                <label style="font-size: 0.9rem; font-weight: 600; display: block; margin-bottom: 6px;">
+                    수집 대상 반/게시판 목록 (학년 진급 시 변경)
+                </label>
+                <div class="form-tip">아이들이 진급하여 반이나 게시판 주소가 바뀌면 여기서 수정 및 추가하실 수 있습니다.</div>
+
+                <div id="boardListContainer" class="board-list">
+                    <!-- 자바스크립트로 렌더링 -->
+                </div>
+
+                <div class="new-board-grid">
+                    <input type="text" id="newBoardName" class="form-control" placeholder="반 이름 (예: 지혜반_18번)">
+                    <input type="text" id="newBoardUrl" class="form-control" placeholder="게시판 URL (https://...)">
+                    <button type="button" class="btn-sm btn-secondary" onclick="addBoardRow()" style="height: 42px;">+ 반 추가</button>
+                </div>
+
+                <button type="button" class="btn-primary" style="margin-top: 14px; height: 42px;" onclick="saveBoards()">
+                    게시판 변경 사항 저장
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- 공통 UI 로더 고정 (규칙 4 준수) -->
+    <script src="/api/jg-ui" defer></script>
+
+    <script>
+        let currentBoards = {};
+        let statusPollInterval = null;
+
+        // 초기 데이터 로드
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            fetchStatus();
+            // 3초마다 상태 갱신
+            statusPollInterval = setInterval(fetchStatus, 3000);
+        });
+
+        // 설정 로드
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/kindergarten/config');
+                const data = await res.json();
+                if (!data.success) return;
+
+                const cfg = data.config;
+                currentBoards = cfg.targetBoards || {};
+                renderBoards();
+
+                if (cfg.userIdMasked) {
+                    document.getElementById('userIdHint').innerText = `현재 저장된 아이디: ${cfg.userIdMasked} (보관 중)`;
+                } else {
+                    document.getElementById('userIdHint').innerText = '아직 아이디가 등록되지 않았습니다.';
+                }
+
+                if (cfg.hddBasePath) {
+                    document.getElementById('hddPathDisplay').innerText = `${cfg.hddBasePath}/유치원_사진_다운로드`;
+                }
+            } catch (err) {
+                console.error('설정 로드 실패:', err);
+            }
+        }
+
+        // 반 목록 렌더링
+        function renderBoards() {
+            const container = document.getElementById('boardListContainer');
+            container.innerHTML = '';
+
+            const keys = Object.keys(currentBoards);
+            if (keys.length === 0) {
+                container.innerHTML = '<div style="padding: 10px; font-size: 0.85rem; color: var(--text-sub); text-align: center;">등록된 게시판이 없습니다.</div>';
+                return;
+            }
+
+            keys.forEach(name => {
+                const url = currentBoards[name];
+                const row = document.createElement('div');
+                row.className = 'board-row';
+                row.innerHTML = `
+                    <div class="board-info">
+                        <div class="board-name">${escapeHtml(name)}</div>
+                        <div class="board-url">${escapeHtml(url)}</div>
+                    </div>
+                    <button class="btn-sm btn-danger" onclick="removeBoard('${escapeHtml(name)}')">삭제</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // 반 추가
+        function addBoardRow() {
+            const nameInput = document.getElementById('newBoardName');
+            const urlInput = document.getElementById('newBoardUrl');
+            const name = nameInput.value.trim();
+            const url = urlInput.value.trim();
+
+            if (!name || !url) {
+                alert('반 이름과 게시판 URL을 모두 입력해주세요.');
+                return;
+            }
+
+            currentBoards[name] = url;
+            renderBoards();
+            nameInput.value = '';
+            urlInput.value = '';
+        }
+
+        // 반 삭제
+        function removeBoard(name) {
+            if (!confirm(`'${name}' 게시판을 목록에서 제외하시겠습니까?`)) return;
+            delete currentBoards[name];
+            renderBoards();
+        }
+
+        // 반 목록 저장
+        async function saveBoards() {
+            try {
+                const res = await fetch('/api/kindergarten/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetBoards: currentBoards })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('게시판 목록이 성공적으로 저장되었습니다.');
+                    loadConfig();
+                } else {
+                    alert('저장 실패: ' + (data.error || '알 수 없는 오류'));
+                }
+            } catch (err) {
+                alert('요청 중 오류 발생: ' + err.message);
+            }
+        }
+
+        // 계정 정보 저장
+        async function saveCredentials(e) {
+            e.preventDefault();
+            const userId = document.getElementById('userIdInput').value.trim();
+            const userPw = document.getElementById('userPwInput').value.trim();
+
+            if (!userId && !userPw) {
+                alert('변경할 아이디 또는 비밀번호를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const body = {};
+                if (userId) body.userId = userId;
+                if (userPw) body.userPw = userPw;
+
+                const res = await fetch('/api/kindergarten/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('계정 정보가 암호화되어 안전하게 저장되었습니다.');
+                    document.getElementById('userPwInput').value = '';
+                    loadConfig();
+                } else {
+                    alert('저장 실패: ' + (data.error || '오류 발생'));
+                }
+            } catch (err) {
+                alert('계정 저장 중 오류: ' + err.message);
+            }
+        }
+
+        // 수집 실행
+        async function runCrawler() {
+            if (!confirm('유치원 사진 자동 수집을 시작하시겠습니까?')) return;
+
+            const btn = document.getElementById('btnRunCrawler');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/kindergarten/run', { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    fetchStatus();
+                } else {
+                    alert('실행 실패: ' + (data.message || data.error));
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                alert('서버 요청 실패: ' + err.message);
+                btn.disabled = false;
+            }
+        }
+
+        // 상태 조회
+        async function fetchStatus() {
+            try {
+                const res = await fetch('/api/kindergarten/status');
+                const data = await res.json();
+                if (!data.success) return;
+
+                const status = data.status;
+                const badge = document.getElementById('statusBadge');
+                const btn = document.getElementById('btnRunCrawler');
+                const btnIcon = document.getElementById('btnIcon');
+                const btnText = document.getElementById('btnText');
+
+                if (status.isRunning) {
+                    badge.className = 'badge running';
+                    badge.innerText = '수집 진행 중 ⏳';
+                    btn.disabled = true;
+                    btnIcon.innerText = '⏳';
+                    btnText.innerText = '사진 수집 진행 중...';
+                } else {
+                    btn.disabled = false;
+                    btnIcon.innerText = '▶';
+                    btnText.innerText = '사진 수집 시작';
+
+                    if (status.lastResult) {
+                        if (status.lastResult.success) {
+                            badge.className = 'badge success';
+                            badge.innerText = '정상 완료 ✅';
+                        } else {
+                            badge.className = 'badge failed';
+                            badge.innerText = '오류 발생 ⚠️';
+                        }
+                    } else {
+                        badge.className = 'badge';
+                        badge.innerText = '대기 중';
+                    }
+                }
+
+                // 마지막 결과 업데이트
+                if (status.lastResult) {
+                    const r = status.lastResult;
+                    document.getElementById('lastRunStatus').innerText = r.success ? '정상 완료 ✅' : '오류 중단 ⚠️';
+                    document.getElementById('lastRunTime').innerText = r.executed_at || '-';
+                    document.getElementById('totalDownloaded').innerText = `${r.total_downloaded || 0} 장`;
+                    document.getElementById('totalSkipped').innerText = `${r.total_skipped_posts || 0} 개`;
+                }
+
+                // 로그 업데이트
+                if (status.logs && status.logs.length > 0) {
+                    const logBox = document.getElementById('logBox');
+                    const text = status.logs.map(l => `[${l.time}] ${l.text}`).join('\n');
+                    logBox.innerText = text;
+                    logBox.scrollTop = logBox.scrollHeight;
+                }
+            } catch (err) {
+                console.error('상태 조회 오류:', err);
+            }
+        }
+
+        // 누적 일지 조회
+        async function viewHistoryLog() {
+            try {
+                const res = await fetch('/api/kindergarten/history-log');
+                const data = await res.json();
+                if (data.success && data.log) {
+                    alert('📋 [최근 누적 일지 기록]\n\n' + data.log.content);
+                } else {
+                    alert('누적 일지를 불러올 수 없습니다.');
+                }
+            } catch (err) {
+                alert('일지 조회 실패: ' + err.message);
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, m => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[m]));
+        }
+    </script>
+</body>
+</html>

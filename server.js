@@ -7,7 +7,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261102_023243';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261102_023637';
 const {
     PORT,
     JWT_SECRET,
@@ -42,6 +42,7 @@ const adminRoutes = require('./routes/admin.routes');
 const wikiProxyRoutes = require('./routes/wiki.proxy.routes');
 const modulesRoutes = require('./routes/modules.routes');
 const aiRoutes = require('./routes/ai.routes');
+const kindergartenRoutes = require('./routes/kindergarten.routes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -205,6 +206,11 @@ app.get(['/calendar', '/calendar.html'], authenticateToken, (req, res) => {
     sendHtml(res, 'calendar.html');
 });
 
+// 1-4. 유치원 사진 수집 관리 화면
+app.get(['/kindergarten', '/kindergarten.html'], authenticateToken, (req, res) => {
+    sendHtml(res, 'kindergarten.html');
+});
+
 // 1-4. 오프라인 대체 화면
 app.get('/offline.html', (req, res) => {
     sendHtml(res, 'offline.html');
@@ -324,6 +330,9 @@ app.use('/api/modules', modulesRoutes);
 
 // 🤖 로컬 AI 비서 API (/api/ai/*)
 app.use('/', aiRoutes);
+
+// 🏫 유치원 사진 수집 API (/api/kindergarten/*)
+app.use('/api/kindergarten', kindergartenRoutes);
 
 // 헬스 체크
 app.get('/health', (req, res) => {
