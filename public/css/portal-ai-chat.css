@@ -448,5 +448,14 @@ body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-chat-window {
         font-size: 0.95rem;
         border-radius: 12px;
     }
+    .ai-fab-btn {
+        bottom: 68px;
+    }
+    body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-fab-btn {
+        bottom: 112px;
+    }
+    .ai-chat-window {
+        bottom: 128px;
+    }
 }
 

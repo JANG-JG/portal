@@ -14,8 +14,9 @@
     function updateBottomPadding(hasBreaking) {
         currentHasBreaking = !!hasBreaking;
         const isMobile = window.innerWidth <= 768;
-        const tickerHeight = isMobile ? 58 : 44;
-        const breakingHeight = currentHasBreaking ? (isMobile ? 34 : 36) : 0;
+        const isDesktopLarge = window.innerWidth >= 1280;
+        const tickerHeight = isMobile ? 58 : (isDesktopLarge ? 53 : 44);
+        const breakingHeight = currentHasBreaking ? (isMobile ? 34 : (isDesktopLarge ? 43 : 36)) : 0;
         const totalBarHeight = tickerHeight + breakingHeight;
 
         // 자산관리(.bottom-nav) 및 관리자 페이지(.admin-bottom-nav) 하단 내비게이션 바 탐색
