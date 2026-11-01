@@ -1,0 +1,267 @@
+/* ==========================================================================
+   🧩 JG 관리자 센터 공통 컴포넌트 스타일 (admin-components.css)
+   - [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 대응
+   - 공통 테이블, 통계 벤토 그리드, 표준 Bento KPI 메트릭 카드, 테마 뱃지
+   ========================================================================== */
+
+/* 테이블 스타일 및 반응형 컨테이너 */
+.admin-table-container,
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+/* 📊 통계 요약 벤토 그리드 & 스탯 카드 (Clean Light & Slate 디자인) */
+.admin-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.85rem;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 1.25rem;
+}
+
+.admin-stat-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.admin-stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    flex-shrink: 0;
+}
+
+.admin-stat-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.admin-stat-label {
+    font-size: 0.76rem;
+    color: #64748b;
+    font-weight: 600;
+    margin-bottom: 0.15rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-stat-val {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    text-align: left;
+}
+
+.admin-table th {
+    background: #f8fafc;
+    color: #475569;
+    font-weight: 700;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap !important;
+}
+
+.admin-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    vertical-align: middle;
+}
+
+.admin-table th:not(.col-desc),
+.admin-table td:not(.col-desc) {
+    white-space: nowrap;
+}
+
+/* 설명 및 상세 텍스트 열 줄바꿈 최적화 (단어 단위 한글 줄바꿈) */
+.admin-table .col-desc {
+    min-width: 220px;
+    max-width: 360px;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: break-word;
+    line-height: 1.5;
+}
+
+.admin-table tr:hover td {
+    background: #f8fafc;
+}
+
+/* 테이블 스크롤 컨테이너 (고정 헤더 & 최대 높이 제한) */
+.admin-table-container.admin-table-scroll {
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.admin-table-container.admin-table-scroll thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.admin-table-container.admin-table-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+.admin-table-container.admin-table-scroll::-webkit-scrollbar-track {
+    background: #f8fafc;
+}
+.admin-table-container.admin-table-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+.admin-table-container.admin-table-scroll::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+
+/* ========================================================
+   🍱 표준 Bento KPI 메트릭 카드 시스템 (Step C)
+   ======================================================== */
+.kpi-bento-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 0.85rem;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.kpi-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.85rem;
+    padding: 1rem 1.15rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    box-sizing: border-box;
+    min-width: 0;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px -3px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e1;
+}
+
+.kpi-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+    gap: 0.5rem;
+}
+
+.kpi-card-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #64748b;
+    line-height: 1.3;
+}
+
+.kpi-card-icon-box {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+    background: #f1f5f9;
+}
+
+.kpi-card-value {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.25;
+    margin-bottom: 0.35rem;
+    word-break: break-all;
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.kpi-card-subtext {
+    font-size: 0.74rem;
+    color: #64748b;
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    line-height: 1.4;
+    word-break: break-all;
+}
+
+/* 테마 컬러 바 & 뱃지 */
+.kpi-card.color-primary { border-top: 3px solid #2563eb; }
+.kpi-card.color-primary .kpi-card-icon-box { background: #eff6ff; color: #2563eb; }
+
+.kpi-card.color-success { border-top: 3px solid #10b981; }
+.kpi-card.color-success .kpi-card-icon-box { background: #ecfdf5; color: #059669; }
+
+.kpi-card.color-warning { border-top: 3px solid #f59e0b; }
+.kpi-card.color-warning .kpi-card-icon-box { background: #fffbeb; color: #d97706; }
+
+.kpi-card.color-danger { border-top: 3px solid #ef4444; }
+.kpi-card.color-danger .kpi-card-icon-box { background: #fef2f2; color: #dc2626; }
+
+.kpi-card.color-purple { border-top: 3px solid #8b5cf6; }
+.kpi-card.color-purple .kpi-card-icon-box { background: #f5f3ff; color: #7c3aed; }
+
+.kpi-card.color-slate { border-top: 3px solid #64748b; }
+.kpi-card.color-slate .kpi-card-icon-box { background: #f8fafc; color: #475569; }
+
+@media (max-width: 480px) {
+    .kpi-bento-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.65rem;
+    }
+    .kpi-card {
+        padding: 0.85rem 0.95rem;
+    }
+    .kpi-card-value {
+        font-size: 1.25rem;
+    }
+}
+
+
+

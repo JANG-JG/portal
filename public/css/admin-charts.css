@@ -1,0 +1,184 @@
+/* ==========================================================================
+   🧩 JG 관리자 센터 uPlot 실시간 시계열 리소스 차트 스타일 (admin-charts.css)
+   - [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 대응
+   ========================================================================== */
+
+/* ========================================================
+   📈 uPlot 실시간 시계열 리소스 차트 스타일 (Clean Light Box)
+   ======================================================== */
+.uplot-chart-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 0.55rem 0.5rem 0.25rem;
+    margin-bottom: 0;
+    color: #0f172a;
+    min-width: 0;
+}
+
+.uplot-legend-badges {
+    display: flex;
+    gap: 0.35rem;
+    align-items: center;
+    font-size: 0.74rem;
+    font-weight: 600;
+    flex-wrap: wrap;
+}
+
+.uplot-badge-p-cpu {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.uplot-badge-p-ram {
+    color: #6d28d9;
+    background: #f5f3ff;
+    border: 1px solid #ddd6fe;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.uplot-badge-s-cpu {
+    color: #b45309;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.uplot-badge-s-ram {
+    color: #047857;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.uplot-container {
+    width: 100%;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.u-wrap {
+    font-family: inherit !important;
+}
+.u-title, .u-legend {
+    display: none !important;
+}
+
+/* ========================================================
+   ⏱️ Tabler 스타일 감사 타임라인 피드 (Activity Timeline)
+   ======================================================== */
+.admin-timeline {
+    position: relative;
+    padding-left: 1.65rem;
+    margin: 0.65rem 0;
+}
+
+.admin-timeline::before {
+    content: '';
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    left: 7px;
+    width: 2px;
+    background: #e2e8f0;
+}
+
+.admin-timeline-item {
+    position: relative;
+    padding-bottom: 0.85rem;
+}
+
+.admin-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.admin-timeline-badge {
+    position: absolute;
+    left: -1.65rem;
+    top: 4px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 3px solid #94a3b8;
+    box-shadow: 0 0 0 2px #ffffff;
+    z-index: 1;
+}
+
+.admin-timeline-badge.badge-success {
+    border-color: #10b981;
+    background: #d1fae5;
+}
+
+.admin-timeline-badge.badge-failed, .admin-timeline-badge.badge-danger {
+    border-color: #ef4444;
+    background: #fee2e2;
+}
+
+.admin-timeline-badge.badge-info {
+    border-color: #3b82f6;
+    background: #dbeafe;
+}
+
+.admin-timeline-content {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.65rem;
+    padding: 0.6rem 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.admin-timeline-content:hover {
+    background: #ffffff;
+    border-color: #cbd5e1;
+}
+
+.admin-timeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+    flex-wrap: wrap;
+}
+
+.admin-timeline-title {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.admin-timeline-time {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    white-space: nowrap;
+}
+
+.admin-timeline-desc {
+    font-size: 0.76rem;
+    color: #475569;
+    line-height: 1.4;
+    word-break: break-all;
+}
+

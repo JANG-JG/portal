@@ -1,0 +1,487 @@
+/* ==========================================================================
+   🧩 JG 관리자 센터 내비게이션, 사이드바 & 모달 스타일 (admin-nav.css)
+   - [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 대응
+   - 삼선 사이드바 아코디언, 상단 1단/2단 캡슐 탭, 공통 팝업 모달
+   ========================================================================== */
+
+/* ==========================================================================
+   🌐 관리자 좌측 삼선(☰) 서브메뉴 사이드바 및 모바일 가독성 최적화
+   ========================================================================== */
+
+/* 1. 삼선 메뉴 토글 버튼 (클린 라이트 헤더용) */
+.admin-sidebar-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.5rem;
+    font-size: 0.88rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    flex-shrink: 0;
+}
+.admin-sidebar-toggle-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+.admin-sidebar-toggle-btn .hamburger-icon {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 15px;
+    height: 11px;
+}
+.admin-sidebar-toggle-btn .hamburger-icon span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background-color: currentColor;
+    border-radius: 2px;
+}
+
+/* 2. 사이드바 배경 오버레이 */
+.admin-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 9999998 !important;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+.admin-sidebar-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* 3. 좌측 슬라이드인 사이드바 */
+.admin-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 310px;
+    max-width: 85vw;
+    background: #0f172a;
+    color: #f8fafc;
+    z-index: 9999999 !important;
+    box-shadow: none;
+    visibility: hidden;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s ease, box-shadow 0.28s ease;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+.admin-sidebar.active {
+    transform: translateX(0);
+    box-shadow: 6px 0 28px rgba(0, 0, 0, 0.55);
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.admin-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.15rem 1.25rem;
+    border-bottom: 1px solid #1e293b;
+    background: #090d16;
+}
+.admin-sidebar-header-title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: #ffffff;
+}
+.admin-sidebar-close-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    line-height: 1;
+}
+.admin-sidebar-close-btn:hover {
+    color: #ffffff;
+    background: #1e293b;
+}
+
+.admin-sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.9rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+.admin-sidebar-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #64748b;
+    padding: 0.5rem 0.6rem 0.25rem 0.6rem;
+}
+
+/* 🗂️ 계층형 사이드바 대메뉴 & 서브메뉴 아코디언 스타일 */
+.admin-sidebar-group {
+    border-radius: 0.625rem;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid #1e293b;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+.admin-sidebar-group.expanded {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: #334155;
+}
+.admin-sidebar-parent {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    color: #e2e8f0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 700;
+    transition: all 0.15s ease;
+    text-align: left;
+    font-family: inherit;
+}
+.admin-sidebar-parent:hover {
+    background: #1e293b;
+    color: #ffffff;
+}
+.admin-sidebar-parent.active {
+    color: #60a5fa;
+    font-weight: 800;
+}
+.admin-sidebar-parent-left {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+.admin-sidebar-parent-chevron {
+    font-size: 0.72rem;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    color: #94a3b8;
+}
+.admin-sidebar-group.expanded .admin-sidebar-parent-chevron {
+    transform: rotate(180deg);
+    color: #60a5fa;
+}
+.admin-sidebar-sublist {
+    display: none;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.25rem 0.6rem 0.6rem 1.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.admin-sidebar-group.expanded .admin-sidebar-sublist {
+    display: flex;
+}
+.admin-sidebar-sublink {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.42rem 0.65rem;
+    border-radius: 0.45rem;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+    width: 100%;
+}
+.admin-sidebar-sublink:hover {
+    background: rgba(37, 99, 235, 0.18);
+    color: #ffffff;
+    padding-left: 0.8rem;
+}
+.admin-sidebar-sublink.active {
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.admin-sidebar-footer {
+    padding: 0.9rem 0.95rem;
+    border-top: 1px solid #1e293b;
+    background: #090d16;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+/* 4. 상단 고정(Sticky) 1단 캡슐 탭 & 2단 서브탭 내비게이션 (PC & 모바일 공통) */
+.admin-nav-sticky-wrapper {
+    position: sticky;
+    top: 54px;
+    z-index: 800;
+    background: rgba(248, 250, 252, 0.96);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 0.4rem 0 0.55rem 0;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.admin-tabs-nav {
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding: 0.15rem 0.45rem 0.35rem 0.45rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    box-sizing: border-box;
+}
+.admin-tabs-nav::-webkit-scrollbar { display: none; }
+
+.admin-tab-btn {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 9999px;
+    padding: 0.42rem 0.9rem;
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #475569;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    user-select: none;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+.admin-tab-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+.admin-tab-btn.active {
+    background: #2563eb;
+    color: #ffffff;
+    border-color: #1d4ed8;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.22);
+}
+
+/* 2단 서브탭 바 */
+.admin-subtabs-nav {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding: 0.3rem 0.45rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    background: #ffffff;
+    border-radius: 0.6rem;
+    border: 1px solid #e2e8f0;
+    margin-top: 0.25rem;
+    box-sizing: border-box;
+}
+.admin-subtabs-nav::-webkit-scrollbar { display: none; }
+
+.admin-subtab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+    font-family: inherit;
+}
+.admin-subtab-btn:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+.admin-subtab-btn.active {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #2563eb;
+    font-weight: 700;
+}
+
+/* 각 서브메뉴 창/카드 뷰 제어 클래스 */
+.admin-sub-pane {
+    display: block;
+    animation: fadeIn 0.2s ease-out;
+    min-width: 0;
+    will-change: transform, opacity;
+}
+.admin-sub-pane.hidden-pane {
+    display: none !important;
+}
+
+/* 서브메뉴 좌우 스와이프 슬라이드 트랜지션 애니메이션 */
+@keyframes subPaneSlideFromRight {
+    from {
+        opacity: 0.55;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes subPaneSlideFromLeft {
+    from {
+        opacity: 0.55;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.admin-sub-pane.slide-from-right {
+    animation: subPaneSlideFromRight 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.admin-sub-pane.slide-from-left {
+    animation: subPaneSlideFromLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* 🔒 모달 오픈 시 배경 화면 스크롤 완전 차단 */
+html.modal-open,
+body.modal-open {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    touch-action: none;
+}
+
+/* 🔑 관리자 전용 팝업 모달 공통 레이아웃 & 스크롤 보호 */
+.admin-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 99999999 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem 0.75rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+.admin-modal-dialog {
+    background: #ffffff;
+    width: 100%;
+    max-width: 440px;
+    max-height: calc(100dvh - 2.5rem);
+    max-height: calc(100vh - 2.5rem);
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    margin: auto;
+    overflow: hidden;
+    animation: adminModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+}
+@keyframes adminModalFadeIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.admin-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+    background: #0f172a;
+    color: #ffffff;
+    flex-shrink: 0;
+}
+.admin-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #ffffff;
+}
+.admin-modal-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #cbd5e1;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    line-height: 1;
+}
+.admin-modal-close-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+}
+.admin-modal-body {
+    padding: 1.25rem;
+    background: #ffffff;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+}
+.admin-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+.admin-modal-body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+.admin-modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+.admin-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
