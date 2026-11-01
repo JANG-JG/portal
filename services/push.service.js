@@ -90,42 +90,51 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
         let userCondition = '';
         if (userId) {
             if (Array.isArray(userId)) {
-                userCondition = `AND ps.user_id IN (${userId.map(u => `'${u}'`).join(',')})`;
+                userCondition = `AND ps.user_id IN (${userId.map(u => `'${String(u).replace(/'/g, "''")}'`).join(',')})`;
             } else {
-                userCondition = `AND ps.user_id = '${userId}'`;
+                userCondition = `AND ps.user_id = '${String(userId).replace(/'/g, "''")}'`;
             }
         } else if (adminOnly) {
-            userCondition = "AND (ps.user_id = 'admin' OR ps.user_id IN (SELECT username FROM users WHERE role = 'admin' OR rowid = 1))";
+            userCondition = "AND (ps.user_id = 'admin' OR u.role = 'admin' OR u.rowid = 1)";
         }
         if (excludeUserId) {
-            userCondition += ` AND ps.user_id != '${excludeUserId}'`;
+            userCondition += ` AND ps.user_id != '${String(excludeUserId).replace(/'/g, "''")}'`;
         }
+
+        // 🌟 [가족 계정 기본 정책] 관리자는 전체 알림 기본 ON, 가족 계정은 오직 앨범(album) 알림만 기본 ON!
+        // 그 외 모든 알림(속보, 날씨, 증시, 혈압, 병원, 시스템 등)은 가족 계정 기본 OFF (설정값이 1일 때만 수신)
+        const isAdminExpr = "(ps.user_id = 'admin' OR u.role = 'admin' OR u.rowid = 1)";
 
         let categoryCondition = '';
         if (type === 'breaking') {
-            categoryCondition = 'AND (ns.breaking_news_enabled IS NULL OR ns.breaking_news_enabled = 1)';
+            categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.breaking_news_enabled, 1) ELSE COALESCE(ns.breaking_news_enabled, 0) END = 1)`;
         } else if (type === 'weather') {
-            categoryCondition = 'AND (ns.weather_morning_enabled IS NULL OR ns.weather_morning_enabled = 1)';
+            categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.weather_morning_enabled, 1) ELSE COALESCE(ns.weather_morning_enabled, 0) END = 1)`;
         } else if (type === 'asset' || type === 'economy' || type === 'finance' || type === 'stock') {
-            categoryCondition = 'AND (ns.asset_report_enabled IS NULL OR ns.asset_report_enabled = 1)';
+            categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.asset_report_enabled, 1) ELSE COALESCE(ns.asset_report_enabled, 0) END = 1)`;
         } else if (type === 'system') {
-            categoryCondition = 'AND (ns.system_alert_enabled IS NULL OR ns.system_alert_enabled = 1)';
+            categoryCondition = `AND (${isAdminExpr} AND COALESCE(ns.system_alert_enabled, 1) = 1)`;
+        } else if (type === 'blood_pressure') {
+            categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.bp_reminder_enabled, 1) ELSE COALESCE(ns.bp_reminder_enabled, 0) END = 1)`;
+        } else if (type === 'hospital') {
+            categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.hospital_push_enabled, 1) ELSE COALESCE(ns.hospital_push_enabled, 0) END = 1)`;
         } else if (type === 'album') {
-            categoryCondition = 'AND (ns.album_push_enabled IS NULL OR ns.album_push_enabled = 1)';
+            categoryCondition = 'AND COALESCE(ns.album_push_enabled, 1) = 1';
             if (subtype === 'album_new_photo') {
-                categoryCondition += ' AND (ns.album_new_photo_enabled IS NULL OR ns.album_new_photo_enabled = 1)';
+                categoryCondition += ' AND COALESCE(ns.album_new_photo_enabled, 1) = 1';
             } else if (subtype === 'album_comment') {
-                categoryCondition += ' AND (ns.album_comment_enabled IS NULL OR ns.album_comment_enabled = 1)';
+                categoryCondition += ' AND COALESCE(ns.album_comment_enabled, 1) = 1';
             } else if (subtype === 'album_mention') {
-                categoryCondition += ' AND (ns.album_mention_enabled IS NULL OR ns.album_mention_enabled = 1)';
+                categoryCondition += ' AND COALESCE(ns.album_mention_enabled, 1) = 1';
             }
         }
 
         const query = `
             SELECT ps.*, COALESCE(ns.enabled, 1) as enabled
             FROM push_subscriptions ps
+            LEFT JOIN users u ON ps.user_id = u.username
             LEFT JOIN notification_settings ns ON ps.user_id = ns.user_id
-            WHERE (ns.enabled IS NULL OR ns.enabled = 1)
+            WHERE COALESCE(ns.enabled, 1) = 1
             ${categoryCondition}
             ${userCondition}
         `;
@@ -133,14 +142,36 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
         db.all(query, [], (err, rows) => {
             if (err || !rows || rows.length === 0) {
                 console.log(`[UnifiedPush] 발송 대상 구독 기기 없음 (type: ${type}, user: ${userId || 'all'})`);
-                saveNotificationHistory({
-                    userId: userId || 'admin',
-                    type,
-                    title: cleanTitle,
-                    body: cleanBody,
-                    icon: 'https://j-jg.cc/icon-monochrome.png',
-                    url: targetUrl
-                });
+                // 단일 사용자 대상 알림이고 사용자가 알림을 끄지 않은 경우에만 내역 보존 (꺼둔 사용자에게 내역 적재 원천 차단)
+                if (userId && typeof userId === 'string' && !Array.isArray(userId)) {
+                    const checkSql = `
+                        SELECT COALESCE(ns.enabled, 1) as enabled,
+                               COALESCE(u.role, 'family') as role,
+                               u.rowid as u_rowid
+                        FROM users u
+                        LEFT JOIN notification_settings ns ON u.username = ns.user_id
+                        WHERE u.username = ?
+                    `;
+                    db.get(checkSql, [userId], (cErr, userCheck) => {
+                        if (!cErr && userCheck && userCheck.enabled === 1) {
+                            const isUserAdmin = (userId === 'admin' || userCheck.role === 'admin' || userCheck.u_rowid === 1);
+                            // 가족 계정인데 관리자 전용 알림(속보/날씨/증시/시스템 등)인 경우 저장 제외
+                            if (!isUserAdmin && (type === 'system' || type === 'breaking' || type === 'weather' || type === 'asset' || type === 'economy' || type === 'finance' || type === 'stock' || type === 'hospital' || type === 'blood_pressure')) {
+                                return resolve({ success: true, count: 0, targetCount: 0 });
+                            }
+                            saveNotificationHistory({
+                                userId,
+                                type,
+                                title: cleanTitle,
+                                body: cleanBody,
+                                icon: 'https://j-jg.cc/icon-monochrome.png',
+                                url: targetUrl
+                            });
+                        }
+                        resolve({ success: true, count: 0, targetCount: 0 });
+                    });
+                    return;
+                }
                 return resolve({ success: true, count: 0, targetCount: 0 });
             }
 
@@ -182,7 +213,10 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
             });
 
             const recipientUserIds = Array.from(new Set(sendRows.map(r => r.user_id).filter(Boolean)));
-            if (recipientUserIds.length === 0) recipientUserIds.push(userId || 'admin');
+            if (recipientUserIds.length === 0 && userId && typeof userId === 'string') recipientUserIds.push(userId);
+            if (recipientUserIds.length === 0) {
+                return resolve({ success: true, count: 0, targetCount: 0 });
+            }
 
             saveNotificationHistory({
                 userId: recipientUserIds[0],

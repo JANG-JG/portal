@@ -328,7 +328,10 @@
         else if (catKey === 'finance') {
             portalNotifSettings.asset_open_enabled = 0; portalNotifSettings.asset_close_enabled = 0; portalNotifSettings.asset_report_enabled = 0;
             setC('notifAssetOpenEnabled', false); setC('notifAssetCloseEnabled', false); setC('notifAssetReportEnabled', false);
-        } else if (catKey === 'health') { portalNotifSettings.bp_reminder_enabled = 0; setC('notifBpReminderEnabled', false); }
+        } else if (catKey === 'health') {
+            portalNotifSettings.bp_reminder_enabled = 0; portalNotifSettings.hospital_push_enabled = 0;
+            setC('notifBpReminderEnabled', false); setC('notifHospitalPushEnabled', false);
+        }
         else if (catKey === 'system') { portalNotifSettings.system_alert_enabled = 0; setC('notifSystemAlertEnabled', false); }
         try {
             await fetch('/api/notification/settings', {
