@@ -58,6 +58,18 @@ body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-fab-btn {
     100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
+/* 1-1. 모바일 백드롭 딤 오버레이 (배경 스크롤 및 외부 터치 차단) */
+.ai-chat-backdrop {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    z-index: 1000015; opacity: 0; visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    touch-action: none; overscroll-behavior: contain;
+}
+.ai-chat-backdrop.active { opacity: 1; visibility: visible; }
+@media (min-width: 769px) { .ai-chat-backdrop { display: none !important; } }
+
 /* 2. 챗봇 대화창 컨테이너 */
 .ai-chat-window {
     position: fixed;
@@ -332,42 +344,26 @@ body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-chat-window {
     cursor: not-allowed;
 }
 
-/* 모바일 360px 완벽 대응 (하단 뉴스바 및 속보바 위로 100% 온전 노출) */
-@media (max-width: 640px) {
+/* 모바일/태블릿 360px~768px 완벽 대응 (화면 밀림 방지 및 배경 스크롤 차단) */
+@media (max-width: 768px) {
     .ai-fab-btn {
-        bottom: 58px;
-        right: 16px;
-        height: 44px;
-        padding: 0 0.95rem;
-        font-size: 0.82rem;
-        z-index: 1000010;
+        bottom: 58px; right: 16px; height: 44px; padding: 0 0.95rem; font-size: 0.82rem; z-index: 1000010;
     }
-
-    body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-fab-btn {
-        bottom: 92px;
-    }
-
+    body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-fab-btn { bottom: 92px; }
     .ai-chat-window {
-        bottom: 0 !important;
-        right: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 88vh;
-        max-height: 92vh;
-        border-radius: 20px 20px 0 0;
-        border-bottom: none;
-        z-index: 1000020 !important;
+        bottom: 0 !important; right: 0 !important; left: 0 !important; width: 100% !important;
+        height: 88vh; height: 88dvh; max-height: 100dvh;
+        border-radius: 20px 20px 0 0; border-bottom: none; z-index: 1000020 !important;
+        overscroll-behavior: contain;
     }
-
-    /* 모바일 대화창 하단 입력창: Safe Area 확보 및 키보드/뉴스바 침범 원천 차단 */
+    .ai-chat-messages {
+        overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    }
     .ai-chat-input-bar {
         padding: 0.75rem 0.85rem calc(0.85rem + env(safe-area-inset-bottom, 0px));
     }
-
-    /* 모바일 포커스 시 브라우저 자동 확대(Zoom) 방지 (16px 이상 유지) */
-    .ai-chat-input {
-        font-size: 16px;
-    }
+    .ai-chat-input { font-size: 16px; }
+    body.ai-chat-modal-open { overflow: hidden !important; touch-action: none !important; }
 }
 
 /* ==============================================================================
