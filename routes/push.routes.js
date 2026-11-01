@@ -53,8 +53,9 @@ router.post('/subscribe', authenticateToken, (req, res) => {
 
     const { endpoint, keys } = subscription;
 
-    // 🌟 모바일 일반 브라우저(삼성 인터넷 탭 등)에서 구독 요청 시, 이미 전용 웹앱(PWA/APK) 구독이 있으면 저장하지 않고 즉시 차단
-    if (isMobile && clientType === 'browser') {
+    // 🌟 모바일 일반 브라우저에서 포털 구독 요청 시에만 PWA 중복 차단 (가족앨범 등 서브 서비스는 정상 등록 허용)
+    const isSubService = Boolean(deviceId && deviceId.startsWith('album_'));
+    if (!isSubService && isMobile && clientType === 'browser') {
         return db.get(
             `SELECT endpoint FROM push_subscriptions WHERE user_id = ? AND (client_type = 'pwa' OR client_type = 'apk') LIMIT 1`,
             [userId],
@@ -97,11 +98,14 @@ router.post('/subscribe', authenticateToken, (req, res) => {
             }
 
             // 🌟 [중복 방지 스마트 정리]
-            // 1) 모바일 PWA 또는 APK 전용 앱으로 등록된 경우 다른 모든 모바일/미분류 브라우저 토큰 정리
+            // 1) 모바일 PWA 또는 APK 전용 앱으로 등록된 경우 동일 서비스의 이전 모바일 토큰만 스마트 정리 (포털과 가족앨범 상호 보존)
             if (isMobile && (clientType === 'pwa' || clientType === 'apk')) {
+                const serviceFilter = isSubService
+                    ? "AND (device_id LIKE 'album_%')"
+                    : "AND (device_id NOT LIKE 'album_%' OR device_id IS NULL OR device_id = '')";
                 db.run(
                     `DELETE FROM push_subscriptions 
-                     WHERE user_id = ? AND endpoint != ? AND (
+                     WHERE user_id = ? AND endpoint != ? ${serviceFilter} AND (
                          device_type = 'mobile' 
                          OR user_agent LIKE '%Mobile%' 
                          OR user_agent LIKE '%Android%'
@@ -114,7 +118,7 @@ router.post('/subscribe', authenticateToken, (req, res) => {
                     [userId, endpoint],
                     function(delErr) {
                         if (!delErr && this.changes > 0) {
-                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 전용 앱(${clientType.toUpperCase()}) 등록에 따라 다른 이전 토큰 ${this.changes}개 자동 정리 완료`);
+                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 전용 앱(${clientType.toUpperCase()}) 등록에 따라 이전 토큰 ${this.changes}개 자동 정리 완료`);
                         }
                     }
                 );

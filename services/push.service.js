@@ -144,37 +144,31 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                 return resolve({ success: true, count: 0, targetCount: 0 });
             }
 
-            // 🌟 [3중 방어막: 모바일 중복 수신 원천 차단 알고리즘]
-            const userTokensMap = new Map();
+            // 🌟 [기기별 스마트 토큰 발송 알고리즘: 서로 다른 기기(아이폰 vs 안드로이드 등) 독립 발송 보장]
+            const deviceGroupMap = new Map();
             rows.forEach(r => {
                 const uid = r.user_id || 'admin';
-                if (!userTokensMap.has(uid)) {
-                    userTokensMap.set(uid, { mobile: [], desktop: [] });
+                const ep = String(r.endpoint || '');
+                // 물리적 기기 플랫폼 식별 (애플 APNs vs 구글 FCM vs 기타)
+                let platform = 'android';
+                if (ep.includes('push.apple.com')) platform = 'apple';
+                else if (ep.includes('windows.com')) platform = 'windows';
+                else if (ep.includes('mozilla.com')) platform = 'firefox';
+
+                const deviceKey = `${uid}__${platform}__${r.device_id || 'default'}`;
+                if (!deviceGroupMap.has(deviceKey)) {
+                    deviceGroupMap.set(deviceKey, []);
                 }
-                const ua = String(r.user_agent || '').toLowerCase();
-                const isMobile = r.device_type === 'mobile' ||
-                                 r.device_type === 'tablet' ||
-                                 r.client_type === 'pwa' ||
-                                 r.client_type === 'apk' ||
-                                 /mobi|iphone|ipod|ipad|android|samsungbrowser|wv/i.test(ua) ||
-                                 (!r.device_id && !ua);
-                if (isMobile) {
-                    userTokensMap.get(uid).mobile.push(r);
-                } else {
-                    userTokensMap.get(uid).desktop.push(r);
-                }
+                deviceGroupMap.get(deviceKey).push(r);
             });
 
             const sendRows = [];
-            const obsoleteEndpoints = [];
-
-            userTokensMap.forEach((tokens, uid) => {
-                tokens.desktop.forEach(dt => sendRows.push(dt));
-
-                if (tokens.mobile.length === 1) {
-                    sendRows.push(tokens.mobile[0]);
-                } else if (tokens.mobile.length > 1) {
-                    tokens.mobile.sort((a, b) => {
+            deviceGroupMap.forEach((tokens, devKey) => {
+                if (tokens.length === 1) {
+                    sendRows.push(tokens[0]);
+                } else {
+                    // 동일 기기 내 다중 토큰인 경우 PWA 우선, 최신 갱신 토큰 1개 선택
+                    tokens.sort((a, b) => {
                         const aPwa = (a.client_type === 'pwa' || a.client_type === 'apk') ? 1 : 0;
                         const bPwa = (b.client_type === 'pwa' || b.client_type === 'apk') ? 1 : 0;
                         if (aPwa !== bPwa) return bPwa - aPwa;
@@ -183,26 +177,9 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                         if (aTime !== bTime) return bTime - aTime;
                         return (b.id || 0) - (a.id || 0);
                     });
-
-                    const winner = tokens.mobile[0];
-                    sendRows.push(winner);
-                    console.log(`[UnifiedPush] 유저(${uid}) 모바일 다중 토큰(${tokens.mobile.length}개) 중 최적 토큰(ID: ${winner.id}, type: ${winner.client_type}) 1개만 단일 발송`);
-
-                    for (let i = 1; i < tokens.mobile.length; i++) {
-                        obsoleteEndpoints.push(tokens.mobile[i].endpoint);
-                    }
+                    sendRows.push(tokens[0]);
                 }
             });
-
-            // 탈락된 중복 모바일 토큰 DB 자동 정리
-            if (obsoleteEndpoints.length > 0) {
-                const placeholders = obsoleteEndpoints.map(() => '?').join(',');
-                db.run(`DELETE FROM push_subscriptions WHERE endpoint IN (${placeholders})`, obsoleteEndpoints, function(delErr) {
-                    if (!delErr && this.changes > 0) {
-                        console.log(`🧹 [UnifiedPush Cleanup] 중복 모바일 토큰 ${this.changes}개 DB 자동 정리 완료`);
-                    }
-                });
-            }
 
             const recipientUserIds = Array.from(new Set(sendRows.map(r => r.user_id).filter(Boolean)));
             if (recipientUserIds.length === 0) recipientUserIds.push(userId || 'admin');
@@ -255,18 +232,22 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
 
                 const payload = JSON.stringify(pushPayloadObj);
 
-                const pushOptions = {
-                    headers: {
-                        'Urgency': 'high',
-                        'Topic': (type || 'general').replace(/[^a-zA-Z0-9_-]/g, '')
-                    },
-                    TTL: 86400
-                };
-
                 let successCount = 0;
                 let failCount = 0;
 
                 const promises = sendRows.map(subRow => {
+                    const isApplePush = Boolean(subRow.endpoint && subRow.endpoint.includes('push.apple.com'));
+                    const pushHeaders = { 'Urgency': 'high' };
+                    // 🍎 Apple APNs는 임의의 Topic 헤더 전송 시 400 BadWebPushTopic 에러를 반환하므로 제외
+                    if (!isApplePush && type) {
+                        pushHeaders['Topic'] = (type || 'general').replace(/[^a-zA-Z0-9_-]/g, '');
+                    }
+
+                    const pushOptions = {
+                        headers: pushHeaders,
+                        TTL: 86400
+                    };
+
                     const pushSubscription = {
                         endpoint: subRow.endpoint,
                         keys: {
@@ -279,6 +260,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                         .then(() => { successCount++; })
                         .catch(pErr => {
                             failCount++;
+                            console.error(`❌ [WebPush Error] (${subRow.user_id}, ${subRow.endpoint.slice(0, 45)}...): Status ${pErr.statusCode}`, pErr.body || pErr.message);
                             if (pErr.statusCode === 410 || pErr.statusCode === 404) {
                                 db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [subRow.endpoint]);
                             }
