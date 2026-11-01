@@ -17,6 +17,11 @@
             const data = await res.json();
             if (!data.success || !Array.isArray(data.widgets)) return;
 
+            // 커스텀/오픈소스 동적 위젯 DOM 사전 보장
+            if (typeof window.reloadDynamicWidgets === 'function') {
+                await window.reloadDynamicWidgets();
+            }
+
             const isRoleAdmin = document.documentElement.classList.contains('role-admin');
             const isHideBlood = document.documentElement.classList.contains('hide-blood');
             const isHideOps = document.documentElement.classList.contains('hide-ops');

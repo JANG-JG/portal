@@ -124,11 +124,19 @@
                 </button>
             `;
 
-            const badgeModule = w.isModuleWidget ? `
+            const badgeModule = w.isCustomWidget ? `
+                <span class="badge" style="background:#e0f2fe; color:#0284c7; font-size:0.7rem; padding:1px 5px;">오픈소스/커스텀</span>
+            ` : (w.isModuleWidget ? `
                 <span class="badge" style="background:#f3e8ff; color:#7e22ce; font-size:0.7rem; padding:1px 5px;">신규 모듈</span>
             ` : `
                 <span class="badge" style="background:#f1f5f9; color:#475569; font-size:0.7rem; padding:1px 5px;">기본 위젯</span>
-            `;
+            `);
+
+            const deleteCustomBtn = w.isCustomWidget ? `
+                <button type="button" class="btn-admin btn-admin-danger btn-admin-sm" style="padding:2px 7px; font-size:0.75rem; margin-left:4px;" onclick="deleteCustomWidgetItem('${w.id}')" title="커스텀 위젯 영구 삭제">
+                    🗑️ 삭제
+                </button>
+            ` : '';
 
             return `
                 <tr style="${isEnabled ? '' : 'opacity:0.55; background:#fafafa;'}">
@@ -165,8 +173,9 @@
                     <td style="text-align:center;">
                         ${colSpanBtn}
                     </td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center; white-space:nowrap;">
                         ${toggleBtn}
+                        ${deleteCustomBtn}
                     </td>
                 </tr>
             `;
@@ -275,6 +284,29 @@
             }
         } catch (e) {
             alert('초기화 중 오류가 발생했습니다.');
+        }
+    };
+
+    /**
+     * 커스텀 위젯 삭제
+     */
+    window.deleteCustomWidgetItem = async function(widgetId) {
+        if (!confirm('이 커스텀 위젯을 대시보드에서 완전히 삭제하시겠습니까?')) return;
+        try {
+            const res = await fetch(`/api/modules/custom-widgets/${widgetId}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (typeof showToast === 'function') {
+                    showToast('위젯이 삭제되었습니다.', 'info');
+                }
+                loadDashboardWidgetsList();
+            } else {
+                alert(data.message || '삭제 실패');
+            }
+        } catch (e) {
+            alert('삭제 중 오류가 발생했습니다.');
         }
     };
 })();

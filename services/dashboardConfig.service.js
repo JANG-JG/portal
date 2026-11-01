@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { getAllModules } = require('./moduleRegistry.service');
+const { getCustomWidgets } = require('./customWidgets.service');
 
 const CONFIG_PATH = path.join(__dirname, '..', 'config', 'dashboard.json');
 const BACKUP_PATH = path.join(__dirname, '..', 'config', 'dashboard.json.bak');
@@ -172,6 +173,36 @@ function getDashboardConfig() {
                     saved.push(newWidget);
                     savedMap.set(widgetId, newWidget);
                 }
+            }
+        });
+    } catch (e) {}
+
+    // custom-widgets.json의 커스텀 위젯 자동 편입
+    try {
+        const customWidgets = getCustomWidgets();
+        let maxOrder = saved.reduce((m, w) => Math.max(m, w.order || 0), 70);
+
+        customWidgets.forEach(cw => {
+            if (!savedMap.has(cw.id)) {
+                maxOrder += 10;
+                const newWidget = {
+                    id: cw.id,
+                    title: cw.title,
+                    icon: cw.icon || '📦',
+                    enabled: cw.enabled !== false,
+                    order: maxOrder,
+                    colSpan: cw.colSpan || 1,
+                    selector: `#${cw.id}`,
+                    desc: cw.desc || '사용자 커스텀 위젯',
+                    isCustomWidget: true,
+                    customData: cw
+                };
+                saved.push(newWidget);
+                savedMap.set(cw.id, newWidget);
+            } else {
+                const existing = savedMap.get(cw.id);
+                existing.isCustomWidget = true;
+                existing.customData = cw;
             }
         });
     } catch (e) {}

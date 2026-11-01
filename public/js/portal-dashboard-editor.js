@@ -135,6 +135,13 @@
                     </div>
                 </div>
 
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" 
+                    onclick="if(typeof openWidgetStudioModal==='function')openWidgetStudioModal()" 
+                    style="color:#38bdf8; border-color:#0284c7; background:rgba(2,132,199,0.2); padding:4px 11px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;" 
+                    title="오픈소스 프리셋 또는 웹 임베드 위젯 추가">
+                    <span>🧩</span><span>새 위젯 추가</span>
+                </button>
+
                 <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="cancelDashboardEdit()" style="color:#cbd5e1; border-color:#475569; padding:4px 10px; font-size:0.8rem;">
                     ✕ 취소
                 </button>

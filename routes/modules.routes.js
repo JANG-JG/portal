@@ -17,6 +17,12 @@ const {
 } = require('../services/moduleRegistry.service');
 const { getModuleMetrics, getAllModulesKpiSummary } = require('../services/moduleMetrics.service');
 const { getDashboardConfig, saveDashboardConfig, resetDashboardConfig } = require('../services/dashboardConfig.service');
+const {
+    BUILTIN_PRESETS,
+    getCustomWidgets,
+    upsertCustomWidget,
+    deleteCustomWidget
+} = require('../services/customWidgets.service');
 
 /**
  * DB에서 사용자의 최신 allowed_services 및 role을 가져오는 헬퍼
@@ -264,6 +270,48 @@ router.post('/dashboard/reset', authenticateToken, requireAdmin, (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ success: false, message: '기본값 복원 실패' });
+    }
+});
+
+// 15. 커스텀 위젯 목록 조회
+router.get('/custom-widgets', (req, res) => {
+    try {
+        const widgets = getCustomWidgets();
+        res.json({ success: true, count: widgets.length, widgets });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '커스텀 위젯 목록 조회 실패' });
+    }
+});
+
+// 16. 오픈소스 빌트인 프리셋 목록 조회
+router.get('/custom-widgets/presets', (req, res) => {
+    res.json({ success: true, presets: BUILTIN_PRESETS });
+});
+
+// 17. 관리자: 신규 커스텀 위젯 추가 또는 수정
+router.post('/custom-widgets', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const widget = upsertCustomWidget(req.body);
+        res.json({
+            success: true,
+            message: `위젯 [${widget.title}]이(가) 성공적으로 저장되었습니다.`,
+            widget
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '위젯 저장 실패' });
+    }
+});
+
+// 18. 관리자: 커스텀 위젯 삭제
+router.delete('/custom-widgets/:id', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        deleteCustomWidget(req.params.id);
+        res.json({
+            success: true,
+            message: '위젯이 안전하게 삭제되었습니다.'
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '위젯 삭제 실패' });
     }
 });
 
