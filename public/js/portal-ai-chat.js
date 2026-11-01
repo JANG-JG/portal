@@ -97,15 +97,37 @@
         win.innerHTML = `
             <div class="ai-chat-header">
                 <div class="ai-chat-header-title">
+                    <button type="button" class="ai-header-btn ai-header-btn-icon-only" onclick="toggleAiHistoryDrawer()" title="지난 대화 목록 보기" id="aiChatHistoryToggleBtn">💬</button>
                     <div class="ai-chat-avatar">🤖</div>
-                    <div>
+                    <div style="min-width:0; overflow:hidden;">
                         <div class="ai-chat-name">
-                            <span>우리 집 AI 비서</span>
+                            <span id="aiChatCurrentTitle" style="max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">우리 집 AI 비서</span>
                             <span class="ai-chat-badge" id="aiChatOnlineStatus">LG 엑사원 🟢</span>
                         </div>
                     </div>
                 </div>
-                <button type="button" class="ai-chat-close-btn" onclick="toggleAiChatWindow(false)" title="대화창 닫기">✕</button>
+                <div class="ai-chat-header-actions">
+                    <button type="button" class="ai-header-btn" onclick="startNewAiSession()" title="새 대화 시작" id="aiChatNewSessionBtn">➕ 새 대화</button>
+                    <button type="button" class="ai-chat-close-btn" onclick="toggleAiChatWindow(false)" title="대화창 닫기">✕</button>
+                </div>
+            </div>
+
+            <!-- 대화 목록 서랍 (History Drawer) -->
+            <div class="ai-chat-history-drawer" id="aiChatHistoryDrawer">
+                <div class="ai-history-header">
+                    <div class="ai-history-title-area">
+                        <span>💬</span>
+                        <span>지난 대화 목록</span>
+                    </div>
+                    <button type="button" class="ai-history-close-btn" onclick="toggleAiHistoryDrawer(false)" title="대화 목록 닫기">✕</button>
+                </div>
+                <div class="ai-history-actions-bar">
+                    <button type="button" class="ai-new-session-full-btn" onclick="startNewAiSession()">
+                        <span>➕</span>
+                        <span>새 대화 시작하기</span>
+                    </button>
+                </div>
+                <div class="ai-history-list" id="aiHistoryList"></div>
             </div>
 
             <div class="ai-chat-messages" id="aiChatMessages">
@@ -147,6 +169,9 @@
                 }
             });
         }
+
+        // 저장된 활성 대화 세션 복원
+        restoreActiveSessionUI();
     }
 
     /**
@@ -189,12 +214,91 @@
                 window.visualViewport.removeEventListener('scroll', handleVisualViewportResize);
             }
 
+            const drawer = document.getElementById('aiChatHistoryDrawer');
+            if (drawer) drawer.classList.remove('active');
+
             unlockBodyScroll();
         }
     };
 
     window.openAiChatModal = function() {
         window.toggleAiChatWindow(true);
+    };
+
+    /**
+     * 현재 활성 세션 대화 복원
+     */
+    function restoreActiveSessionUI() {
+        const msgContainer = document.getElementById('aiChatMessages');
+        if (!msgContainer || !window.JgAiHistory) return;
+
+        const session = window.JgAiHistory.getActiveSession();
+        msgContainer.innerHTML = '';
+        chatHistory = [];
+
+        if (session && Array.isArray(session.messages)) {
+            session.messages.forEach(msg => {
+                appendMessageBubble(msg.role, msg.content);
+                chatHistory.push({ role: msg.role, content: msg.content });
+            });
+            updateSessionTitleUI(session.title);
+        } else {
+            const welcome = window.JgAiHistory.DEFAULT_WELCOME_MSG;
+            appendMessageBubble(welcome.role, welcome.content);
+            updateSessionTitleUI('새 대화');
+        }
+        scrollMessagesToBottom();
+    }
+
+    /**
+     * 헤더 세션 제목 UI 갱신
+     */
+    function updateSessionTitleUI(title) {
+        const titleEl = document.getElementById('aiChatCurrentTitle');
+        if (titleEl) {
+            titleEl.textContent = title || '우리 집 AI 비서';
+            titleEl.title = title || '우리 집 AI 비서';
+        }
+    }
+
+    /**
+     * 새 대화 세션 시작
+     */
+    window.startNewAiSession = function() {
+        if (window.JgAiHistory) {
+            window.JgAiHistory.createNewSession();
+            restoreActiveSessionUI();
+            window.toggleAiHistoryDrawer(false);
+            const input = document.getElementById('aiChatInput');
+            if (input) {
+                input.value = '';
+                input.focus();
+            }
+        }
+    };
+
+    /**
+     * 대화 목록 서랍 열기/닫기 토글
+     */
+    window.toggleAiHistoryDrawer = function(forceState) {
+        const drawer = document.getElementById('aiChatHistoryDrawer');
+        const listEl = document.getElementById('aiHistoryList');
+        if (!drawer) return;
+
+        const isOpen = drawer.classList.contains('active');
+        const nextState = (typeof forceState === 'boolean') ? forceState : !isOpen;
+
+        if (nextState) {
+            drawer.classList.add('active');
+            if (window.JgAiHistory && listEl) {
+                window.JgAiHistory.renderHistoryList(listEl, () => {
+                    restoreActiveSessionUI();
+                    drawer.classList.remove('active');
+                });
+            }
+        } else {
+            drawer.classList.remove('active');
+        }
     };
 
     /**
@@ -223,9 +327,13 @@
         const text = input.value.trim();
         if (!text) return;
 
-        // 1. 사용자 메시지 버블 추가
+        // 1. 사용자 메시지 버블 추가 및 세션 보관
         appendMessageBubble('user', text);
         chatHistory.push({ role: 'user', content: text });
+        if (window.JgAiHistory) {
+            const updated = window.JgAiHistory.addMessageToActiveSession('user', text);
+            if (updated) updateSessionTitleUI(updated.title);
+        }
         input.value = '';
         input.focus();
 
@@ -257,6 +365,9 @@
             if (data.success && data.answer) {
                 appendMessageBubble('assistant', data.answer);
                 chatHistory.push({ role: 'assistant', content: data.answer });
+                if (window.JgAiHistory) {
+                    window.JgAiHistory.addMessageToActiveSession('assistant', data.answer);
+                }
             } else {
                 appendMessageBubble('assistant', data.message || '답변을 생성하지 못했습니다.');
             }
@@ -277,9 +388,14 @@
         const row = document.createElement('div');
         row.className = `ai-bubble-row ${role}`;
 
-        // 줄바꿈 보존 및 HTML 안전 이스케이프
-        const safeText = escapeHtml(text).replace(/\n/g, '<br>');
-        row.innerHTML = `<div class="ai-bubble">${safeText}</div>`;
+        // 시스템 기본 환영 메시지 등 안전한 마크업 허용 판별
+        let htmlContent = '';
+        if (role === 'assistant' && (text.includes('<br>') || text.includes('<strong>'))) {
+            htmlContent = text;
+        } else {
+            htmlContent = escapeHtml(text).replace(/\n/g, '<br>');
+        }
+        row.innerHTML = `<div class="ai-bubble">${htmlContent}</div>`;
         msgContainer.appendChild(row);
     }
 
