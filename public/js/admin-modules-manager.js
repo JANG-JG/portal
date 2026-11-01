@@ -77,6 +77,10 @@
             if (Array.isArray(m.quickStrip) && m.quickStrip.length > 0) featureBadges.push('<span style="font-size:0.72rem; background:#f1f5f9; padding:2px 5px; border-radius:4px;">⚡ 퀵</span>');
             if (m.portalWidget?.enabled) featureBadges.push('<span style="font-size:0.72rem; background:#f1f5f9; padding:2px 5px; border-radius:4px;">🍱 위젯</span>');
             if (m.admin?.enabled) featureBadges.push('<span style="font-size:0.72rem; background:#ede9fe; color:#6d28d9; padding:2px 5px; border-radius:4px;">⚙️ 관리자</span>');
+            if (m.dbPath) {
+                const dbFile = m.dbPath.split('/').pop();
+                featureBadges.push(`<a href="javascript:void(0)" onclick="if(typeof switchAdminTab==='function'){switchAdminTab('tab-database'); if(window.DbManager){setTimeout(()=>DbManager.switchDb('${m.id}'),150);}}" style="font-size:0.72rem; background:#dbeafe; color:#1d4ed8; padding:2px 5px; border-radius:4px; text-decoration:none; font-weight:600;" title="DB 관리자로 이동">🗄️ ${escapeHtml(dbFile)}</a>`);
+            }
 
             // 토글 버튼 스타일
             const toggleBtn = isEnabled ? `
@@ -194,8 +198,8 @@
             document.getElementById('inputModCategory').value = mod.category || '라이프';
             document.getElementById('inputModEntryUrl').value = mod.entryUrl || '';
             document.getElementById('inputModBaseUrl').value = mod.baseUrl || '';
-            document.getElementById('inputModOrder').value = mod.order || 50;
             document.getElementById('inputModDesc').value = mod.description || '';
+            document.getElementById('inputModDbPath').value = mod.dbPath || '';
 
             document.getElementById('chkModAdminOnly').checked = Boolean(mod.adminOnly);
             document.getElementById('chkModFamilyDefault').checked = Boolean(mod.defaultFamilyAllowed);
@@ -210,6 +214,7 @@
             idInput.readOnly = false;
             idInput.style.background = '#fff';
             document.getElementById('inputModOrder').value = 80;
+            document.getElementById('inputModDbPath').value = '';
             document.getElementById('chkModFamilyDefault').checked = true;
             document.getElementById('chkModNav').checked = true;
             document.getElementById('chkModQuick').checked = true;
@@ -253,6 +258,7 @@
         const baseUrl = document.getElementById('inputModBaseUrl').value.trim();
         const order = parseInt(document.getElementById('inputModOrder').value, 10) || 50;
         const description = document.getElementById('inputModDesc').value.trim();
+        const dbPath = (document.getElementById('inputModDbPath')?.value || '').trim();
 
         const adminOnly = document.getElementById('chkModAdminOnly').checked;
         const defaultFamilyAllowed = document.getElementById('chkModFamilyDefault').checked;
@@ -271,6 +277,7 @@
             ssoEnabled: Boolean(baseUrl),
             order,
             description,
+            dbPath,
             adminOnly,
             defaultFamilyAllowed: adminOnly ? false : defaultFamilyAllowed,
             nav: navEnabled ? { enabled: true, label: name, entryUrl, subLinks: [] } : { enabled: false },

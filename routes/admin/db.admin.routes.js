@@ -3,17 +3,20 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const sqlite3 = require('sqlite3').verbose();
 const {
     BLOOD_DB_PATH,
     ASSET_DB_PATH,
     NEWS_DB_PATH,
     ALBUM_DB_PATH,
     WIKI_DB_PATH,
-    PORTAL_DB_PATH
+    PORTAL_DB_PATH,
+    WORKSPACE_ROOT
 } = require('../../config/constants');
 const { db, assetDb, newsDb, albumDb, wikiDb, portalDb } = require('../../services/db');
+const { getAllModules } = require('../../services/moduleRegistry.service');
 
-// 대상 데이터베이스 매핑 딕셔너리
+// 대상 데이터베이스 매핑 딕셔너리 (기본 6대 코어)
 const DB_MAP = {
     'portal': { key: 'portal', name: '포털 메인 & 일정/메모 (portal.db)', db: portalDb, path: PORTAL_DB_PATH },
     'health': { key: 'health', name: '혈압 & 마스터 계정 (health.db)', db, path: BLOOD_DB_PATH },
@@ -23,9 +26,57 @@ const DB_MAP = {
     'wiki': { key: 'wiki', name: '가족 위키 & 루틴 (wiki.db)', db: wikiDb, path: WIKI_DB_PATH }
 };
 
+// 동적 등록된 신규 서비스 모듈 DB 인스턴스 캐시 풀
+const DYNAMIC_DB_POOL = new Map();
+
+function resolveDbPath(p) {
+    if (!p) return null;
+    if (path.isAbsolute(p)) return p;
+    const c1 = path.join(WORKSPACE_ROOT, p);
+    if (fs.existsSync(c1)) return c1;
+    const c2 = path.join(os.homedir(), 'workspace', p);
+    if (fs.existsSync(c2)) return c2;
+    return c1;
+}
+
+function getDynamicDbMap() {
+    const map = { ...DB_MAP };
+    try {
+        const allMods = getAllModules(true);
+        allMods.forEach(mod => {
+            if (!mod.dbPath) return;
+            const dbKey = mod.id;
+            if (map[dbKey]) return;
+
+            const resolved = resolveDbPath(mod.dbPath);
+            if (resolved && fs.existsSync(resolved)) {
+                if (!DYNAMIC_DB_POOL.has(dbKey)) {
+                    const dynDb = new sqlite3.Database(resolved, (err) => {
+                        if (!err) {
+                            dynDb.run('PRAGMA journal_mode = WAL;');
+                            dynDb.run('PRAGMA busy_timeout = 5000;');
+                        }
+                    });
+                    DYNAMIC_DB_POOL.set(dbKey, dynDb);
+                }
+                map[dbKey] = {
+                    key: dbKey,
+                    name: `${mod.icon || '📦'} ${mod.name} (${path.basename(resolved)})`,
+                    db: DYNAMIC_DB_POOL.get(dbKey),
+                    path: resolved,
+                    isDynamic: true
+                };
+            }
+        });
+    } catch (e) {
+        console.error('[DB Manager] 동적 DB 매핑 실패:', e.message);
+    }
+    return map;
+}
 
 function getDbInstance(dbKey) {
-    return DB_MAP[dbKey] || DB_MAP['portal'] || DB_MAP['health'];
+    const dynamicMap = getDynamicDbMap();
+    return dynamicMap[dbKey] || dynamicMap['portal'] || dynamicMap['health'];
 }
 
 function getFileSizeStr(filePath) {
@@ -39,17 +90,32 @@ function getFileSizeStr(filePath) {
 }
 
 /**
- * 1. 데이터베이스 목록 조회
+ * 1. 데이터베이스 목록 조회 (동적 편입 서비스 DB 포함)
  * GET /api/admin/db/databases
  */
 router.get('/databases', (req, res) => {
-    const list = Object.values(DB_MAP).map(item => ({
+    const dynamicMap = getDynamicDbMap();
+    const list = Object.values(dynamicMap).map(item => ({
         key: item.key,
         name: item.name,
         size: getFileSizeStr(item.path),
-        path: item.path
+        path: item.path,
+        isDynamic: Boolean(item.isDynamic)
     }));
     res.json({ success: true, databases: list });
+});
+
+/**
+ * 1-1. 특정 데이터베이스 원클릭 직접 다운로드
+ * GET /api/admin/db/:dbKey/download
+ */
+router.get('/:dbKey/download', (req, res) => {
+    const target = getDbInstance(req.params.dbKey);
+    if (!target || !target.path || !fs.existsSync(target.path)) {
+        return res.status(404).json({ success: false, message: 'DB 파일을 찾을 수 없습니다.' });
+    }
+    const filename = `${target.key}_${path.basename(target.path)}`;
+    res.download(target.path, filename);
 });
 
 /**

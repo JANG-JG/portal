@@ -255,7 +255,8 @@ function createOrUpdateModule(data, isNew = false) {
             { id: `${cleanId}-quick`, label: data.name, icon: data.icon || '📦', type: 'link', url: data.entryUrl }
         ],
         portalWidget: data.portalWidget || null,
-        admin: data.admin || null
+        admin: data.admin || null,
+        dbPath: (data.dbPath !== undefined) ? String(data.dbPath).trim() : (existingIdx !== -1 ? (modules[existingIdx].dbPath || '') : '')
     };
 
     if (existingIdx !== -1) {

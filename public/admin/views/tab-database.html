@@ -14,9 +14,12 @@
                                 <option value="">데이터베이스 불러오는 중...</option>
                             </select>
                         </div>
-                        <div class="db-control-action-btn-wrap">
+                        <div class="db-control-action-btn-wrap" style="display:flex; gap:0.35rem;">
                             <button type="button" class="btn-admin btn-admin-outline btn-admin-sm btn-db-refresh" onclick="DbManager.loadTableData()" title="데이터 새로고침">
                                 🔄 새로고침
+                            </button>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="DbManager.downloadCurrentDb()" title="현재 선택된 데이터베이스 파일 다운로드">
+                                💾 DB 다운로드
                             </button>
                         </div>
                     </div>

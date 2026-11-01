@@ -159,6 +159,12 @@ GET /api/{service}/summary<br>
                     <input type="text" id="inputModDesc" placeholder="서비스에 대한 간단한 설명을 입력하세요" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
                 </div>
 
+                <div style="margin-bottom:0.85rem;">
+                    <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">🗄️ 연동 SQLite DB 상대 경로 (선택)</label>
+                    <input type="text" id="inputModDbPath" placeholder="예: car/car.db 또는 family-wiki/wiki.db" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    <small style="color:#64748b; font-size:0.72rem;">설정 시 [DB 관리자] 탭에 자동 편입되어 실시간 테이블 CRUD 및 일괄 백업에 연동됩니다.</small>
+                </div>
+
                 <!-- 권한 및 포털 노출 옵션 -->
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem; margin-bottom:1rem;">
                     <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.4rem;">권한 및 노출 옵션</label>

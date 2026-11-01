@@ -14,6 +14,7 @@ const {
     WIKI_DB_PATH,
     PORTAL_DB_PATH
 } = require('../../config/constants');
+const { getAllModules } = require('../../services/moduleRegistry.service');
 
 const { db, newsDb } = require('../../services/db');
 const { sendServerTelegram } = require('../../services/unifiedNotificationScheduler');
@@ -360,15 +361,50 @@ router.get('/logs/news', (req, res) => {
     });
 });
 
-// 3. 전체 DB 일괄 압축 백업 다운로드
+function resolveModuleDbPath(p) {
+    if (!p) return null;
+    if (path.isAbsolute(p)) return p;
+    const c1 = path.join(WORKSPACE_ROOT, p);
+    if (fs.existsSync(c1)) return c1;
+    const c2 = path.join(os.homedir(), 'workspace', p);
+    if (fs.existsSync(c2)) return c2;
+    return c1;
+}
+
+// 3. 전체 DB 일괄 압축 백업 다운로드 (동적 모듈 DB 포함)
 router.get('/backup/all', (req, res) => {
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
     const tmpZip = path.join('/tmp', `jg_all_databases_${timestamp}.zip`);
-    const pyScript = `import zipfile, os
+
+    const dbFiles = [
+        { path: PORTAL_DB_PATH, arc: 'portal.db' },
+        { path: BLOOD_DB_PATH, arc: 'health.db' },
+        { path: ASSET_DB_PATH, arc: 'asset.db' },
+        { path: NEWS_DB_PATH, arc: 'briefing.db' },
+        { path: ALBUM_DB_PATH, arc: 'album.db' },
+        { path: WIKI_DB_PATH, arc: 'wiki.db' }
+    ];
+
+    try {
+        const mods = getAllModules(true);
+        mods.forEach(m => {
+            if (m.dbPath) {
+                const fullP = resolveModuleDbPath(m.dbPath);
+                if (fullP && fs.existsSync(fullP) && !dbFiles.some(d => d.path === fullP)) {
+                    dbFiles.push({ path: fullP, arc: `${m.id}_${path.basename(fullP)}` });
+                }
+            }
+        });
+    } catch (e) {}
+
+    const pyScript = `import zipfile, os, json
 zpath = "${tmpZip}"
+files = json.loads('''${JSON.stringify(dbFiles)}''')
 zf = zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED)
-for p, arc in [("${PORTAL_DB_PATH}", "portal.db"), ("${BLOOD_DB_PATH}", "health.db"), ("${ASSET_DB_PATH}", "asset.db"), ("${NEWS_DB_PATH}", "briefing.db"), ("${ALBUM_DB_PATH}", "album.db"), ("${WIKI_DB_PATH}", "wiki.db")]:
-    if os.path.exists(p):
+for item in files:
+    p = item.get("path")
+    arc = item.get("arc")
+    if p and os.path.exists(p):
         zf.write(p, arc)
 zf.close()
 `;
@@ -384,7 +420,7 @@ zf.close()
     });
 });
 
-// 4. 개별 데이터베이스 백업 다운로드
+// 4. 개별 데이터베이스 백업 다운로드 (동적 모듈 지원)
 router.get('/backup/:type', (req, res) => {
     const type = req.params.type;
     const now = new Date().toISOString().slice(0, 10);
@@ -392,19 +428,29 @@ router.get('/backup/:type', (req, res) => {
         return res.redirect('/api/admin/backup/all');
     } else if (type === 'portal') {
         return res.download(PORTAL_DB_PATH, `portal_backup_${now}.db`);
-    } else if (type === 'health') {
+    } else if (type === 'health' || type === 'blood') {
         return res.download(BLOOD_DB_PATH, `health_backup_${now}.db`);
     } else if (type === 'asset') {
         return res.download(ASSET_DB_PATH, `asset_backup_${now}.db`);
-    } else if (type === 'briefing') {
+    } else if (type === 'briefing' || type === 'news') {
         return res.download(NEWS_DB_PATH, `briefing_backup_${now}.db`);
     } else if (type === 'album') {
         return res.download(ALBUM_DB_PATH, `album_backup_${now}.db`);
     } else if (type === 'wiki') {
         return res.download(WIKI_DB_PATH, `wiki_backup_${now}.db`);
     }
+
+    try {
+        const mod = getAllModules(true).find(m => m.id === type);
+        if (mod && mod.dbPath) {
+            const fullP = resolveModuleDbPath(mod.dbPath);
+            if (fullP && fs.existsSync(fullP)) {
+                return res.download(fullP, `${mod.id}_backup_${now}.db`);
+            }
+        }
+    } catch (e) {}
+
     res.status(404).send('해당 DB 백업 파일을 찾을 수 없습니다.');
 });
-
 
 module.exports = router;

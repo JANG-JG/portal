@@ -426,6 +426,16 @@ const DbManager = {
         window.location.href = `/api/admin/db/${this.state.currentDb}/table/${this.state.currentTable}/export/csv`;
     },
 
+    // 현재 선택된 DB 파일 직접 다운로드
+    downloadCurrentDb() {
+        if (!this.state.currentDb) {
+            if (typeof showToast === 'function') showToast('선택된 데이터베이스가 없습니다.', true);
+            return;
+        }
+        if (typeof showToast === 'function') showToast(`[${this.state.currentDb}] 데이터베이스 파일을 다운로드합니다...`);
+        window.location.href = `/api/admin/db/${this.state.currentDb}/download`;
+    },
+
     clearViews() {
         const container = document.getElementById('dbDataContainer');
         if (container) container.innerHTML = '<div style="text-align:center; padding:3rem; color:#94a3b8;">테이블이 없습니다.</div>';

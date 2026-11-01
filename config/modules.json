@@ -81,7 +81,8 @@
           "icon": "🩸"
         }
       ]
-    }
+    },
+    "dbPath": "blood-pressure-app/health.db"
   },
   {
     "id": "asset",
@@ -160,7 +161,8 @@
           "icon": "💼"
         }
       ]
-    }
+    },
+    "dbPath": "asset/asset.db"
   },
   {
     "id": "news",
@@ -237,7 +239,8 @@
           "icon": "📋"
         }
       ]
-    }
+    },
+    "dbPath": "news-dashboard/briefing.db"
   },
   {
     "id": "calendar",
@@ -288,7 +291,8 @@
       "viewMoreUrl": "/calendar",
       "apiEndpoint": "/api/calendar/events"
     },
-    "admin": null
+    "admin": null,
+    "dbPath": "portal/portal.db"
   },
   {
     "id": "memo",
@@ -332,7 +336,8 @@
       }
     ],
     "portalWidget": null,
-    "admin": null
+    "admin": null,
+    "dbPath": "portal/portal.db"
   },
   {
     "id": "album",
@@ -405,7 +410,8 @@
           "icon": "👥"
         }
       ]
-    }
+    },
+    "dbPath": "family-album/album.db"
   },
   {
     "id": "wiki",
@@ -479,6 +485,7 @@
           "icon": "📑"
         }
       ]
-    }
+    },
+    "dbPath": "family-wiki/wiki.db"
   }
 ]
