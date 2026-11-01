@@ -1253,7 +1253,15 @@ body {
     animation: subPaneSlideFromLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
 }
 
-/* 🔑 관리자 마스터 비밀번호 변경 전용 팝업 모달 */
+/* 🔒 모달 오픈 시 배경 화면 스크롤 완전 차단 */
+html.modal-open,
+body.modal-open {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    touch-action: none;
+}
+
+/* 🔑 관리자 전용 팝업 모달 공통 레이아웃 & 스크롤 보호 */
 .admin-modal-backdrop {
     position: fixed;
     inset: 0;
@@ -1264,16 +1272,24 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    padding: 1.25rem 0.75rem;
     box-sizing: border-box;
     font-family: inherit;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
 }
 .admin-modal-dialog {
     background: #ffffff;
     width: 100%;
     max-width: 440px;
+    max-height: calc(100dvh - 2.5rem);
+    max-height: calc(100vh - 2.5rem);
     border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    margin: auto;
     overflow: hidden;
     animation: adminModalFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     box-sizing: border-box;
@@ -1290,6 +1306,7 @@ body {
     border-bottom: 1px solid #e2e8f0;
     background: #0f172a;
     color: #ffffff;
+    flex-shrink: 0;
 }
 .admin-modal-header h3 {
     margin: 0;
@@ -1322,6 +1339,25 @@ body {
 .admin-modal-body {
     padding: 1.25rem;
     background: #ffffff;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+}
+.admin-modal-body::-webkit-scrollbar {
+    width: 6px;
+}
+.admin-modal-body::-webkit-scrollbar-track {
+    background: #f1f5f9;
+}
+.admin-modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+.admin-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
 /* ========================================================
@@ -1791,6 +1827,23 @@ body {
         right: 16px;
         left: 16px;
         text-align: center;
+    }
+
+    /* 📱 모달 모바일 뷰포트 스크롤 최적화 */
+    .admin-modal-backdrop {
+        padding: 0.75rem 0.5rem;
+        align-items: flex-start;
+    }
+    .admin-modal-dialog {
+        max-height: calc(100dvh - 1.5rem);
+        max-height: calc(100vh - 1.5rem);
+        border-radius: 0.75rem;
+    }
+    .admin-modal-header {
+        padding: 0.85rem 1rem;
+    }
+    .admin-modal-body {
+        padding: 0.95rem;
     }
 }
 

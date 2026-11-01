@@ -63,6 +63,8 @@ function openAdminPasswordModal() {
     const modal = document.getElementById('adminPasswordModal');
     if (!modal) return;
     modal.style.display = 'flex';
+    document.documentElement.classList.add('modal-open');
+    document.body.classList.add('modal-open');
     setTimeout(() => {
         const passInput = document.getElementById('currentPassInput');
         if (passInput) passInput.focus();
@@ -73,6 +75,13 @@ function closeAdminPasswordModal() {
     const modal = document.getElementById('adminPasswordModal');
     if (!modal) return;
     modal.style.display = 'none';
+    const hasOpenModal = Array.from(document.querySelectorAll('.admin-modal-backdrop')).some(el => {
+        return (el !== modal) && (el.style.display === 'flex' || el.classList.contains('active'));
+    });
+    if (!hasOpenModal) {
+        document.documentElement.classList.remove('modal-open');
+        document.body.classList.remove('modal-open');
+    }
     const c = document.getElementById('currentPassInput');
     const n = document.getElementById('newPassInput');
     const f = document.getElementById('confirmPassInput');
@@ -232,5 +241,35 @@ if (typeof MutationObserver !== 'undefined') {
     });
     if (document.body) {
         tickerObserver.observe(document.body, { childList: true });
+    }
+}
+
+// 🔒 관리자 페이지 전역 모달 감지 및 배경 스크롤 락 동기화
+function syncAdminModalScrollState() {
+    const hasOpenModal = Array.from(document.querySelectorAll('.admin-modal-backdrop')).some(el => {
+        return el.classList.contains('active') || (el.style.display && el.style.display !== 'none');
+    });
+    if (hasOpenModal) {
+        document.documentElement.classList.add('modal-open');
+        document.body.classList.add('modal-open');
+    } else {
+        document.documentElement.classList.remove('modal-open');
+        document.body.classList.remove('modal-open');
+    }
+}
+
+if (typeof MutationObserver !== 'undefined') {
+    const adminModalObserver = new MutationObserver(() => {
+        syncAdminModalScrollState();
+    });
+    const attachModalWatcher = () => {
+        document.querySelectorAll('.admin-modal-backdrop').forEach(modalEl => {
+            adminModalObserver.observe(modalEl, { attributes: true, attributeFilter: ['style', 'class'] });
+        });
+    };
+    if (document.readyState === 'loading') {
+        window.addEventListener('DOMContentLoaded', attachModalWatcher);
+    } else {
+        attachModalWatcher();
     }
 }

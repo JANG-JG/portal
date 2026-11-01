@@ -219,6 +219,11 @@
 
         modal.style.display = 'flex';
         modal.classList.add('active');
+        document.documentElement.classList.add('modal-open');
+        document.body.classList.add('modal-open');
+
+        const bodyEl = modal.querySelector('.admin-modal-body');
+        if (bodyEl) bodyEl.scrollTop = 0;
     };
 
     window.closeModuleModal = function() {
@@ -226,6 +231,13 @@
         if (modal) {
             modal.style.display = 'none';
             modal.classList.remove('active');
+        }
+        const hasOpenModal = Array.from(document.querySelectorAll('.admin-modal-backdrop')).some(el => {
+            return (el !== modal) && (el.style.display === 'flex' || el.classList.contains('active'));
+        });
+        if (!hasOpenModal) {
+            document.documentElement.classList.remove('modal-open');
+            document.body.classList.remove('modal-open');
         }
     };
 
@@ -321,4 +333,14 @@
             alert('모듈 삭제 중 서버 오류가 발생했습니다.');
         }
     };
+
+    // ESC 키로 모달 닫기
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('moduleEditModal');
+            if (modal && (modal.style.display === 'flex' || modal.classList.contains('active'))) {
+                closeModuleModal();
+            }
+        }
+    });
 })();
