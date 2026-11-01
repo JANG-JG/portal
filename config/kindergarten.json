@@ -8,5 +8,22 @@
     "소망반_16번게시판": "https://www.bonbu.kr/main/sub.html?boardID=www16",
     "열매반_17번게시판": "https://www.bonbu.kr/main/sub.html?boardID=www17"
   },
-  "LAST_RUN": null
+  "LAST_RUN": {
+    "success": true,
+    "status": "SUCCESS",
+    "error": "",
+    "executed_at": "2026-11-02 03:12:59",
+    "total_downloaded": 703,
+    "total_skipped_posts": 97,
+    "report": {
+      "소망반_16번게시판": {
+        "downloaded": 348,
+        "skipped_posts": 50
+      },
+      "열매반_17번게시판": {
+        "downloaded": 355,
+        "skipped_posts": 47
+      }
+    }
+  }
 }
