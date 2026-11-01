@@ -66,7 +66,7 @@ function sanitizePushText(text) {
 }
 
 // 🌟 [통합 포털 단일 WebPush 발송 엔진]
-function sendUnifiedPushNotification({ title, body, url, type = 'general', subtype = null, tag, userId = null, excludeUserId = null, adminOnly = false }) {
+function sendUnifiedPushNotification({ title, body, url, type = 'general', subtype = null, tag, userId = null, excludeUserId = null, adminOnly = false, image = null, icon = null, badge = null }) {
     return new Promise((resolve) => {
         let cleanTitle = sanitizePushText(title || '알림')
             .replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '')
@@ -232,11 +232,14 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                     ? tag
                     : `jg-${type}-${notifId || Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
-                const payload = JSON.stringify({
+                const notifIcon = icon || ((type === 'album') ? 'https://album.j-jg.cc/icons/icon-192.png' : 'https://j-jg.cc/icon-monochrome.png');
+                const notifBadge = badge || ((type === 'album') ? 'https://album.j-jg.cc/icons/badge-72.png' : 'https://j-jg.cc/badge-monochrome.png');
+
+                const pushPayloadObj = {
                     title: cleanTitle,
                     body: cleanBody,
-                    icon: 'https://j-jg.cc/icon-monochrome.png',
-                    badge: 'https://j-jg.cc/badge-monochrome.png',
+                    icon: notifIcon,
+                    badge: notifBadge,
                     tag: uniqueTag,
                     renotify: true,
                     requireInteraction: true,
@@ -244,7 +247,13 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                         url: linkWithId,
                         notifId: notifId || null
                     }
-                });
+                };
+
+                if (image) {
+                    pushPayloadObj.image = image;
+                }
+
+                const payload = JSON.stringify(pushPayloadObj);
 
                 const pushOptions = {
                     headers: {
