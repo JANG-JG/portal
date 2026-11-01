@@ -232,7 +232,7 @@
                         <div class="homarr-card-title-group">
                             <span class="homarr-card-icon">⏳</span>
                             <h3 class="homarr-card-title">소모품 &amp; 계약 D-Day</h3>
-                            <span class="portal-imminent-count" id="portalWidgetDdayCount" style="font-size:0.75rem; font-weight:700; color:var(--hm-rose); background:var(--hm-rose-bg); padding:2px 8px; border-radius:6px; margin-left:6px;">조회 중...</span>
+                            <span class="portal-imminent-count count-normal" id="portalWidgetDdayCount">조회 중...</span>
                         </div>
                         <a href="/wiki" class="homarr-card-link">전체 주기 보기 →</a>
                     </div>
@@ -361,17 +361,19 @@
 
                 <!-- [그리드 4] 🖥️ 서버 인프라 관리 (듀얼 2단 카드) -->
                 <div class="homarr-card card-ops" id="bento-ops" data-service="ops" style="grid-column: 1 / -1;">
-                    <div class="homarr-card-header">
+                    <div class="homarr-card-header server-card-header">
                         <div class="homarr-card-title-group">
                             <span class="homarr-card-icon">🖥️</span>
                             <h3 class="homarr-card-title">서버 인프라 관리</h3>
-                            <div class="server-pill-toggle" style="margin-left:10px; display:inline-flex; gap:4px;">
-                                <button type="button" class="server-pill-btn active" id="btnServerDual" onclick="setServerViewMode('dual')" style="padding:2px 8px; border-radius:4px; font-size:0.72rem; border:1px solid var(--hm-border); background:var(--hm-bg-subtle); cursor:pointer;">통합</button>
-                                <button type="button" class="server-pill-btn" id="btnServerPri" onclick="setServerViewMode('pri')" style="padding:2px 8px; border-radius:4px; font-size:0.72rem; border:1px solid var(--hm-border); background:var(--hm-bg-subtle); cursor:pointer;">주서버</button>
-                                <button type="button" class="server-pill-btn" id="btnServerSec" onclick="setServerViewMode('sec')" style="padding:2px 8px; border-radius:4px; font-size:0.72rem; border:1px solid var(--hm-border); background:var(--hm-bg-subtle); cursor:pointer;">보조서버</button>
-                            </div>
                         </div>
-                        <a href="/admin" class="homarr-card-link">관리자 →</a>
+                        <div class="server-header-actions">
+                            <div class="server-pill-toggle" id="serverPillToggle">
+                                <button type="button" class="server-pill-btn active" id="btnServerDual" onclick="setServerViewMode('dual')">통합</button>
+                                <button type="button" class="server-pill-btn" id="btnServerPri" onclick="setServerViewMode('pri')">주서버</button>
+                                <button type="button" class="server-pill-btn" id="btnServerSec" onclick="setServerViewMode('sec')">보조서버</button>
+                            </div>
+                            <a href="/admin" class="homarr-card-link">관리자 →</a>
+                        </div>
                     </div>
 
                     <!-- 주서버 & 보조서버 균일 2단 배치 -->

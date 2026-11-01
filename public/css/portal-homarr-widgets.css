@@ -84,39 +84,77 @@
 
 .portal-quick-todo-form {
     display: flex;
+    align-items: center;
     gap: 0.5rem;
     margin-top: auto;
 }
 .portal-quick-todo-input {
     flex: 1;
     min-width: 0;
+    height: 42px;
+    min-height: 42px;
+    box-sizing: border-box;
     background: var(--hm-bg-subtle);
     border: 1px solid var(--hm-border);
     border-radius: var(--hm-radius-btn);
-    padding: 0.65rem 0.85rem;
+    padding: 0 0.85rem;
     font-size: 0.88rem;
     color: var(--hm-text-main);
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, background-color 0.2s;
 }
 .portal-quick-todo-input:focus {
     border-color: var(--hm-blue);
     background: #ffffff;
 }
 .portal-quick-todo-btn {
-    padding: 0.65rem 1.15rem;
-    background: var(--hm-blue);
+    height: 42px;
+    min-height: 42px;
+    box-sizing: border-box;
+    padding: 0 1.15rem;
+    background: #2563eb;
     color: #ffffff;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     font-weight: 700;
     border-radius: var(--hm-radius-btn);
     border: none;
     cursor: pointer;
     flex-shrink: 0;
-    transition: opacity 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.25);
+    transition: background-color 0.15s, transform 0.1s;
 }
 .portal-quick-todo-btn:hover {
-    opacity: 0.92;
+    background: #1d4ed8;
+}
+.portal-quick-todo-btn:active {
+    transform: scale(0.97);
+}
+
+/* ⏳ D-Day 임박 카운트 뱃지 (안전한 에메랄드 정상 톤 / 줄바꿈 원천 차단) */
+.portal-imminent-count {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    margin-left: 6px !important;
+    flex-shrink: 0 !important;
+}
+.portal-imminent-count.count-normal {
+    background: #ecfdf5 !important;
+    color: #059669 !important;
+    border: 1px solid #a7f3d0 !important;
+}
+.portal-imminent-count.count-alert {
+    background: #fff1f2 !important;
+    color: #e11d48 !important;
+    border: 1px solid #fecdd3 !important;
 }
 
 /* ==============================================================================

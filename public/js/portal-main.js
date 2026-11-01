@@ -48,15 +48,15 @@ function switchPortalTab(tabName, smooth = true) {
     if (tabName === 'home') {
         targetEl = document.getElementById('portal-bento-root') || document.body;
     } else if (tabName === 'blood') {
-        targetEl = document.getElementById('bento-blood');
-    } else if (tabName === 'asset') {
-        targetEl = document.getElementById('bento-asset');
-    } else if (tabName === 'album') {
-        targetEl = document.getElementById('bento-album');
+        targetEl = document.querySelector('.homarr-health-summary-box') || document.querySelector('.homarr-hero-card') || document.getElementById('bento-blood');
+    } else if (tabName === 'wiki') {
+        targetEl = document.getElementById('bento-wiki');
     } else if (tabName === 'calendar') {
         targetEl = document.getElementById('bento-calendar');
-    } else if (tabName === 'med') {
-        targetEl = document.getElementById('bento-med');
+    } else if (tabName === 'album') {
+        targetEl = document.getElementById('bento-album');
+    } else if (tabName === 'asset') {
+        targetEl = document.getElementById('bento-asset');
     } else if (tabName === 'news') {
         targetEl = document.getElementById('bento-news');
     } else if (tabName === 'ops') {
@@ -86,11 +86,11 @@ function switchPortalTab(tabName, smooth = true) {
 // 🌟 3. 스크롤 위치 기반 실시간 탭 활성화 감지 (ScrollSpy)
 function initBentoScrollSpy() {
     const sectionMap = [
-        { id: 'bento-blood',    tab: 'blood' },
-        { id: 'bento-asset',    tab: 'asset' },
-        { id: 'bento-album',    tab: 'album' },
+        { selector: '.homarr-health-summary-box', tab: 'blood' },
+        { id: 'bento-wiki',     tab: 'wiki' },
         { id: 'bento-calendar', tab: 'calendar' },
-        { id: 'bento-med',      tab: 'med' },
+        { id: 'bento-album',    tab: 'album' },
+        { id: 'bento-asset',    tab: 'asset' },
         { id: 'bento-news',     tab: 'news' },
         { id: 'bento-ops',      tab: 'ops' }
     ];
@@ -109,7 +109,7 @@ function initBentoScrollSpy() {
                 let activeMatch = 'home';
 
                 // 1) 최상단 근처는 대시보드
-                if (scrollY < 160) {
+                if (scrollY < 120) {
                     activeMatch = 'home';
                 }
                 // 2) 페이지 최하단 도달 시: 서버 인프라 카드가 작아도 100% 활성화
@@ -120,11 +120,12 @@ function initBentoScrollSpy() {
                 else {
                     const threshold = navH + 130;
                     for (let i = sectionMap.length - 1; i >= 0; i--) {
-                        const el = document.getElementById(sectionMap[i].id);
+                        const item = sectionMap[i];
+                        const el = item.id ? document.getElementById(item.id) : (item.selector ? document.querySelector(item.selector) : null);
                         if (el) {
                             const rect = el.getBoundingClientRect();
                             if (rect.top <= threshold) {
-                                activeMatch = sectionMap[i].tab;
+                                activeMatch = item.tab;
                                 break;
                             }
                         }

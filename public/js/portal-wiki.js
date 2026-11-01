@@ -47,11 +47,12 @@ function renderPortalWikiWidget(data) {
         });
 
         if (ddayCount) {
+            ddayCount.removeAttribute('style');
             if (imminentItems.length > 0) {
                 ddayCount.textContent = `${imminentItems.length}건 임박`;
                 ddayCount.className = 'portal-imminent-count count-alert';
             } else {
-                ddayCount.textContent = '임박 일정 없음';
+                ddayCount.textContent = '임박 없음';
                 ddayCount.className = 'portal-imminent-count count-normal';
             }
         }
