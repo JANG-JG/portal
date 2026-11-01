@@ -32,8 +32,7 @@ const KOREAN_HOLIDAYS_2026 = [
 router.get('/events', authenticateToken, async (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
-    const allowedServices = Array.isArray(req.user.allowed_services) ? req.user.allowed_services : [];
-    const hasBlood = isAdmin || allowedServices.includes('blood') || allowedServices.includes('all');
+    const hasBlood = Boolean(isAdmin); // 🛡️ 혈압·복약·진료는 관리자 전용 기능 (비관리자 원천 배제)
     const events = [];
 
     // 1) 캘린더 등록 개인 일정

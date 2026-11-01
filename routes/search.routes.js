@@ -42,17 +42,7 @@ router.get('/unified', authenticateToken, async (req, res) => {
 
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
-    let hasBlood = Boolean(isAdmin);
-    if (!isAdmin) {
-        let allowed = req.user.allowed_services;
-        if (!allowed) {
-            try {
-                const uRow = await new Promise(r => db.get('SELECT allowed_services FROM users WHERE username = ?', [userId], (e, row) => r(row)));
-                if (uRow && uRow.allowed_services) allowed = JSON.parse(uRow.allowed_services);
-            } catch (e) {}
-        }
-        hasBlood = Array.isArray(allowed) && allowed.includes('blood');
-    }
+    const hasBlood = Boolean(isAdmin); // 🛡️ 혈압 및 진료 일정은 관리자 전용 기능 (비관리자 원천 배제)
 
     const isChosung = isChosungOnly(rawQuery);
     const cleanChosungQuery = rawQuery.replace(/\s+/g, '').toLowerCase();

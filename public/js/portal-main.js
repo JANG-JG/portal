@@ -41,6 +41,9 @@ function updatePortalTabNavUI(tabName) {
 
 // 🌟 2. 탭 클릭 시 해당 벤토 카드로 부드럽게 스크롤 정렬
 function switchPortalTab(tabName, smooth = true) {
+    if (tabName === 'blood' && document.documentElement.classList.contains('hide-blood')) {
+        tabName = 'home';
+    }
     currentPortalTab = tabName;
     updatePortalTabNavUI(tabName);
 
@@ -171,43 +174,47 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('jg_allowed_services', allowed.join(','));
                 } catch (e) {}
 
-                // 👨‍👩‍👧‍👦 가족 계정 권한 분리 및 UI 격리
-                if (role === 'family') {
-                    document.documentElement.classList.add('role-family', 'hide-ops');
-                    if (!allowed.includes('blood')) document.documentElement.classList.add('hide-blood');
-                    else document.documentElement.classList.remove('hide-blood');
-                    if (!allowed.includes('asset')) document.documentElement.classList.add('hide-asset');
-                    else document.documentElement.classList.remove('hide-asset');
+                // 🛡️ 계정 권한 분리 및 혈압 관리자 전용 제어
+                if (role !== 'admin') {
+                    // 🩸 혈압은 관리자 전용 기능 -> 비관리자 원천 은폐
+                    document.documentElement.classList.add('hide-blood');
+                    document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    const healthBox = document.querySelector('.homarr-health-summary-box');
+                    if (healthBox) healthBox.style.setProperty('display', 'none', 'important');
+                    const bloodBento = document.getElementById('bento-blood');
+                    if (bloodBento) bloodBento.style.display = 'none';
+                    document.querySelectorAll('.portal-tab-btn[data-tab="blood"]').forEach(el => el.style.display = 'none');
+                    document.querySelectorAll('a[href="/go/blood"], a[href="https://blood.j-jg.cc"]').forEach(el => el.style.display = 'none');
+                    const medBtn = document.querySelector('button[onclick="recordQuickMedication()"]');
+                    if (medBtn) medBtn.style.display = 'none';
 
-                    // 1) 헤더 가족 환영 뱃지 표시
-                    const badge = document.getElementById('familyGreetingBadge');
-                    if (badge) {
-                        const name = data.nickname || data.username;
-                        badge.textContent = `🌸 ${name}님`;
-                        badge.title = `${name}님 (가족 계정)`;
-                        badge.style.display = 'inline-flex';
-                    }
+                    if (role === 'family') {
+                        document.documentElement.classList.add('role-family', 'hide-ops');
+                        if (!allowed.includes('asset')) document.documentElement.classList.add('hide-asset');
+                        else document.documentElement.classList.remove('hide-asset');
 
-                    // 2) 서버 인프라 카드 및 탭 원천 차단/숨김 (방어 로직)
-                    const opsBento = document.getElementById('bento-ops');
-                    if (opsBento) opsBento.style.display = 'none';
-                    document.querySelectorAll('.portal-tab-btn[data-tab="ops"]').forEach(el => el.style.display = 'none');
-                    document.querySelectorAll('a[href="/admin"]').forEach(el => el.style.display = 'none');
+                        // 1) 헤더 가족 환영 뱃지 표시
+                        const badge = document.getElementById('familyGreetingBadge');
+                        if (badge) {
+                            const name = data.nickname || data.username;
+                            badge.textContent = `🌸 ${name}님`;
+                            badge.title = `${name}님 (가족 계정)`;
+                            badge.style.display = 'inline-flex';
+                        }
 
-                    // 3) 허용되지 않은 서브 서비스 숨김 (방어 로직)
-                    if (!allowed.includes('asset')) {
-                        const assetBento = document.getElementById('bento-asset');
-                        if (assetBento) assetBento.style.display = 'none';
-                        document.querySelectorAll('.portal-tab-btn[data-tab="asset"]').forEach(el => el.style.display = 'none');
-                        document.querySelectorAll('a[href="/go/asset"], a[href="https://asset.j-jg.cc"]').forEach(el => el.style.display = 'none');
-                    }
-                    if (!allowed.includes('blood')) {
-                        const bloodBento = document.getElementById('bento-blood');
-                        if (bloodBento) bloodBento.style.display = 'none';
-                        document.querySelectorAll('.portal-tab-btn[data-tab="blood"]').forEach(el => el.style.display = 'none');
-                        document.querySelectorAll('a[href="/go/blood"], a[href="https://blood.j-jg.cc"]').forEach(el => el.style.display = 'none');
-                        const medBtn = document.querySelector('button[onclick="recordQuickMedication()"]');
-                        if (medBtn) medBtn.style.display = 'none';
+                        // 2) 서버 인프라 카드 및 탭 원천 차단/숨김 (방어 로직)
+                        const opsBento = document.getElementById('bento-ops');
+                        if (opsBento) opsBento.style.display = 'none';
+                        document.querySelectorAll('.portal-tab-btn[data-tab="ops"]').forEach(el => el.style.display = 'none');
+                        document.querySelectorAll('a[href="/admin"]').forEach(el => el.style.display = 'none');
+
+                        // 3) 허용되지 않은 서브 서비스 숨김 (자산 등)
+                        if (!allowed.includes('asset')) {
+                            const assetBento = document.getElementById('bento-asset');
+                            if (assetBento) assetBento.style.display = 'none';
+                            document.querySelectorAll('.portal-tab-btn[data-tab="asset"]').forEach(el => el.style.display = 'none');
+                            document.querySelectorAll('a[href="/go/asset"], a[href="https://asset.j-jg.cc"]').forEach(el => el.style.display = 'none');
+                        }
                     }
                 } else {
                     document.documentElement.classList.remove('role-family', 'hide-blood', 'hide-asset', 'hide-ops');

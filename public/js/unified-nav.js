@@ -244,20 +244,22 @@
             else allowed = localStorage.getItem('jg_allowed_services') || '';
 
             const applyDom = (r, a) => {
-                if (r === 'family') {
-                    document.documentElement.classList.add('role-family', 'hide-ops');
-                    if (a.indexOf('blood') === -1) {
-                        document.documentElement.classList.add('hide-blood');
-                        document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
-                    }
-                    if (a.indexOf('asset') === -1) {
-                        document.documentElement.classList.add('hide-asset');
-                        document.querySelectorAll('[data-service="asset"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
-                    }
-                    document.querySelectorAll('[data-service="ops"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
-                } else if (r === 'admin') {
+                if (r === 'admin') {
                     document.documentElement.classList.remove('hide-blood', 'hide-asset', 'hide-ops');
                     document.documentElement.classList.add('role-admin');
+                } else {
+                    // 🛡️ 혈압은 관리자 전용 기능 -> 비관리자 사용자 원천 차단
+                    document.documentElement.classList.add('hide-blood');
+                    document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+
+                    if (r === 'family') {
+                        document.documentElement.classList.add('role-family', 'hide-ops');
+                        if (a.indexOf('asset') === -1) {
+                            document.documentElement.classList.add('hide-asset');
+                            document.querySelectorAll('[data-service="asset"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                        }
+                        document.querySelectorAll('[data-service="ops"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    }
                 }
             };
             applyDom(role, allowed);

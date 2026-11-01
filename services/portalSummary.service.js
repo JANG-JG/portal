@@ -411,11 +411,20 @@ async function attachUserWeather(baseSummary, reqUser) {
     }
 
     const userWeather = await getLiveWeatherData(userCity);
-    return {
+    const result = {
         ...baseSummary,
         user_city: userCity,
         weather: userWeather || baseSummary.weather
     };
+
+    // 🛡️ 혈압·복약은 관리자 전용 기능 -> 비관리자 요청 시 데이터 원천 차단
+    if (!reqUser || reqUser.role !== 'admin') {
+        result.blood = null;
+        result.medication = null;
+        result.hospital = null;
+    }
+
+    return result;
 }
 
 async function getPortalSummary(reqUser) {

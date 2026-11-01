@@ -22,15 +22,17 @@
                 if (mAllowed) allowed = decodeURIComponent(mAllowed[1]);
                 else allowed = localStorage.getItem('jg_allowed_services') || '';
 
-                if (role === 'family') {
-                    document.documentElement.classList.add('role-family', 'hide-ops');
-                    var allowedArr = [];
-                    try { allowedArr = JSON.parse(allowed); } catch(e) { allowedArr = []; }
-                    if (!allowedArr.includes('blood') && !allowedArr.includes('all')) {
-                        document.documentElement.classList.add('hide-blood');
-                    }
-                    if (!allowedArr.includes('asset') && !allowedArr.includes('all')) {
-                        document.documentElement.classList.add('hide-asset');
+                if (role === 'admin') {
+                    document.documentElement.classList.add('role-admin');
+                } else {
+                    document.documentElement.classList.add('hide-blood');
+                    if (role === 'family') {
+                        document.documentElement.classList.add('role-family', 'hide-ops');
+                        var allowedArr = [];
+                        try { allowedArr = JSON.parse(allowed); } catch(e) { allowedArr = []; }
+                        if (!allowedArr.includes('asset') && !allowedArr.includes('all')) {
+                            document.documentElement.classList.add('hide-asset');
+                        }
                     }
                 }
             } catch(e) {}

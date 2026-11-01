@@ -123,6 +123,18 @@ body {
     align-items: center;
 }
 
+/* 🩸 혈압 미사용(일반 사용자) 시 히어로 카드 1열 단일 루틴 레이아웃 최적화 */
+html.hide-blood .homarr-hero-card {
+    grid-template-columns: 1fr;
+}
+html.hide-blood .homarr-ring-box {
+    border-right: none;
+    border-bottom: none !important;
+    padding-right: 0;
+    padding-bottom: 0 !important;
+    width: 100%;
+}
+
 .homarr-ring-box {
     display: flex;
     align-items: center;

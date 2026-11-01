@@ -40,14 +40,17 @@
                 if (mAllowed) allowed = decodeURIComponent(mAllowed[1]);
                 else allowed = localStorage.getItem('jg_allowed_services') || '';
 
-                if (role === 'family') {
-                    document.documentElement.classList.add('role-family', 'hide-ops');
-                    if (allowed.indexOf('blood') === -1) document.documentElement.classList.add('hide-blood');
-                    if (allowed.indexOf('asset') === -1) document.documentElement.classList.add('hide-asset');
-                } else if (role === 'admin') {
+                if (role === 'admin') {
                     document.documentElement.classList.add('role-admin');
                 } else {
-                    document.documentElement.classList.add('role-pending');
+                    // 🛡️ 혈압·복약은 관리자 전용 기능 (타 사용자 원천 은폐)
+                    document.documentElement.classList.add('hide-blood');
+                    if (role === 'family') {
+                        document.documentElement.classList.add('role-family', 'hide-ops');
+                        if (allowed.indexOf('asset') === -1) document.documentElement.classList.add('hide-asset');
+                    } else {
+                        document.documentElement.classList.add('role-pending');
+                    }
                 }
             } catch (e) {}
         })();
@@ -93,9 +96,9 @@
                 </div>
 
                 <!-- 우측: 오늘 복약 & 혈압 퀵 체크 -->
-                <div class="homarr-health-summary-box">
+                <div class="homarr-health-summary-box" data-service="blood">
                     <!-- 복약 관리 -->
-                    <div class="homarr-med-action-card">
+                    <div class="homarr-med-action-card" data-service="blood">
                         <div class="homarr-med-info">
                             <span class="homarr-label">💊 복약 관리</span>
                             <div class="homarr-med-title" id="widgetMedStatusText">조회 중...</div>
@@ -110,7 +113,7 @@
                     </div>
 
                     <!-- 최근 혈압 상태 (클릭 시 혈압 앱 이동) -->
-                    <div class="homarr-blood-mini-card" onclick="location.href='/go/blood'" title="혈압 관리 앱 바로가기">
+                    <div class="homarr-blood-mini-card" data-service="blood" onclick="location.href='/go/blood'" title="혈압 관리 앱 바로가기">
                         <div class="homarr-blood-info">
                             <span class="homarr-label">🩸 최근 혈압</span>
                             <div class="homarr-blood-val font-mono" id="widgetBloodValMain">- / - <span class="bento-stat-unit" style="font-size:0.75rem; font-weight:600; color:var(--hm-text-muted);">mmHg</span></div>

@@ -97,6 +97,10 @@ router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
 
 // 2. 원터치 복약 등록 API
 router.post('/api/blood/quick-med', authenticateToken, (req, res) => {
+    // 🛡️ 혈압 및 복약 기능은 관리자 전용
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ success: false, message: '혈압 및 복약 관리는 관리자 전용 기능입니다.' });
+    }
     try {
         const now = new Date();
         const tzOffset = now.getTimezoneOffset() * 60000;
@@ -200,6 +204,11 @@ router.get('/go/:service', authenticateToken, (req, res) => {
             try {
                 if (userRow && userRow.allowed_services) allowed = JSON.parse(userRow.allowed_services);
             } catch (e) {}
+
+            // 🛡️ 혈압 서비스는 관리자 전용 기능 -> 가족 계정 즉시 차단
+            if (service === 'blood') {
+                return res.redirect('/?notice=unauthorized_service');
+            }
 
             const serviceKey = (service === 'economy' ? 'news' : service);
             if (!allowed.includes('all') && !allowed.includes(serviceKey)) {
