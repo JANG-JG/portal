@@ -105,15 +105,15 @@
 
                 <!-- 모바일 전용 어제/내일 네비게이션 및 닫기 바 -->
                 <div class="mobile-modal-nav">
-                    <button type="button" class="day-shift-btn" id="btnPrevDay" onclick="shiftSelectedDate(-1)">‹ 어제</button>
+                    <button type="button" class="day-shift-btn" id="btnPrevDay" onclick="animateDateSlide(-1)">‹ 어제</button>
                     <span class="swipe-guide-badge">↔ 좌우 스와이프로 어제·내일 이동</span>
                     <div style="display: flex; align-items: center; gap: 0.35rem;">
-                        <button type="button" class="day-shift-btn" id="btnNextDay" onclick="shiftSelectedDate(1)">내일 ›</button>
+                        <button type="button" class="day-shift-btn" id="btnNextDay" onclick="animateDateSlide(1)">내일 ›</button>
                         <button type="button" class="mobile-modal-close-btn" onclick="closeMobileScheduleModal()" aria-label="닫기">✕</button>
                     </div>
                 </div>
 
-                <div class="schedule-detail-body">
+                <div class="schedule-detail-body" id="scheduleDetailBody">
                     <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9; margin-bottom: 1rem; gap: 0.5rem;">
                         <div>
                             <h2 id="selectedDateDisplay" style="font-size: 1.1rem; font-weight: 800; color: #0f172a;">선택한 날짜</h2>

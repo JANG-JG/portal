@@ -118,11 +118,20 @@
             if (backdrop) backdrop.classList.add('active');
         }
 
+        let isDateSlideAnimating = false;
+
         function closeMobileScheduleModal() {
             const card = document.getElementById('scheduleDetailCard');
             const backdrop = document.getElementById('scheduleModalBackdrop');
+            const body = document.getElementById('scheduleDetailBody');
             if (card) card.classList.remove('mobile-modal-open');
             if (backdrop) backdrop.classList.remove('active');
+            if (body) {
+                body.style.transition = '';
+                body.style.transform = '';
+                body.style.opacity = '';
+            }
+            isDateSlideAnimating = false;
             cancelEventForm();
         }
 
@@ -133,8 +142,53 @@
             return `${y}-${m}-${d}`;
         }
 
+        // 날짜 슬라이드 애니메이션 (가족앨범 사진 변환 효과)
+        function animateDateSlide(direction, fromDrag = false) {
+            const body = document.getElementById('scheduleDetailBody');
+            if (!body) {
+                shiftSelectedDate(direction, false);
+                return;
+            }
+            if (isDateSlideAnimating) return;
+            isDateSlideAnimating = true;
+
+            const exitX = direction > 0 ? '-100%' : '100%';
+            const enterStartX = direction > 0 ? '100%' : '-100%';
+            const exitDuration = fromDrag ? 160 : 180;
+
+            body.style.transition = `transform ${exitDuration}ms cubic-bezier(0.4, 0, 0.2, 1), opacity ${exitDuration}ms ease`;
+            body.style.transform = `translate3d(${exitX}, 0, 0)`;
+            body.style.opacity = '0';
+
+            setTimeout(() => {
+                shiftSelectedDate(direction, false);
+
+                body.style.transition = 'none';
+                body.style.transform = `translate3d(${enterStartX}, 0, 0)`;
+                body.style.opacity = '0';
+                void body.offsetHeight; // Force reflow
+
+                requestAnimationFrame(() => {
+                    body.style.transition = 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.24s ease';
+                    body.style.transform = 'translate3d(0, 0, 0)';
+                    body.style.opacity = '1';
+
+                    setTimeout(() => {
+                        body.style.transition = '';
+                        body.style.transform = '';
+                        body.style.opacity = '';
+                        isDateSlideAnimating = false;
+                    }, 250);
+                });
+            }, exitDuration);
+        }
+
         // 어제(-1) / 내일(+1) 날짜 이동 (모달 내 버튼 및 좌우 스와이프 연동)
-        function shiftSelectedDate(offsetDays) {
+        function shiftSelectedDate(offsetDays, withAnimation = false) {
+            if (withAnimation) {
+                animateDateSlide(offsetDays);
+                return;
+            }
             const [y, m, d] = selectedDateStr.split('-').map(Number);
             const target = new Date(y, m - 1, d + offsetDays);
             const nextDateStr = formatLocalIsoDate(target);
@@ -195,41 +249,21 @@
                 const isPersonal = ev.type === 'personal';
 
                 // 시간 및 종일 태그
-                let timeBadge = '';
-                if (ev.isAllDay) {
-                    timeBadge = `<span style="font-size:0.72rem; font-weight:800; background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; margin-right:0.35rem;">☀️ 종일</span>`;
-                } else if (ev.time) {
-                    timeBadge = `<span style="font-size:0.75rem; font-weight:700; color:#475569; margin-right:0.35rem;">⏰ ${ev.time}</span>`;
-                }
+                const timeBadge = ev.isAllDay
+                    ? `<span style="font-size:0.72rem; font-weight:800; background:#e0e7ff; color:#3730a3; padding:2px 6px; border-radius:4px; margin-right:0.35rem;">☀️ 종일</span>`
+                    : (ev.time ? `<span style="font-size:0.75rem; font-weight:700; color:#475569; margin-right:0.35rem;">⏰ ${ev.time}</span>` : '');
 
-                // 카테고리 태그
-                const categoryBadge = ev.category ? `
-                    <span style="font-size:0.68rem; font-weight:700; background:${ev.color}15; color:${ev.color}; border:1px solid ${ev.color}40; padding:1px 5px; border-radius:3px; margin-right:0.35rem;">
-                        ${escapeHtml(ev.category)}
-                    </span>
-                ` : '';
-
-                // 가족 공유 뱃지
-                const familyBadge = ev.isFamily ? `
-                    <span style="font-size:0.68rem; font-weight:700; background:#fdf2f8; color:#db2777; border:1px solid #fbcfe8; padding:1px 5px; border-radius:3px; margin-right:0.35rem;">
-                        👨‍👩‍👧‍👦 가족공유
-                    </span>
-                ` : '';
+                // 카테고리 & 가족 공유 태그
+                const categoryBadge = ev.category ? `<span style="font-size:0.68rem; font-weight:700; background:${ev.color}15; color:${ev.color}; border:1px solid ${ev.color}40; padding:1px 5px; border-radius:3px; margin-right:0.35rem;">${escapeHtml(ev.category)}</span>` : '';
+                const familyBadge = ev.isFamily ? `<span style="font-size:0.68rem; font-weight:700; background:#fdf2f8; color:#db2777; border:1px solid #fbcfe8; padding:1px 5px; border-radius:3px; margin-right:0.35rem;">👨‍👩‍👧‍👦 가족공유</span>` : '';
 
                 // 알림 태그
                 let notifyBadge = '';
                 if (isPersonal && ev.notifyTiming && ev.notifyTiming !== 'none') {
-                    const timingMap = {
-                        'exact': ev.isAllDay ? '오전9시' : '정시',
-                        '10m': '10분전',
-                        '30m': '30분전',
-                        '1h': '1시간전',
-                        '1d': '1일전'
-                    };
+                    const timingMap = { 'exact': ev.isAllDay ? '오전9시' : '정시', '10m': '10분전', '30m': '30분전', '1h': '1시간전', '1d': '1일전' };
                     const tText = timingMap[ev.notifyTiming] || ev.notifyTiming;
                     notifyBadge = `<span style="font-size:0.68rem; color:#64748b; background:#f1f5f9; padding:1px 5px; border-radius:3px; margin-left:0.25rem;">🔔 ${tText} (${ev.notifyRepeat || 1}회)</span>`;
                 }
-
                 const memoStr = ev.memo ? `<div style="font-size:0.75rem; color:#64748b; margin-top:3px;">${escapeHtml(ev.memo)}</div>` : '';
 
                 // 서비스 바로가기 또는 관리 버튼 생성 (본인 일정 또는 관리자만 수정/삭제 가능)
@@ -314,48 +348,118 @@
         }
 
 
-        // 모바일 상세 일정 모달 및 달력 좌우 스와이프 제스처 바인딩
+        // 모바일 상세 일정 모달 및 달력 좌우 스와이프 제스처 바인딩 (가족앨범 사진 변환 효과)
         function initScheduleModalSwipe() {
             const modalCard = document.getElementById('scheduleDetailCard');
+            const body = document.getElementById('scheduleDetailBody');
             if (!modalCard) return;
 
             let startX = 0;
             let startY = 0;
-            let isSwiping = false;
+            let currentDx = 0;
+            let isTouching = false;
+            let isHorizontalSwipe = false;
+            let isDirectionLocked = false;
+            let startTime = 0;
 
             modalCard.addEventListener('touchstart', (e) => {
-                if (e.touches.length !== 1) return;
-                // 입력 폼 컨트롤 위에서 터치한 경우는 스와이프 제외
-                const tag = e.target.tagName;
-                if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') {
-                    isSwiping = false;
+                if (e.touches.length !== 1 || isDateSlideAnimating) return;
+
+                // 입력 폼 컨트롤이나 링크/버튼, 등록 폼 내부 터치는 스와이프 제외
+                if (e.target.closest('input, select, textarea, button, a, #addEventFormCard')) {
+                    isTouching = false;
                     return;
                 }
+
                 startX = e.touches[0].clientX;
                 startY = e.touches[0].clientY;
-                isSwiping = true;
-            }, { passive: true });
+                currentDx = 0;
+                isTouching = true;
+                isHorizontalSwipe = false;
+                isDirectionLocked = false;
+                startTime = Date.now();
 
-            modalCard.addEventListener('touchend', (e) => {
-                if (!isSwiping || e.changedTouches.length !== 1) return;
-                isSwiping = false;
-
-                const endX = e.changedTouches[0].clientX;
-                const endY = e.changedTouches[0].clientY;
-                const dx = endX - startX;
-                const dy = endY - startY;
-
-                // 가로 이동 거리가 50px 이상이고 세로 스크롤보다 1.5배 이상 클 때만 어제/내일 전환
-                if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-                    if (dx < 0) {
-                        // 왼쪽으로 밀기 -> 내일(+1일) 일정
-                        shiftSelectedDate(1);
-                    } else {
-                        // 오른쪽으로 밀기 -> 어제(-1일) 일정
-                        shiftSelectedDate(-1);
-                    }
+                if (body) {
+                    body.style.transition = 'none';
                 }
             }, { passive: true });
+
+            modalCard.addEventListener('touchmove', (e) => {
+                if (!isTouching || e.touches.length !== 1 || isDateSlideAnimating) return;
+
+                const curX = e.touches[0].clientX;
+                const curY = e.touches[0].clientY;
+                const dx = curX - startX;
+                const dy = curY - startY;
+
+                // 방향 잠금 판정 (8px 이상 움직였을 때 한 번 결정)
+                if (!isDirectionLocked) {
+                    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                        isDirectionLocked = true;
+                        if (Math.abs(dx) > Math.abs(dy) * 1.2) {
+                            isHorizontalSwipe = true;
+                        } else {
+                            isHorizontalSwipe = false;
+                            isTouching = false;
+                            return;
+                        }
+                    } else {
+                        return;
+                    }
+                }
+
+                if (!isHorizontalSwipe) return;
+
+                // 가로 스와이프 중에는 브라우저 기본 세로 스크롤 방지
+                if (e.cancelable) e.preventDefault();
+
+                currentDx = dx;
+                if (body) {
+                    // 손가락 실시간 추종 (자연스러운 댐핑)
+                    const damping = 0.85;
+                    const moveX = dx * damping;
+                    body.style.transform = `translate3d(${moveX}px, 0, 0)`;
+                    const opacity = Math.max(0.65, 1 - Math.abs(moveX) / 500);
+                    body.style.opacity = String(opacity);
+                }
+            }, { passive: false });
+
+            const handleTouchEnd = () => {
+                if (!isTouching) return;
+                isTouching = false;
+
+                if (!isHorizontalSwipe || !body || isDateSlideAnimating) {
+                    if (body) {
+                        body.style.transition = '';
+                        body.style.transform = '';
+                        body.style.opacity = '';
+                    }
+                    return;
+                }
+
+                const elapsed = Date.now() - startTime;
+                const speed = Math.abs(currentDx) / (elapsed || 1);
+                // 이동 거리가 45px 이상이거나, 빠른 플릭(속도 > 0.35px/ms & 거리 25px 이상)
+                const isCommitted = Math.abs(currentDx) >= 45 || (speed > 0.35 && Math.abs(currentDx) >= 25);
+
+                if (isCommitted) {
+                    const direction = currentDx < 0 ? 1 : -1; // dx < 0이면 왼쪽으로 밀음 -> 내일(+1)
+                    animateDateSlide(direction, true);
+                } else {
+                    // 미달 시 제자리 탄성 복귀
+                    body.style.transition = 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease';
+                    body.style.transform = 'translate3d(0, 0, 0)';
+                    body.style.opacity = '1';
+                    setTimeout(() => {
+                        body.style.transition = '';
+                        body.style.transform = '';
+                        body.style.opacity = '';
+                    }, 230);
+                }
+            };
+
+            modalCard.addEventListener('touchend', handleTouchEnd, { passive: true });
+            modalCard.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
             // ESC 키로 모바일 상세 모달 닫기
             document.addEventListener('keydown', (e) => {

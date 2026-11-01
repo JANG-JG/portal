@@ -466,6 +466,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    overflow: hidden;
 }
 
 /* 📱 태블릿·모바일 최적화 (1023px 이하: 달력 위아래 균등 꽉 참 + 날짜 터치 시 상세 일정 모달 팝업) */
@@ -633,6 +634,8 @@ body {
         overflow-y: auto;
         max-height: calc(100dvh - 280px);
         padding-right: 2px;
+        touch-action: pan-y;
+        will-change: transform, opacity;
     }
 
     .mobile-modal-handle {
