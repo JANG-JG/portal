@@ -9,7 +9,7 @@ const CRAWLER_PATH = path.join(__dirname, '../scripts/kindergarten_crawler.py');
 
 // 로컬 환경 판별: /mnt/hdd 가 직접 연결된 PC인지, 아니면 원격 메인 서버(노트9)인지 자동 감지
 const isLocalWorker = process.env.IS_KINDERGARTEN_LOCAL_AGENT === 'true' || fs.existsSync('/mnt/hdd');
-const LOCAL_AGENT_URL = process.env.KINDERGARTEN_AGENT_URL || 'http://192.168.50.164:5055';
+const LOCAL_AGENT_URL = process.env.KINDERGARTEN_AGENT_URL || 'http://localhost:5055';
 
 // 싱글톤 상태 객체 (로컬 워커용)
 const state = {
