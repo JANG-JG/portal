@@ -229,12 +229,16 @@
             const data = await res.json();
 
             if (data.success) {
+                currentWidgets = data.widgets || currentWidgets;
+                try {
+                    localStorage.setItem('jg_dashboard_config_cache', JSON.stringify(currentWidgets));
+                } catch (e) {}
+
                 if (typeof showToast === 'function') {
                     showToast(data.message || '대시보드 위젯 배치가 저장되었습니다.');
                 } else {
                     alert(data.message || '저장되었습니다.');
                 }
-                currentWidgets = data.widgets || currentWidgets;
                 renderWidgetsTable(currentWidgets);
                 updateWidgetSummaryStats(currentWidgets);
             } else {
@@ -264,8 +268,13 @@
             const data = await res.json();
 
             if (data.success) {
+                try {
+                    localStorage.removeItem('jg_dashboard_config_cache');
+                } catch (e) {}
                 if (typeof showToast === 'function') {
                     showToast(data.message || '기본값으로 복원되었습니다.');
+                } else {
+                    alert(data.message || '기본값으로 복원되었습니다.');
                 }
                 currentWidgets = data.widgets || [];
                 renderWidgetsTable(currentWidgets);

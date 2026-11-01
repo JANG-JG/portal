@@ -212,27 +212,41 @@
      */
     window.moveWidgetOrder = function(widgetId, direction) {
         const activeWidgets = workingWidgets.filter(w => w.enabled !== false);
-        const idx = activeWidgets.findIndex(w => w.id === widgetId);
-        if (idx === -1) return;
+        const activeIdx = activeWidgets.findIndex(w => w.id === widgetId);
+        if (activeIdx === -1) return;
 
-        if (direction === 'up' && idx > 0) {
-            const target = activeWidgets[idx];
-            const prev = activeWidgets[idx - 1];
-            const tempOrder = target.order;
-            target.order = prev.order - 1;
-        } else if (direction === 'down' && idx < activeWidgets.length - 1) {
-            const target = activeWidgets[idx];
-            const next = activeWidgets[idx + 1];
-            target.order = next.order + 1;
+        if (direction === 'up' && activeIdx > 0) {
+            const targetWidget = activeWidgets[activeIdx];
+            const prevWidget = activeWidgets[activeIdx - 1];
+            const origIdx = workingWidgets.indexOf(targetWidget);
+            const prevOrigIdx = workingWidgets.indexOf(prevWidget);
+            workingWidgets[origIdx] = prevWidget;
+            workingWidgets[prevOrigIdx] = targetWidget;
+        } else if (direction === 'down' && activeIdx < activeWidgets.length - 1) {
+            const targetWidget = activeWidgets[activeIdx];
+            const nextWidget = activeWidgets[activeIdx + 1];
+            const origIdx = workingWidgets.indexOf(targetWidget);
+            const nextOrigIdx = workingWidgets.indexOf(nextWidget);
+            workingWidgets[origIdx] = nextWidget;
+            workingWidgets[nextOrigIdx] = targetWidget;
+        } else {
+            return;
         }
 
-        // 전체 order 재정렬 및 실시간 DOM 스타일 동기화
-        workingWidgets.sort((a, b) => (a.order || 0) - (b.order || 0));
+        // 전체 order 정규화 (10, 20, 30...)
         workingWidgets.forEach((w, i) => {
             w.order = (i + 1) * 10;
-            const el = document.querySelector(w.selector) || document.getElementById(w.id);
-            if (el) el.style.order = String(w.order);
         });
+
+        // 실시간 물리적 DOM 재배치 및 스타일 동기화
+        if (typeof window.applyDashboardWidgetsToDOM === 'function') {
+            window.applyDashboardWidgetsToDOM(workingWidgets);
+        } else {
+            workingWidgets.forEach(w => {
+                const el = document.querySelector(w.selector) || document.getElementById(w.id);
+                if (el) el.style.order = String(w.order);
+            });
+        }
 
         injectCardEditOverlays();
     };
@@ -336,6 +350,11 @@
             const data = await res.json();
 
             if (data.success) {
+                // 로컬 캐시 즉시 업데이트 (새로고침 깜빡임 원천 차단)
+                try {
+                    localStorage.setItem('jg_dashboard_config_cache', JSON.stringify(data.widgets || workingWidgets));
+                } catch (e) {}
+
                 exitDashboardEditMode();
                 if (typeof showToast === 'function') {
                     showToast('🎉 대시보드 화면 구성이 저장되었습니다!');

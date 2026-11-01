@@ -11,7 +11,7 @@ const DEFAULT_WIDGETS = [
         title: '스마트 데일리 브리핑 (능동 비서)',
         icon: '🤖',
         enabled: true,
-        order: 0,
+        order: 10,
         colSpan: 2,
         selector: '#smartDailyBriefingCard',
         desc: '시간대별 인사, 날씨 팁, 복약/혈압 능동 리마인드 및 오늘 일정 요약'
@@ -21,7 +21,7 @@ const DEFAULT_WIDGETS = [
         title: '일과 & 활동 링 / 복약 요약',
         icon: '🌟',
         enabled: true,
-        order: 1,
+        order: 20,
         colSpan: 2,
         selector: '#homarrHeroCard',
         desc: 'Apple Activity Ring 일과 달성률 및 복약 퀵체크'
@@ -31,7 +31,7 @@ const DEFAULT_WIDGETS = [
         title: '원터치 빠른 실행 스트립',
         icon: '⚡',
         enabled: true,
-        order: 2,
+        order: 30,
         colSpan: 2,
         selector: '.cmd-strip',
         desc: '원터치 퀵 커맨드 및 바로가기 버튼 바'
@@ -41,7 +41,7 @@ const DEFAULT_WIDGETS = [
         title: '실시간 속보 배너',
         icon: '🚨',
         enabled: true,
-        order: 3,
+        order: 40,
         colSpan: 2,
         selector: '#breakingBannerBar',
         desc: '실시간 주요 속보 롤링 티커'
@@ -51,7 +51,7 @@ const DEFAULT_WIDGETS = [
         title: '오늘의 가족 루틴 & 장보기',
         icon: '✅',
         enabled: true,
-        order: 10,
+        order: 50,
         colSpan: 1,
         selector: '#bento-wiki',
         desc: '오늘 할 일 체크리스트 및 실시간 장보기 목록'
@@ -61,7 +61,7 @@ const DEFAULT_WIDGETS = [
         title: '소모품 & 계약 D-Day',
         icon: '⏳',
         enabled: true,
-        order: 20,
+        order: 60,
         colSpan: 1,
         selector: '.card-dday',
         desc: '정기 결제 및 소모품 교체 주기 D-Day'
@@ -71,7 +71,7 @@ const DEFAULT_WIDGETS = [
         title: '스마트 캘린더 다가오는 일정',
         icon: '📅',
         enabled: true,
-        order: 30,
+        order: 70,
         colSpan: 1,
         selector: '#bento-calendar',
         desc: '이번 주 및 다가오는 가족 일정 요약'
@@ -81,7 +81,7 @@ const DEFAULT_WIDGETS = [
         title: '가족 앨범 최신 사진',
         icon: '📸',
         enabled: true,
-        order: 40,
+        order: 80,
         colSpan: 1,
         selector: '#bento-album',
         desc: '최근 등록된 가족 사진 썸네일 스트립'
@@ -91,7 +91,7 @@ const DEFAULT_WIDGETS = [
         title: '총 자산 포트폴리오',
         icon: '💰',
         enabled: true,
-        order: 50,
+        order: 90,
         colSpan: 1,
         selector: '#bento-asset',
         desc: '총 자산 평가액 및 시장 지표 요약'
@@ -101,7 +101,7 @@ const DEFAULT_WIDGETS = [
         title: '실시간 주요 뉴스',
         icon: '📰',
         enabled: true,
-        order: 60,
+        order: 100,
         colSpan: 1,
         selector: '#bento-news',
         desc: '분야별 주요 뉴스 및 시장 지표'
@@ -111,7 +111,7 @@ const DEFAULT_WIDGETS = [
         title: '서버 인프라 관리 (듀얼)',
         icon: '🖥️',
         enabled: true,
-        order: 70,
+        order: 110,
         colSpan: 2,
         selector: '#bento-ops',
         desc: '주서버(노트9) & 보조서버(노트북) 클러스터 상태'
@@ -139,19 +139,20 @@ function getDashboardConfig() {
     const savedMap = new Map();
     saved.forEach(w => savedMap.set(w.id, w));
 
-    // 기본 위젯 중 빠진 항목 보충
+    // 기본 위젯 중 빠진 항목 보충 (기존 설정 순서 보존을 위해 맨 뒤로 편입)
+    let maxOrder = saved.reduce((m, w) => Math.max(m, w.order || 0), 0);
     DEFAULT_WIDGETS.forEach(def => {
         if (!savedMap.has(def.id)) {
-            saved.push({ ...def });
-            savedMap.set(def.id, def);
+            maxOrder += 10;
+            const supplemented = { ...def, order: maxOrder };
+            saved.push(supplemented);
+            savedMap.set(def.id, supplemented);
         }
     });
 
     // modules.json의 신규 모듈 위젯 감지 및 자동 편입
     try {
         const modules = getAllModules(true);
-        let maxOrder = saved.reduce((m, w) => Math.max(m, w.order || 0), 70);
-
         modules.forEach(mod => {
             if (mod.portalWidget && mod.portalWidget.enabled) {
                 const widgetId = mod.portalWidget.cardId || `bento-${mod.id}`;

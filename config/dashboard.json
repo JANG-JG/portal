@@ -4,90 +4,55 @@
     "title": "스마트 데일리 브리핑 (능동 비서)",
     "icon": "🤖",
     "enabled": true,
-    "order": 0,
+    "order": 10,
     "colSpan": 2,
     "selector": "#smartDailyBriefingCard",
-    "desc": "시간대별 인사, 날씨 팁, 복약/혈압 능동 리마인드 및 오늘 일정 요약"
+    "desc": "시간대별 인사, 날씨 팁, 복약/혈압 능동 리마인드 및 오늘 일정 요약",
+    "isModuleWidget": false
   },
   {
     "id": "homarrHeroCard",
     "title": "일과 & 활동 링 / 복약 요약",
     "icon": "🌟",
     "enabled": true,
-    "order": 1,
+    "order": 20,
     "colSpan": 2,
     "selector": "#homarrHeroCard",
-    "desc": "Apple Activity Ring 일과 달성률 및 복약 퀵체크"
+    "desc": "Apple Activity Ring 일과 달성률 및 복약 퀵체크",
+    "isModuleWidget": false
   },
   {
     "id": "cmd-strip",
     "title": "원터치 빠른 실행 스트립",
     "icon": "⚡",
     "enabled": true,
-    "order": 2,
+    "order": 30,
     "colSpan": 2,
     "selector": ".cmd-strip",
-    "desc": "원터치 퀵 커맨드 및 바로가기 버튼 바"
+    "desc": "원터치 퀵 커맨드 및 바로가기 버튼 바",
+    "isModuleWidget": false
   },
   {
     "id": "breakingBannerBar",
     "title": "실시간 속보 배너",
     "icon": "🚨",
     "enabled": true,
-    "order": 3,
+    "order": 40,
     "colSpan": 2,
     "selector": "#breakingBannerBar",
-    "desc": "실시간 주요 속보 롤링 티커"
-  },
-  {
-    "id": "bento-wiki",
-    "title": "오늘의 가족 루틴 & 장보기",
-    "icon": "✅",
-    "enabled": true,
-    "order": 10,
-    "colSpan": 1,
-    "selector": "#bento-wiki",
-    "desc": "오늘 할 일 체크리스트 및 실시간 장보기 목록"
-  },
-  {
-    "id": "card-dday",
-    "title": "소모품 & 계약 D-Day",
-    "icon": "⏳",
-    "enabled": true,
-    "order": 20,
-    "colSpan": 1,
-    "selector": ".card-dday",
-    "desc": "정기 결제 및 소모품 교체 주기 D-Day"
-  },
-  {
-    "id": "bento-calendar",
-    "title": "스마트 캘린더 다가오는 일정",
-    "icon": "📅",
-    "enabled": true,
-    "order": 30,
-    "colSpan": 1,
-    "selector": "#bento-calendar",
-    "desc": "이번 주 및 다가오는 가족 일정 요약"
+    "desc": "실시간 주요 속보 롤링 티커",
+    "isModuleWidget": false
   },
   {
     "id": "bento-album",
     "title": "가족 앨범 최신 사진",
     "icon": "📸",
     "enabled": true,
-    "order": 40,
-    "colSpan": 1,
-    "selector": "#bento-album",
-    "desc": "최근 등록된 가족 사진 썸네일 스트립"
-  },
-  {
-    "id": "bento-asset",
-    "title": "총 자산 포트폴리오",
-    "icon": "💰",
-    "enabled": true,
     "order": 50,
     "colSpan": 1,
-    "selector": "#bento-asset",
-    "desc": "총 자산 평가액 및 시장 지표 요약"
+    "selector": "#bento-album",
+    "desc": "최근 등록된 가족 사진 썸네일 스트립",
+    "isModuleWidget": false
   },
   {
     "id": "bento-news",
@@ -97,16 +62,62 @@
     "order": 60,
     "colSpan": 1,
     "selector": "#bento-news",
-    "desc": "분야별 주요 뉴스 및 시장 지표"
+    "desc": "분야별 주요 뉴스 및 시장 지표",
+    "isModuleWidget": false
+  },
+  {
+    "id": "bento-calendar",
+    "title": "스마트 캘린더 다가오는 일정",
+    "icon": "📅",
+    "enabled": true,
+    "order": 70,
+    "colSpan": 1,
+    "selector": "#bento-calendar",
+    "desc": "이번 주 및 다가오는 가족 일정 요약",
+    "isModuleWidget": false
+  },
+  {
+    "id": "bento-wiki",
+    "title": "오늘의 가족 루틴 & 장보기",
+    "icon": "✅",
+    "enabled": true,
+    "order": 80,
+    "colSpan": 1,
+    "selector": "#bento-wiki",
+    "desc": "오늘 할 일 체크리스트 및 실시간 장보기 목록",
+    "isModuleWidget": false
+  },
+  {
+    "id": "card-dday",
+    "title": "소모품 & 계약 D-Day",
+    "icon": "⏳",
+    "enabled": true,
+    "order": 90,
+    "colSpan": 1,
+    "selector": ".card-dday",
+    "desc": "정기 결제 및 소모품 교체 주기 D-Day",
+    "isModuleWidget": false
+  },
+  {
+    "id": "bento-asset",
+    "title": "총 자산 포트폴리오",
+    "icon": "💰",
+    "enabled": true,
+    "order": 100,
+    "colSpan": 1,
+    "selector": "#bento-asset",
+    "desc": "총 자산 평가액 및 시장 지표 요약",
+    "isModuleWidget": false
   },
   {
     "id": "bento-ops",
     "title": "서버 인프라 관리 (듀얼)",
     "icon": "🖥️",
     "enabled": true,
-    "order": 70,
+    "order": 110,
     "colSpan": 2,
     "selector": "#bento-ops",
-    "desc": "주서버(노트9) & 보조서버(노트북) 클러스터 상태"
+    "desc": "주서버(노트9) & 보조서버(노트북) 클러스터 상태",
+    "isModuleWidget": false
   }
 ]
