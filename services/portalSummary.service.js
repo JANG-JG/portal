@@ -429,11 +429,12 @@ async function attachUserWeather(baseSummary, reqUser) {
         weather: userWeather || baseSummary.weather
     };
 
-    // 🛡️ 혈압·복약은 관리자 전용 기능 -> 비관리자 요청 시 데이터 원천 차단
+    // 🛡️ 혈압·복약·자산은 관리자 전용 기능 -> 비관리자 요청 시 데이터 원천 차단
     if (!reqUser || reqUser.role !== 'admin') {
         result.blood = null;
         result.medication = null;
         result.hospital = null;
+        result.asset = null;
     }
 
     // 🌅 능동형 스마트 데일리 브리핑 객체 생성 및 첨부

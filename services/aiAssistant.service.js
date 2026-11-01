@@ -66,6 +66,16 @@ function sendOllamaRequest(endpoint, payload, timeoutMs = 15000) {
 }
 
 /**
+ * 🛡️ [보안 강화] 프롬프트 템플릿 탈취 및 제어 문자 인젝션 방어 유틸리티
+ */
+function sanitizeInputText(text, maxLength = 500) {
+    if (!text || typeof text !== 'string') return '';
+    // 모델 템플릿 제어 토큰 (<|system|>, <|user|>, <|assistant|>, <|end_of_turn|> 등) 제거
+    const cleaned = text.replace(/<\|[a-zA-Z0-9_\-:]+\|>/g, '');
+    return cleaned.slice(0, maxLength).trim();
+}
+
+/**
  * 1. 로컬 AI 엔진 헬스체크
  */
 async function checkAiHealth() {
@@ -82,8 +92,7 @@ async function checkAiHealth() {
                         resolve({
                             online: true,
                             modelReady: hasModel,
-                            modelName: OLLAMA_MODEL,
-                            host: OLLAMA_HOST
+                            modelName: OLLAMA_MODEL
                         });
                     } catch (e) {
                         resolve({ online: false, error: 'JSON 응답 오류' });
@@ -169,24 +178,25 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
  * 3. 우리 집 AI 챗봇 실시간 대화 (전체 서브 서비스 통합 분석가)
  */
 async function askAiAssistant({ prompt, history = [], summaryContext = null, userName = '가족' }) {
-    if (!prompt || !prompt.trim()) {
-        throw new Error('질문 내용을 입력해 주세요.');
+    const cleanPrompt = sanitizeInputText(prompt, 500);
+    if (!cleanPrompt) {
+        throw new Error('유효한 질문 내용을 입력해 주세요.');
     }
 
     let contextGuide = '';
     if (summaryContext) {
         const { blood, medication, hospital, memo, asset, news, system, weather, todayEvents } = summaryContext;
 
-        // 1. 자산 관리 현황
-        let assetInfo = '자산 정보 없음';
+        // 1. 자산 관리 현황 (관리자 전용 / 비관리자는 차단)
+        let assetInfo = '자산 정보 비공개 (관리자 전용 권한)';
         if (asset && asset.totalKrw) {
             const topItems = Array.isArray(asset.items) ? asset.items.slice(0, 5).map(i => `${i.name}(${i.symbol}): ${i.formattedTotal} (${i.diffPercent})`).join(', ') : '';
             assetInfo = `총 자산 평가액 ${asset.totalKrw} (보유 종목 ${asset.count || 0}개)` + (topItems ? ` | 주요 종목: ${topItems}` : '');
         }
 
-        // 2. 건강 & 복약 & 병원 진료
-        const bloodInfo = blood ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'}) - ${blood.is_today_measured ? '오늘 측정 완료' : '오늘 미측정'}` : '기록 없음';
-        const medInfo = medication && medication.is_today_taken ? '오늘 복약 완료 ✅' : '오늘 혈압약 아직 미복용 ⚠️';
+        // 2. 건강 & 복약 & 병원 진료 (관리자 전용 / 비관리자는 차단)
+        const bloodInfo = blood ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'}) - ${blood.is_today_measured ? '오늘 측정 완료' : '오늘 미측정'}` : '건강 기록 비공개 (관리자 전용)';
+        const medInfo = medication && medication.is_today_taken ? '오늘 복약 완료 ✅' : (medication ? '오늘 혈압약 아직 미복용 ⚠️' : '복약 정보 없음');
         let hospInfo = '예정된 진료 없음';
         if (hospital) {
             hospInfo = `다음 진료: ${hospital.displayNextVisit || '미정'} (${hospital.nextVisitDDay || 'D-Day 미정'}), 처방 잔여 약: ${hospital.remainingPills || 0}일분`;
@@ -234,24 +244,25 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
 
     const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 3.5)입니다.
 - 질문자가 가족 구성원이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
-- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 뉴스 및 서버 인프라 현황 데이터를 완벽하게 파악하고 있습니다.
-- 자산, 서버, 건강, 일정 관련 질문이 들어오면 위의 [실시간 통합 현황] 데이터를 적극 참조하여 명확한 수치와 함께 똑똑하고 따뜻하게 분석·브리핑해 주세요.
+- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 뉴스 및 서버 인프라 현황 데이터를 파악하고 있습니다.
+- '비공개' 또는 '관리자 전용'으로 표시된 항목에 대해서는 "해당 정보는 관리자 전용 데이터로 조회 권한이 없습니다"라고 친절히 안내하세요.
+- 질문이 들어오면 위의 [실시간 통합 현황] 데이터를 적극 참조하여 명확한 수치와 함께 똑똑하고 따뜻하게 분석·브리핑해 주세요.
 - 데이터에 없는 내용은 추측하지 말고 솔직하고 친절하게 안내하세요.${contextGuide}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
     
-    // 최근 대화 히스토리 (최대 4턴)
+    // 최근 대화 히스토리 (최대 4턴, 특수 토큰 정제)
     if (Array.isArray(history)) {
         history.slice(-4).forEach(h => {
-            if (h.role === 'user') {
-                fullPrompt += `<|user|>\n${h.content}\n`;
-            } else if (h.role === 'assistant') {
-                fullPrompt += `<|assistant|>\n${h.content}\n`;
+            const safeRole = (h && h.role === 'assistant') ? 'assistant' : 'user';
+            const safeContent = sanitizeInputText(h ? h.content : '', 500);
+            if (safeContent) {
+                fullPrompt += `<|${safeRole}|>\n${safeContent}\n`;
             }
         });
     }
 
-    fullPrompt += `<|user|>\n${prompt.trim()}\n<|assistant|>\n`;
+    fullPrompt += `<|user|>\n${cleanPrompt}\n<|assistant|>\n`;
 
     const result = await sendOllamaRequest('/api/generate', {
         model: OLLAMA_MODEL,
