@@ -41,6 +41,7 @@ const searchRoutes = require('./routes/search.routes');
 const adminRoutes = require('./routes/admin.routes');
 const wikiProxyRoutes = require('./routes/wiki.proxy.routes');
 const modulesRoutes = require('./routes/modules.routes');
+const aiRoutes = require('./routes/ai.routes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -320,6 +321,9 @@ app.use('/api/admin', authenticateToken, requireAdmin, adminRoutes);
 
 // 🧩 모듈 레지스트리 API (/api/modules/*)
 app.use('/api/modules', modulesRoutes);
+
+// 🤖 로컬 AI 비서 API (/api/ai/*)
+app.use('/', aiRoutes);
 
 // 헬스 체크
 app.get('/health', (req, res) => {

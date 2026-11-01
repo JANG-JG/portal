@@ -55,6 +55,9 @@
             naturalEl.textContent = briefing.naturalSummary || '가족 중심 스마트 홈서버가 오늘도 함께합니다.';
         }
 
+        // 6-1. 🤖 LG EXAONE 로컬 AI 비서 맞춤 조언 비동기 갱신
+        fetchAiBriefingAsync();
+
         // 7. 접기 상태 복원
         applyCollapseState();
 
@@ -249,6 +252,42 @@
         } else {
             bodyEl.style.display = '';
             if (toggleBtn) toggleBtn.innerHTML = '<span>▲</span><span>접기</span>';
+        }
+    }
+
+    /**
+     * LG EXAONE 로컬 AI 비서 데일리 조언 비동기 패치 (0ms 무기다림 SWR)
+     */
+    async function fetchAiBriefingAsync() {
+        const naturalEl = document.getElementById('briefingNaturalSummaryText');
+        const aiBadge = document.querySelector('.briefing-ai-chip');
+        if (!naturalEl) return;
+
+        try {
+            const res = await fetch('/api/ai/briefing');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.success && data.briefing) {
+                naturalEl.style.transition = 'opacity 0.3s ease';
+                naturalEl.style.opacity = '0.4';
+                setTimeout(() => {
+                    naturalEl.textContent = '🤖 AI 조언: ' + data.briefing;
+                    naturalEl.style.opacity = '1';
+                }, 300);
+
+                if (aiBadge) {
+                    aiBadge.textContent = 'LG 엑사원 AI 🟢';
+                    aiBadge.style.background = '#dbeafe';
+                    aiBadge.style.color = '#1d4ed8';
+                    aiBadge.style.cursor = 'pointer';
+                    aiBadge.title = '클릭 시 우리 집 AI 비서 챗봇 열기';
+                    aiBadge.onclick = () => {
+                        if (typeof window.openAiChatModal === 'function') window.openAiChatModal();
+                    };
+                }
+            }
+        } catch (e) {
+            // 무장애 폴백: 에러 시 기존 문구 유지
         }
     }
 
