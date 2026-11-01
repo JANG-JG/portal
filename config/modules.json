@@ -121,7 +121,7 @@
   },
   {
     "id": "asset",
-    "name": "자산·금융 관리",
+    "name": "자산·금융",
     "icon": "💰",
     "description": "국내/미국 주식, 가상자산 및 포트폴리오 통합 분석",
     "category": "자산",
@@ -134,14 +134,14 @@
     "enabled": true,
     "nav": {
       "enabled": true,
-      "label": "자산·금융 관리",
+      "label": "자산·금융",
       "entryUrl": "/go/asset",
       "subLinks": []
     },
     "quickStrip": [
       {
         "id": "asset-quick",
-        "label": "자산·금융 관리",
+        "label": "자산·금융",
         "icon": "💰",
         "type": "link",
         "url": "/go/asset"
@@ -149,13 +149,13 @@
     ],
     "portalWidget": {
       "enabled": true,
-      "title": "자산·금융 관리 현황",
+      "title": "자산·금융 현황",
       "viewMoreUrl": "/go/asset",
       "apiEndpoint": "/api/asset/summary"
     },
     "admin": {
       "enabled": true,
-      "title": "자산·금융 관리 제어",
+      "title": "자산·금융 제어",
       "icon": "💰",
       "tabId": "tab-asset",
       "subMenus": [
@@ -421,7 +421,7 @@
   },
   {
     "id": "wiki",
-    "name": "가족 지식창고",
+    "name": "지식창고",
     "icon": "📦",
     "description": "",
     "category": "라이프",
@@ -434,14 +434,14 @@
     "enabled": true,
     "nav": {
       "enabled": true,
-      "label": "가족 지식창고",
+      "label": "지식창고",
       "entryUrl": "/wiki",
       "subLinks": []
     },
     "quickStrip": [
       {
         "id": "wiki-quick",
-        "label": "가족 지식창고",
+        "label": "지식창고",
         "icon": "📦",
         "type": "link",
         "url": "/wiki"
@@ -483,22 +483,37 @@
       }
     ],
     "portalWidget": null,
-    "admin": {
-      "enabled": true,
-      "title": "유치원 사진 다운로더 제어",
-      "icon": "🏫",
-      "tabId": "tab-kindergarten",
-      "subMenus": [
-        {
-          "id": "subpane-kindergarten-main",
-          "title": "현황 및 관리",
-          "icon": "📊",
-          "type": "iframe",
-          "src": "/kindergarten"
-        }
-      ]
-    },
+    "admin": null,
     "dbPath": "",
     "order": 90
+  },
+  {
+    "id": "admin",
+    "name": "관리자",
+    "icon": "⚙️",
+    "description": "",
+    "category": "라이프",
+    "entryUrl": "/admin",
+    "baseUrl": "",
+    "ssoEnabled": false,
+    "adminOnly": true,
+    "defaultFamilyAllowed": false,
+    "enabled": true,
+    "nav": {
+      "enabled": false
+    },
+    "quickStrip": [
+      {
+        "id": "admin-quick",
+        "label": "관리자",
+        "icon": "⚙️",
+        "type": "link",
+        "url": "/admin"
+      }
+    ],
+    "portalWidget": null,
+    "admin": null,
+    "dbPath": "",
+    "order": 100
   }
 ]
