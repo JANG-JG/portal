@@ -170,7 +170,7 @@ function getQuickStripItems(user) {
     return items;
 }
 
-const CORE_MODULE_IDS = new Set(['blood', 'asset', 'news', 'album', 'wiki', 'calendar', 'memo']);
+const CORE_MODULE_IDS = new Set(['portal', 'blood', 'asset', 'news', 'album', 'wiki', 'calendar', 'memo']);
 
 /**
  * modules.json 안전 저장 (백업 생성 + 캐시 동기화)

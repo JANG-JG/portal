@@ -37,7 +37,9 @@ const DbManager = {
             this.state.databases = data.databases || [];
             this.renderDbSelector();
             if (this.state.databases.length > 0) {
-                await this.switchDb(this.state.currentDb || this.state.databases[0].key);
+                const hasCurrent = this.state.databases.some(d => d.key === this.state.currentDb);
+                const targetDb = hasCurrent ? this.state.currentDb : this.state.databases[0].key;
+                await this.switchDb(targetDb);
             }
         } catch (err) {
             showToast('DB 목록 조회 실패: ' + err.message, true);

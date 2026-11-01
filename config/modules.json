@@ -1,5 +1,31 @@
 [
   {
+    "id": "portal",
+    "name": "포털 시스템 메인",
+    "icon": "🏠",
+    "description": "포털 사용자 계정, 통합 인증, 시스템 설정 및 공통 데이터 관리",
+    "category": "시스템",
+    "entryUrl": "/",
+    "baseUrl": "https://j-jg.cc",
+    "ssoEnabled": false,
+    "adminOnly": true,
+    "defaultFamilyAllowed": true,
+    "order": 1,
+    "enabled": true,
+    "nav": {
+      "enabled": false
+    },
+    "quickStrip": [],
+    "portalWidget": null,
+    "admin": {
+      "enabled": true,
+      "title": "포털 시스템 설정",
+      "icon": "⚙️",
+      "tabId": "tab-overview"
+    },
+    "dbPath": "portal/portal.db"
+  },
+  {
     "id": "blood",
     "name": "혈압·건강 관리",
     "icon": "🩸",

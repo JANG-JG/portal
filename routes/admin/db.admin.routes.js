@@ -4,29 +4,10 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const sqlite3 = require('sqlite3').verbose();
-const {
-    BLOOD_DB_PATH,
-    ASSET_DB_PATH,
-    NEWS_DB_PATH,
-    ALBUM_DB_PATH,
-    WIKI_DB_PATH,
-    PORTAL_DB_PATH,
-    WORKSPACE_ROOT
-} = require('../../config/constants');
-const { db, assetDb, newsDb, albumDb, wikiDb, portalDb } = require('../../services/db');
+const { WORKSPACE_ROOT } = require('../../config/constants');
 const { getAllModules } = require('../../services/moduleRegistry.service');
 
-// 대상 데이터베이스 매핑 딕셔너리 (기본 6대 코어)
-const DB_MAP = {
-    'portal': { key: 'portal', name: '포털 메인 & 일정/메모 (portal.db)', db: portalDb, path: PORTAL_DB_PATH },
-    'health': { key: 'health', name: '혈압 & 마스터 계정 (health.db)', db, path: BLOOD_DB_PATH },
-    'asset': { key: 'asset', name: '자산 관리 (asset.db)', db: assetDb, path: ASSET_DB_PATH },
-    'briefing': { key: 'briefing', name: '뉴스 브리핑 (briefing.db)', db: newsDb, path: NEWS_DB_PATH },
-    'album': { key: 'album', name: '가족 사진첩 (album.db)', db: albumDb, path: ALBUM_DB_PATH },
-    'wiki': { key: 'wiki', name: '가족 위키 & 루틴 (wiki.db)', db: wikiDb, path: WIKI_DB_PATH }
-};
-
-// 동적 등록된 신규 서비스 모듈 DB 인스턴스 캐시 풀
+// 동적 등록된 서비스 모듈 DB 인스턴스 캐시 풀 (절대 경로별 인스턴스 싱글톤 관리)
 const DYNAMIC_DB_POOL = new Map();
 
 function resolveDbPath(p) {
@@ -39,32 +20,38 @@ function resolveDbPath(p) {
     return c1;
 }
 
+function getDbConnection(resolvedPath) {
+    if (!DYNAMIC_DB_POOL.has(resolvedPath)) {
+        const dynDb = new sqlite3.Database(resolvedPath, (err) => {
+            if (!err) {
+                dynDb.run('PRAGMA journal_mode = WAL;');
+                dynDb.run('PRAGMA busy_timeout = 5000;');
+            }
+        });
+        DYNAMIC_DB_POOL.set(resolvedPath, dynDb);
+    }
+    return DYNAMIC_DB_POOL.get(resolvedPath);
+}
+
 function getDynamicDbMap() {
-    const map = { ...DB_MAP };
+    const map = {};
+    const seenPaths = new Set();
     try {
         const allMods = getAllModules(true);
         allMods.forEach(mod => {
             if (!mod.dbPath) return;
-            const dbKey = mod.id;
-            if (map[dbKey]) return;
-
             const resolved = resolveDbPath(mod.dbPath);
             if (resolved && fs.existsSync(resolved)) {
-                if (!DYNAMIC_DB_POOL.has(dbKey)) {
-                    const dynDb = new sqlite3.Database(resolved, (err) => {
-                        if (!err) {
-                            dynDb.run('PRAGMA journal_mode = WAL;');
-                            dynDb.run('PRAGMA busy_timeout = 5000;');
-                        }
-                    });
-                    DYNAMIC_DB_POOL.set(dbKey, dynDb);
-                }
-                map[dbKey] = {
-                    key: dbKey,
+                const dbConn = getDbConnection(resolved);
+                const isFirst = !seenPaths.has(resolved);
+                seenPaths.add(resolved);
+
+                map[mod.id] = {
+                    key: mod.id,
                     name: `${mod.icon || '📦'} ${mod.name} (${path.basename(resolved)})`,
-                    db: DYNAMIC_DB_POOL.get(dbKey),
+                    db: dbConn,
                     path: resolved,
-                    isDynamic: true
+                    isPrimaryForPath: isFirst
                 };
             }
         });
@@ -76,7 +63,17 @@ function getDynamicDbMap() {
 
 function getDbInstance(dbKey) {
     const dynamicMap = getDynamicDbMap();
-    return dynamicMap[dbKey] || dynamicMap['portal'] || dynamicMap['health'];
+    if (dynamicMap[dbKey]) return dynamicMap[dbKey];
+
+    // 하위 호환 별칭 매핑 (구 URL / 캐시 호환)
+    if (dbKey === 'health' && dynamicMap['blood']) return dynamicMap['blood'];
+    if (dbKey === 'briefing' && dynamicMap['news']) return dynamicMap['news'];
+    if (dbKey === 'portal' && (dynamicMap['portal'] || dynamicMap['calendar'] || dynamicMap['memo'])) {
+        return dynamicMap['portal'] || dynamicMap['calendar'] || dynamicMap['memo'];
+    }
+
+    const list = Object.values(dynamicMap);
+    return list.length > 0 ? list[0] : null;
 }
 
 function getFileSizeStr(filePath) {
@@ -90,19 +87,33 @@ function getFileSizeStr(filePath) {
 }
 
 /**
- * 1. 데이터베이스 목록 조회 (동적 편입 서비스 DB 포함)
+ * 1. 데이터베이스 목록 조회 (모듈 레지스트리 기반 100% 동적 수집)
  * GET /api/admin/db/databases
  */
 router.get('/databases', (req, res) => {
     const dynamicMap = getDynamicDbMap();
-    const list = Object.values(dynamicMap).map(item => ({
-        key: item.key,
-        name: item.name,
-        size: getFileSizeStr(item.path),
-        path: item.path,
-        isDynamic: Boolean(item.isDynamic)
-    }));
+    // 동일 DB 파일 중복 노출을 방지하고 유효 DB만 고유하게 목록화
+    const list = Object.values(dynamicMap)
+        .filter(item => item.isPrimaryForPath)
+        .map(item => ({
+            key: item.key,
+            name: item.name,
+            size: getFileSizeStr(item.path),
+            path: item.path
+        }));
     res.json({ success: true, databases: list });
+});
+
+/**
+ * :dbKey 파라미터 유효성 검증 및 req.targetDb 주입 미들웨어
+ */
+router.param('dbKey', (req, res, next, dbKey) => {
+    const target = getDbInstance(dbKey);
+    if (!target || !target.db) {
+        return res.status(404).json({ success: false, message: '지정한 데이터베이스를 찾을 수 없습니다.' });
+    }
+    req.targetDb = target;
+    next();
 });
 
 /**
@@ -110,8 +121,8 @@ router.get('/databases', (req, res) => {
  * GET /api/admin/db/:dbKey/download
  */
 router.get('/:dbKey/download', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
-    if (!target || !target.path || !fs.existsSync(target.path)) {
+    const target = req.targetDb;
+    if (!target.path || !fs.existsSync(target.path)) {
         return res.status(404).json({ success: false, message: 'DB 파일을 찾을 수 없습니다.' });
     }
     const filename = `${target.key}_${path.basename(target.path)}`;
@@ -123,7 +134,7 @@ router.get('/:dbKey/download', (req, res) => {
  * GET /api/admin/db/:dbKey/tables
  */
 router.get('/:dbKey/tables', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
+    const target = req.targetDb;
     const sql = "SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' ORDER BY name ASC";
 
     target.db.all(sql, [], async (err, tables) => {
@@ -158,7 +169,7 @@ router.get('/:dbKey/tables', (req, res) => {
  * GET /api/admin/db/:dbKey/table/:table/data?page=1&limit=25&sort=&order=ASC&q=
  */
 router.get('/:dbKey/table/:table/data', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
+    const target = req.targetDb;
     const tableName = req.params.table.replace(/[^a-zA-Z0-9_]/g, '');
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 25));
@@ -217,7 +228,7 @@ router.get('/:dbKey/table/:table/data', (req, res) => {
  * GET /api/admin/db/:dbKey/table/:table/schema
  */
 router.get('/:dbKey/table/:table/schema', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
+    const target = req.targetDb;
     const tableName = req.params.table.replace(/[^a-zA-Z0-9_]/g, '');
 
     target.db.all(`PRAGMA table_info("${tableName}")`, [], (err, columns) => {
@@ -242,7 +253,7 @@ router.get('/:dbKey/table/:table/schema', (req, res) => {
  * POST /api/admin/db/:dbKey/query
  */
 router.post('/:dbKey/query', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
+    const target = req.targetDb;
     const sql = (req.body.sql || '').trim();
     const force = !!req.body.force;
 
@@ -307,7 +318,7 @@ router.post('/:dbKey/query', (req, res) => {
  * PUT /api/admin/db/:dbKey/table/:table/row
  */
 router.put('/:dbKey/table/:table/row', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
+    const target = req.targetDb;
     const tableName = req.params.table.replace(/[^a-zA-Z0-9_]/g, '');
     const rowid = req.body._rowid_;
     const data = req.body.data || {};
@@ -342,7 +353,7 @@ router.put('/:dbKey/table/:table/row', (req, res) => {
  * POST /api/admin/db/:dbKey/table/:table/row
  */
 router.post('/:dbKey/table/:table/row', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
+    const target = req.targetDb;
     const tableName = req.params.table.replace(/[^a-zA-Z0-9_]/g, '');
     const data = req.body.data || {};
 
@@ -374,7 +385,7 @@ router.post('/:dbKey/table/:table/row', (req, res) => {
  * DELETE /api/admin/db/:dbKey/table/:table/row
  */
 router.delete('/:dbKey/table/:table/row', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
+    const target = req.targetDb;
     const tableName = req.params.table.replace(/[^a-zA-Z0-9_]/g, '');
     const rowid = req.body._rowid_ || req.query._rowid_;
 
@@ -394,7 +405,7 @@ router.delete('/:dbKey/table/:table/row', (req, res) => {
  * GET /api/admin/db/:dbKey/table/:table/export/csv
  */
 router.get('/:dbKey/table/:table/export/csv', (req, res) => {
-    const target = getDbInstance(req.params.dbKey);
+    const target = req.targetDb;
     const tableName = req.params.table.replace(/[^a-zA-Z0-9_]/g, '');
 
     target.db.all(`SELECT * FROM "${tableName}"`, [], (err, rows) => {
