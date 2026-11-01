@@ -108,6 +108,38 @@ GET /api/{service}/summary<br>
             <form id="moduleEditForm" onsubmit="submitModuleForm(event)">
                 <input type="hidden" id="inputModIsEdit" value="false">
 
+                <!-- ⚡ 서비스 유형별 원클릭 프리셋 선택 바 -->
+                <div id="modulePresetSelectorArea" style="margin-bottom:0.9rem; background:#f8fafc; padding:0.65rem 0.85rem; border-radius:0.5rem; border:1px solid #e2e8f0;">
+                    <style>
+                        .preset-chip { transition: all 0.15s ease; user-select: none; }
+                        .preset-chip.active { background: #2563eb !important; color: #fff !important; border-color: #2563eb !important; box-shadow: 0 1px 3px rgba(37,99,235,0.25); }
+                        .preset-chip:hover:not(.active) { background: #f1f5f9 !important; border-color: #94a3b8 !important; }
+                    </style>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem; flex-wrap:wrap; gap:0.25rem;">
+                        <span style="font-size:0.8rem; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:0.3rem;">
+                            <span>⚡</span> 서비스 프리셋 자동 완성
+                        </span>
+                        <span id="presetCurrentDesc" style="font-size:0.72rem; color:#64748b;">유형 선택 시 권한·URL·옵션이 자동 완성됩니다.</span>
+                    </div>
+                    <div class="module-preset-chips" id="modulePresetChips" style="display:flex; flex-wrap:wrap; gap:0.35rem;">
+                        <button type="button" class="preset-chip active" data-preset="webapp" onclick="selectModulePreset('webapp')" style="font-size:0.75rem; padding:4px 9px; border-radius:20px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:600; color:#334155;">
+                            🚀 독립 웹앱
+                        </button>
+                        <button type="button" class="preset-chip" data-preset="external" onclick="selectModulePreset('external')" style="font-size:0.75rem; padding:4px 9px; border-radius:20px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:600; color:#334155;">
+                            🌐 외부 웹링크
+                        </button>
+                        <button type="button" class="preset-chip" data-preset="subpage" onclick="selectModulePreset('subpage')" style="font-size:0.75rem; padding:4px 9px; border-radius:20px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:600; color:#334155;">
+                            📄 포털 내장 도구
+                        </button>
+                        <button type="button" class="preset-chip" data-preset="admintool" onclick="selectModulePreset('admintool')" style="font-size:0.75rem; padding:4px 9px; border-radius:20px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:600; color:#334155;">
+                            🔒 관리자 전용
+                        </button>
+                        <button type="button" class="preset-chip" data-preset="custom" onclick="selectModulePreset('custom')" style="font-size:0.75rem; padding:4px 9px; border-radius:20px; border:1px solid #cbd5e1; background:#fff; cursor:pointer; font-weight:600; color:#334155;">
+                            ✏️ 직접 입력
+                        </button>
+                    </div>
+                </div>
+
                 <div class="admin-grid-2" style="gap:0.75rem; margin-bottom:0.75rem;">
                     <div>
                         <label style="display:block; font-size:0.82rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">서비스 영문 ID *</label>

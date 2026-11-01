@@ -304,6 +304,9 @@
             document.getElementById('chkModQuick').checked = Array.isArray(mod.quickStrip) && mod.quickStrip.length > 0;
             document.getElementById('chkModWidget').checked = Boolean(mod.portalWidget?.enabled);
             document.getElementById('chkModAdminTab').checked = Boolean(mod.admin?.enabled);
+            if (typeof window.setupModulePresetsForModal === 'function') {
+                window.setupModulePresetsForModal(true);
+            }
         } else {
             titleEl.textContent = '➕ 새 서비스 모듈 등록';
             isEditEl.value = 'false';
@@ -316,6 +319,9 @@
             document.getElementById('chkModQuick').checked = true;
             document.getElementById('chkModWidget').checked = true;
             document.getElementById('chkModAdminTab').checked = true;
+            if (typeof window.setupModulePresetsForModal === 'function') {
+                window.setupModulePresetsForModal(false);
+            }
         }
 
         modal.style.display = 'flex';
