@@ -369,3 +369,84 @@ body:has(#jg-global-breaking-bar.jg-breaking-active) .ai-chat-window {
         font-size: 16px;
     }
 }
+
+/* ==============================================================================
+ * 🖥️ 데스크탑 고해상도 시원한 대화창 확대 (가독성 및 정리 텍스트 쾌적 뷰)
+ * ============================================================================== */
+@media (min-width: 1024px) {
+    .ai-chat-window {
+        width: 500px;
+        height: 650px;
+        max-height: calc(100vh - 140px);
+    }
+    .ai-bubble {
+        font-size: 0.92rem;
+        line-height: 1.55;
+    }
+    .ai-chat-input {
+        font-size: 0.92rem;
+    }
+}
+
+@media (min-width: 1280px) {
+    .ai-chat-window {
+        width: 600px;
+        height: 740px;
+        max-height: calc(100vh - 140px);
+        border-radius: 24px;
+    }
+    .ai-chat-header {
+        padding: 1.1rem 1.35rem;
+    }
+    .ai-chat-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 1.25rem;
+    }
+    .ai-chat-name {
+        font-size: 1rem;
+    }
+    .ai-chat-badge {
+        font-size: 0.74rem;
+        padding: 2px 7px;
+    }
+    .ai-chat-messages {
+        padding: 1.25rem;
+        gap: 1rem;
+    }
+    .ai-bubble {
+        padding: 0.85rem 1.15rem;
+        font-size: 0.96rem;
+        line-height: 1.62;
+        border-radius: 16px;
+    }
+    .ai-bubble-row {
+        max-width: 90%;
+    }
+    .ai-quick-prompts {
+        padding: 0.65rem 1.1rem;
+        gap: 8px;
+    }
+    .ai-prompt-chip {
+        font-size: 0.82rem;
+        padding: 6px 12px;
+        border-radius: 14px;
+    }
+    .ai-chat-input-bar {
+        padding: 0.9rem 1.15rem;
+        gap: 8px;
+    }
+    .ai-chat-input {
+        height: 48px;
+        font-size: 0.95rem;
+        padding: 0 1rem;
+        border-radius: 12px;
+    }
+    .ai-chat-send-btn {
+        height: 48px;
+        padding: 0 1.25rem;
+        font-size: 0.95rem;
+        border-radius: 12px;
+    }
+}
+

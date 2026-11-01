@@ -152,3 +152,44 @@ body { background-color: var(--memo-bg-page); color: var(--memo-text-main); over
         border-radius: 1.15rem;
     }
 }
+
+/* ==============================================================================
+ * 🖥️ 데스크탑 고해상도 120% 스케일링 (모바일 360px 무결성 100% 보존)
+ * - 사용자 브라우저 기본 100% 배율에서도 120% 수준의 시원한 가독성 제공
+ * ============================================================================== */
+@media (min-width: 1024px) {
+    html {
+        font-size: 17.5px;
+    }
+    .memo-app-container {
+        max-width: 1360px !important;
+    }
+    .memo-modal-dialog {
+        max-width: 720px;
+    }
+}
+
+@media (min-width: 1280px) {
+    html {
+        font-size: 19.2px; /* 16px의 정확한 1.2배 (120% 스케일) */
+    }
+    .memo-app-container {
+        max-width: 1480px !important;
+    }
+    .memo-modal-dialog {
+        max-width: 800px;
+    }
+    .memo-card {
+        padding: 1.25rem 1.35rem;
+    }
+}
+
+@media (min-width: 1600px) {
+    .memo-app-container {
+        max-width: 1560px !important;
+    }
+    .memo-modal-dialog {
+        max-width: 860px;
+    }
+}
+

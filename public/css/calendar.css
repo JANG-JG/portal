@@ -729,3 +729,53 @@ html.hide-ops [data-service="ops"] {
     display: none !important;
 }
 
+/* ==============================================================================
+ * 🖥️ 데스크탑 고해상도 120% 스케일링 (모바일 360px 무결성 100% 보존)
+ * - 사용자 브라우저 기본 100% 배율에서도 120% 수준의 시원한 가독성 제공
+ * ============================================================================== */
+@media (min-width: 1024px) {
+    html {
+        font-size: 17.5px;
+    }
+    .main-container {
+        max-width: 1360px !important;
+    }
+    .cal-cell {
+        min-height: 110px;
+    }
+}
+
+@media (min-width: 1280px) {
+    html {
+        font-size: 19.2px; /* 16px의 정확한 1.2배 (120% 스케일) */
+    }
+    .main-container {
+        max-width: 1480px !important;
+    }
+    .cal-cell {
+        min-height: 122px;
+    }
+    .cal-date-num {
+        width: 26px;
+        height: 26px;
+        font-size: 0.85rem;
+    }
+    .event-badge {
+        font-size: 0.72rem;
+        padding: 0.2rem 0.42rem;
+    }
+    .modal-card {
+        max-width: 600px;
+    }
+}
+
+@media (min-width: 1600px) {
+    .main-container {
+        max-width: 1560px !important;
+    }
+    .cal-cell {
+        min-height: 130px;
+    }
+}
+
+

@@ -152,9 +152,9 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
             options: {
                 temperature: 0.7,
                 top_p: 0.9,
-                num_predict: 120
+                num_predict: 350
             }
-        }, 45000);
+        }, 60000);
 
         if (result && result.response) {
             const cleanText = result.response.trim();
@@ -271,9 +271,9 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         keep_alive: '24h',
         options: {
             temperature: 0.7,
-            num_predict: 350
+            num_predict: 2048
         }
-    }, 75000);
+    }, 120000);
 
     return {
         success: true,
