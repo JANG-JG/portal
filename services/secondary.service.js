@@ -53,10 +53,12 @@ let secondaryServerCache = {
         retentionDays: 30
     },
     processes: [
+        { name: 'family-wiki', displayName: '📖 가족 위키 & 루틴 서버 (Gunicorn)', status: 'standby', memory: '-', cpu: '-', port: '5060', desc: '가족 생활 매뉴얼, Wi-Fi, 루틴 및 비상 의료 API' },
         { name: 'rsync-daemon', displayName: '🔄 Rsync 자동 증분 동기화 데몬', status: 'standby', memory: '-', cpu: '-', port: '873 / SSH', desc: '새벽 04시 주 서버 3대 DB 및 로그 자동 백업' },
         { name: 'cron-scheduler', displayName: '⏱️ Cron 정기 스케줄러 데몬', status: 'standby', memory: '-', cpu: '-', port: '-', desc: '정기 백업 트리거 및 30일 보존 롤오버' },
         { name: 'sshd-service', displayName: '🛡️ SSH 보안 원격 접속 서비스', status: 'standby', memory: '-', cpu: '-', port: '22', desc: '주 서버 간 키 기반 고속 암호화 통신' }
     ],
+
     topMemoryProcesses: [],
     dbs: {
         health: '대기 중 (새벽 4시 동기화)',
@@ -371,11 +373,13 @@ async function performSecondaryServerCheck() {
                     dbs: dbsObj,
                     logs: secLogs,
                     processes: [
+                        { name: 'family-wiki', displayName: '📖 가족 위키 & 루틴 서버 (Gunicorn)', status: isSshOk ? 'online' : 'standby', memory: '68.5 MB', cpu: '0.1%', port: '5060', desc: '가족 생활 매뉴얼, Wi-Fi, 루틴 및 비상 의료 API' },
                         { name: 'rsync-daemon', displayName: '🔄 Rsync 자동 증분 동기화 데몬', status: isSshOk ? 'online' : 'standby', memory: '14.2 MB', cpu: '0.1%', port: '873 / SSH', desc: '새벽 04시 주 서버 3대 DB 및 로그 자동 백업' },
                         { name: 'cron-scheduler', displayName: '⏱️ Cron 정기 스케줄러 데몬', status: isSshOk ? 'online' : 'standby', memory: '6.8 MB', cpu: '0.0%', port: 'Daemon', desc: '정기 백업 트리거 및 30일 보존 롤오버' },
                         { name: 'sshd-service', displayName: '🛡️ SSH 보안 원격 접속 서비스', status: isSshOk ? 'online' : 'standby', memory: '18.5 MB', cpu: '0.0%', port: '22', desc: '주 서버 간 키 기반 고속 암호화 통신' }
                     ]
                 };
+
                 resolve(secondaryServerCache);
             });
         });

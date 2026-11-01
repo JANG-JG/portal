@@ -65,8 +65,9 @@
                             </div>
                             <div class="dual-server-submeta">
                                 <span>가동: <strong id="secServerUptimeSummary">-</strong></span>
-                                <span>백업 데몬: <strong id="secActiveProcessCountSummary" style="color:#7c3aed;">- / 3</strong></span>
+                                <span>보조 프로세스: <strong id="secActiveProcessCountSummary" style="color:#7c3aed;">- / 4</strong></span>
                             </div>
+
                             <div class="dual-metric-rows">
                                 <div class="dual-metric-row">
                                     <div class="dual-metric-label">
@@ -210,13 +211,14 @@
                         </div>
                     </div>
 
-                    <!-- 전체 서비스 프로세스 상태 카드 (3대 백업 데몬) -->
+                    <!-- 전체 서비스 프로세스 상태 카드 (위키 및 3대 백업 데몬) -->
                     <div class="admin-card">
                         <div class="admin-card-header">
                             <div>
-                                <h3 style="margin-bottom:0.2rem;">🚀 보조 서버 백업 데몬 상태</h3>
-                                <span style="font-size:0.8rem; color:#64748b;">3대 핵심 백업 데몬 및 SSH 원격 서비스 모니터링</span>
+                                <h3 style="margin-bottom:0.2rem;">🚀 보조 서버 서비스 & 백업 데몬 상태</h3>
+                                <span style="font-size:0.8rem; color:#64748b;">가족 위키(5060) 및 3대 백업 데몬 실시간 모니터링</span>
                             </div>
+
                             <div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">
                                 <span class="badge-online" id="secBadgeCard" style="font-size:0.72rem;">SSH: 22</span>
                                 <button class="btn-admin btn-admin-outline btn-admin-sm" id="btnSecPing" onclick="pingSecondaryServer()">

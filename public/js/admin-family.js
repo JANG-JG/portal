@@ -57,10 +57,12 @@ function renderFamilyMembersTable(members) {
     const serviceLabels = {
         'all': '전체 서비스 (관리자)',
         'album': '📸 가족 앨범',
+        'wiki': '📖 가족 위키',
         'news': '📰 뉴스·날씨·증시',
         'blood': '🩸 혈압 관리',
         'asset': '💰 자산 관리'
     };
+
 
     tableBody.innerHTML = members.map(m => {
         const isAdmin = m.role === 'admin';
@@ -212,6 +214,7 @@ function openAddFamilyModal() {
     if (!modal || !form) return;
     form.reset();
     document.getElementById('chkAddServiceAlbum').checked = true;
+    if (document.getElementById('chkAddServiceWiki')) document.getElementById('chkAddServiceWiki').checked = true;
     document.getElementById('chkAddServiceNews').checked = true;
     modal.style.display = 'flex';
     modal.classList.add('active');
@@ -232,10 +235,12 @@ async function submitAddFamily(e) {
     const nickname = document.getElementById('inputAddNickname').value.trim();
 
     const allowedServices = [];
-    if (document.getElementById('chkAddServiceAlbum').checked) allowedServices.push('album');
-    if (document.getElementById('chkAddServiceNews').checked) allowedServices.push('news');
-    if (document.getElementById('chkAddServiceAsset').checked) allowedServices.push('asset');
-    if (document.getElementById('chkAddServiceBlood').checked) allowedServices.push('blood');
+    if (document.getElementById('chkAddServiceAlbum')?.checked) allowedServices.push('album');
+    if (document.getElementById('chkAddServiceWiki')?.checked) allowedServices.push('wiki');
+    if (document.getElementById('chkAddServiceNews')?.checked) allowedServices.push('news');
+    if (document.getElementById('chkAddServiceAsset')?.checked) allowedServices.push('asset');
+    if (document.getElementById('chkAddServiceBlood')?.checked) allowedServices.push('blood');
+
 
     if (!nickname) {
         alert('관리용 명칭(가족 호칭)을 입력해 주세요.');
@@ -284,6 +289,7 @@ function openEditFamilyModal(username) {
     const services = member.allowedServices || ['album', 'news'];
     const isAll = services.includes('all');
     document.getElementById('chkEditServiceAlbum').checked = isAll || services.includes('album');
+    if (document.getElementById('chkEditServiceWiki')) document.getElementById('chkEditServiceWiki').checked = isAll || services.includes('wiki');
     document.getElementById('chkEditServiceNews').checked = isAll || services.includes('news');
     document.getElementById('chkEditServiceAsset').checked = isAll || services.includes('asset');
     document.getElementById('chkEditServiceBlood').checked = isAll || services.includes('blood');
@@ -312,10 +318,12 @@ async function submitEditFamily(e) {
     const birthdate = document.getElementById('inputEditBirthdate').value.trim();
 
     const allowedServices = [];
-    if (document.getElementById('chkEditServiceAlbum').checked) allowedServices.push('album');
-    if (document.getElementById('chkEditServiceNews').checked) allowedServices.push('news');
-    if (document.getElementById('chkEditServiceAsset').checked) allowedServices.push('asset');
-    if (document.getElementById('chkEditServiceBlood').checked) allowedServices.push('blood');
+    if (document.getElementById('chkEditServiceAlbum')?.checked) allowedServices.push('album');
+    if (document.getElementById('chkEditServiceWiki')?.checked) allowedServices.push('wiki');
+    if (document.getElementById('chkEditServiceNews')?.checked) allowedServices.push('news');
+    if (document.getElementById('chkEditServiceAsset')?.checked) allowedServices.push('asset');
+    if (document.getElementById('chkEditServiceBlood')?.checked) allowedServices.push('blood');
+
 
     try {
         const res = await fetch(`/api/admin/family/members/${username}`, {

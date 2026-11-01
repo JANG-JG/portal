@@ -136,8 +136,37 @@
                 </div>
             </div>
 
-            <!-- 그룹 6: 통합 백업 센터 -->
+            <!-- 그룹 6: 가족 위키 -->
+            <div class="admin-sidebar-group" id="sidebar-group-wiki">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('wiki')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>📖</span>
+                        <span>가족 위키 제어</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-wiki" data-sub="subpane-wiki-overview" onclick="switchAdminTabAndSub('tab-wiki', 'subpane-wiki-overview')">
+                        <span>📊</span> 위키 현황 & 퀵카드
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-wiki" data-sub="subpane-wiki-routines" onclick="switchAdminTabAndSub('tab-wiki', 'subpane-wiki-routines')">
+                        <span>📅</span> 요일별 루틴 & 할 일
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-wiki" data-sub="subpane-wiki-ddays" onclick="switchAdminTabAndSub('tab-wiki', 'subpane-wiki-ddays')">
+                        <span>⏳</span> D-Day & 소모품 주기
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-wiki" data-sub="subpane-wiki-configs" onclick="switchAdminTabAndSub('tab-wiki', 'subpane-wiki-configs')">
+                        <span>📶</span> Wi-Fi & 비상 의료
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-wiki" data-sub="subpane-wiki-pages" onclick="switchAdminTabAndSub('tab-wiki', 'subpane-wiki-pages')">
+                        <span>📖</span> 위키 문서 보관함
+                    </button>
+                </div>
+            </div>
+
+            <!-- 그룹 7: 통합 백업 센터 -->
             <div class="admin-sidebar-group" id="sidebar-group-backup">
+
                 <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('backup')">
                     <span class="admin-sidebar-parent-left">
                         <span>💾</span>
@@ -155,7 +184,7 @@
                 </div>
             </div>
 
-            <!-- 그룹 7: 데이터베이스 관리자 (SQLite) -->
+            <!-- 그룹 8: 데이터베이스 관리자 (SQLite) -->
             <div class="admin-sidebar-group" id="sidebar-group-database">
                 <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('database')">
                     <span class="admin-sidebar-parent-left">
@@ -177,8 +206,9 @@
                 </div>
             </div>
 
-            <!-- 그룹 8: 보안 및 계정 -->
+            <!-- 그룹 9: 보안 및 계정 -->
             <div class="admin-sidebar-group" id="sidebar-group-security">
+
                 <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('security')">
                     <span class="admin-sidebar-parent-left">
                         <span>👤</span>
@@ -256,7 +286,11 @@
                 <button class="admin-tab-btn" data-tab="tab-album" onclick="switchAdminTab('tab-album', this)">
                     📸 가족 사진첩
                 </button>
+                <button class="admin-tab-btn" data-tab="tab-wiki" onclick="switchAdminTab('tab-wiki', this)">
+                    📖 가족 위키
+                </button>
                 <button class="admin-tab-btn" data-tab="tab-backup" onclick="switchAdminTab('tab-backup', this)">
+
                     💾 통합 백업
                 </button>
                 <button class="admin-tab-btn" data-tab="tab-database" onclick="switchAdminTab('tab-database', this)">
@@ -334,8 +368,12 @@
                                 <input type="checkbox" id="chkAddServiceAlbum" checked> <span>📸 우리 가족 앨범</span>
                             </label>
                             <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkAddServiceWiki" checked> <span>📖 우리 가족 위키</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
                                 <input type="checkbox" id="chkAddServiceNews" checked> <span>📰 뉴스룸 & 날씨·증시</span>
                             </label>
+
                             <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; color:#94a3b8;">
                                 <input type="checkbox" id="chkAddServiceAsset"> <span>💰 자산 관리 (관리자 전용 비공개 권장)</span>
                             </label>
@@ -386,8 +424,12 @@
                                 <input type="checkbox" id="chkEditServiceAlbum"> <span>📸 우리 가족 앨범</span>
                             </label>
                             <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                <input type="checkbox" id="chkEditServiceWiki"> <span>📖 우리 가족 위키</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
                                 <input type="checkbox" id="chkEditServiceNews"> <span>📰 뉴스룸 & 날씨·증시</span>
                             </label>
+
                             <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
                                 <input type="checkbox" id="chkEditServiceAsset"> <span>💰 자산 관리</span>
                             </label>
@@ -466,8 +508,10 @@
     <script src="/js/admin-services.js"></script>
     <script src="/js/admin-family.js"></script>
     <script src="/js/admin-album-backup.js"></script>
+    <script src="/js/admin-wiki.js"></script>
     <script src="/js/admin-db-manager.js"></script>
     <script src="/js/admin-db-sql.js"></script>
+
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>
 </body>

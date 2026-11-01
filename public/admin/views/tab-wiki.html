@@ -1,0 +1,428 @@
+<!-- ========================================== -->
+<!-- 📖 [탭] 우리 가족 위키 제어 (tab-wiki) -->
+<!-- ========================================== -->
+<div id="tab-wiki" class="admin-tab-pane">
+
+    <!-- 📊 서브 1: 위키 현황 & 퀵카드 요약 (subpane-wiki-overview) -->
+    <div id="subpane-wiki-overview" class="admin-sub-pane">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <div class="admin-card-title">
+                    <span>📖</span>
+                    <span>우리 가족 위키 현황 & 요약</span>
+                </div>
+                <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadWikiAdminOverview()">
+                    🔄 새로고침
+                </button>
+            </div>
+            <div class="admin-card-body">
+                <!-- 상단 통계 벤토 그리드 -->
+                <div class="admin-overview-grid" style="margin-bottom:1.5rem;">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#e0f2fe; color:#0284c7;">📑</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">등록된 위키 문서</div>
+                            <div class="admin-stat-val" id="wikiStatPages">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#fef3c7; color:#d97706;">⏳</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">D-Day 일정</div>
+                            <div class="admin-stat-val" id="wikiStatDdays">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#dcfce7; color:#15803d;">✅</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">오늘의 루틴 달성률</div>
+                            <div class="admin-stat-val" id="wikiStatRoutinePercent">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#f1f5f9; color:#475569;">📶</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">우리집 Wi-Fi</div>
+                            <div class="admin-stat-val" id="wikiStatWifi" style="font-size:1rem; font-weight:700;">확인 중</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 위키 바로가기 액션 배너 -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.25rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.75rem;">
+                    <div>
+                        <div style="font-weight:700; color:#1e293b; font-size:0.95rem;">우리 가족 생활 위키 & 루틴 센터</div>
+                        <div style="font-size:0.82rem; color:#64748b; margin-top:3px;">가족 비상 정보, Wi-Fi, 생활 매뉴얼 및 요일별 루틴을 한눈에 확인하세요.</div>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <a href="/wiki" target="_blank" rel="noopener" class="btn-admin btn-admin-primary btn-admin-sm" style="text-decoration:none;">
+                            🚀 위키 홈 열기 ↗
+                        </a>
+                        <a href="/wiki/new" target="_blank" rel="noopener" class="btn-admin btn-admin-outline btn-admin-sm" style="text-decoration:none;">
+                            ✍️ 새 문서 작성 ↗
+                        </a>
+                    </div>
+                </div>
+
+                <!-- 생활 퀵카드 4종 현황 -->
+                <div style="margin-bottom:1.5rem;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <h4 style="margin:0; font-size:0.95rem; color:#0f172a; font-weight:700;">📌 생활 퀵카드 바로가기 현황</h4>
+                        <span style="font-size:0.78rem; color:#64748b;">위키 홈 대시보드 상단 노출 카드</span>
+                    </div>
+                    <div id="wikiQuickCardsContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:0.75rem;">
+                        <div style="text-align:center; padding:1.5rem; color:#94a3b8; grid-column:1/-1;">퀵카드 정보를 불러오는 중...</div>
+                    </div>
+                </div>
+
+                <!-- 자주 찾는 필독 생활가이드 -->
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <h4 style="margin:0; font-size:0.95rem; color:#0f172a; font-weight:700;">⭐ 자주 찾는 필독 생활가이드</h4>
+                        <span style="font-size:0.78rem; color:#64748b;">위키 홈 추천 가이드</span>
+                    </div>
+                    <div id="wikiPinnedGuidesContainer" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:0.75rem;">
+                        <div style="text-align:center; padding:1.5rem; color:#94a3b8; grid-column:1/-1;">가이드 목록을 불러오는 중...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📅 서브 2: 요일별 루틴 & 할 일 관리 (subpane-wiki-routines) -->
+    <div id="subpane-wiki-routines" class="admin-sub-pane hidden-pane">
+        <div class="admin-card" style="margin-bottom:1.25rem;">
+            <div class="admin-card-header">
+                <div class="admin-card-title">
+                    <span>📅</span>
+                    <span>요일별 생활 루틴 & 할 일 목록</span>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <select id="wikiRoutineFilterAssignee" class="admin-select admin-select-sm" onchange="renderWikiRoutinesTable()" style="font-size:0.8rem; padding:0.35rem 0.6rem; border-radius:0.4rem; border:1px solid #cbd5e1;">
+                        <option value="">모든 담당자</option>
+                        <option value="아빠">👨 아빠</option>
+                        <option value="엄마">👩 엄마</option>
+                        <option value="아이">🧒 아이</option>
+                        <option value="전체">🏠 공통(전체)</option>
+                    </select>
+                    <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadWikiAdminRoutines()">
+                        🔄 새로고침
+                    </button>
+                </div>
+            </div>
+            <div class="admin-card-body">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th style="width:65px;">구분</th>
+                                <th style="width:85px;">담당자</th>
+                                <th style="width:90px;">반복 요일</th>
+                                <th>내용</th>
+                                <th style="width:85px; text-align:center;">상태</th>
+                                <th style="width:110px; text-align:center;">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wikiRoutinesTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">루틴 목록을 불러오는 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ➕ 신규 루틴/할일 등록 폼 -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <div class="admin-card-title">
+                    <span>➕</span>
+                    <span>새로운 루틴 / 할 일 등록</span>
+                </div>
+            </div>
+            <div class="admin-card-body">
+                <form id="addWikiRoutineForm" onsubmit="submitAddWikiRoutine(event)">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                        <div>
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">루틴 / 할 일 내용 *</label>
+                            <input type="text" id="inputRoutineContent" placeholder="예: 아침 비타민 먹기, 분리수거하기" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">담당 가족 선택</label>
+                            <select id="selectRoutineAssignee" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box; background:#fff;">
+                                <option value="전체">🏠 온 가족 (공통)</option>
+                                <option value="아빠">👨 아빠</option>
+                                <option value="엄마">👩 엄마</option>
+                                <option value="아이">🧒 아이</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:1rem; padding:0.85rem 1rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+                            <label style="display:flex; align-items:center; gap:0.4rem; font-size:0.85rem; font-weight:700; color:#1e293b; cursor:pointer;">
+                                <input type="checkbox" id="chkIsRoutine" checked onchange="toggleRoutineDaysInputs(this.checked)">
+                                <span>정기 반복 루틴으로 설정 (매일 또는 특정 요일)</span>
+                            </label>
+                            <span style="font-size:0.75rem; color:#64748b;">체크 해제 시 1회성 장보기/할 일로 등록</span>
+                        </div>
+                        <div id="routineDaysCheckboxGroup" style="display:flex; gap:0.5rem; flex-wrap:wrap; font-size:0.82rem; color:#334155;">
+                            <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" class="chk-weekday" value="0"> 월</label>
+                            <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" class="chk-weekday" value="1"> 화</label>
+                            <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" class="chk-weekday" value="2"> 수</label>
+                            <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" class="chk-weekday" value="3"> 목</label>
+                            <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><input type="checkbox" class="chk-weekday" value="4"> 금</label>
+                            <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer; color:#2563eb;"><input type="checkbox" class="chk-weekday" value="5"> 토</label>
+                            <label style="display:flex; align-items:center; gap:0.25rem; cursor:pointer; color:#dc2626;"><input type="checkbox" class="chk-weekday" value="6"> 일</label>
+                            <span style="font-size:0.75rem; color:#64748b; margin-left:0.5rem; align-self:center;">(모두 미선택 시 매일 반복)</span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="submit" class="btn-admin btn-admin-primary">
+                            💾 루틴 등록하기
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ⏳ 서브 3: D-Day & 소모품/계약 주기 관리 (subpane-wiki-ddays) -->
+    <div id="subpane-wiki-ddays" class="admin-sub-pane hidden-pane">
+        <div class="admin-card" style="margin-bottom:1.25rem;">
+            <div class="admin-card-header">
+                <div class="admin-card-title">
+                    <span>⏳</span>
+                    <span>생활 D-Day & 소모품/계약 주기 일정</span>
+                </div>
+                <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadWikiAdminDdays()">
+                    🔄 새로고침
+                </button>
+            </div>
+            <div class="admin-card-body">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th style="width:75px;">카테고리</th>
+                                <th>일정명</th>
+                                <th style="width:105px;">목표 일자</th>
+                                <th style="width:85px; text-align:center;">D-Day</th>
+                                <th style="width:85px; text-align:center;">주기</th>
+                                <th style="width:130px; text-align:center;">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wikiDdaysTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align:center; padding:2rem; color:#94a3b8;">D-Day 일정을 불러오는 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ➕ 신규 D-Day 등록 폼 -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <div class="admin-card-title">
+                    <span>➕</span>
+                    <span>새로운 D-Day / 소모품 주기 등록</span>
+                </div>
+            </div>
+            <div class="admin-card-body">
+                <form id="addWikiDdayForm" onsubmit="submitAddWikiDday(event)">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                        <div>
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">카테고리 *</label>
+                            <select id="inputDdayCategory" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box; background:#fff;">
+                                <option value="소모품">🧻 소모품 / 필터 교체</option>
+                                <option value="정기계약">📄 정기 계약 / 보험 갱신</option>
+                                <option value="가족일정">🎂 가족 기념일 / 행사</option>
+                                <option value="병원">🏥 정기 검진 / 병원 일정</option>
+                                <option value="기타">📌 기타 생활 일정</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">일정명 *</label>
+                            <input type="text" id="inputDdayTitle" placeholder="예: 정수기 필터 교체, 자동차 보험 갱신" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">목표 날짜 *</label>
+                            <input type="date" id="inputDdayTargetDate" required style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">반복 주기 (일)</label>
+                            <input type="number" id="inputDdayCycleDays" placeholder="0 (1회성은 0)" min="0" value="0" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                            <span style="font-size:0.75rem; color:#64748b;">주기 입력 시 완료 처리 후 다음 주기로 자동 갱신</span>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:1rem;">
+                        <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.35rem;">메모 (선택사항)</label>
+                        <input type="text" id="inputDdayMemo" placeholder="예: 퓨리얼 정수기 필터 2단계 여분 수납장 보관" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                    </div>
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="submit" class="btn-admin btn-admin-primary">
+                            💾 D-Day 등록하기
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📶 서브 4: Wi-Fi & 비상 의료 설정 (subpane-wiki-configs) -->
+    <div id="subpane-wiki-configs" class="admin-sub-pane hidden-pane">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:1.25rem;">
+            <!-- 📶 우리집 Wi-Fi 설정 -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <div class="admin-card-title">
+                        <span>📶</span>
+                        <span>우리집 Wi-Fi 접속 정보 & QR 코드</span>
+                    </div>
+                    <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadWikiAdminConfigs()">
+                        🔄 새로고침
+                    </button>
+                </div>
+                <div class="admin-card-body">
+                    <form id="wikiWifiForm" onsubmit="submitSaveWikiWifi(event)">
+                        <div style="margin-bottom:0.85rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">5G Wi-Fi 이름 (SSID)</label>
+                            <input type="text" id="cfgWifiSsid5g" placeholder="JG_Home_5G" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
+                        <div style="margin-bottom:0.85rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">2.4G Wi-Fi 이름 (SSID)</label>
+                            <input type="text" id="cfgWifiSsid2g" placeholder="JG_Home_2.4G" style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
+                        <div style="margin-bottom:0.85rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">Wi-Fi 비밀번호</label>
+                            <input type="text" id="cfgWifiPw" placeholder="비밀번호" required style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box; font-family:monospace;">
+                        </div>
+                        <div style="margin-bottom:1.15rem; padding:0.85rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:700; color:#334155; margin-bottom:0.35rem;">스마트폰 Wi-Fi QR 이미지</label>
+                            <div style="display:flex; align-items:center; gap:0.85rem; flex-wrap:wrap;">
+                                <div id="cfgWifiQrPreview" style="width:80px; height:80px; border:1px dashed #cbd5e1; border-radius:0.5rem; display:flex; align-items:center; justify-content:center; background:#fff; overflow:hidden;">
+                                    <span style="font-size:0.75rem; color:#94a3b8; text-align:center;">미등록</span>
+                                </div>
+                                <div style="flex:1; min-width:180px;">
+                                    <input type="file" id="cfgWifiQrFile" accept="image/*" style="font-size:0.8rem; margin-bottom:0.35rem; width:100%;">
+                                    <div style="display:flex; gap:0.4rem; align-items:center;">
+                                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="removeWifiQrImage()" style="font-size:0.72rem; padding:2px 6px;">
+                                            🗑️ QR 이미지 삭제
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:flex-end;">
+                            <button type="submit" class="btn-admin btn-admin-primary">
+                                💾 Wi-Fi 설정 저장
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- 🚨 비상 의료 & 응급 안내 설정 -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <div class="admin-card-title">
+                        <span>🚨</span>
+                        <span>비상 의료 & 권역 응급 안내</span>
+                    </div>
+                </div>
+                <div class="admin-card-body">
+                    <form id="wikiMedicalForm" onsubmit="submitSaveWikiMedical(event)">
+                        <!-- 소아청소년과 -->
+                        <div style="margin-bottom:1rem; padding:0.75rem; background:#fffbeb; border:1px solid #fef3c7; border-radius:0.5rem;">
+                            <div style="font-size:0.85rem; font-weight:700; color:#b45309; margin-bottom:0.4rem;">👶 야간 소아청소년과</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.4rem;">
+                                <div>
+                                    <label style="font-size:0.75rem; color:#64748b;">병원명</label>
+                                    <input type="text" id="cfgMedPediatricName" style="width:100%; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; box-sizing:border-box;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem; color:#64748b;">전화번호</label>
+                                    <input type="text" id="cfgMedPediatricPhone" style="width:100%; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; box-sizing:border-box;">
+                                </div>
+                            </div>
+                            <input type="text" id="cfgMedPediatricDesc" placeholder="진료 시간 및 위치 메모" style="width:100%; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; box-sizing:border-box;">
+                        </div>
+
+                        <!-- 권역응급의료센터 -->
+                        <div style="margin-bottom:1rem; padding:0.75rem; background:#fef2f2; border:1px solid #fee2e2; border-radius:0.5rem;">
+                            <div style="font-size:0.85rem; font-weight:700; color:#b91c1c; margin-bottom:0.4rem;">🏥 24시 권역응급의료센터</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.4rem;">
+                                <div>
+                                    <label style="font-size:0.75rem; color:#64748b;">병원명</label>
+                                    <input type="text" id="cfgMedEmergencyName" style="width:100%; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; box-sizing:border-box;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.75rem; color:#64748b;">전화번호</label>
+                                    <input type="text" id="cfgMedEmergencyPhone" style="width:100%; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; box-sizing:border-box;">
+                                </div>
+                            </div>
+                            <input type="text" id="cfgMedEmergencyDesc" placeholder="응급실 안내 및 위치 메모" style="width:100%; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; box-sizing:border-box;">
+                        </div>
+
+                        <!-- 구급함 위치 -->
+                        <div style="margin-bottom:1.15rem;">
+                            <label style="display:block; font-size:0.85rem; font-weight:600; color:#334155; margin-bottom:0.25rem;">💊 가정 구급함 보관 위치 메모</label>
+                            <input type="text" id="cfgMedCabinetLoc" placeholder="예: 주방 아일랜드 식탁 수납장 두 번째 서랍" style="width:100%; padding:0.55rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; box-sizing:border-box;">
+                        </div>
+
+                        <div style="display:flex; justify-content:flex-end;">
+                            <button type="submit" class="btn-admin btn-admin-primary">
+                                💾 비상 의료 정보 저장
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📖 서브 5: 위키 문서 보관함 & 관리 (subpane-wiki-pages) -->
+    <div id="subpane-wiki-pages" class="admin-sub-pane hidden-pane">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <div class="admin-card-title">
+                    <span>📖</span>
+                    <span>가족 위키 문서 보관함</span>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <a href="/wiki/new" target="_blank" rel="noopener" class="btn-admin btn-admin-primary btn-admin-sm" style="text-decoration:none;">
+                        ✍️ 새 문서 작성 ↗
+                    </a>
+                    <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadWikiAdminPages()">
+                        🔄 새로고침
+                    </button>
+                </div>
+            </div>
+            <div class="admin-card-body">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th style="width:85px;">카테고리</th>
+                                <th>문서 제목</th>
+                                <th style="width:140px;">URL 슬러그</th>
+                                <th style="width:130px;">최종 수정일</th>
+                                <th style="width:120px; text-align:center;">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wikiPagesTableBody">
+                            <tr>
+                                <td colspan="5" style="text-align:center; padding:2rem; color:#94a3b8;">위키 문서를 불러오는 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

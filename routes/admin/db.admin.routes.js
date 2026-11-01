@@ -8,9 +8,10 @@ const {
     ASSET_DB_PATH,
     NEWS_DB_PATH,
     ALBUM_DB_PATH,
+    WIKI_DB_PATH,
     PORTAL_DB_PATH
 } = require('../../config/constants');
-const { db, assetDb, newsDb, albumDb, portalDb } = require('../../services/db');
+const { db, assetDb, newsDb, albumDb, wikiDb, portalDb } = require('../../services/db');
 
 // 대상 데이터베이스 매핑 딕셔너리
 const DB_MAP = {
@@ -18,8 +19,10 @@ const DB_MAP = {
     'health': { key: 'health', name: '혈압 & 마스터 계정 (health.db)', db, path: BLOOD_DB_PATH },
     'asset': { key: 'asset', name: '자산 관리 (asset.db)', db: assetDb, path: ASSET_DB_PATH },
     'briefing': { key: 'briefing', name: '뉴스 브리핑 (briefing.db)', db: newsDb, path: NEWS_DB_PATH },
-    'album': { key: 'album', name: '가족 사진첩 (album.db)', db: albumDb, path: ALBUM_DB_PATH }
+    'album': { key: 'album', name: '가족 사진첩 (album.db)', db: albumDb, path: ALBUM_DB_PATH },
+    'wiki': { key: 'wiki', name: '가족 위키 & 루틴 (wiki.db)', db: wikiDb, path: WIKI_DB_PATH }
 };
+
 
 function getDbInstance(dbKey) {
     return DB_MAP[dbKey] || DB_MAP['portal'] || DB_MAP['health'];

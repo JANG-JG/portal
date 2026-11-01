@@ -1,5 +1,7 @@
+const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
-const { BLOOD_DB_PATH, ASSET_DB_PATH, NEWS_DB_PATH, ALBUM_DB_PATH, PORTAL_DB_PATH, ADMIN_USERS } = require('../config/constants');
+const { BLOOD_DB_PATH, ASSET_DB_PATH, NEWS_DB_PATH, ALBUM_DB_PATH, WIKI_DB_PATH, PORTAL_DB_PATH, ADMIN_USERS } = require('../config/constants');
+
 
 // 마스터 계정 DB 연결 (혈압 앱 health.db)
 const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
@@ -179,8 +181,50 @@ const albumDb = new sqlite3.Database(ALBUM_DB_PATH, (err) => {
     }
 });
 
+// 가족 위키 DB 연결 (wiki.db - 안전 연결 및 온디맨드 폴백)
+let wikiDb = null;
+if (fs.existsSync(WIKI_DB_PATH)) {
+    wikiDb = new sqlite3.Database(WIKI_DB_PATH, (err) => {
+        if (err) console.error('❌ 가족 위키 DB 연결 실패:', err);
+        else {
+            console.log('✅ 가족 위키 DB 로드 완료:', WIKI_DB_PATH);
+            wikiDb.run('PRAGMA journal_mode = WAL;');
+            wikiDb.run('PRAGMA synchronous = NORMAL;');
+            wikiDb.run('PRAGMA busy_timeout = 5000;');
+        }
+    });
+} else {
+    wikiDb = {
+        all: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (fs.existsSync(WIKI_DB_PATH)) {
+                const realDb = new sqlite3.Database(WIKI_DB_PATH);
+                return realDb.all(sql, params, (err, rows) => { realDb.close(); cb(err, rows); });
+            }
+            cb(null, []);
+        },
+        get: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (fs.existsSync(WIKI_DB_PATH)) {
+                const realDb = new sqlite3.Database(WIKI_DB_PATH);
+                return realDb.get(sql, params, (err, row) => { realDb.close(); cb(err, row); });
+            }
+            cb(null, null);
+        },
+        run: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (fs.existsSync(WIKI_DB_PATH)) {
+                const realDb = new sqlite3.Database(WIKI_DB_PATH);
+                return realDb.run(sql, params, function(err) { realDb.close(); if (cb) cb.call(this, err); });
+            }
+            if (cb) cb(new Error('WIKI_DB_NOT_FOUND'));
+        }
+    };
+}
+
 // 포털 전용 DB 연결 (portal.db - 메모, 캘린더, 시스템 설정 독립 분리)
 const portalDb = new sqlite3.Database(PORTAL_DB_PATH, (err) => {
+
     if (err) console.error('❌ 포털 DB 연결 실패:', err);
     else {
         console.log('✅ 포털 DB 로드 완료:', PORTAL_DB_PATH);
@@ -320,5 +364,7 @@ module.exports = {
     assetDb,
     newsDb,
     albumDb,
+    wikiDb,
     portalDb
 };
+

@@ -100,11 +100,13 @@ function assembleAdminHtml() {
         'tab-blood.html',
         'tab-asset.html',
         'tab-news.html',
-        'tab-security.html',
         'tab-album.html',
+        'tab-wiki.html',
         'tab-backup.html',
-        'tab-database.html'
+        'tab-database.html',
+        'tab-security.html'
     ];
+
     const panes = tabFiles.map(file => {
         const filePath = path.join(viewsDir, file);
         return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';

@@ -30,7 +30,15 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-album-photos', label: '최근 업로드 사진 관리', icon: '🖼️' },
         { id: 'subpane-album-members', label: '가족 구성원 활동 현황', icon: '👥' }
     ],
+    'tab-wiki': [
+        { id: 'subpane-wiki-overview', label: '위키 현황 & 퀵카드', icon: '📊' },
+        { id: 'subpane-wiki-routines', label: '요일별 루틴 & 할 일', icon: '📅' },
+        { id: 'subpane-wiki-ddays', label: 'D-Day & 소모품 주기', icon: '⏳' },
+        { id: 'subpane-wiki-configs', label: 'Wi-Fi & 비상 의료', icon: '📶' },
+        { id: 'subpane-wiki-pages', label: '위키 문서 보관함', icon: '📖' }
+    ],
     'tab-backup': [
+
         { id: 'subpane-backup-status', label: '정기 백업 & 즉시 실행', icon: '📦' },
         { id: 'subpane-backup-logs', label: '실시간 백업 로그 콘솔', icon: '📋' }
     ],
@@ -329,7 +337,14 @@ function switchAdminTab(tabId, btn, targetSubId = null, shouldScroll = true) {
         if (typeof window.loadAlbumAdminStats === 'function') window.loadAlbumAdminStats();
         if (typeof window.loadAlbumAdminPhotos === 'function') window.loadAlbumAdminPhotos();
         if (typeof window.loadAlbumAdminMembers === 'function') window.loadAlbumAdminMembers();
+    } else if (tabId === 'tab-wiki') {
+        if (typeof window.loadWikiAdminOverview === 'function') window.loadWikiAdminOverview();
+        if (typeof window.loadWikiAdminRoutines === 'function') window.loadWikiAdminRoutines();
+        if (typeof window.loadWikiAdminDdays === 'function') window.loadWikiAdminDdays();
+        if (typeof window.loadWikiAdminConfigs === 'function') window.loadWikiAdminConfigs();
+        if (typeof window.loadWikiAdminPages === 'function') window.loadWikiAdminPages();
     } else if (tabId === 'tab-backup') {
+
         if (typeof window.loadBackupAdminStatus === 'function') window.loadBackupAdminStatus();
         if (typeof window.loadBackupAdminLogs === 'function') window.loadBackupAdminLogs();
     } else if (tabId === 'tab-database') {

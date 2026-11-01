@@ -11,8 +11,10 @@ const {
     ASSET_DB_PATH,
     NEWS_DB_PATH,
     ALBUM_DB_PATH,
+    WIKI_DB_PATH,
     PORTAL_DB_PATH
 } = require('../../config/constants');
+
 const { db, newsDb } = require('../../services/db');
 const { sendServerTelegram } = require('../../services/unifiedNotificationScheduler');
 const {
@@ -365,7 +367,7 @@ router.get('/backup/all', (req, res) => {
     const pyScript = `import zipfile, os
 zpath = "${tmpZip}"
 zf = zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED)
-for p, arc in [("${PORTAL_DB_PATH}", "portal.db"), ("${BLOOD_DB_PATH}", "health.db"), ("${ASSET_DB_PATH}", "asset.db"), ("${NEWS_DB_PATH}", "briefing.db"), ("${ALBUM_DB_PATH}", "album.db")]:
+for p, arc in [("${PORTAL_DB_PATH}", "portal.db"), ("${BLOOD_DB_PATH}", "health.db"), ("${ASSET_DB_PATH}", "asset.db"), ("${NEWS_DB_PATH}", "briefing.db"), ("${ALBUM_DB_PATH}", "album.db"), ("${WIKI_DB_PATH}", "wiki.db")]:
     if os.path.exists(p):
         zf.write(p, arc)
 zf.close()
@@ -398,8 +400,11 @@ router.get('/backup/:type', (req, res) => {
         return res.download(NEWS_DB_PATH, `briefing_backup_${now}.db`);
     } else if (type === 'album') {
         return res.download(ALBUM_DB_PATH, `album_backup_${now}.db`);
+    } else if (type === 'wiki') {
+        return res.download(WIKI_DB_PATH, `wiki_backup_${now}.db`);
     }
     res.status(404).send('해당 DB 백업 파일을 찾을 수 없습니다.');
 });
+
 
 module.exports = router;
