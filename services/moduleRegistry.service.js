@@ -237,6 +237,8 @@ function createOrUpdateModule(data, isNew = false) {
         throw new Error(`이미 존재하는 모듈 ID입니다: ${cleanId}`);
     }
 
+    const existingMod = existingIdx !== -1 ? modules[existingIdx] : null;
+
     const modPayload = {
         id: cleanId,
         name: String(data.name).trim(),
@@ -245,10 +247,9 @@ function createOrUpdateModule(data, isNew = false) {
         category: data.category ? String(data.category).trim() : '라이프',
         entryUrl: String(data.entryUrl).trim(),
         baseUrl: data.baseUrl ? String(data.baseUrl).trim() : '',
-        ssoEnabled: Boolean(data.ssoEnabled),
+        ssoEnabled: Boolean(data.ssoEnabled !== undefined ? data.ssoEnabled : data.baseUrl),
         adminOnly: Boolean(data.adminOnly),
         defaultFamilyAllowed: Boolean(data.defaultFamilyAllowed),
-        order: Number(data.order) || 50,
         enabled: data.enabled !== false,
         nav: data.nav || { enabled: true, label: data.name, entryUrl: data.entryUrl, subLinks: [] },
         quickStrip: Array.isArray(data.quickStrip) ? data.quickStrip : [
@@ -256,17 +257,112 @@ function createOrUpdateModule(data, isNew = false) {
         ],
         portalWidget: data.portalWidget || null,
         admin: data.admin || null,
-        dbPath: (data.dbPath !== undefined) ? String(data.dbPath).trim() : (existingIdx !== -1 ? (modules[existingIdx].dbPath || '') : '')
+        dbPath: (data.dbPath !== undefined) ? String(data.dbPath).trim() : (existingMod ? (existingMod.dbPath || '') : '')
     };
 
-    if (existingIdx !== -1) {
-        modules[existingIdx] = { ...modules[existingIdx], ...modPayload };
-    } else {
-        modules.push(modPayload);
+    // 노출 순서 위치(1-based) 처리
+    let targetPos = null;
+    if (data.targetPosition !== undefined && data.targetPosition !== null && data.targetPosition !== '') {
+        targetPos = parseInt(data.targetPosition, 10);
+    } else if (data.order !== undefined && data.order !== null && data.order !== '') {
+        const raw = parseInt(data.order, 10);
+        if (!isNaN(raw)) targetPos = raw;
     }
 
+    if (existingIdx !== -1) {
+        // 기존 모듈 업데이트
+        const merged = { ...modules[existingIdx], ...modPayload };
+        modules.splice(existingIdx, 1);
+
+        if (targetPos && targetPos >= 1) {
+            const insertIdx = Math.min(targetPos - 1, modules.length);
+            modules.splice(insertIdx, 0, merged);
+        } else {
+            modules.splice(existingIdx, 0, merged);
+        }
+    } else {
+        // 신규 모듈 등록
+        if (targetPos && targetPos >= 1 && targetPos <= modules.length) {
+            modules.splice(targetPos - 1, 0, modPayload);
+        } else {
+            modules.push(modPayload);
+        }
+    }
+
+    // 전체 순서 10단위 정규화 (10, 20, 30, ...)
+    modules.forEach((m, i) => {
+        m.order = (i + 1) * 10;
+    });
+
     saveModulesConfig(modules);
-    return modPayload;
+    return modules.find(m => m.id === cleanId) || modPayload;
+}
+
+/**
+ * 모듈 순서 한 단계 위/아래 이동 (스왑 및 10단위 정규화)
+ * @param {string} moduleId 
+ * @param {'up'|'down'} direction 
+ * @returns {Array} 업데이트된 모듈 목록
+ */
+function moveModuleOrder(moduleId, direction) {
+    const modules = loadModulesConfig();
+    const idx = modules.findIndex(m => m.id === moduleId);
+    if (idx === -1) throw new Error('해당 모듈을 찾을 수 없습니다.');
+
+    if (direction === 'up') {
+        if (idx === 0) return modules;
+        const temp = modules[idx];
+        modules[idx] = modules[idx - 1];
+        modules[idx - 1] = temp;
+    } else if (direction === 'down') {
+        if (idx === modules.length - 1) return modules;
+        const temp = modules[idx];
+        modules[idx] = modules[idx + 1];
+        modules[idx + 1] = temp;
+    } else {
+        throw new Error('유효하지 않은 이동 방향입니다. (up 또는 down만 가능)');
+    }
+
+    // 10단위 정규화
+    modules.forEach((m, i) => {
+        m.order = (i + 1) * 10;
+    });
+
+    saveModulesConfig(modules);
+    return modules;
+}
+
+/**
+ * 전체 모듈 순서 일괄 재배열 (ID 순서 기반 정규화)
+ * @param {string[]} orderedIds 
+ * @returns {Array}
+ */
+function reorderAllModules(orderedIds) {
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+        throw new Error('재배열할 모듈 ID 배열이 필요합니다.');
+    }
+
+    const modules = loadModulesConfig();
+    const moduleMap = new Map(modules.map(m => [m.id, m]));
+    const nextList = [];
+
+    for (const id of orderedIds) {
+        if (moduleMap.has(id)) {
+            nextList.push(moduleMap.get(id));
+            moduleMap.delete(id);
+        }
+    }
+
+    for (const remaining of moduleMap.values()) {
+        nextList.push(remaining);
+    }
+
+    nextList.forEach((m, i) => {
+        m.order = (i + 1) * 10;
+    });
+
+    saveModulesConfig(nextList);
+    return nextList;
 }
 
 /**
@@ -284,6 +380,11 @@ function deleteModule(moduleId) {
         throw new Error('삭제할 모듈을 찾을 수 없습니다.');
     }
 
+    // 삭제 후 순서 10단위 재정규화
+    nextModules.forEach((m, i) => {
+        m.order = (i + 1) * 10;
+    });
+
     saveModulesConfig(nextModules);
     return true;
 }
@@ -299,6 +400,8 @@ module.exports = {
     saveModulesConfig,
     toggleModuleEnabled,
     createOrUpdateModule,
+    moveModuleOrder,
+    reorderAllModules,
     deleteModule,
     CORE_MODULE_IDS
 };

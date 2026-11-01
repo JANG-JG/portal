@@ -9,6 +9,16 @@
     let cachedModulesData = [];
     let coreModuleSet = new Set();
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         loadAdminModulesList();
     });
@@ -57,9 +67,12 @@
             return;
         }
 
-        tbody.innerHTML = modules.map(m => {
+        tbody.innerHTML = modules.map((m, idx) => {
             const isCore = coreModuleSet.has(m.id);
             const isEnabled = m.enabled !== false;
+            const isFirst = idx === 0;
+            const isLast = idx === modules.length - 1;
+            const orderNumber = idx + 1;
 
             // 권한 뱃지
             let permBadge = '';
@@ -106,8 +119,24 @@
 
             return `
                 <tr style="${isEnabled ? '' : 'opacity:0.6; background:#fbfcfe;'}">
-                    <td style="text-align:center; font-family:monospace; font-size:0.85rem; color:#64748b;">
-                        ${m.order || 50}
+                    <td style="text-align:center; vertical-align:middle; white-space:nowrap;">
+                        <div style="display:inline-flex; align-items:center; justify-content:center; gap:5px;">
+                            <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.8rem; padding:2px 7px; border-radius:4px; min-width:24px; text-align:center;">
+                                ${orderNumber}
+                            </span>
+                            <div style="display:inline-flex; flex-direction:column; gap:2px;">
+                                <button type="button" class="btn-admin btn-admin-outline" 
+                                    style="padding:0 4px; height:15px; line-height:13px; font-size:0.6rem; border-radius:3px; ${isFirst ? 'opacity:0.25; cursor:not-allowed;' : ''}" 
+                                    ${isFirst ? 'disabled' : ''} 
+                                    onclick="moveModuleItemOrder('${m.id}', 'up')" 
+                                    title="${isFirst ? '첫 번째 항목입니다' : '위로 한 칸 이동'}">▲</button>
+                                <button type="button" class="btn-admin btn-admin-outline" 
+                                    style="padding:0 4px; height:15px; line-height:13px; font-size:0.6rem; border-radius:3px; ${isLast ? 'opacity:0.25; cursor:not-allowed;' : ''}" 
+                                    ${isLast ? 'disabled' : ''} 
+                                    onclick="moveModuleItemOrder('${m.id}', 'down')" 
+                                    title="${isLast ? '마지막 항목입니다' : '아래로 한 칸 이동'}">▼</button>
+                            </div>
+                        </div>
                     </td>
                     <td>
                         <div style="font-weight:700; font-size:0.92rem; color:#0f172a; display:flex; align-items:center; gap:6px;">
@@ -175,6 +204,70 @@
         }
     };
 
+    // 모듈 노출 순서 한 칸 위/아래 이동
+    let isMovingOrder = false;
+    window.moveModuleItemOrder = async function(moduleId, direction) {
+        if (isMovingOrder) return;
+        isMovingOrder = true;
+        try {
+            const res = await fetch(`/api/modules/admin/${moduleId}/move`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction })
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (typeof showToast === 'function') showToast(data.message || '노출 순서가 변경되었습니다.');
+                await loadAdminModulesList();
+            } else {
+                alert(data.message || '순서 변경에 실패했습니다.');
+            }
+        } catch (e) {
+            alert('순서 변경 중 통신 오류가 발생했습니다.');
+        } finally {
+            isMovingOrder = false;
+        }
+    };
+
+    // 노출 순서 드롭다운 동적 생성
+    function populateOrderDropdown(currentModuleId) {
+        const selectEl = document.getElementById('inputModOrder');
+        if (!selectEl) return;
+
+        selectEl.innerHTML = '';
+        const isEdit = Boolean(currentModuleId);
+        const currentIdx = isEdit ? cachedModulesData.findIndex(m => m.id === currentModuleId) : -1;
+
+        if (isEdit) {
+            cachedModulesData.forEach((m, idx) => {
+                const pos = idx + 1;
+                const opt = document.createElement('option');
+                opt.value = pos;
+                if (idx === currentIdx) {
+                    opt.textContent = `${pos}번째 - [${m.name}] (현재 위치)`;
+                    opt.selected = true;
+                } else {
+                    opt.textContent = `${pos}번째 - [${m.name}] 자리로 이동`;
+                }
+                selectEl.appendChild(opt);
+            });
+        } else {
+            cachedModulesData.forEach((m, idx) => {
+                const pos = idx + 1;
+                const opt = document.createElement('option');
+                opt.value = pos;
+                opt.textContent = `${pos}번째 - [${m.name}] 앞으로 삽입`;
+                selectEl.appendChild(opt);
+            });
+            const nextPos = cachedModulesData.length + 1;
+            const lastOpt = document.createElement('option');
+            lastOpt.value = nextPos;
+            lastOpt.textContent = `${nextPos}번째 - 맨 마지막에 추가 (기본)`;
+            lastOpt.selected = true;
+            selectEl.appendChild(lastOpt);
+        }
+    }
+
     // 모듈 등록/수정 모달 열기
     window.openModuleModal = function(moduleId) {
         const modal = document.getElementById('moduleEditModal');
@@ -185,6 +278,7 @@
         if (!modal || !form) return;
 
         form.reset();
+        populateOrderDropdown(moduleId);
 
         if (moduleId) {
             const mod = cachedModulesData.find(m => m.id === moduleId);
@@ -216,7 +310,6 @@
             idInput.value = '';
             idInput.readOnly = false;
             idInput.style.background = '#fff';
-            document.getElementById('inputModOrder').value = 80;
             document.getElementById('inputModDbPath').value = '';
             document.getElementById('chkModFamilyDefault').checked = true;
             document.getElementById('chkModNav').checked = true;
@@ -259,7 +352,9 @@
         const category = document.getElementById('inputModCategory').value;
         const entryUrl = document.getElementById('inputModEntryUrl').value.trim();
         const baseUrl = document.getElementById('inputModBaseUrl').value.trim();
-        const order = parseInt(document.getElementById('inputModOrder').value, 10) || 50;
+        const orderSelect = document.getElementById('inputModOrder');
+        const targetPosition = parseInt(orderSelect?.value, 10) || (cachedModulesData.length + 1);
+        const order = targetPosition * 10;
         const description = document.getElementById('inputModDesc').value.trim();
         const dbPath = (document.getElementById('inputModDbPath')?.value || '').trim();
 
@@ -278,6 +373,7 @@
             entryUrl,
             baseUrl,
             ssoEnabled: Boolean(baseUrl),
+            targetPosition,
             order,
             description,
             dbPath,

@@ -10,6 +10,8 @@ const {
     getModuleById,
     toggleModuleEnabled,
     createOrUpdateModule,
+    moveModuleOrder,
+    reorderAllModules,
     deleteModule,
     CORE_MODULE_IDS
 } = require('../services/moduleRegistry.service');
@@ -153,7 +155,43 @@ router.put('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
     }
 });
 
-// 9. 관리자: 모듈 삭제 (코어 모듈 보호)
+// 9. 관리자: 모듈 순서 한 단계 위/아래 이동
+router.patch('/admin/:id/move', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const { direction } = req.body;
+        if (!['up', 'down'].includes(direction)) {
+            return res.status(400).json({ success: false, message: '이동 방향은 up 또는 down 이어야 합니다.' });
+        }
+        const updatedList = moveModuleOrder(req.params.id, direction);
+        res.json({
+            success: true,
+            message: '모듈 노출 순서가 변경되었습니다.',
+            modules: updatedList
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '순서 이동 실패' });
+    }
+});
+
+// 10. 관리자: 전체 모듈 순서 일괄 재배열
+router.put('/admin/reorder', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const { orderedIds } = req.body;
+        if (!Array.isArray(orderedIds)) {
+            return res.status(400).json({ success: false, message: '모듈 ID 배열(orderedIds)이 필요합니다.' });
+        }
+        const updatedList = reorderAllModules(orderedIds);
+        res.json({
+            success: true,
+            message: '모듈 노출 순서가 일괄 저장되었습니다.',
+            modules: updatedList
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '순서 재정렬 실패' });
+    }
+});
+
+// 11. 관리자: 모듈 삭제 (코어 모듈 보호)
 router.delete('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
         deleteModule(req.params.id);
