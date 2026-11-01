@@ -10,7 +10,7 @@
     "ssoEnabled": false,
     "adminOnly": true,
     "defaultFamilyAllowed": true,
-    "order": 1,
+    "order": 10,
     "enabled": true,
     "nav": {
       "enabled": false
@@ -36,7 +36,7 @@
     "ssoEnabled": true,
     "adminOnly": true,
     "defaultFamilyAllowed": false,
-    "order": 10,
+    "order": 20,
     "enabled": true,
     "nav": {
       "enabled": true,
@@ -121,7 +121,7 @@
     "ssoEnabled": true,
     "adminOnly": false,
     "defaultFamilyAllowed": false,
-    "order": 20,
+    "order": 30,
     "enabled": true,
     "nav": {
       "enabled": true,
@@ -201,7 +201,7 @@
     "ssoEnabled": true,
     "adminOnly": false,
     "defaultFamilyAllowed": true,
-    "order": 30,
+    "order": 40,
     "enabled": true,
     "nav": {
       "enabled": true,
@@ -279,7 +279,7 @@
     "ssoEnabled": false,
     "adminOnly": false,
     "defaultFamilyAllowed": true,
-    "order": 40,
+    "order": 50,
     "enabled": true,
     "nav": {
       "enabled": true,
@@ -331,7 +331,7 @@
     "ssoEnabled": false,
     "adminOnly": false,
     "defaultFamilyAllowed": true,
-    "order": 50,
+    "order": 60,
     "enabled": true,
     "nav": {
       "enabled": true,
@@ -376,7 +376,7 @@
     "ssoEnabled": true,
     "adminOnly": false,
     "defaultFamilyAllowed": true,
-    "order": 60,
+    "order": 70,
     "enabled": true,
     "nav": {
       "enabled": true,
@@ -442,76 +442,33 @@
   {
     "id": "wiki",
     "name": "가족 지식창고",
-    "icon": "📚",
-    "description": "가족 루틴 체크리스트, 장보기 목록, 소모품/계약 D-Day 관리",
-    "category": "지식",
+    "icon": "📦",
+    "description": "",
+    "category": "라이프",
     "entryUrl": "/wiki",
     "baseUrl": "",
     "ssoEnabled": false,
     "adminOnly": false,
-    "defaultFamilyAllowed": true,
-    "order": 70,
+    "defaultFamilyAllowed": false,
+    "order": 80,
     "enabled": true,
     "nav": {
       "enabled": true,
-      "label": "가족 위키",
+      "label": "가족 지식창고",
       "entryUrl": "/wiki",
-      "subLinks": [
-        {
-          "name": "가족 위키 홈",
-          "url": "/wiki",
-          "icon": "📚",
-          "desc": "가족 공용 문서 및 가이드"
-        },
-        {
-          "name": "루틴 & 장보기",
-          "url": "/wiki#routine",
-          "icon": "✅",
-          "desc": "오늘의 반복 할 일 및 구매 품목"
-        },
-        {
-          "name": "소모품 & 계약 주기",
-          "url": "/wiki#dday",
-          "icon": "⏳",
-          "desc": "필터 교체, 정기 결제 D-Day"
-        }
-      ]
+      "subLinks": []
     },
     "quickStrip": [
       {
         "id": "wiki-quick",
-        "label": "가족 위키",
-        "icon": "📚",
+        "label": "가족 지식창고",
+        "icon": "📦",
         "type": "link",
         "url": "/wiki"
       }
     ],
-    "portalWidget": {
-      "enabled": true,
-      "type": "bento-card",
-      "cardId": "bento-wiki",
-      "title": "오늘의 가족 루틴 & 장보기",
-      "viewMoreUrl": "/wiki",
-      "apiEndpoint": "/api/wiki/routines"
-    },
-    "admin": {
-      "enabled": true,
-      "title": "가족 위키 제어",
-      "icon": "📖",
-      "tabId": "tab-wiki",
-      "subMenus": [
-        {
-          "id": "subpane-wiki-overview",
-          "title": "위키 현황 & 퀵카드",
-          "icon": "📊"
-        },
-        {
-          "id": "subpane-wiki-documents",
-          "title": "가족 문서 아카이브",
-          "icon": "📑"
-        }
-      ]
-    },
+    "portalWidget": null,
+    "admin": null,
     "dbPath": "family-wiki/wiki.db",
     "isRemote": true,
     "remoteServer": "secondary",
