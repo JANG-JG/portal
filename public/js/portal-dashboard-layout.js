@@ -11,6 +11,70 @@
     const CACHE_KEY = 'jg_dashboard_config_cache';
 
     /**
+     * 위젯 ID로부터 상단 탭 키 도출
+     */
+    function getTabKeyFromWidget(w) {
+        if (!w || !w.id) return null;
+        if (w.tabKey) return w.tabKey;
+        if (w.id === 'homarrHeroCard' || w.id === 'bento-blood') return 'blood';
+        if (w.id.startsWith('bento-')) {
+            return w.id.replace('bento-', '');
+        }
+        return null;
+    }
+
+    /**
+     * 위젯 순서에 맞춰 상단 탭 메뉴(데스크톱 및 모바일) 버튼 순서 동기화
+     */
+    function syncNavTabsOrder(sortedWidgets) {
+        if (!Array.isArray(sortedWidgets) || sortedWidgets.length === 0) return;
+
+        const navContainers = [
+            document.getElementById('portal-tab-nav'),
+            document.querySelector('.cmd-nav-mobile-strip')
+        ].filter(Boolean);
+
+        if (navContainers.length === 0) return;
+
+        // 1. 활성/전체 위젯 순서에서 탭 키 배열 추출 (중복 제거)
+        const orderedTabKeys = [];
+        sortedWidgets.forEach(w => {
+            const tabKey = getTabKeyFromWidget(w);
+            if (tabKey && !orderedTabKeys.includes(tabKey)) {
+                orderedTabKeys.push(tabKey);
+            }
+        });
+
+        // 2. 각 컨테이너(데스크톱, 모바일)의 탭 버튼들을 위젯 순서와 동일하게 재배치
+        navContainers.forEach(container => {
+            const btns = Array.from(container.querySelectorAll('.portal-tab-btn'));
+            if (btns.length === 0) return;
+
+            // 1) 'home'(대시보드 홈) 탭은 언제나 최상단 맨 앞 고정
+            const homeBtn = btns.find(b => b.getAttribute('data-tab') === 'home');
+            if (homeBtn) {
+                container.appendChild(homeBtn);
+            }
+
+            // 2) 위젯 순서에 매핑된 탭 버튼들을 순서대로 재배치
+            orderedTabKeys.forEach(tabKey => {
+                const btn = btns.find(b => b.getAttribute('data-tab') === tabKey);
+                if (btn) {
+                    container.appendChild(btn);
+                }
+            });
+
+            // 3) 위젯 목록에 포함되지 않은 기타 탭 버튼들(있는 경우) 기존 순서대로 맨 뒤에 유지
+            btns.forEach(btn => {
+                const tabKey = btn.getAttribute('data-tab');
+                if (tabKey !== 'home' && !orderedTabKeys.includes(tabKey)) {
+                    container.appendChild(btn);
+                }
+            });
+        });
+    }
+
+    /**
      * DOM에 위젯 레이아웃(순서, 너비, 노출) 실제 물리적 적용
      */
     function applyWidgetsConfig(widgets) {
@@ -50,18 +114,33 @@
             }
 
             // 노출 On/Off
+            const tabKey = getTabKeyFromWidget(w);
             if (w.enabled === false) {
                 el.style.setProperty('display', 'none', 'important');
-                const tabKey = w.id.replace('bento-', '').replace('card-', '');
-                document.querySelectorAll(`.portal-tab-btn[data-tab="${tabKey}"]`).forEach(btn => {
-                    btn.style.display = 'none';
-                });
+                if (tabKey) {
+                    document.querySelectorAll(`.portal-tab-btn[data-tab="${tabKey}"]`).forEach(btn => {
+                        btn.style.display = 'none';
+                    });
+                }
                 return;
             }
 
             // 노출 복원
             if (el.style.display === 'none' && !el.getAttribute('data-hidden-by-auth')) {
                 el.style.display = '';
+            }
+            if (tabKey) {
+                let canShow = true;
+                if (tabKey === 'blood' && isHideBlood) canShow = false;
+                if (tabKey === 'ops' && isHideOps) canShow = false;
+                if (tabKey === 'asset' && isHideAsset) canShow = false;
+                if (canShow) {
+                    document.querySelectorAll(`.portal-tab-btn[data-tab="${tabKey}"]`).forEach(btn => {
+                        if (btn.style.display === 'none' && !btn.getAttribute('data-hidden-by-auth')) {
+                            btn.style.display = '';
+                        }
+                    });
+                }
             }
 
             // CSS Flex/Grid order 부여
@@ -113,6 +192,9 @@
                 }
             });
         }
+
+        // 3. 상단 탭 메뉴(데스크톱 및 모바일) 순서 실시간 동기화
+        syncNavTabsOrder(sortedWidgets);
 
         // 관리자인 경우 빠른 위젯 설정 바로가기 링크 유지
         if (isRoleAdmin) {

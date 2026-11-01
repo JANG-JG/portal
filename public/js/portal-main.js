@@ -86,10 +86,10 @@ function switchPortalTab(tabName, smooth = true) {
     }
 }
 
-// 🌟 3. 스크롤 위치 기반 실시간 탭 활성화 감지 (ScrollSpy)
+// 🌟 3. 스크롤 위치 기반 실시간 탭 활성화 감지 (ScrollSpy - 동적 위젯 순서 100% 호환)
 function initBentoScrollSpy() {
-    const sectionMap = [
-        { selector: '.homarr-health-summary-box', tab: 'blood' },
+    const sectionDefinitions = [
+        { selector: '.homarr-health-summary-box', id: 'homarrHeroCard', tab: 'blood' },
         { id: 'bento-wiki',     tab: 'wiki' },
         { id: 'bento-calendar', tab: 'calendar' },
         { id: 'bento-album',    tab: 'album' },
@@ -114,24 +114,40 @@ function initBentoScrollSpy() {
                 // 1) 최상단 근처는 대시보드
                 if (scrollY < 120) {
                     activeMatch = 'home';
-                }
-                // 2) 페이지 최하단 도달 시: 서버 인프라 카드가 작아도 100% 활성화
-                else if (windowH + scrollY >= docH - 80) {
-                    activeMatch = 'ops';
-                }
-                // 3) 섹션별 역순 판정 (스크롤 진행에 따라 자석처럼 순차 이동)
-                else {
-                    const threshold = navH + 130;
-                    for (let i = sectionMap.length - 1; i >= 0; i--) {
-                        const item = sectionMap[i];
-                        const el = item.id ? document.getElementById(item.id) : (item.selector ? document.querySelector(item.selector) : null);
-                        if (el) {
+                } else {
+                    // 화면에 실제로 노출 중인 섹션들을 실제 화면 수직 위치(top 오름차순)로 정렬
+                    const visibleSections = [];
+                    sectionDefinitions.forEach(item => {
+                        let el = null;
+                        if (item.selector) {
+                            try { el = document.querySelector(item.selector); } catch (e) {}
+                        }
+                        if (!el && item.id) {
+                            el = document.getElementById(item.id);
+                        }
+                        if (el && el.offsetParent !== null && window.getComputedStyle(el).display !== 'none') {
                             const rect = el.getBoundingClientRect();
-                            if (rect.top <= threshold) {
-                                activeMatch = item.tab;
+                            visibleSections.push({ tab: item.tab, top: rect.top });
+                        }
+                    });
+
+                    visibleSections.sort((a, b) => a.top - b.top);
+
+                    // 2) 페이지 최하단 도달 시: 가장 바닥에 위치한 위젯 탭 활성화
+                    if (windowH + scrollY >= docH - 80 && visibleSections.length > 0) {
+                        activeMatch = visibleSections[visibleSections.length - 1].tab;
+                    } else if (visibleSections.length > 0) {
+                        // 3) 상단 기준선(threshold) 이하를 통과한 가장 최근 섹션 선택
+                        const threshold = navH + 130;
+                        let matched = 'home';
+                        for (let i = 0; i < visibleSections.length; i++) {
+                            if (visibleSections[i].top <= threshold) {
+                                matched = visibleSections[i].tab;
+                            } else {
                                 break;
                             }
                         }
+                        activeMatch = matched;
                     }
                 }
 

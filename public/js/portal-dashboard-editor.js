@@ -275,9 +275,13 @@
         if (!item) return;
 
         item.enabled = false;
-        const el = document.querySelector(item.selector) || document.getElementById(item.id);
-        if (el) {
-            el.style.setProperty('display', 'none', 'important');
+        if (typeof window.applyDashboardWidgetsToDOM === 'function') {
+            window.applyDashboardWidgetsToDOM(workingWidgets);
+        } else {
+            const el = document.querySelector(item.selector) || document.getElementById(item.id);
+            if (el) {
+                el.style.setProperty('display', 'none', 'important');
+            }
         }
 
         updateToolbarContent();
@@ -292,13 +296,21 @@
         if (!item) return;
 
         item.enabled = true;
-        const el = document.querySelector(item.selector) || document.getElementById(item.id);
-        if (el) {
-            el.style.display = '';
-            if (el.parentElement && el.parentElement.id === 'portalHomarrGrid') {
-                el.style.gridColumn = item.colSpan === 2 ? '1 / -1' : 'span 1';
+        if (typeof window.applyDashboardWidgetsToDOM === 'function') {
+            window.applyDashboardWidgetsToDOM(workingWidgets);
+        } else {
+            const el = document.querySelector(item.selector) || document.getElementById(item.id);
+            if (el) {
+                el.style.display = '';
+                if (el.parentElement && el.parentElement.id === 'portalHomarrGrid') {
+                    el.style.gridColumn = item.colSpan === 2 ? '1 / -1' : 'span 1';
+                }
             }
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        const restoredEl = document.querySelector(item.selector) || document.getElementById(item.id);
+        if (restoredEl) {
+            restoredEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         const drop = document.getElementById('hiddenWidgetsDropdown');
