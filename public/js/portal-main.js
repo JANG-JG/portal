@@ -231,6 +231,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4-5. 모듈 레지스트리 기반 원터치 빠른 실행 동적 동기화
     loadDynamicQuickStrip();
+
+    // 4-6. 모듈 레지스트리 기반 신규 벤토 위젯 카드 동적 마운트
+    syncDynamicBentoWidgets();
 });
 
 // 🌟 5. 모듈 레지스트리 기반 원터치 빠른 실행(Quick Strip) 동적 로드 (신규 서비스 자동 연동)
@@ -262,6 +265,81 @@ async function loadDynamicQuickStrip() {
                     </a>
                 `;
             }).join('');
+        }
+    } catch (e) {}
+}
+
+// 🌟 6. 모듈 레지스트리 기반 메인 대시보드 벤토 위젯 동적 마운트 (신규 모듈 슬롯 자동 렌더링)
+async function syncDynamicBentoWidgets() {
+    const grid = document.getElementById('portalHomarrGrid');
+    if (!grid) return;
+    try {
+        const res = await fetch('/api/modules');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.modules)) return;
+
+        for (const mod of data.modules) {
+            if (!mod.portalWidget || mod.portalWidget.enabled === false) continue;
+            const cardId = mod.portalWidget.cardId || `bento-${mod.id}`;
+
+            // 이미 정적으로 존재하는 위젯이면 건너뜀 (기존 정상 로직 100% 보존)
+            if (document.getElementById(cardId)) continue;
+
+            const title = mod.portalWidget.title || mod.name;
+            const icon = mod.icon || '📦';
+            const viewMoreUrl = mod.portalWidget.viewMoreUrl || mod.entryUrl || '#';
+            const apiEndpoint = mod.portalWidget.apiEndpoint;
+
+            const card = document.createElement('div');
+            card.className = `homarr-card card-${mod.id}`;
+            card.id = cardId;
+            card.setAttribute('data-service', mod.id);
+
+            card.innerHTML = `
+                <div class="homarr-card-header">
+                    <div class="homarr-card-title-group">
+                        <span class="homarr-card-icon">${icon}</span>
+                        <h3 class="homarr-card-title">${title}</h3>
+                    </div>
+                    <a href="${viewMoreUrl}" class="homarr-card-link">바로가기 →</a>
+                </div>
+                <div class="portal-widget-dynamic-body" id="${cardId}-body" style="padding: 0.75rem 0;">
+                    <div style="font-size:0.85rem; color:#64748b;">데이터를 불러오는 중입니다...</div>
+                </div>
+                <div class="bento-card-footer">
+                    <span id="${cardId}-status">${mod.description || title}</span>
+                    <a href="${viewMoreUrl}" style="color:var(--hm-blue); text-decoration:none; font-weight:600;">열기 ↗</a>
+                </div>
+            `;
+            grid.appendChild(card);
+
+            if (apiEndpoint) {
+                fetch(apiEndpoint, { credentials: 'include' })
+                    .then(r => r.json())
+                    .then(resData => {
+                        const bodyEl = document.getElementById(`${cardId}-body`);
+                        if (!bodyEl) return;
+                        if (resData && resData.success !== false) {
+                            const val = resData.mainVal || resData.value || resData.summary || resData.count || '';
+                            const sub = resData.subVal || resData.subText || resData.desc || '';
+                            const badge = resData.badge ? `<span class="bento-badge badge-emerald" style="margin-left:8px;">${resData.badge}</span>` : '';
+                            bodyEl.innerHTML = `
+                                <div style="display:flex; align-items:baseline; gap:8px;">
+                                    <strong style="font-size:1.35rem; color:var(--hm-text); font-family:monospace;">${val || '정상 운영 중'}</strong>
+                                    ${badge}
+                                </div>
+                                ${sub ? `<div style="font-size:0.82rem; color:var(--hm-text-muted); margin-top:4px;">${sub}</div>` : ''}
+                            `;
+                        } else {
+                            bodyEl.innerHTML = `<div style="font-size:0.85rem; color:#64748b;">${mod.description || '정상 운영 중'}</div>`;
+                        }
+                    })
+                    .catch(() => {
+                        const bodyEl = document.getElementById(`${cardId}-body`);
+                        if (bodyEl) bodyEl.innerHTML = `<div style="font-size:0.85rem; color:#64748b;">${mod.description || '정상 운영 중'}</div>`;
+                    });
+            }
         }
     } catch (e) {}
 }

@@ -26,7 +26,7 @@
             </div>
             <button type="button" class="admin-sidebar-close-btn" onclick="toggleAdminSidebar(false)" title="메뉴 닫기">✕</button>
         </div>
-        <nav class="admin-sidebar-nav">
+        <nav class="admin-sidebar-nav" id="adminSidebarNav">
             <div class="admin-sidebar-section-label">기능별 관리 설정</div>
 
             <!-- 그룹 1: 전체 모니터링 -->
@@ -309,6 +309,7 @@
              🧩 기능별 모듈 탭 패널 (views/ 컴포넌트 마운트 영역)
              ========================================== -->
         <!-- @@ADMIN_TAB_PANES@@ -->
+        <div id="adminDynamicPanesContainer"></div>
     </main>
 
     <!-- 🔑 관리자 마스터 비밀번호 변경 전용 팝업 모달 -->
@@ -511,6 +512,7 @@
     <script src="/js/admin-wiki.js"></script>
     <script src="/js/admin-db-manager.js"></script>
     <script src="/js/admin-db-sql.js"></script>
+    <script src="/js/admin-modules.js"></script>
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>
