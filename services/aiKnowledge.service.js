@@ -288,9 +288,100 @@ async function generateWikiDraft({ prompt = '', category = '생활' }) {
     };
 }
 
+/**
+ * 5. 📚 [위키 2단계] 기존 문서 지능형 자동 병합 (Living Document)
+ * - 기존 유사 문서가 있는 경우 기존 내용을 온전히 유지하며 새 정보를 적절한 섹션에 자연스럽게 보강(merge)
+ * - 새로운 주제인 경우 신규 문서 생성(create)
+ */
+async function smartMergeOrDraftWiki({ newContent = '', newTitle = '', candidateDoc = null, userName = '가족' }) {
+    const cleanContent = sanitizeInputText(newContent.replace(/<[^>]+>/g, ' '), 2000);
+    if (!cleanContent) {
+        throw new Error('정리할 내용이 없습니다.');
+    }
+
+    if (!candidateDoc || !candidateDoc.content_md) {
+        const drafted = await refineMemoToWiki({ title: newTitle, content: cleanContent, userName });
+        return { action: 'create', ...drafted };
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 지식 통합 AI(LG EXAONE)입니다.
+새로운 내용이 [기존 위키 후보 문서]와 직접적으로 관련된 내용(추가 꿀팁, 교체/점검 이력, 절차 보강, 새로운 정보 등)인지 판별하세요.
+- 관련이 있다면: "action": "merge"로 설정하고, 기존 문서의 유용한 서식과 내용을 100% 보존하면서 새 내용을 알맞은 섹션(또는 날짜별 이력 섹션)에 자연스럽게 누적 보강한 마크다운을 작성하세요.
+- 관련이 없는 완전히 새로운 주제라면: "action": "create"로 설정하고 신규 위키 문서 마크다운을 작성하세요.
+반드시 다른 설명 없이 순수한 JSON 형식으로만 응답하세요:
+{
+  "action": "merge" 또는 "create",
+  "title": "문서 제목",
+  "category": "추천 카테고리",
+  "slug": "${candidateDoc.slug}",
+  "content_md": "최종 마크다운 본문",
+  "merge_summary": "보강된 핵심 내용 1줄 요약 (create인 경우 빈 문자열)"
+}`;
+
+    const userPrompt = `[기존 위키 후보 문서]
+- 제목: ${candidateDoc.title} (카테고리: ${candidateDoc.category || '생활'})
+- 슬러그: ${candidateDoc.slug}
+- 기존 본문:
+${candidateDoc.content_md.slice(0, 1200)}
+
+[새로 들어온 정보 (작성자: ${userName}, 날짜: ${todayStr})]
+- 제목 제안: ${newTitle || '(없음)'}
+- 내용:
+${cleanContent}
+
+위 정보를 바탕으로 기존 문서에 병합(merge)할지, 신규 작성(create)할지 판단하여 JSON으로 응답하세요.`;
+
+    const fullPrompt = `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`;
+
+    let raw = '';
+    let parsed = null;
+    try {
+        const result = await sendOllamaRequest('/api/generate', {
+            model: OLLAMA_MODEL,
+            prompt: fullPrompt,
+            stream: false,
+            keep_alive: '24h',
+            options: { temperature: 0.3, num_predict: 1500 }
+        }, 60000);
+
+        raw = result && result.response ? result.response.trim() : '';
+        parsed = extractJsonFromText(raw);
+    } catch (ollamaErr) {
+        console.warn('⚠️ [SmartMerge] Ollama 병합 추론 실패, 규칙 기반 병합으로 폴백:', ollamaErr.message);
+    }
+
+    if (parsed && parsed.content_md) {
+        const action = (parsed.action === 'merge' || parsed.action === 'create') ? parsed.action : 'merge';
+        return {
+            success: true,
+            action,
+            title: parsed.title || candidateDoc.title,
+            category: parsed.category || candidateDoc.category || '생활',
+            slug: (action === 'merge') ? candidateDoc.slug : (parsed.slug || candidateDoc.slug),
+            content_md: parsed.content_md,
+            merge_summary: parsed.merge_summary || `${todayStr} 내용 추가 보강`,
+            model: OLLAMA_MODEL
+        };
+    }
+
+    const appendSection = `\n\n---\n### 📝 추가 기록 (${todayStr})\n- ${cleanContent}\n*(기록: ${userName})*`;
+    return {
+        success: true,
+        action: 'merge',
+        title: candidateDoc.title,
+        category: candidateDoc.category || '생활',
+        slug: candidateDoc.slug,
+        content_md: candidateDoc.content_md + appendSection,
+        merge_summary: `${todayStr} 추가 내용 누적 보강`,
+        model: OLLAMA_MODEL
+    };
+}
+
 module.exports = {
     refineMemoToWiki,
     extractRoutineAndTodos,
     summarizeText,
-    generateWikiDraft
+    generateWikiDraft,
+    smartMergeOrDraftWiki
 };

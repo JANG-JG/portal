@@ -8,9 +8,9 @@
  */
 
 const http = require('http');
-const { searchWikiContent, createWikiPage } = require('./wikiSummary.service');
+const { searchWikiContent, createWikiPage, getWikiPageDetail, updateWikiPage } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
-const { refineMemoToWiki } = require('./aiKnowledge.service');
+const { refineMemoToWiki, smartMergeOrDraftWiki } = require('./aiKnowledge.service');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
@@ -243,39 +243,75 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
                 };
             }
 
-            // AI 기반 위키 문서 구조화
-            const refined = await refineMemoToWiki({
-                title: targetTitle,
-                content: targetContent,
+            // 📚 [위키 2단계] 기존 연관 문서 탐색 및 지능형 병합 (Living Document)
+            let candidateDoc = null;
+            const searchKeyword = targetTitle || targetContent.slice(0, 80);
+            try {
+                const candidates = await searchWikiContent(searchKeyword, 1);
+                if (Array.isArray(candidates) && candidates.length > 0 && candidates[0].slug) {
+                    candidateDoc = await getWikiPageDetail(candidates[0].slug);
+                }
+            } catch (searchErr) {
+                console.warn('[AiAssistant] 기존 위키 문서 탐색 실패 (신규 작성으로 진행):', searchErr.message);
+            }
+
+            // AI 기반 지능형 병합 또는 신규 초안 작성
+            const processed = await smartMergeOrDraftWiki({
+                newContent: targetContent,
+                newTitle: targetTitle,
+                candidateDoc,
                 userName
             });
 
-            // 위키 서버에 등록
+            if (processed.action === 'merge' && candidateDoc) {
+                // 기존 문서 내용 갱신 (Living Wiki)
+                const updateRes = await updateWikiPage({
+                    slug: candidateDoc.slug,
+                    content_md: processed.content_md,
+                    title: processed.title,
+                    category: processed.category
+                });
+
+                return {
+                    success: true,
+                    answer: `가족 위키 문서 **[${processed.category}] ${processed.title}**에 새로운 내용을 누적 보강했습니다! 🔄\n\n- **보강 요약**: ${processed.merge_summary || '최신 정보 업데이트'}\n- **문서 제목**: ${processed.title}\n\n👉 [**위키 문서 바로가기**](${updateRes.view_url || `/wiki/${candidateDoc.slug}`})`,
+                    action: 'wiki_merged',
+                    wiki: {
+                        slug: candidateDoc.slug,
+                        title: processed.title,
+                        category: processed.category,
+                        view_url: updateRes.view_url || `/wiki/${candidateDoc.slug}`
+                    },
+                    model: OLLAMA_MODEL
+                };
+            }
+
+            // 신규 문서 등록 (새로운 주제)
             const saveRes = await createWikiPage({
-                category: refined.category || '생활',
-                title: refined.title,
-                content_md: refined.content_md,
-                slug: refined.slug
+                category: processed.category || '생활',
+                title: processed.title,
+                content_md: processed.content_md,
+                slug: processed.slug
             });
 
             return {
                 success: true,
-                answer: `가족 위키에 **[${saveRes.category || refined.category}] ${saveRes.title || refined.title}** 문서를 성공적으로 등록했습니다! 📚\n\n- **카테고리**: ${saveRes.category || refined.category}\n- **문서 제목**: ${saveRes.title || refined.title}\n\n👉 [**위키 문서 바로가기**](${saveRes.view_url || `/wiki/${saveRes.slug}`})`,
+                answer: `가족 위키에 **[${saveRes.category || processed.category}] ${saveRes.title || processed.title}** 문서를 성공적으로 등록했습니다! 📚\n\n- **카테고리**: ${saveRes.category || processed.category}\n- **문서 제목**: ${saveRes.title || processed.title}\n\n👉 [**위키 문서 바로가기**](${saveRes.view_url || `/wiki/${saveRes.slug}`})`,
                 action: 'wiki_published',
                 wiki: {
                     id: saveRes.id,
-                    title: saveRes.title || refined.title,
-                    category: saveRes.category || refined.category,
-                    slug: saveRes.slug || refined.slug,
+                    title: saveRes.title || processed.title,
+                    category: saveRes.category || processed.category,
+                    slug: saveRes.slug || processed.slug,
                     view_url: saveRes.view_url || `/wiki/${saveRes.slug}`
                 },
                 model: OLLAMA_MODEL
             };
         } catch (wikiErr) {
-            console.error('[AiAssistant] 위키 문서 자동 등록 실패:', wikiErr);
+            console.error('[AiAssistant] 위키 문서 자동 처리 실패:', wikiErr);
             return {
                 success: true,
-                answer: `위키 문서 등록 중 오류가 발생했습니다 (${wikiErr.message}). 잠시 후 다시 시도해 주세요.`,
+                answer: `위키 문서 처리 중 오류가 발생했습니다 (${wikiErr.message}). 잠시 후 다시 시도해 주세요.`,
                 model: OLLAMA_MODEL
             };
         }

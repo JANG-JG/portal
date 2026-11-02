@@ -336,9 +336,118 @@ async function createWikiPage({ category = '생활', title, content_md, slug = '
     });
 }
 
+/**
+ * 4. 위키 특정 문서 상세 본문 조회 (Living Wiki 지능형 병합용)
+ * - 1차: 보조 서버 GET /api/wiki/pages/detail/<slug>
+ * - 2차: 로컬 wikiDb 조회 폴백
+ */
+async function getWikiPageDetail(slug) {
+    if (!slug) return null;
+    const cleanSlug = encodeURIComponent(slug.trim());
+
+    // 1차: 보조 서버 API 호출
+    try {
+        const liveData = await fetchWikiApi(`/api/wiki/pages/detail/${cleanSlug}`, 3000);
+        if (liveData && liveData.success && liveData.page) {
+            return liveData.page;
+        }
+    } catch (e) {
+        console.warn('⚠️ [GetWikiPageDetail] 보조 서버 상세 조회 실패 (로컬 DB 폴백):', e.message);
+    }
+
+    // 2차: 로컬 DB 폴백
+    if (!wikiDb) return null;
+    return new Promise((resolve) => {
+        wikiDb.get("SELECT id, category, title, slug, content_md, updated_at FROM wiki_pages WHERE slug = ?", [slug], (err, row) => {
+            if (err || !row) return resolve(null);
+            resolve(row);
+        });
+    });
+}
+
+/**
+ * 5. 기존 위키 문서 내용 갱신/병합 (Living Wiki 지능형 병합용)
+ * - 1차: 보조 서버 POST /api/wiki/pages/update (X-Internal-Secret 포함)
+ * - 2차: 로컬 wikiDb UPDATE 폴백
+ */
+async function updateWikiPage({ slug, content_md, title = '', category = '' }) {
+    if (!slug || !content_md) {
+        throw new Error('문서 식별자(slug)와 내용이 필요합니다.');
+    }
+
+    const payload = JSON.stringify({ slug, content_md, title, category });
+
+    // 1차: 보조 서버 실시간 API 호출
+    try {
+        const liveResult = await new Promise((resolve, reject) => {
+            const urlObj = new URL('/api/wiki/pages/update', WIKI_BASE_URL);
+            const req = http.request(urlObj, {
+                method: 'POST',
+                timeout: 5000,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload),
+                    ...(JWT_SECRET ? { 'X-Internal-Secret': JWT_SECRET } : {})
+                }
+            }, (res) => {
+                let data = '';
+                res.setEncoding('utf8');
+                res.on('data', chunk => { data += chunk; });
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (res.statusCode >= 200 && res.statusCode < 300 && parsed.success) {
+                            resolve(parsed);
+                        } else {
+                            reject(new Error(parsed.message || `상태 코드 ${res.statusCode}`));
+                        }
+                    } catch (e) {
+                        reject(new Error('응답 JSON 파싱 실패'));
+                    }
+                });
+            });
+            req.on('timeout', () => { req.destroy(); reject(new Error('요청 시간 초과 (5초)')); });
+            req.on('error', reject);
+            req.write(payload);
+            req.end();
+        });
+
+        if (liveResult && liveResult.success) {
+            return liveResult;
+        }
+    } catch (netErr) {
+        console.warn('⚠️ [UpdateWikiPage] 보조 서버 위키 API 통신 실패 (로컬 DB 폴백):', netErr.message);
+    }
+
+    // 2차 폴백: 로컬 SQLite DB 직접 UPDATE
+    if (!wikiDb) throw new Error('위키 DB에 연결할 수 없습니다.');
+
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    return new Promise((resolve, reject) => {
+        let sql = "UPDATE wiki_pages SET content_md = ?, updated_at = ?";
+        const params = [content_md, nowStr];
+        if (title) { sql += ", title = ?"; params.push(title); }
+        if (category) { sql += ", category = ?"; params.push(category); }
+        sql += " WHERE slug = ?";
+        params.push(slug);
+
+        wikiDb.run(sql, params, function(err) {
+            if (err) return reject(err);
+            resolve({
+                success: true,
+                slug,
+                view_url: `/wiki/${slug}`,
+                message: '위키 문서가 성공적으로 갱신되었습니다. (로컬 DB)'
+            });
+        });
+    });
+}
+
 module.exports = {
     calcDDay,
     getWikiSummary,
     searchWikiContent,
-    createWikiPage
+    createWikiPage,
+    getWikiPageDetail,
+    updateWikiPage
 };
