@@ -51,14 +51,18 @@ function forwardToSecondaryWiki(req, res, targetPath) {
     forwardHeaders['x-forwarded-proto'] = req.protocol;
     forwardHeaders['x-forwarded-host'] = req.get('host');
 
+    // AI 분석 및 파일 업로드 요청은 AI 모델 추론 시간을 감안하여 60초 타임아웃 부여
+    const isAiOrUpload = targetPath.startsWith('/api/wiki/ai/') || targetPath.startsWith('/api/wiki/upload');
+    const proxyTimeout = isAiOrUpload ? 60000 : 15000;
+
     const options = {
         hostname: WIKI_HOST,
         port: WIKI_PORT,
         path: targetPath,
         method: req.method,
-        agent: wikiKeepAliveAgent,
+        agent: isAiOrUpload ? false : wikiKeepAliveAgent,
         headers: forwardHeaders,
-        timeout: 10000
+        timeout: proxyTimeout
     };
 
     const proxyReq = http.request(options, (proxyRes) => {
