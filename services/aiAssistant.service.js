@@ -269,12 +269,15 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
                     slug: candidateDoc.slug,
                     content_md: processed.content_md,
                     title: processed.title,
-                    category: processed.category
+                    category: processed.category,
+                    change_summary: processed.merge_summary || 'AI 지능형 보강',
+                    author: userName || '가족'
                 });
 
+                const verText = updateRes.version ? ` (v${updateRes.version})` : '';
                 return {
                     success: true,
-                    answer: `가족 위키 문서 **[${processed.category}] ${processed.title}**에 새로운 내용을 누적 보강했습니다! 🔄\n\n- **보강 요약**: ${processed.merge_summary || '최신 정보 업데이트'}\n- **문서 제목**: ${processed.title}\n\n👉 [**위키 문서 바로가기**](${updateRes.view_url || `/wiki/${candidateDoc.slug}`})`,
+                    answer: `가족 위키 문서 **[${processed.category}] ${processed.title}${verText}**에 새로운 내용을 누적 보강했습니다! 🔄\n\n- **보강 요약**: ${processed.merge_summary || '최신 정보 업데이트'}\n- **문서 제목**: ${processed.title}\n\n👉 [**위키 문서 바로가기**](${updateRes.view_url || `/wiki/${candidateDoc.slug}`})`,
                     action: 'wiki_merged',
                     wiki: {
                         slug: candidateDoc.slug,

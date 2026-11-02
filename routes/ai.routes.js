@@ -301,7 +301,9 @@ router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
                     slug: candidateDoc.slug,
                     content_md: processed.content_md,
                     title: processed.title,
-                    category: processed.category
+                    category: processed.category,
+                    change_summary: processed.merge_summary || 'AI 지능형 보강',
+                    author: userName || '가족'
                 });
 
                 return res.json({

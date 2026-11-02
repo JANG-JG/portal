@@ -370,12 +370,12 @@ async function getWikiPageDetail(slug) {
  * - 1차: 보조 서버 POST /api/wiki/pages/update (X-Internal-Secret 포함)
  * - 2차: 로컬 wikiDb UPDATE 폴백
  */
-async function updateWikiPage({ slug, content_md, title = '', category = '' }) {
+async function updateWikiPage({ slug, content_md, title = '', category = '', change_summary = '', author = '가족' }) {
     if (!slug || !content_md) {
         throw new Error('문서 식별자(slug)와 내용이 필요합니다.');
     }
 
-    const payload = JSON.stringify({ slug, content_md, title, category });
+    const payload = JSON.stringify({ slug, content_md, title, category, change_summary, author });
 
     // 1차: 보조 서버 실시간 API 호출
     try {
