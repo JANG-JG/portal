@@ -6,6 +6,7 @@ const { decryptMemoText } = require('./crypto.service');
 const { calculateReservationOpenDate, classifyBloodPressure } = require('./bloodClassifier.util');
 const { generateDailyBriefing } = require('./dailyBriefing.service');
 const { getWikiSummary } = require('./wikiSummary.service');
+const { getAlbumSummary } = require('./albumSummary.service');
 
 // KST (Asia/Seoul) 기준 현재 또는 오프셋 시각 문자열 생성 헬퍼 (YYYY-MM-DD HH:mm:ss)
 function getKstDateTimeString(offsetMinutes = 0) {
@@ -227,7 +228,7 @@ async function buildSummaryData() {
         );
     });
 
-    const [blood, medication, hospital, memoData, assetQuoteResult, weather, newsRecommendation, breakingArticles, marketData, todayEvents, wikiData] = await Promise.all([
+    const [blood, medication, hospital, memoData, assetQuoteResult, weather, newsRecommendation, breakingArticles, marketData, todayEvents, wikiData, albumData] = await Promise.all([
         bloodPromise,
         medicationPromise,
         hospitalPromise,
@@ -238,7 +239,8 @@ async function buildSummaryData() {
         breakingPromise,
         marketPromise,
         calendarPromise,
-        getWikiSummary()
+        getWikiSummary(),
+        getAlbumSummary()
     ]);
 
     const enrichedAssets = (assetQuoteResult && assetQuoteResult.enrichedAssets) ? assetQuoteResult.enrichedAssets : [];
@@ -390,7 +392,8 @@ async function buildSummaryData() {
             }
         },
         todayEvents: todayEvents || [],
-        wiki: wikiData || null
+        wiki: wikiData || null,
+        album: albumData || null
     };
 }
 

@@ -70,6 +70,7 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
             todayEvents: summary.todayEvents || [],
             asset: summary.asset,
             wiki: summary.wiki,
+            album: summary.album,
             userName
         }, forceRefresh);
 

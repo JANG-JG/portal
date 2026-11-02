@@ -9,6 +9,7 @@
 
 const http = require('http');
 const { searchWikiContent } = require('./wikiSummary.service');
+const { searchAlbumPhotos } = require('./albumSummary.service');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
@@ -111,7 +112,7 @@ async function checkAiHealth() {
 /**
  * 2. LG EXAONE 기반 맞춤형 데일리 건강/일정 브리핑 문장 생성
  */
-async function generateAiDailyBriefing({ blood, medication, weather, todayEvents = [], asset = null, wiki = null, userName = '가족' }, forceRefresh = false) {
+async function generateAiDailyBriefing({ blood, medication, weather, todayEvents = [], asset = null, wiki = null, album = null, userName = '가족' }, forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && cachedAiBriefing && (now - cachedAiBriefingTime < CACHE_TTL_MS)) {
         return cachedAiBriefing;
@@ -144,17 +145,28 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         if (parts.length > 0) wikiText = parts.join(' | ');
     }
 
+    let albumText = '';
+    if (album) {
+        if (Array.isArray(album.onThisDay) && album.onThisDay.length > 0) {
+            const mem = album.onThisDay[0];
+            albumText = `${mem.yearsAgo}년 전 오늘 추억 사진: ${mem.author}님이 올린 '${mem.caption || mem.location || '가족 사진'}'${mem.location ? ` (${mem.location})` : ''}`;
+        } else if (album.activity && album.activity.unreactedPhoto) {
+            const un = album.activity.unreactedPhoto;
+            albumText = `최근 사진: ${un.author}님이 올린 '${un.caption || un.location || '추억 사진'}'`;
+        }
+    }
+
     const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 다정하고 유능한 가족 전용 AI 비서(LG EXAONE)입니다.
 가족 구성원에게 다정한 한국어 경어(존댓말)로 말하세요.
-주어진 건강, 날씨, 일정, 자산, 가족 위키(D-Day·루틴) 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 조언과 인사를 작성하세요.
-답변에는 불필요한 서론이나 자기소개 없이 바로 다정한 인사와 조언만 말하세요.`;
+주어진 건강, 날씨, 일정, 자산, 가족 위키, 가족 사진첩(N년 전 오늘 추억·장소) 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 조언과 인사를 작성하세요.
+추억 사진이 있다면 자연스럽고 다정하게 회상하며 인사를 건네세요. 불필요한 서론 없이 바로 조언과 인사만 말하세요.`;
 
     const userPrompt = `[상황 데이터]
 - 사용자: ${userName}님
 - 날씨: ${weatherText}
 - 복약: ${medText}
 - 혈압: ${bloodText}
-- 일정: ${eventText}${assetText ? `\n- 자산: ${assetText}` : ''}${wikiText ? `\n- 가족 위키: ${wikiText}` : ''}
+- 일정: ${eventText}${assetText ? `\n- 자산: ${assetText}` : ''}${wikiText ? `\n- 가족 위키: ${wikiText}` : ''}${albumText ? `\n- 가족 사진첩: ${albumText}` : ''}
 
 위 상황을 보고 ${userName}님에게 건넬 다정하고 따뜻한 2~3문장 조언을 작성해 주세요.`;
 
@@ -200,6 +212,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
 
     let contextGuide = '';
     let matchedWikiGuide = '';
+    let matchedAlbumGuide = '';
 
     // 질문 키워드 기반 연관 위키 문서 본문 발췌 (RAG)
     try {
@@ -212,8 +225,19 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         console.warn('[AiAssistant] 위키 연관 문서 검색 오류:', e.message);
     }
 
+    // 질문 키워드 기반 연관 가족 사진 검색 (RAG)
+    try {
+        const matchedPhotos = await searchAlbumPhotos(cleanPrompt, 3);
+        if (Array.isArray(matchedPhotos) && matchedPhotos.length > 0) {
+            matchedAlbumGuide = '\n\n[질문 연관 가족 사진첩 발췌]\n' + 
+                matchedPhotos.map(p => `📷 [사진 #${p.id}] ${p.author}님 등록 (${p.takenAt})\n- 이야기: ${p.caption}${p.location ? ` | 장소: ${p.location}` : ''}${p.tags ? ` | 태그: ${p.tags}` : ''}\n- 사진 보기: ${p.url}`).join('\n\n');
+        }
+    } catch (e) {
+        console.warn('[AiAssistant] 사진첩 연관 검색 오류:', e.message);
+    }
+
     if (summaryContext) {
-        const { blood, medication, hospital, memo, asset, news, system, weather, todayEvents, wiki } = summaryContext;
+        const { blood, medication, hospital, memo, asset, news, system, weather, todayEvents, wiki, album } = summaryContext;
 
         // 1. 자산 관리 현황 (관리자 전용 / 비관리자는 차단)
         let assetInfo = '자산 정보 비공개 (관리자 전용 권한)';
@@ -255,6 +279,24 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
             if (wikiParts.length > 0) wikiInfo = wikiParts.join(' | ');
         }
 
+        // 3-2. 가족 사진첩 (N년 전 오늘 추억 & 활동 통계)
+        let albumInfo = '등록된 사진 없음';
+        if (album) {
+            const albumParts = [];
+            if (Array.isArray(album.onThisDay) && album.onThisDay.length > 0) {
+                const mem = album.onThisDay[0];
+                albumParts.push(`추억(N년 전 오늘): ${mem.yearsAgo}년 전 [${mem.author}] '${mem.caption || mem.location || '사진'}' (${mem.takenAt})`);
+            }
+            if (album.activity) {
+                albumParts.push(`총 ${album.activity.totalPhotos}장 보관 중`);
+                if (album.activity.unreactedPhoto) {
+                    const un = album.activity.unreactedPhoto;
+                    albumParts.push(`새 사진: [${un.author}] '${un.caption || un.location || '사진'}'`);
+                }
+            }
+            if (albumParts.length > 0) albumInfo = albumParts.join(' | ');
+        }
+
         // 4. 실시간 날씨 & 시장 지표 & 최신 뉴스
         const weatherInfo = weather ? `${weather.city || '서울'} ${weather.temp || ''} (${weather.condition || '맑음'}), 습도 ${weather.humidity || '-'}` : '날씨 정보 없음';
         let marketNewsInfo = '';
@@ -282,6 +324,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
 - 📅 오늘 가족 일정: ${eventsInfo}
 - 📝 가족 메모: ${memoInfo}
 - 📖 가족 위키: ${wikiInfo}
+- 📸 가족 사진첩: ${albumInfo}
 - 🌤️ 날씨: ${weatherInfo}
 - 📰 시장/뉴스: ${marketNewsInfo || '정보 없음'}
 - 🖥️ 서버 인프라: ${systemInfo}\n`;
@@ -289,11 +332,12 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
 
     const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 3.5)입니다.
 - 질문자가 가족 구성원이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
-- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키(D-Day·할 일·생활 문서/매뉴얼/레시피 등), 뉴스 및 서버 인프라 현황 데이터를 파악하고 있습니다.
+- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키(D-Day·할 일·생활 문서/매뉴얼/레시피 등), 가족 사진첩(추억, N년 전 오늘, 장소, 사진 검색) 및 서버 인프라 현황 데이터를 파악하고 있습니다.
 - '비공개' 또는 '관리자 전용'으로 표시된 항목에 대해서는 "해당 정보는 관리자 전용 데이터로 조회 권한이 없습니다"라고 친절히 안내하세요.
-- 질문이 들어오면 위의 [실시간 통합 현황] 및 [연관 가족 위키 문서 발췌]를 적극 참조하여 명확하고 정확하게 분석·안내해 주세요.
-- 위키 문서 관련 질문(가전 매뉴얼, 비상 연락처, 레시피, 처방약 복용법 등)이 들어오면 발췌된 위키 본문 내용을 바탕으로 꼼꼼하게 알려주세요.
-- 데이터에 없는 내용은 추측하지 말고 솔직하고 친절하게 안내하세요.${contextGuide}${matchedWikiGuide}`;
+- 질문이 들어오면 위의 [실시간 통합 현황] 및 발췌 자료를 적극 참조하여 명확하고 정확하게 분석·안내해 주세요.
+- 위키 문서 질문은 발췌된 위키 본문을 바탕으로 답변하세요.
+- 가족 사진이나 과거 추억, 여행, 촬영 장소 등에 대해 물어보면 [질문 연관 가족 사진첩 발췌]를 참조하여 사진 정보(날짜, 장소, 내용)와 함께 사진 링크를 친절히 안내하세요.
+- 데이터에 없는 내용은 추측하지 말고 솔직하고 친절하게 안내하세요.${contextGuide}${matchedWikiGuide}${matchedAlbumGuide}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
     
