@@ -179,9 +179,9 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
             options: {
                 temperature: 0.7,
                 top_p: 0.9,
-                num_predict: 350
+                num_predict: 250
             }
-        }, 60000);
+        }, 90000);
 
         if (result && result.response) {
             const cleanText = result.response.trim();
