@@ -220,9 +220,11 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
             let targetContent = '';
             let targetTitle = '';
 
-            // 1) 사용자가 직접 프롬프트에 상세 내용을 적은 경우 (35자 이상 또는 줄바꿈/콜론/제목 표기)
-            if (cleanPrompt.length >= 35 && (cleanPrompt.includes('\n') || cleanPrompt.includes(':') || cleanPrompt.includes('제목'))) {
-                targetContent = cleanPrompt;
+            // 1) 사용자가 직접 프롬프트에 내용을 적은 경우 (의도어 제거 후 15자 이상이면 직접 내용으로 채택)
+            const strippedIntent = cleanPrompt.replace(WIKI_INTENT_REGEX, '').trim();
+            if (strippedIntent.length >= 15) {
+                targetContent = strippedIntent;
+                targetTitle = strippedIntent.split(/[\n,.]/)[0].slice(0, 30).trim();
             } else if (Array.isArray(history) && history.length > 0) {
                 // 2) 직전 대화(AI 답변 등)를 위키로 저장하려는 경우
                 const lastAssistantMsg = [...history].reverse().find(h => h && h.role === 'assistant' && h.content);
