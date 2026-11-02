@@ -1,10 +1,13 @@
 /**
  * 📖 JG 포털 가족 위키 요약 및 지식 검색 서비스 (wikiSummary.service.js)
- * - wiki.db (위키 문서, D-Day, 할 일/루틴) 연동
+ * - 보조 서버(HP 노트북: 192.168.50.75:5060) 실시간 위키 API 연동
+ * - 보조 서버 순단 시 로컬 wiki.db 자동 폴백 (무장애 안전성 확보)
  * - AI 비서 브리핑 및 실시간 대화 컨텍스트 주입 (RAG)
  * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화
  */
 
+const http = require('http');
+const { WIKI_BASE_URL } = require('../config/constants');
 const { wikiDb } = require('./db');
 
 /**
@@ -29,12 +32,77 @@ function calcDDay(targetDateStr) {
 }
 
 /**
+ * 보조 서버 위키 HTTP API 호출 헬퍼 (타임아웃 3초)
+ */
+function fetchWikiApi(apiPath, timeoutMs = 3000) {
+    return new Promise((resolve, reject) => {
+        const url = `${WIKI_BASE_URL}${apiPath}`;
+        const req = http.get(url, { timeout: timeoutMs }, (res) => {
+            if (res.statusCode < 200 || res.statusCode >= 300) {
+                return reject(new Error(`위키 서버 응답 오류 (${res.statusCode})`));
+            }
+            let rawData = '';
+            res.on('data', chunk => { rawData += chunk; });
+            res.on('end', () => {
+                try {
+                    resolve(JSON.parse(rawData));
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
+        req.on('error', reject);
+        req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('위키 서버 요청 시간 초과 (3초)'));
+        });
+    });
+}
+
+/**
  * 1. 가족 위키 주요 현황 취합 (D-Day, 미완료 할 일, 최근 문서)
+ * - 1차: 보조 서버 실시간 API 호출
+ * - 2차: 실패 시 로컬 wikiDb 폴백
  */
 async function getWikiSummary() {
+    // 1차: 보조 서버 실시간 API 호출
+    try {
+        const liveData = await fetchWikiApi('/api/wiki/dashboard-summary', 3000);
+        if (liveData && liveData.success) {
+            const ddays = (liveData.dday || []).slice(0, 5).map(r => ({
+                id: r.id,
+                category: r.category,
+                title: r.title,
+                targetDate: r.target_date,
+                dday: (r.dday_info && r.dday_info.dday_str) ? r.dday_info.dday_str : calcDDay(r.target_date),
+                memo: r.memo
+            }));
+
+            const todos = (liveData.todos || [])
+                .filter(t => !t.is_completed)
+                .slice(0, 5)
+                .map(r => ({
+                    id: r.id,
+                    content: r.content,
+                    isRoutine: !!r.is_routine,
+                    assignee: r.assignee || '가족'
+                }));
+
+            const pages = (liveData.pages || []).slice(0, 5);
+
+            return {
+                ddays,
+                todos,
+                pages
+            };
+        }
+    } catch (netErr) {
+        console.warn('⚠️ [WikiSummary] 보조 서버 위키 API 통신 실패 (로컬 DB 폴백 전환):', netErr.message);
+    }
+
+    // 2차 폴백: 로컬 SQLite DB 직접 조회
     if (!wikiDb) return null;
 
-    // 1) 다가오는 중요 D-Day (미완료 5건)
     const ddayPromise = new Promise((resolve) => {
         wikiDb.all(
             "SELECT id, category, title, target_date, cycle_days, memo FROM family_dday WHERE is_completed = 0 ORDER BY target_date ASC LIMIT 5",
@@ -54,7 +122,6 @@ async function getWikiSummary() {
         );
     });
 
-    // 2) 오늘 진행 중인 미완료 가족 할 일 & 루틴 (5건)
     const todosPromise = new Promise((resolve) => {
         wikiDb.all(
             "SELECT id, content, is_routine, assignee FROM family_todos WHERE is_completed = 0 ORDER BY id ASC LIMIT 5",
@@ -72,7 +139,6 @@ async function getWikiSummary() {
         );
     });
 
-    // 3) 최근 등록/수정된 가족 위키 문서 (5건)
     const pagesPromise = new Promise((resolve) => {
         wikiDb.all(
             "SELECT id, category, title, slug, updated_at FROM wiki_pages ORDER BY updated_at DESC LIMIT 5",
@@ -86,24 +152,35 @@ async function getWikiSummary() {
 
     try {
         const [ddays, todos, pages] = await Promise.all([ddayPromise, todosPromise, pagesPromise]);
-        return {
-            ddays,
-            todos,
-            pages
-        };
+        return { ddays, todos, pages };
     } catch (e) {
-        console.warn('[WikiSummary] 위키 데이터 조회 실패:', e.message);
+        console.warn('⚠️ [WikiSummary] 로컬 위키 DB 조회 실패:', e.message);
         return null;
     }
 }
 
 /**
  * 2. 사용자 질문 키워드 기반 연관 위키 문서 검색 (RAG)
+ * - 1차: 보조 서버 실시간 검색 API 호출
+ * - 2차: 실패 시 로컬 wikiDb 폴백
  */
 async function searchWikiContent(query, limit = 2) {
-    if (!wikiDb || !query || typeof query !== 'string') return [];
+    if (!query || typeof query !== 'string') return [];
 
-    // 불용어 및 제어 문자 제거 후 의미 있는 단어 추출 (한글 2글자 이상, 영문 3글자 이상)
+    // 1차: 보조 서버 실시간 검색 API 호출
+    try {
+        const encQ = encodeURIComponent(query.trim());
+        const liveSearch = await fetchWikiApi(`/api/wiki/search?q=${encQ}&limit=${limit}`, 3000);
+        if (liveSearch && liveSearch.success && Array.isArray(liveSearch.results)) {
+            return liveSearch.results;
+        }
+    } catch (netErr) {
+        console.warn('⚠️ [WikiSearch] 보조 서버 위키 검색 API 실패 (로컬 DB 폴백 전환):', netErr.message);
+    }
+
+    // 2차 폴백: 로컬 SQLite DB 검색
+    if (!wikiDb) return [];
+
     const stopWords = new Set([
         '우리', '우리집', '위키', '가족', '가족위키', '알려줘', '알려', '어떻게', '뭐야', '무엇', '있는', '있어', 
         '검색', '내용', '적혀', '관련', '확인', '진짜', '정말', '해줘', '부탁'
@@ -118,7 +195,6 @@ async function searchWikiContent(query, limit = 2) {
     if (words.length === 0) return [];
 
     return new Promise((resolve) => {
-        // 단어별 LIKE 조건 생성
         const clauses = words.map(() => '(title LIKE ? OR content_md LIKE ?)').join(' OR ');
         const params = [];
         words.forEach(w => {
@@ -126,13 +202,12 @@ async function searchWikiContent(query, limit = 2) {
             params.push(pattern, pattern);
         });
 
-        const sql = `SELECT id, category, title, content_md, updated_at FROM wiki_pages WHERE ${clauses} ORDER BY updated_at DESC LIMIT ${limit}`;
+        const sql = `SELECT id, category, title, slug, content_md, updated_at FROM wiki_pages WHERE ${clauses} ORDER BY updated_at DESC LIMIT ${limit}`;
 
         wikiDb.all(sql, params, (err, rows) => {
             if (err || !rows || rows.length === 0) return resolve([]);
 
             const results = rows.map(r => {
-                // 본문 발췌 (최대 700자)
                 let excerpt = (r.content_md || '').trim();
                 if (excerpt.length > 700) {
                     excerpt = excerpt.slice(0, 700) + '\n... (이하 생략)';
@@ -141,7 +216,9 @@ async function searchWikiContent(query, limit = 2) {
                     id: r.id,
                     category: r.category,
                     title: r.title,
-                    excerpt
+                    slug: r.slug,
+                    excerpt,
+                    updated_at: r.updated_at
                 };
             });
             resolve(results);
