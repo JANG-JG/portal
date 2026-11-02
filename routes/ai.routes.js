@@ -69,6 +69,7 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
             weather: summary.weather,
             todayEvents: summary.todayEvents || [],
             asset: summary.asset,
+            wiki: summary.wiki,
             userName
         }, forceRefresh);
 

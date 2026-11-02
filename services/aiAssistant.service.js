@@ -8,6 +8,7 @@
  */
 
 const http = require('http');
+const { searchWikiContent } = require('./wikiSummary.service');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
@@ -110,7 +111,7 @@ async function checkAiHealth() {
 /**
  * 2. LG EXAONE 기반 맞춤형 데일리 건강/일정 브리핑 문장 생성
  */
-async function generateAiDailyBriefing({ blood, medication, weather, todayEvents = [], asset = null, userName = '가족' }, forceRefresh = false) {
+async function generateAiDailyBriefing({ blood, medication, weather, todayEvents = [], asset = null, wiki = null, userName = '가족' }, forceRefresh = false) {
     const now = Date.now();
     if (!forceRefresh && cachedAiBriefing && (now - cachedAiBriefingTime < CACHE_TTL_MS)) {
         return cachedAiBriefing;
@@ -129,9 +130,23 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         eventText = `오늘 일정 ${todayEvents.length}건: ` + todayEvents.map(e => `${e.event_time ? e.event_time.slice(0, 5) + ' ' : ''}${e.title}`).join(', ');
     }
 
+    let wikiText = '';
+    if (wiki) {
+        const parts = [];
+        if (Array.isArray(wiki.ddays) && wiki.ddays.length > 0) {
+            const nearDday = wiki.ddays[0];
+            parts.push(`다가오는 D-Day: ${nearDday.title} (${nearDday.dday || '예정'})`);
+        }
+        if (Array.isArray(wiki.todos) && wiki.todos.length > 0) {
+            const pending = wiki.todos.slice(0, 2).map(t => `${t.assignee ? `[${t.assignee}] ` : ''}${t.content}`).join(', ');
+            parts.push(`가족 루틴/할 일: ${pending}`);
+        }
+        if (parts.length > 0) wikiText = parts.join(' | ');
+    }
+
     const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 다정하고 유능한 가족 전용 AI 비서(LG EXAONE)입니다.
 가족 구성원에게 다정한 한국어 경어(존댓말)로 말하세요.
-주어진 건강, 날씨, 일정, 자산 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 조언과 인사를 작성하세요.
+주어진 건강, 날씨, 일정, 자산, 가족 위키(D-Day·루틴) 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 조언과 인사를 작성하세요.
 답변에는 불필요한 서론이나 자기소개 없이 바로 다정한 인사와 조언만 말하세요.`;
 
     const userPrompt = `[상황 데이터]
@@ -139,7 +154,7 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
 - 날씨: ${weatherText}
 - 복약: ${medText}
 - 혈압: ${bloodText}
-- 일정: ${eventText}${assetText ? `\n- 자산: ${assetText}` : ''}
+- 일정: ${eventText}${assetText ? `\n- 자산: ${assetText}` : ''}${wikiText ? `\n- 가족 위키: ${wikiText}` : ''}
 
 위 상황을 보고 ${userName}님에게 건넬 다정하고 따뜻한 2~3문장 조언을 작성해 주세요.`;
 
@@ -184,8 +199,21 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
     }
 
     let contextGuide = '';
+    let matchedWikiGuide = '';
+
+    // 질문 키워드 기반 연관 위키 문서 본문 발췌 (RAG)
+    try {
+        const matchedPages = await searchWikiContent(cleanPrompt, 2);
+        if (Array.isArray(matchedPages) && matchedPages.length > 0) {
+            matchedWikiGuide = '\n\n[질문 연관 가족 위키 문서 발췌 (내용 적극 인용 가능)]\n' + 
+                matchedPages.map(p => `■ [${p.category}] ${p.title}\n${p.excerpt}`).join('\n\n');
+        }
+    } catch (e) {
+        console.warn('[AiAssistant] 위키 연관 문서 검색 오류:', e.message);
+    }
+
     if (summaryContext) {
-        const { blood, medication, hospital, memo, asset, news, system, weather, todayEvents } = summaryContext;
+        const { blood, medication, hospital, memo, asset, news, system, weather, todayEvents, wiki } = summaryContext;
 
         // 1. 자산 관리 현황 (관리자 전용 / 비관리자는 차단)
         let assetInfo = '자산 정보 비공개 (관리자 전용 권한)';
@@ -209,6 +237,22 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         let memoInfo = '등록된 메모 없음';
         if (memo && Array.isArray(memo.recent) && memo.recent.length > 0) {
             memoInfo = memo.recent.map(m => `[${m.category || '일반'}] ${m.title}`).join(', ');
+        }
+
+        // 3-1. 가족 위키 (D-Day & 루틴 & 주요 문서)
+        let wikiInfo = '등록된 위키 데이터 없음';
+        if (wiki) {
+            const wikiParts = [];
+            if (Array.isArray(wiki.ddays) && wiki.ddays.length > 0) {
+                wikiParts.push('중요 D-Day: ' + wiki.ddays.map(d => `${d.title}(${d.dday || d.targetDate})`).join(', '));
+            }
+            if (Array.isArray(wiki.todos) && wiki.todos.length > 0) {
+                wikiParts.push('미완료 루틴: ' + wiki.todos.map(t => `${t.assignee ? `[${t.assignee}] ` : ''}${t.content}`).join(', '));
+            }
+            if (Array.isArray(wiki.pages) && wiki.pages.length > 0) {
+                wikiParts.push('위키 문서: ' + wiki.pages.slice(0, 4).map(p => `[${p.category}] ${p.title}`).join(', '));
+            }
+            if (wikiParts.length > 0) wikiInfo = wikiParts.join(' | ');
         }
 
         // 4. 실시간 날씨 & 시장 지표 & 최신 뉴스
@@ -237,6 +281,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
 - 🏥 병원/처방약: ${hospInfo}
 - 📅 오늘 가족 일정: ${eventsInfo}
 - 📝 가족 메모: ${memoInfo}
+- 📖 가족 위키: ${wikiInfo}
 - 🌤️ 날씨: ${weatherInfo}
 - 📰 시장/뉴스: ${marketNewsInfo || '정보 없음'}
 - 🖥️ 서버 인프라: ${systemInfo}\n`;
@@ -244,10 +289,11 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
 
     const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 3.5)입니다.
 - 질문자가 가족 구성원이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
-- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 뉴스 및 서버 인프라 현황 데이터를 파악하고 있습니다.
+- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키(D-Day·할 일·생활 문서/매뉴얼/레시피 등), 뉴스 및 서버 인프라 현황 데이터를 파악하고 있습니다.
 - '비공개' 또는 '관리자 전용'으로 표시된 항목에 대해서는 "해당 정보는 관리자 전용 데이터로 조회 권한이 없습니다"라고 친절히 안내하세요.
-- 질문이 들어오면 위의 [실시간 통합 현황] 데이터를 적극 참조하여 명확한 수치와 함께 똑똑하고 따뜻하게 분석·브리핑해 주세요.
-- 데이터에 없는 내용은 추측하지 말고 솔직하고 친절하게 안내하세요.${contextGuide}`;
+- 질문이 들어오면 위의 [실시간 통합 현황] 및 [연관 가족 위키 문서 발췌]를 적극 참조하여 명확하고 정확하게 분석·안내해 주세요.
+- 위키 문서 관련 질문(가전 매뉴얼, 비상 연락처, 레시피, 처방약 복용법 등)이 들어오면 발췌된 위키 본문 내용을 바탕으로 꼼꼼하게 알려주세요.
+- 데이터에 없는 내용은 추측하지 말고 솔직하고 친절하게 안내하세요.${contextGuide}${matchedWikiGuide}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
     
