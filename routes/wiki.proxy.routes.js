@@ -13,7 +13,7 @@
 const express = require('express');
 const http = require('http');
 const querystring = require('querystring');
-const { WIKI_HOST, WIKI_PORT, WIKI_BASE_URL } = require('../config/constants');
+const { WIKI_HOST, WIKI_PORT, WIKI_BASE_URL, JWT_SECRET } = require('../config/constants');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -50,6 +50,9 @@ function forwardToSecondaryWiki(req, res, targetPath) {
     forwardHeaders['x-forwarded-for'] = req.ip || req.connection.remoteAddress;
     forwardHeaders['x-forwarded-proto'] = req.protocol;
     forwardHeaders['x-forwarded-host'] = req.get('host');
+    if (JWT_SECRET) {
+        forwardHeaders['x-internal-secret'] = JWT_SECRET;
+    }
 
     // AI 분석 및 파일 업로드 요청은 AI 모델 추론 시간을 감안하여 60초 타임아웃 부여
     const isAiOrUpload = targetPath.startsWith('/api/wiki/ai/') || targetPath.startsWith('/api/wiki/upload');
@@ -152,7 +155,8 @@ router.get('/api/wiki/dashboard-summary', async (req, res) => {
     try {
         const fetchPromise = new Promise((resolve, reject) => {
             const reqUrl = `http://${WIKI_HOST}:${WIKI_PORT}/api/wiki/dashboard-summary`;
-            const clientReq = http.get(reqUrl, { agent: wikiKeepAliveAgent, timeout: 3500 }, (clientRes) => {
+            const reqHeaders = JWT_SECRET ? { 'x-internal-secret': JWT_SECRET } : {};
+            const clientReq = http.get(reqUrl, { agent: wikiKeepAliveAgent, timeout: 3500, headers: reqHeaders }, (clientRes) => {
                 let rawData = '';
                 clientRes.on('data', chunk => { rawData += chunk; });
                 clientRes.on('end', () => {

@@ -7,7 +7,7 @@
  */
 
 const http = require('http');
-const { WIKI_BASE_URL } = require('../config/constants');
+const { WIKI_BASE_URL, JWT_SECRET } = require('../config/constants');
 const { wikiDb } = require('./db');
 
 /**
@@ -37,7 +37,11 @@ function calcDDay(targetDateStr) {
 function fetchWikiApi(apiPath, timeoutMs = 3000) {
     return new Promise((resolve, reject) => {
         const url = `${WIKI_BASE_URL}${apiPath}`;
-        const req = http.get(url, { timeout: timeoutMs }, (res) => {
+        const options = {
+            timeout: timeoutMs,
+            headers: JWT_SECRET ? { 'X-Internal-Secret': JWT_SECRET } : {}
+        };
+        const req = http.get(url, options, (res) => {
             if (res.statusCode < 200 || res.statusCode >= 300) {
                 return reject(new Error(`위키 서버 응답 오류 (${res.statusCode})`));
             }
