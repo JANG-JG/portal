@@ -8,8 +8,9 @@
  */
 
 const http = require('http');
-const { searchWikiContent } = require('./wikiSummary.service');
+const { searchWikiContent, createWikiPage } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
+const { refineMemoToWiki } = require('./aiKnowledge.service');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
@@ -208,6 +209,76 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
     const cleanPrompt = sanitizeInputText(prompt, 500);
     if (!cleanPrompt) {
         throw new Error('유효한 질문 내용을 입력해 주세요.');
+    }
+
+    // 📚 [위키 1단계] 대화/메모 ➔ 원터치 위키 문서화 (Auto-Drafting & Publishing)
+    const WIKI_INTENT_REGEX = /(위키|wiki)\s*(에|로|에다가)?\s*(저장|등록|작성|기록|추가|올려|남겨|만들어|정리|발행)/i;
+    const isWikiIntent = WIKI_INTENT_REGEX.test(cleanPrompt) || /(이거|이\s*내용|방금\s*내용|위\s*내용|앞의\s*내용).*위키/i.test(cleanPrompt);
+
+    if (isWikiIntent) {
+        try {
+            let targetContent = '';
+            let targetTitle = '';
+
+            // 1) 사용자가 직접 프롬프트에 상세 내용을 적은 경우 (35자 이상 또는 줄바꿈/콜론/제목 표기)
+            if (cleanPrompt.length >= 35 && (cleanPrompt.includes('\n') || cleanPrompt.includes(':') || cleanPrompt.includes('제목'))) {
+                targetContent = cleanPrompt;
+            } else if (Array.isArray(history) && history.length > 0) {
+                // 2) 직전 대화(AI 답변 등)를 위키로 저장하려는 경우
+                const lastAssistantMsg = [...history].reverse().find(h => h && h.role === 'assistant' && h.content);
+                const lastUserMsg = [...history].reverse().find(h => h && h.role === 'user' && h.content && !WIKI_INTENT_REGEX.test(h.content));
+                if (lastAssistantMsg) {
+                    targetContent = lastAssistantMsg.content;
+                    if (lastUserMsg) {
+                        targetTitle = lastUserMsg.content.slice(0, 30);
+                    }
+                }
+            }
+
+            if (!targetContent || targetContent.length < 5) {
+                return {
+                    success: true,
+                    answer: '어떤 내용을 가족 위키에 저장할까요? 위키로 보관하고 싶은 레시피, 생활 팁, 가전 사용법 등을 말씀해 주시면 알기 쉽게 마크다운 문서로 정리하여 바로 등록해 드릴게요! 😊',
+                    model: OLLAMA_MODEL
+                };
+            }
+
+            // AI 기반 위키 문서 구조화
+            const refined = await refineMemoToWiki({
+                title: targetTitle,
+                content: targetContent,
+                userName
+            });
+
+            // 위키 서버에 등록
+            const saveRes = await createWikiPage({
+                category: refined.category || '생활',
+                title: refined.title,
+                content_md: refined.content_md,
+                slug: refined.slug
+            });
+
+            return {
+                success: true,
+                answer: `가족 위키에 **[${saveRes.category || refined.category}] ${saveRes.title || refined.title}** 문서를 성공적으로 등록했습니다! 📚\n\n- **카테고리**: ${saveRes.category || refined.category}\n- **문서 제목**: ${saveRes.title || refined.title}\n\n👉 [**위키 문서 바로가기**](${saveRes.view_url || `/wiki/${saveRes.slug}`})`,
+                action: 'wiki_published',
+                wiki: {
+                    id: saveRes.id,
+                    title: saveRes.title || refined.title,
+                    category: saveRes.category || refined.category,
+                    slug: saveRes.slug || refined.slug,
+                    view_url: saveRes.view_url || `/wiki/${saveRes.slug}`
+                },
+                model: OLLAMA_MODEL
+            };
+        } catch (wikiErr) {
+            console.error('[AiAssistant] 위키 문서 자동 등록 실패:', wikiErr);
+            return {
+                success: true,
+                answer: `위키 문서 등록 중 오류가 발생했습니다 (${wikiErr.message}). 잠시 후 다시 시도해 주세요.`,
+                model: OLLAMA_MODEL
+            };
+        }
     }
 
     let contextGuide = '';

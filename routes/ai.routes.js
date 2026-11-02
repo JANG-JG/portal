@@ -16,6 +16,7 @@ const {
     summarizeText,
     generateWikiDraft
 } = require('../services/aiAssistant.service');
+const { createWikiPage } = require('../services/wikiSummary.service');
 const { getPortalSummary } = require('../services/portalSummary.service');
 
 // 🛡️ [보안 강화] AI 채팅 레이트 리미터 & 동시성 제어 (로컬 PC 과부하 및 DoS 방어)
@@ -254,6 +255,47 @@ router.post('/api/ai/wiki-draft', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error('[API /api/ai/wiki-draft] 오류:', err);
         res.status(500).json({ success: false, message: '위키 초안 작성 실패: ' + err.message });
+    }
+});
+
+// 8. 📚 [위키 1단계] 대화/메모 ➔ 원터치 위키 자동 정돈 및 발행 API
+router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
+    try {
+        const { title = '', content, category = '생활' } = req.body;
+        if (!content || !content.trim()) {
+            return res.status(400).json({ success: false, message: '위키로 등록할 내용이 없습니다.' });
+        }
+
+        if (activeAiRequests >= MAX_CONCURRENT_AI) {
+            return res.status(503).json({ success: false, message: 'AI 엔진이 다른 작업을 처리 중입니다. 잠시 후 시도해 주세요.' });
+        }
+
+        activeAiRequests++;
+        try {
+            const userName = req.user?.nickname || req.user?.username || '가족';
+            const refined = await refineMemoToWiki({ title, content, userName });
+            const saveRes = await createWikiPage({
+                category: refined.category || category,
+                title: refined.title,
+                content_md: refined.content_md,
+                slug: refined.slug
+            });
+
+            res.json({
+                success: true,
+                id: saveRes.id,
+                title: saveRes.title || refined.title,
+                category: saveRes.category || refined.category,
+                slug: saveRes.slug || refined.slug,
+                view_url: saveRes.view_url || `/wiki/${saveRes.slug}`,
+                message: '가족 위키 문서가 성공적으로 발행되었습니다.'
+            });
+        } finally {
+            activeAiRequests = Math.max(0, activeAiRequests - 1);
+        }
+    } catch (err) {
+        console.error('[API /api/ai/publish-to-wiki] 오류:', err);
+        res.status(500).json({ success: false, message: '위키 문서 발행 실패: ' + err.message });
     }
 });
 

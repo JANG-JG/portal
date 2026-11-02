@@ -383,6 +383,16 @@
         }
     };
 
+    function formatAiMarkdown(text) {
+        if (!text) return '';
+        if (text.includes('class="ai-') || text.includes('<table')) return text;
+        let safe = escapeHtml(text);
+        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        safe = safe.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:underline; font-weight:700;">$1</a>');
+        safe = safe.replace(/^[ \t]*-[ \t]+(.*)$/gm, '• $1');
+        return safe.replace(/\n/g, '<br>');
+    }
+
     function appendMessageBubble(role, text, timestamp) {
         const msgContainer = document.getElementById('aiChatMessages');
         if (!msgContainer) return;
@@ -390,40 +400,59 @@
         const row = document.createElement('div');
         row.className = `ai-bubble-row ${role}`;
 
-        // 시스템 기본 환영 메시지 등 안전한 마크업 허용 판별
         let htmlContent = '';
-        if (role === 'assistant' && (text.includes('<br>') || text.includes('<strong>'))) {
-            htmlContent = text;
+        if (role === 'assistant') {
+            htmlContent = formatAiMarkdown(text);
         } else {
             htmlContent = escapeHtml(text).replace(/\n/g, '<br>');
         }
 
-        const timeStr = (window.JgAiHistory && window.JgAiHistory.formatMessageDateTime)
-            ? window.JgAiHistory.formatMessageDateTime(timestamp)
-            : '';
+        const timeStr = (window.JgAiHistory && window.JgAiHistory.formatMessageDateTime) ? window.JgAiHistory.formatMessageDateTime(timestamp) : '';
+        const isEligible = role === 'assistant' && text.length >= 25 && !text.includes('가족 위키에') && !text.includes('무엇을 도와드릴까요');
+        const wikiBtn = isEligible ? `<div style="margin-top:6px;display:flex;justify-content:flex-end;"><button type="button" class="ai-bubble-wiki-btn" style="font-size:11px;padding:3px 8px;border-radius:12px;border:1px solid #a7f3d0;background:#ecfdf5;color:#065f46;cursor:pointer;display:inline-flex;align-items:center;gap:3px;" onclick="window.saveChatBubbleToWiki(this)"><span>📚</span><span>위키로 저장</span></button></div>` : '';
 
-        row.innerHTML = `
-            <div class="ai-bubble-wrap">
-                <div class="ai-bubble">${htmlContent}</div>
-                ${timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : ''}
-            </div>
-        `;
+        row.innerHTML = `<div class="ai-bubble-wrap"><div class="ai-bubble">${htmlContent}${wikiBtn}</div>${timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : ''}</div>`;
+        if (isEligible) row.dataset.rawText = text;
         msgContainer.appendChild(row);
     }
+
+    window.saveChatBubbleToWiki = async function(btn) {
+        const row = btn.closest('.ai-bubble-row');
+        const rawText = row ? row.dataset.rawText : '';
+        if (!rawText) return;
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span><span>위키 등록 중...</span>';
+        try {
+            const res = await fetch('/api/ai/publish-to-wiki', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: rawText })
+            });
+            const data = await res.json();
+            if (data.success) {
+                btn.innerHTML = '<span>✅</span><span>위키 등록 완료</span>';
+                btn.style.background = '#d1fae5';
+                const successMsg = `가족 위키에 **[${data.category}] ${data.title}** 문서를 등록했습니다! 📚\n\n👉 [**위키 문서 바로가기**](${data.view_url})`;
+                appendMessageBubble('assistant', successMsg, Date.now());
+                if (window.JgAiHistory) window.JgAiHistory.addMessageToActiveSession('assistant', successMsg, Date.now());
+                scrollMessagesToBottom();
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = '<span>❌</span><span>실패 (다시 시도)</span>';
+            }
+        } catch (e) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>❌</span><span>연결 오류</span>';
+        }
+    };
 
     function appendTypingIndicator(id) {
         const msgContainer = document.getElementById('aiChatMessages');
         if (!msgContainer) return;
-
         const row = document.createElement('div');
         row.id = id;
         row.className = 'ai-bubble-row assistant';
-        row.innerHTML = `
-            <div class="ai-bubble" style="color:var(--hm-text-muted); font-size:0.8rem; display:flex; align-items:center; gap:6px;">
-                <span>생각하는 중...</span>
-                <span class="ai-fab-pulse" style="width:6px; height:6px;"></span>
-            </div>
-        `;
+        row.innerHTML = `<div class="ai-bubble" style="color:var(--hm-text-muted);font-size:0.8rem;display:flex;align-items:center;gap:6px;"><span>생각하는 중...</span><span class="ai-fab-pulse" style="width:6px;height:6px;"></span></div>`;
         msgContainer.appendChild(row);
     }
 
@@ -433,27 +462,18 @@
     }
 
     function scrollMessagesToBottom() {
-        const msgContainer = document.getElementById('aiChatMessages');
-        if (msgContainer) {
-            msgContainer.scrollTop = msgContainer.scrollHeight;
-        }
+        const c = document.getElementById('aiChatMessages');
+        if (c) c.scrollTop = c.scrollHeight;
     }
 
     function escapeHtml(str) {
         if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
-    // DOM 준비 시 초기화
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', initAiChat);
     } else {
         initAiChat();
     }
-
 })();

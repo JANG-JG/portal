@@ -110,16 +110,22 @@ JSON 필드:
 
     const fullPrompt = `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`;
 
-    const result = await sendOllamaRequest('/api/generate', {
-        model: OLLAMA_MODEL,
-        prompt: fullPrompt,
-        stream: false,
-        keep_alive: '24h',
-        options: { temperature: 0.3, num_predict: 1200 }
-    }, 60000);
+    let raw = '';
+    let parsed = null;
+    try {
+        const result = await sendOllamaRequest('/api/generate', {
+            model: OLLAMA_MODEL,
+            prompt: fullPrompt,
+            stream: false,
+            keep_alive: '24h',
+            options: { temperature: 0.3, num_predict: 1200 }
+        }, 60000);
 
-    const raw = result && result.response ? result.response.trim() : '';
-    const parsed = extractJsonFromText(raw);
+        raw = result && result.response ? result.response.trim() : '';
+        parsed = extractJsonFromText(raw);
+    } catch (ollamaErr) {
+        console.warn('⚠️ [RefineMemoToWiki] Ollama 생성 실패, 규칙 기반 마크다운 자동 생성으로 폴백:', ollamaErr.message);
+    }
 
     if (parsed && parsed.title && parsed.content_md) {
         return {

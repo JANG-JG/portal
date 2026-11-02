@@ -230,8 +230,115 @@ async function searchWikiContent(query, limit = 2) {
     });
 }
 
+/**
+ * 3. 보조 서버 위키에 신규 마크다운 문서 등록 API
+ * - 1차: 보조 서버 실시간 POST /api/wiki/pages/create (X-Internal-Secret 포함)
+ * - 2차: 실패 시 로컬 wikiDb 직접 INSERT (무장애 안전성 확보)
+ */
+async function createWikiPage({ category = '생활', title, content_md, slug = '' }) {
+    if (!title || !title.trim()) {
+        throw new Error('문서 제목을 입력해 주세요.');
+    }
+    if (!content_md || !content_md.trim()) {
+        throw new Error('문서 내용을 입력해 주세요.');
+    }
+
+    const cleanCategory = (category || '생활').trim();
+    const cleanTitle = title.trim();
+    const cleanContent = content_md.trim();
+    const cleanSlug = (slug || '').trim();
+
+    const payload = JSON.stringify({
+        category: cleanCategory,
+        title: cleanTitle,
+        content_md: cleanContent,
+        slug: cleanSlug
+    });
+
+    // 1차: 보조 서버 실시간 API 호출
+    try {
+        const liveResult = await new Promise((resolve, reject) => {
+            const urlObj = new URL('/api/wiki/pages/create', WIKI_BASE_URL);
+            const req = http.request(urlObj, {
+                method: 'POST',
+                timeout: 5000,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload),
+                    ...(JWT_SECRET ? { 'X-Internal-Secret': JWT_SECRET } : {})
+                }
+            }, (res) => {
+                let rawData = '';
+                res.setEncoding('utf8');
+                res.on('data', chunk => { rawData += chunk; });
+                res.on('end', () => {
+                    try {
+                        const parsed = JSON.parse(rawData);
+                        if (res.statusCode >= 200 && res.statusCode < 300 && parsed.success) {
+                            resolve(parsed);
+                        } else {
+                            reject(new Error(parsed.message || `위키 서버 상태 코드: ${res.statusCode}`));
+                        }
+                    } catch (e) {
+                        reject(new Error('위키 서버 JSON 응답 파싱 실패'));
+                    }
+                });
+            });
+            req.on('timeout', () => {
+                req.destroy();
+                reject(new Error('위키 서버 응답 시간 초과 (5초)'));
+            });
+            req.on('error', reject);
+            req.write(payload);
+            req.end();
+        });
+
+        if (liveResult && liveResult.success) {
+            return liveResult;
+        }
+    } catch (netErr) {
+        console.warn('⚠️ [CreateWikiPage] 보조 서버 위키 API 통신 실패 (로컬 DB 폴백 전환):', netErr.message);
+    }
+
+    // 2차 폴백: 로컬 SQLite DB 직접 등록 (무장애 안전성 확보)
+    if (!wikiDb) {
+        throw new Error('위키 DB에 연결할 수 없습니다.');
+    }
+
+    let baseSlug = cleanSlug || cleanTitle.toLowerCase().replace(/[^a-z0-9가-힣\s-]/g, '').trim().replace(/\s+/g, '-');
+    if (!baseSlug) baseSlug = `page-${Date.now()}`;
+
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+    return new Promise((resolve, reject) => {
+        wikiDb.get("SELECT id FROM wiki_pages WHERE slug = ?", [baseSlug], (err, row) => {
+            let finalSlug = baseSlug;
+            if (row) {
+                finalSlug = `${baseSlug}-${Date.now().toString(36)}`;
+            }
+            wikiDb.run(
+                "INSERT INTO wiki_pages (category, title, slug, content_md, updated_at) VALUES (?, ?, ?, ?, ?)",
+                [cleanCategory, cleanTitle, finalSlug, cleanContent, nowStr],
+                function(insertErr) {
+                    if (insertErr) return reject(insertErr);
+                    resolve({
+                        success: true,
+                        id: this.lastID,
+                        slug: finalSlug,
+                        title: cleanTitle,
+                        category: cleanCategory,
+                        view_url: `/wiki/${finalSlug}`,
+                        message: '위키 문서가 성공적으로 등록되었습니다. (로컬 DB)'
+                    });
+                }
+            );
+        });
+    });
+}
+
 module.exports = {
     calcDDay,
     getWikiSummary,
-    searchWikiContent
+    searchWikiContent,
+    createWikiPage
 };
