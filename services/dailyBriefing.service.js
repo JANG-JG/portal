@@ -202,6 +202,7 @@ function generateDailyBriefing({ summary, todayEvents = [], userRole = 'admin', 
     const weatherGuide = getWeatherGuide(weather);
     const health = getHealthBriefing(blood, medication, hasBloodAccess);
     const schedule = getScheduleBriefing(todayEvents);
+    const wikiTip = (summary && summary.wiki && summary.wiki.proactiveTip) ? summary.wiki.proactiveTip : null;
 
     // 원라이너 스마트 인사 (AI 비서 준비용)
     const naturalSummary = `${timeSlot.greeting} ${schedule.hasEvents ? schedule.text : ''} ${weatherGuide}`.trim();
@@ -222,6 +223,13 @@ function generateDailyBriefing({ summary, todayEvents = [], userRole = 'admin', 
         },
         health,
         schedule,
+        wikiTip: wikiTip ? {
+            title: wikiTip.title,
+            slug: wikiTip.slug,
+            category: wikiTip.category || '생활',
+            reason: wikiTip.reason || '오늘의 추천 가족 지식이에요 💡',
+            excerpt: wikiTip.excerpt || ''
+        } : null,
         naturalSummary,
         // 3단계 로컬 AI 비서(sLLM / Gemini API)가 연결될 확장 슬롯
         aiSlot: {

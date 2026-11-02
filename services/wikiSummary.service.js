@@ -64,14 +64,39 @@ function fetchWikiApi(apiPath, timeoutMs = 3000) {
 }
 
 /**
- * 1. 가족 위키 주요 현황 취합 (D-Day, 미완료 할 일, 최근 문서)
+ * 날씨/계절 기반 선제적 위키 생활 지식 팁 조회 (3초 타임아웃)
+ */
+async function fetchProactiveWikiTip(weather = null) {
+    try {
+        let qs = '';
+        if (weather) {
+            const cond = encodeURIComponent(weather.condition || '');
+            const temp = encodeURIComponent(weather.temp || '');
+            qs = `?condition=${cond}&temp=${temp}`;
+        }
+        const data = await fetchWikiApi(`/api/wiki/intel/proactive-tip${qs}`, 2500);
+        if (data && data.success && data.has_tip && data.tip) {
+            return data.tip;
+        }
+    } catch (e) {
+        // 무장애 원칙: 실패 시 조용히 무시
+    }
+    return null;
+}
+
+/**
+ * 1. 가족 위키 주요 현황 취합 (D-Day, 미완료 할 일, 최근 문서, 선제적 지식 팁)
  * - 1차: 보조 서버 실시간 API 호출
  * - 2차: 실패 시 로컬 wikiDb 폴백
  */
-async function getWikiSummary() {
+async function getWikiSummary(weather = null) {
     // 1차: 보조 서버 실시간 API 호출
     try {
-        const liveData = await fetchWikiApi('/api/wiki/dashboard-summary', 3000);
+        const [liveData, proactiveTip] = await Promise.all([
+            fetchWikiApi('/api/wiki/dashboard-summary', 3000).catch(() => null),
+            fetchProactiveWikiTip(weather)
+        ]);
+
         if (liveData && liveData.success) {
             const ddays = (liveData.dday || []).slice(0, 5).map(r => ({
                 id: r.id,
@@ -86,18 +111,19 @@ async function getWikiSummary() {
                 .filter(t => !t.is_completed)
                 .slice(0, 5)
                 .map(r => ({
-                    id: r.id,
-                    content: r.content,
-                    isRoutine: !!r.is_routine,
-                    assignee: r.assignee || '가족'
-                }));
+                id: r.id,
+                content: r.content,
+                isRoutine: !!r.is_routine,
+                assignee: r.assignee || '가족'
+            }));
 
             const pages = (liveData.pages || []).slice(0, 5);
 
             return {
                 ddays,
                 todos,
-                pages
+                pages,
+                proactiveTip: proactiveTip || null
             };
         }
     } catch (netErr) {
@@ -190,18 +216,36 @@ async function searchWikiContent(query, limit = 2) {
         '검색', '내용', '적혀', '관련', '확인', '진짜', '정말', '해줘', '부탁'
     ]);
 
+    // 의미적 동의어 확장 맵
+    const semanticSynonyms = [
+        { triggers: ['배', '소화', '체', '속쓰'], words: ['소화', '위장', '매실', '상비약'] },
+        { triggers: ['머리', '두통', '열', '몸살', '감기', '기침', '목'], words: ['해열', '타이레놀', '감기', '상비약', '도라지'] },
+        { triggers: ['추위', '추울', '겨울', '쌀쌀', '간식'], words: ['군고구마', '간식', '겨울', '난방'] },
+        { triggers: ['더위', '더울', '여름', '에어컨'], words: ['에어컨', '여름', '냉방', '필터'] },
+        { triggers: ['청소', '필터', '먼지', '냄새'], words: ['필터', '청소', '공기청정기'] }
+    ];
+
     const words = query
         .replace(/[^\w\s가-힣]/g, ' ')
         .split(/\s+/)
         .map(w => w.trim())
         .filter(w => w.length >= 2 && !stopWords.has(w));
 
+    // 의미 연관 단어 추가 주입
+    for (const syn of semanticSynonyms) {
+        if (syn.triggers.some(trig => query.includes(trig))) {
+            syn.words.forEach(sw => {
+                if (!words.includes(sw)) words.push(sw);
+            });
+        }
+    }
+
     if (words.length === 0) return [];
 
     return new Promise((resolve) => {
-        const clauses = words.map(() => '(title LIKE ? OR content_md LIKE ?)').join(' OR ');
+        const clauses = words.slice(0, 6).map(() => '(title LIKE ? OR content_md LIKE ?)').join(' OR ');
         const params = [];
-        words.forEach(w => {
+        words.slice(0, 6).forEach(w => {
             const pattern = `%${w}%`;
             params.push(pattern, pattern);
         });
@@ -446,6 +490,7 @@ async function updateWikiPage({ slug, content_md, title = '', category = '', cha
 module.exports = {
     calcDDay,
     getWikiSummary,
+    fetchProactiveWikiTip,
     searchWikiContent,
     createWikiPage,
     getWikiPageDetail,

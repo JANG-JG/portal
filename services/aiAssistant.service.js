@@ -135,6 +135,9 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
     let wikiText = '';
     if (wiki) {
         const parts = [];
+        if (wiki.proactiveTip) {
+            parts.push(`오늘의 위키 추천 생활 지식: [${wiki.proactiveTip.title}] (${wiki.proactiveTip.reason})`);
+        }
         if (Array.isArray(wiki.ddays) && wiki.ddays.length > 0) {
             const nearDday = wiki.ddays[0];
             parts.push(`다가오는 D-Day: ${nearDday.title} (${nearDday.dday || '예정'})`);
@@ -159,8 +162,8 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
 
     const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 다정하고 유능한 가족 전용 AI 비서(LG EXAONE)입니다.
 가족 구성원에게 다정한 한국어 경어(존댓말)로 말하세요.
-주어진 건강, 날씨, 일정, 자산, 가족 위키, 가족 사진첩(N년 전 오늘 추억·장소) 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 조언과 인사를 작성하세요.
-추억 사진이 있다면 자연스럽고 다정하게 회상하며 인사를 건네세요. 불필요한 서론 없이 바로 조언과 인사만 말하세요.`;
+주어진 건강, 날씨, 일정, 자산, 가족 위키(추천 생활 지식), 가족 사진첩(추억 사진) 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 조언과 인사를 작성하세요.
+위키 추천 생활 지식이 있다면 날씨나 상황에 맞추어 유용하게 활용할 수 있도록 다정하게 곁들여 권유하세요. 불필요한 서론 없이 바로 조언과 인사만 말하세요.`;
 
     const userPrompt = `[상황 데이터]
 - 사용자: ${userName}님

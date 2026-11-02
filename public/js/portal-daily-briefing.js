@@ -49,6 +49,9 @@
         // 5. 칩 3: 실시간 날씨 & 생활 가이드 칩
         renderWeatherChip(briefing.weather);
 
+        // 5-1. 칩 4: 오늘의 선제적 위키 생활 지식 칩
+        renderWikiTipChip(briefing.wikiTip);
+
         // 6. 하단 자연어 가이드 문구
         const naturalEl = document.getElementById('briefingNaturalSummaryText');
         if (naturalEl) {
@@ -167,6 +170,27 @@
             if (iconEl) iconEl.textContent = '🌤️';
             titleEl.textContent = '오늘의 날씨';
             descEl.textContent = '실시간 기상 정보를 불러오는 중입니다.';
+        }
+    }
+
+    /**
+     * 위키 선제적 생활 팁 칩 렌더링
+     */
+    function renderWikiTipChip(wikiTip) {
+        const chip = document.getElementById('briefingChipWiki');
+        const iconEl = document.getElementById('briefingChipWikiIcon');
+        const titleEl = document.getElementById('briefingChipWikiTitle');
+        const descEl = document.getElementById('briefingChipWikiDesc');
+        if (!chip || !titleEl || !descEl) return;
+
+        if (wikiTip && wikiTip.title) {
+            chip.style.display = '';
+            chip.href = `/wiki/${wikiTip.slug || ''}`;
+            if (iconEl) iconEl.textContent = '💡';
+            titleEl.textContent = `가족 꿀팁: ${wikiTip.title}`;
+            descEl.textContent = wikiTip.reason || wikiTip.excerpt || '우리 가족 지식 베이스의 추천 내용입니다.';
+        } else {
+            chip.style.display = 'none';
         }
     }
 

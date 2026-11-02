@@ -5,7 +5,7 @@ const { getCurrentCpuPercent, getRealMemoryInfo, getSecondaryServerStatus, getDi
 const { decryptMemoText } = require('./crypto.service');
 const { calculateReservationOpenDate, classifyBloodPressure } = require('./bloodClassifier.util');
 const { generateDailyBriefing } = require('./dailyBriefing.service');
-const { getWikiSummary } = require('./wikiSummary.service');
+const { getWikiSummary, fetchProactiveWikiTip } = require('./wikiSummary.service');
 const { getAlbumSummary } = require('./albumSummary.service');
 
 // KST (Asia/Seoul) 기준 현재 또는 오프셋 시각 문자열 생성 헬퍼 (YYYY-MM-DD HH:mm:ss)
@@ -441,6 +441,13 @@ async function attachUserWeather(baseSummary, reqUser) {
         result.medication = null;
         result.hospital = null;
         result.asset = null;
+    }
+
+    // 💡 날씨 맞춤형 위키 생활 팁 보강
+    if (result.wiki && !result.wiki.proactiveTip) {
+        try {
+            result.wiki.proactiveTip = await fetchProactiveWikiTip(result.weather);
+        } catch (_) {}
     }
 
     // 🌅 능동형 스마트 데일리 브리핑 객체 생성 및 첨부
