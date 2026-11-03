@@ -160,7 +160,8 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
                     prompt: message.trim(),
                     history: safeHistory,
                     summaryContext: summary,
-                    userName
+                    userName,
+                    user: req.user
                 });
                 return;
             }
@@ -169,7 +170,8 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
                 prompt: message.trim(),
                 history: safeHistory,
                 summaryContext: summary,
-                userName
+                userName,
+                user: req.user
             });
 
             res.json(result);

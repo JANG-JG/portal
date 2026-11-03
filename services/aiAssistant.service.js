@@ -11,6 +11,8 @@ const http = require('http');
 const { searchWikiContent, createWikiPage, getWikiPageDetail, updateWikiPage } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
 const { refineMemoToWiki, smartMergeOrDraftWiki } = require('./aiKnowledge.service');
+const { handleActionIntent } = require('./aiActionAgent.service');
+const { buildAiChatPrompt } = require('./aiContextRouter.service');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
@@ -208,13 +210,23 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
 /**
  * 3. 우리 집 AI 챗봇 실시간 대화 (전체 서브 서비스 통합 분석가)
  */
-async function askAiAssistant({ prompt, history = [], summaryContext = null, userName = '가족' }) {
+async function askAiAssistant({ prompt, history = [], summaryContext = null, userName = '가족', user = null }) {
     const cleanPrompt = sanitizeInputText(prompt, 1000);
-    if (!cleanPrompt) {
-        throw new Error('유효한 질문 내용을 입력해 주세요.');
+    if (!cleanPrompt) throw new Error('유효한 질문 내용을 입력해 주세요.');
+
+    // ⚡ [액션 에이전트] 자연어 액션 의도 감지 (일정/혈압/메모 등록)
+    const actionResult = await handleActionIntent({ prompt: cleanPrompt, user, userName });
+    if (actionResult && actionResult.handled) {
+        return {
+            success: true,
+            answer: actionResult.message,
+            action: actionResult.meta,
+            actionType: actionResult.actionType,
+            model: 'action-agent'
+        };
     }
 
-    // 📚 [위키 1단계] 대화/메모 ➔ 원터치 위키 문서화 (Auto-Drafting & Publishing)
+    // 📚 [위키] 대화/메모 ➔ 원터치 위키 문서화
     const WIKI_INTENT_REGEX = /(위키|wiki)\s*(에|로|에다가)?\s*(저장|등록|작성|기록|추가|올려|남겨|만들어|정리|발행)/i;
     const isWikiIntent = WIKI_INTENT_REGEX.test(cleanPrompt) || /(이거|이\s*내용|방금\s*내용|위\s*내용|앞의\s*내용).*위키/i.test(cleanPrompt);
 
@@ -325,149 +337,13 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         }
     }
 
-    let contextGuide = '';
-    let matchedWikiGuide = '';
-    let matchedAlbumGuide = '';
-
-    // 질문 키워드 기반 연관 위키 문서 본문 발췌 (RAG)
-    try {
-        const matchedPages = await searchWikiContent(cleanPrompt, 2);
-        if (Array.isArray(matchedPages) && matchedPages.length > 0) {
-            matchedWikiGuide = '\n\n[질문 연관 가족 위키 문서 발췌 (내용 적극 인용 가능)]\n' + 
-                matchedPages.map(p => `■ [${p.category}] ${p.title}\n${p.excerpt}`).join('\n\n');
-        }
-    } catch (e) {
-        console.warn('[AiAssistant] 위키 연관 문서 검색 오류:', e.message);
-    }
-
-    // 질문 키워드 기반 연관 가족 사진 검색 (RAG)
-    try {
-        const matchedPhotos = await searchAlbumPhotos(cleanPrompt, 3);
-        if (Array.isArray(matchedPhotos) && matchedPhotos.length > 0) {
-            matchedAlbumGuide = '\n\n[질문 연관 가족 사진첩 발췌]\n' + 
-                matchedPhotos.map(p => `📷 [사진 #${p.id}] ${p.author}님 등록 (${p.takenAt})\n- 이야기: ${p.caption}${p.location ? ` | 장소: ${p.location}` : ''}${p.tags ? ` | 태그: ${p.tags}` : ''}\n- 사진 보기: ${p.url}`).join('\n\n');
-        }
-    } catch (e) {
-        console.warn('[AiAssistant] 사진첩 연관 검색 오류:', e.message);
-    }
-
-    if (summaryContext) {
-        const { blood, medication, hospital, memo, asset, news, system, weather, todayEvents, wiki, album } = summaryContext;
-
-        // 1. 자산 관리 현황 (관리자 전용 / 비관리자는 차단)
-        let assetInfo = '자산 정보 비공개 (관리자 전용 권한)';
-        if (asset && asset.totalKrw) {
-            const topItems = Array.isArray(asset.items) ? asset.items.slice(0, 5).map(i => `${i.name}(${i.symbol}): ${i.formattedTotal} (${i.diffPercent})`).join(', ') : '';
-            assetInfo = `총 자산 평가액 ${asset.totalKrw} (보유 종목 ${asset.count || 0}개)` + (topItems ? ` | 주요 종목: ${topItems}` : '');
-        }
-
-        // 2. 건강 & 복약 & 병원 진료 (관리자 전용 / 비관리자는 차단)
-        const bloodInfo = blood ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'}) - ${blood.is_today_measured ? '오늘 측정 완료' : '오늘 미측정'}` : '건강 기록 비공개 (관리자 전용)';
-        const medInfo = medication && medication.is_today_taken ? '오늘 복약 완료 ✅' : (medication ? '오늘 혈압약 아직 미복용 ⚠️' : '복약 정보 없음');
-        let hospInfo = '예정된 진료 없음';
-        if (hospital) {
-            hospInfo = `다음 진료: ${hospital.displayNextVisit || '미정'} (${hospital.nextVisitDDay || 'D-Day 미정'}), 처방 잔여 약: ${hospital.remainingPills || 0}일분`;
-        }
-
-        // 3. 가족 일정 & 메모
-        const eventsInfo = Array.isArray(todayEvents) && todayEvents.length > 0 
-            ? todayEvents.map(e => `${e.event_time ? e.event_time.slice(0, 5) + ' ' : ''}${e.title}`).join(', ') 
-            : '오늘 예정된 특별한 일정 없음';
-        let memoInfo = '등록된 메모 없음';
-        if (memo && Array.isArray(memo.recent) && memo.recent.length > 0) {
-            memoInfo = memo.recent.map(m => `[${m.category || '일반'}] ${m.title}`).join(', ');
-        }
-
-        // 3-1. 가족 위키 (D-Day & 루틴 & 주요 문서)
-        let wikiInfo = '등록된 위키 데이터 없음';
-        if (wiki) {
-            const wikiParts = [];
-            if (Array.isArray(wiki.ddays) && wiki.ddays.length > 0) {
-                wikiParts.push('중요 D-Day: ' + wiki.ddays.map(d => `${d.title}(${d.dday || d.targetDate})`).join(', '));
-            }
-            if (Array.isArray(wiki.todos) && wiki.todos.length > 0) {
-                wikiParts.push('미완료 루틴: ' + wiki.todos.map(t => `${t.assignee ? `[${t.assignee}] ` : ''}${t.content}`).join(', '));
-            }
-            if (Array.isArray(wiki.pages) && wiki.pages.length > 0) {
-                wikiParts.push('위키 문서: ' + wiki.pages.slice(0, 4).map(p => `[${p.category}] ${p.title}`).join(', '));
-            }
-            if (wikiParts.length > 0) wikiInfo = wikiParts.join(' | ');
-        }
-
-        // 3-2. 가족 사진첩 (N년 전 오늘 추억 & 활동 통계)
-        let albumInfo = '등록된 사진 없음';
-        if (album) {
-            const albumParts = [];
-            if (Array.isArray(album.onThisDay) && album.onThisDay.length > 0) {
-                const mem = album.onThisDay[0];
-                albumParts.push(`추억(N년 전 오늘): ${mem.yearsAgo}년 전 [${mem.author}] '${mem.caption || mem.location || '사진'}' (${mem.takenAt})`);
-            }
-            if (album.activity) {
-                albumParts.push(`총 ${album.activity.totalPhotos}장 보관 중`);
-                if (album.activity.unreactedPhoto) {
-                    const un = album.activity.unreactedPhoto;
-                    albumParts.push(`새 사진: [${un.author}] '${un.caption || un.location || '사진'}'`);
-                }
-            }
-            if (albumParts.length > 0) albumInfo = albumParts.join(' | ');
-        }
-
-        // 4. 실시간 날씨 & 시장 지표 & 최신 뉴스
-        const weatherInfo = weather ? `${weather.city || '서울'} ${weather.temp || ''} (${weather.condition || '맑음'}), 습도 ${weather.humidity || '-'}` : '날씨 정보 없음';
-        let marketNewsInfo = '';
-        if (news) {
-            const m = news.market;
-            const marketStr = m ? `코스피 ${m.kospi || '-'}, 코스닥 ${m.kosdaq || '-'}, 환율 ${m.usdkrw || '-'}원` : '';
-            const topNews = Array.isArray(news.recommendedArticles) ? news.recommendedArticles.slice(0, 3).map(a => a.title).join(' / ') : '';
-            const breaking = Array.isArray(news.breakingArticles) && news.breakingArticles.length > 0 ? `🚨 속보: ${news.breakingArticles[0].title}` : '';
-            marketNewsInfo = [marketStr, breaking, topNews ? `주요 뉴스: ${topNews}` : ''].filter(Boolean).join(' | ');
-        }
-
-        // 5. 서버 듀얼 인프라 상태
-        let systemInfo = '서버 정보 없음';
-        if (system) {
-            const pri = system.primary ? `주서버(노트9): CPU ${system.primary.cpu}, RAM ${system.primary.ram}, 디스크 ${system.primary.disk}` : '';
-            const sec = system.secondary ? `보조서버(노트북): ${system.secondary.statusText || '대기'} (CPU ${system.secondary.cpu}, RAM ${system.secondary.ram})` : '';
-            systemInfo = [pri, sec].filter(Boolean).join(' | ');
-        }
-
-        contextGuide = `\n[우리 집 JG 홈서버 실시간 통합 현황]
-- 💰 자산 현황: ${assetInfo}
-- 🩺 혈압 건강: ${bloodInfo}
-- 💊 오늘 복약: ${medInfo}
-- 🏥 병원/처방약: ${hospInfo}
-- 📅 오늘 가족 일정: ${eventsInfo}
-- 📝 가족 메모: ${memoInfo}
-- 📖 가족 위키: ${wikiInfo}
-- 📸 가족 사진첩: ${albumInfo}
-- 🌤️ 날씨: ${weatherInfo}
-- 📰 시장/뉴스: ${marketNewsInfo || '정보 없음'}
-- 🖥️ 서버 인프라: ${systemInfo}\n`;
-    }
-
-    const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 3.5)입니다.
-- 질문자가 가족 구성원이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
-- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키(D-Day·할 일·생활 문서/매뉴얼/레시피 등), 가족 사진첩(추억, N년 전 오늘, 장소, 사진 검색) 및 서버 인프라 현황 데이터를 파악하고 있습니다.
-- '비공개' 또는 '관리자 전용'으로 표시된 항목에 대해서는 "해당 정보는 관리자 전용 데이터로 조회 권한이 없습니다"라고 친절히 안내하세요.
-- 질문이 들어오면 위의 [실시간 통합 현황] 및 발췌 자료를 적극 참조하여 명확하고 정확하게 분석·안내해 주세요.
-- 위키 문서 질문은 발췌된 위키 본문을 바탕으로 답변하세요.
-- 가족 사진이나 과거 추억, 여행, 촬영 장소 등에 대해 물어보면 [질문 연관 가족 사진첩 발췌]를 참조하여 사진 정보(날짜, 장소, 내용)와 함께 사진 링크를 친절히 안내하세요.
-- 데이터에 없는 내용은 추측하지 말고 솔직하고 친절하게 안내하세요.${contextGuide}${matchedWikiGuide}${matchedAlbumGuide}`;
-
-    let fullPrompt = `<|system|>\n${systemPrompt}\n`;
-    
-    // 최근 대화 히스토리 (최대 4턴, 특수 토큰 정제)
-    if (Array.isArray(history)) {
-        history.slice(-4).forEach(h => {
-            const safeRole = (h && h.role === 'assistant') ? 'assistant' : 'user';
-            const safeContent = sanitizeInputText(h ? h.content : '', 500);
-            if (safeContent) {
-                fullPrompt += `<|${safeRole}|>\n${safeContent}\n`;
-            }
-        });
-    }
-
-    fullPrompt += `<|user|>\n${cleanPrompt}\n<|assistant|>\n`;
+    // 질문 의도 기반 최적화 프롬프트 및 타깃 RAG 빌드
+    const { fullPrompt } = await buildAiChatPrompt({
+        prompt: cleanPrompt,
+        history,
+        summaryContext,
+        userName
+    });
 
     const result = await sendOllamaRequest('/api/generate', {
         model: OLLAMA_MODEL,

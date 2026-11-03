@@ -236,14 +236,29 @@
 }
 
 .ai-bubble a.ai-link {
-    color: var(--ai-primary);
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--ai-primary, #D97757);
+    background: rgba(217, 119, 87, 0.08);
+    border: 1px solid rgba(217, 119, 87, 0.2);
+    padding: 2px 8px;
+    border-radius: 6px;
+    text-decoration: none;
     font-weight: 600;
+    font-size: 0.92em;
+    margin: 2px 2px;
+    transition: all 0.15s ease;
+}
+
+.ai-bubble a.ai-link:hover {
+    background: rgba(217, 119, 87, 0.16);
+    border-color: var(--ai-primary, #D97757);
+    transform: translateY(-1px);
 }
 
 .ai-bubble-row.user a.ai-link {
-    color: var(--ai-primary);
+    color: var(--ai-primary, #D97757);
 }
 
 /* 코드 블록 (다크 슬레이트 에디토리얼 스타일) */

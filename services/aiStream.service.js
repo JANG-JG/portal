@@ -10,6 +10,7 @@ const http = require('http');
 const { buildAiChatPrompt, sanitizeInputText } = require('./aiContextRouter.service');
 const { searchWikiContent, createWikiPage, getWikiPageDetail, updateWikiPage } = require('./wikiSummary.service');
 const { smartMergeOrDraftWiki } = require('./aiKnowledge.service');
+const { handleActionIntent } = require('./aiActionAgent.service');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
@@ -115,7 +116,7 @@ async function handleWikiIntent({ prompt, history, userName, res }) {
 /**
  * ⚡ Express SSE 기반 실시간 AI 대화 스트리밍 처리기
  */
-async function handleSseChatStream({ req, res, prompt, history = [], summaryContext = null, userName = '가족' }) {
+async function handleSseChatStream({ req, res, prompt, history = [], summaryContext = null, userName = '가족', user = null }) {
     // 1. SSE 응답 헤더 설정
     res.writeHead(200, {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -127,11 +128,25 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
         res.flushHeaders();
     }
 
-    // 2. 위키 작성 의도 우선 감지
+    // 2. ⚡ 액션 에이전트 의도 감지 (일정/혈압/메모 자동 등록)
+    const actionResult = await handleActionIntent({ prompt, user, userName });
+    if (actionResult && actionResult.handled) {
+        sendSseEvent(res, 'token', { token: actionResult.message });
+        sendSseEvent(res, 'done', {
+            fullText: actionResult.message,
+            action: actionResult.meta,
+            actionType: actionResult.actionType,
+            model: 'action-agent'
+        });
+        res.end();
+        return;
+    }
+
+    // 3. 위키 작성 의도 감지
     const handledWiki = await handleWikiIntent({ prompt, history, userName, res });
     if (handledWiki) return;
 
-    // 3. 질문 의도 분석 및 최적화된 프롬프트 빌드
+    // 4. 질문 의도 분석 및 최적화된 프롬프트 빌드
     const { fullPrompt } = await buildAiChatPrompt({
         prompt,
         history,
