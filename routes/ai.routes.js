@@ -50,6 +50,14 @@ setInterval(() => {
     }
 }, 10 * 60 * 1000);
 
+/** 👤 사용자 친화적 표시 호칭 정제 (admin 계정은 '관리자'로 정중하게 변환) */
+function resolveUserName(user) {
+    if (!user) return '가족';
+    const name = (user.nickname || user.username || '').trim();
+    if (!name || name.toLowerCase() === 'admin') return '관리자';
+    return name;
+}
+
 // 0. AI 비서 런타임 설정 조회 (웰컴 메시지 및 글자 수 제한)
 router.get('/api/ai/config', (req, res) => {
     try {
@@ -75,7 +83,7 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
     try {
         const forceRefresh = (req.query.refresh === '1' || req.query.refresh === 'true');
         const summary = await getPortalSummary(req.user);
-        const userName = (req.user && (req.user.nickname || req.user.username)) ? (req.user.nickname || req.user.username) : '가족';
+        const userName = resolveUserName(req.user);
 
         const aiResult = await generateAiDailyBriefing({
             blood: summary.blood,
@@ -148,7 +156,7 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
         try {
             // 사용자 권한에 따른 최신 요약 데이터 컨텍스트 주입
             const summary = await getPortalSummary(req.user);
-            const userName = (req.user && (req.user.nickname || req.user.username)) ? (req.user.nickname || req.user.username) : '가족';
+            const userName = resolveUserName(req.user);
             const safeHistory = Array.isArray(history) ? history.slice(-4) : [];
 
             // ⚡ SSE 실시간 스트리밍 모드 분기 (stream: true 또는 Accept: text/event-stream)
@@ -204,7 +212,7 @@ router.post('/api/ai/memo-to-wiki', authenticateToken, async (req, res) => {
 
         activeAiRequests++;
         try {
-            const userName = req.user?.nickname || req.user?.username || '가족';
+            const userName = resolveUserName(req.user);
             const result = await refineMemoToWiki({ title, content, userName });
             res.json(result);
         } finally {
@@ -305,7 +313,7 @@ router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
 
         activeAiRequests++;
         try {
-            const userName = req.user?.nickname || req.user?.username || '가족';
+            const userName = resolveUserName(req.user);
             const cleanContent = content.trim();
 
             let candidateDoc = null;

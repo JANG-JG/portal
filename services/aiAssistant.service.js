@@ -441,14 +441,17 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         stream: false,
         keep_alive: '24h',
         options: {
-            temperature: 0.7,
+            temperature: 0.5,
+            top_p: 0.9,
             num_predict: 2048
         }
     }, 120000);
 
+    const rawAnswer = result.response ? result.response.trim() : '답변을 생성하지 못했습니다.';
+
     return {
         success: true,
-        answer: result.response ? result.response.trim() : '답변을 생성하지 못했습니다.',
+        answer: koreanizeWeatherWords(rawAnswer),
         model: OLLAMA_MODEL
     };
 }

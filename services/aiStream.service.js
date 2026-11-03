@@ -11,6 +11,7 @@ const { buildAiChatPrompt, sanitizeInputText } = require('./aiContextRouter.serv
 const { searchWikiContent, createWikiPage, getWikiPageDetail, updateWikiPage } = require('./wikiSummary.service');
 const { smartMergeOrDraftWiki, stripThinkTags } = require('./aiKnowledge.service');
 const { handleActionIntent } = require('./aiActionAgent.service');
+const { koreanizeWeatherWords } = require('./weatherKo.util');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
@@ -204,7 +205,8 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
             stream: true,
             keep_alive: '24h',
             options: {
-                temperature: 0.7,
+                temperature: 0.5,
+                top_p: 0.9,
                 num_predict: 2048
             }
         });
@@ -289,7 +291,7 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                         } catch (e) {}
                     }
                     const finalPart = splitThinkStream(rawAnswer, true);
-                    fullAnswer = finalPart.answer.trim();
+                    fullAnswer = koreanizeWeatherWords(finalPart.answer.trim());
                     sendSseEvent(res, 'done', {
                         fullText: fullAnswer.trim() || '답변을 생성하지 못했습니다.',
                         thinkingText: (nativeThinking + finalPart.thinking).trim(),

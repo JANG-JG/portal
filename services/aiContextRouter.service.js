@@ -90,8 +90,8 @@ function detectIntents(prompt) {
         intents.add('WIKI');
     }
 
-    // 특정 의도가 전혀 없거나 "오늘 어때?", "전체 브리핑" 같은 종합 질의인 경우
-    if (intents.size === 0 || /(오늘\s*(어때|상태|현황|브리핑|요약)|우리\s*집)/.test(p)) {
+    // 종합 현황이나 오늘 상태 브리핑 질의인 경우에만 GENERAL_OVERVIEW 추가 (단순 대화 시 불필요한 데이터 주입 방지)
+    if (/(오늘\s*(어때|상태|현황|브리핑|요약)|우리\s*집\s*(상태|현황)|홈서버\s*현황|전체\s*(상태|현황|브리핑))/i.test(p)) {
         intents.add('GENERAL_OVERVIEW');
     }
 
@@ -221,8 +221,8 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     let matchedWikiGuide = '';
     let matchedAlbumGuide = '';
 
-    // 필요 시에만 위키 RAG 검색 실행 (WIKI 의도이거나 GENERAL_OVERVIEW일 때)
-    if (intents.has('WIKI') || intents.has('GENERAL_OVERVIEW') || cleanPrompt.length > 5) {
+    // 위키 의도가 감지된 경우에만 위키 RAG 검색 실행 (타인 작성자명 및 불필요한 위키 본문 유입 방지)
+    if (intents.has('WIKI')) {
         try {
             const matchedPages = await searchWikiContent(cleanPrompt, 2);
             if (Array.isArray(matchedPages) && matchedPages.length > 0) {
@@ -258,19 +258,27 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     const dayPart = kstHour < 6 ? '새벽' : kstHour < 12 ? '아침/오전' : kstHour < 18 ? '낮/오후' : '저녁/밤';
     const currentTimeKo = `${ampm} ${hour12}시 ${kstMin}분`;
     const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo} (24시간제 ${String(kstHour).padStart(2, '0')}:${kstMin}, ${dayPart}) KST`;
+    const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide].filter(Boolean).join('\n').trim();
 
-    const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 4.0)입니다.
-- [현재 기준 일시]: ${currentDateTimeStr} (현재 연도는 ${kst.getFullYear()}년입니다. 2023~2024년 등 과거 연도로 날짜를 착각하지 마세요)
-- 현재 시각을 물으면 반드시 '${currentTimeKo}'라고 그대로 답하세요. 오전/오후를 바꾸어 말하지 마세요.
-- 질문자가 가족 구성원(${userName}님)이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
-- 영어 단어를 섞지 말고 날씨는 '쌀쌀해요', '맑아요', '흐려요'처럼 자연스러운 한국어로만 표현하세요.
-- 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키, 가족 사진첩 및 서버 인프라 현황을 파악하고 있습니다.
-- '비공개' 또는 '관리자 전용'으로 표시된 항목에 대해서는 "해당 정보는 관리자 전용 데이터로 조회 권한이 없습니다"라고 친절히 안내하세요.
-- 질문이 들어오면 아래의 [실시간 맞춤 정보] 및 발췌 자료를 적극 참조하여 명확하고 정확하게 분석·안내해 주세요.
-- 위키 문서 질문은 발췌된 위키 본문을 바탕으로 답변하세요.
-- 데이터에 없는 내용은 지어내지 말고 솔직하고 친절하게 안내하세요.
-- 시간 표현 시 14시는 '오후 2시(14:00)'이며, '오전 14:00'와 같이 모순된 시간 표현을 절대 사용하지 마세요.
-- 일정/혈압/메모 등록을 요청받았을 때 시스템이 자동으로 감지하지 못한 경우, 허위로 '등록 완료했습니다'라고 답변하지 마시고 '내일 14시 [일정명] 등록해줘'와 같이 명확한 등록 명령으로 다시 말씀해 달라고 친절히 안내하세요.${targetedContext}${matchedWikiGuide}${matchedAlbumGuide}`;
+    const systemPrompt = `당신은 JG 홈서버 가족의 하루를 돕는 다정하고 똑똑한 AI 비서입니다.
+현재 대화 중인 가족의 이름은 반드시 "${userName}님"입니다.
+
+[대화 규칙]
+1. 상대방을 부를 때는 다른 이름이나 임의의 호칭을 쓰지 말고, 반드시 "${userName}님"으로만 부르세요.
+2. 모든 답변은 100% 자연스럽고 다정한 한국어 존댓말('~해요', '~에요', '~습니다')로 친절하게 답하세요. 영어를 쓰거나 번역하지 마세요.
+3. 묻는 말에 군더더기 없이 간결하고 명확하게 핵심만 답하세요.
+4. 현재 일시: ${currentDateTimeStr} (현재 시각: ${currentTimeKo})
+5. 참고 정보가 주어지면 해당 내용을 바탕으로 정직하게 안내하세요.
+
+[대화 예시]
+질문: 안녕 반가워
+답변: 안녕하세요, ${userName}님! 오늘 어떤 도움이 필요하신가요?
+
+질문: 지금 몇 시야?
+답변: ${userName}님, 지금은 ${currentTimeKo}예요.
+
+질문: 오늘 날씨 어때?
+답변: ${userName}님, 오늘은 맑고 쌀쌀한 편이에요. 외출하실 때 따뜻한 겉옷 꼭 챙기세요.${contextParts ? `\n\n[우리 집 참고 정보]\n${contextParts}` : ''}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
 
