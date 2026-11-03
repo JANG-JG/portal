@@ -508,18 +508,24 @@ html, body {
 
 .ai-input-actions {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
+    justify-content: flex-end;
+    gap: 3px;
     flex-shrink: 0;
+    min-width: 34px;
 }
 
 .ai-char-counter {
-    font-size: 0.72rem;
+    font-size: 0.62rem;
+    line-height: 1;
     color: var(--ai-text-muted);
     font-variant-numeric: tabular-nums;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.4px;
     user-select: none;
     transition: color 0.15s ease;
+    white-space: nowrap;
+    text-align: center;
 }
 
 .ai-char-counter.warning {
@@ -572,5 +578,6 @@ html, body {
     .ai-bubble { padding: 0.7rem 0.9rem; font-size: 0.88rem; }
     .ai-composer-wrapper { padding: 0.4rem 0.55rem 0.5rem 0.55rem; }
     .ai-history-del-btn { opacity: 1; }
+    .ai-input-box { padding: 0.3rem 0.35rem 0.3rem 0.65rem; }
     .ai-disclaimer { display: none; } /* 모바일에서는 세로 높이 극대화를 위해 숨김 */
 }
