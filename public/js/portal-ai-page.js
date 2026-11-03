@@ -157,6 +157,8 @@
                     sendAiMessage(query.trim());
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }, 300);
+            } else if (window.location.search) {
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         } catch (e) {
             console.warn('[AI Page] URL 쿼리 처리 건너뜀:', e);
@@ -241,11 +243,9 @@
             item.addEventListener('click', async (e) => {
                 if (e.target.closest('.ai-history-del-btn')) return;
                 window.JgAiHistory.setActiveSessionId(sess.id);
-                try {
-                    const u = new URL(window.location);
-                    u.searchParams.set('session', sess.id);
-                    window.history.replaceState({}, document.title, u.toString());
-                } catch (err) {}
+                if (window.location.search && !window.location.search.includes('q=')) {
+                    try { window.history.replaceState({}, document.title, window.location.pathname); } catch (err) {}
+                }
                 if (!sess.messages || !sess.messages.length) {
                     if (window.JgAiHistory.fetchSessionDetailAsync) await window.JgAiHistory.fetchSessionDetailAsync(sess.id);
                 }

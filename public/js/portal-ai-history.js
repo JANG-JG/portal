@@ -66,9 +66,6 @@
 
     function getActiveSessionId() {
         try {
-            const params = new URLSearchParams(window.location.search);
-            const urlSess = params.get('session');
-            if (urlSess) return urlSess;
             return sessionStorage.getItem(ACTIVE_ID_STORAGE_KEY) || null;
         } catch (e) {
             return null;
