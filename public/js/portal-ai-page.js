@@ -77,6 +77,15 @@
      * 메인 페이지 초기화
      */
     function initPage() {
+        // 🛡️ 공통 상단 네비게이션 및 하단 티커 DOM 완전 제거 가드
+        const purgeUnifiedNav = () => {
+            document.querySelectorAll('#unified-nav-root, #unavRoot, .unav-header, #unavDrawer, header#jg-unified-nav, #jg-global-ticker-bar, #jg-global-breaking-bar, #jg-ticker-container')
+                .forEach(el => el.remove());
+        };
+        purgeUnifiedNav();
+        setTimeout(purgeUnifiedNav, 100);
+        setTimeout(purgeUnifiedNav, 500);
+
         sidebarEl = document.getElementById('aiSidebar');
         backdropEl = document.getElementById('aiSidebarBackdrop');
         messageScrollEl = document.getElementById('aiMessagesScroll');

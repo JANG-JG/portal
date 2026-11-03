@@ -22,9 +22,6 @@
     <link rel="stylesheet" href="/css/portal-ai-composer.css">
 </head>
 <body>
-    <!-- 🌐 JG 통합 상단 내비게이션 바 (AI 단독 전체화면을 위해 숨김) -->
-    <div id="unified-nav-root" style="display: none !important;"></div>
-
     <div class="ai-app-wrapper">
         <!-- 1. 좌측 대화 관리 사이드바 (모바일은 슬라이드 드로어) -->
         <aside class="ai-sidebar" id="aiSidebar">
@@ -140,7 +137,7 @@
     </div>
 
     <!-- 스크립트 (캐시 제어는 deploy.sh 및 server.js가 자동 처리) -->
-    <script src="/api/jg-ui" data-ticker="false" defer></script>
+    <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
     <script src="/js/portal-ai-history.js"></script>
     <script src="/js/portal-ai-render.js"></script>
     <script src="/js/portal-ai-viewport.js"></script>

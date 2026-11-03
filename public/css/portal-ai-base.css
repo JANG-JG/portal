@@ -40,14 +40,27 @@
     padding: 0;
 }
 
-/* 🛑 [하단 뉴스바 및 불필요한 바닥 여백 원천 차단] */
+/* 🛑 [AI 전용 풀스크린 페이지 상단 공통 네비게이션 및 하단 뉴스바 원천 차단] */
+#unified-nav-root,
+#unavRoot,
+.unav-header,
+.unav-container,
+#unavDrawer,
+header#jg-unified-nav,
+.unified-nav-container,
 #jg-global-ticker-bar,
-#jg-global-breaking-bar {
+#jg-global-breaking-bar,
+#jg-ticker-container {
     display: none !important;
-}
-
-#unified-nav-root {
-    display: none !important;
+    height: 0 !important;
+    max-height: 0 !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    overflow: hidden !important;
 }
 
 html, body {
