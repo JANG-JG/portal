@@ -387,12 +387,97 @@
         return row;
     }
 
+    /**
+     * ⚡ 실시간 SSE 토큰 스트리밍 버블 생성기
+     */
+    function createStreamingBubble(container, timestamp) {
+        if (!container) return null;
+
+        const row = document.createElement('div');
+        row.className = 'ai-bubble-row assistant';
+
+        const timeStr = (window.JgAiHistory && window.JgAiHistory.formatMessageDateTime) ? window.JgAiHistory.formatMessageDateTime(timestamp) : '';
+        const metaHtml = timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : '';
+
+        row.innerHTML = `
+            <div class="ai-bubble-wrap">
+                <div class="ai-bubble">
+                    <div class="ai-bubble-content"><span class="ai-typing-cursor"></span></div>
+                    <div class="ai-bubble-actions" style="display:none;"></div>
+                </div>
+                ${metaHtml}
+            </div>
+        `;
+
+        container.appendChild(row);
+
+        const contentEl = row.querySelector('.ai-bubble-content');
+        const actionsEl = row.querySelector('.ai-bubble-actions');
+        let accumulatedText = '';
+        let isDone = false;
+
+        function refreshActions() {
+            if (!actionsEl) return;
+            const isEligibleForWiki = (accumulatedText.length >= 25 && !accumulatedText.includes('가족 위키에') && !accumulatedText.includes('무엇을 도와드릴까요'));
+            const wikiBtnHtml = isEligibleForWiki ? `
+                <button type="button" class="ai-bubble-action-btn wiki" onclick="window.saveBubbleToWiki(this)">
+                    <span>📚</span><span>가족 위키로 저장</span>
+                </button>
+            ` : '';
+            actionsEl.innerHTML = `
+                <button type="button" class="ai-bubble-action-btn copy" onclick="window.copyBubbleText(this)" title="대화 내용 복사">
+                    <span>📋</span><span>내용 복사</span>
+                </button>
+                ${wikiBtnHtml}
+            `;
+            actionsEl.style.display = 'flex';
+        }
+
+        return {
+            element: row,
+            appendToken(token) {
+                if (isDone || !token) return;
+                accumulatedText += token;
+                row.dataset.rawText = accumulatedText;
+                if (contentEl) {
+                    contentEl.innerHTML = renderAiMarkdown(accumulatedText) + '<span class="ai-typing-cursor"></span>';
+                }
+            },
+            complete(fullText) {
+                if (isDone) return;
+                isDone = true;
+                if (typeof fullText === 'string') accumulatedText = fullText;
+                row.dataset.rawText = accumulatedText;
+                if (contentEl) {
+                    contentEl.innerHTML = renderAiMarkdown(accumulatedText);
+                }
+                refreshActions();
+            },
+            abort(msg = '생성이 중단되었습니다.') {
+                if (isDone) return;
+                isDone = true;
+                row.dataset.rawText = accumulatedText;
+                if (contentEl) {
+                    const noticeHtml = `<span class="ai-stream-aborted-badge">⏹️ ${escapeHtml(msg)}</span>`;
+                    contentEl.innerHTML = (accumulatedText ? renderAiMarkdown(accumulatedText) + '<br>' : '') + noticeHtml;
+                }
+                if (accumulatedText) {
+                    refreshActions();
+                }
+            },
+            getRawText() {
+                return accumulatedText;
+            }
+        };
+    }
+
     // 전역 렌더러 노출
     window.JgAiRender = {
         escapeHtml: escapeHtml,
         renderMarkdown: renderAiMarkdown,
         appendMessageBubble: appendMessageBubble,
         streamAssistantBubble: streamAssistantBubble,
+        createStreamingBubble: createStreamingBubble,
         appendTypingIndicator: appendTypingIndicator,
         removeTypingIndicator: removeTypingIndicator,
         renderHeroWelcomeCard: renderHeroWelcomeCard

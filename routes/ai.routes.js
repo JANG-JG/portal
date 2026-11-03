@@ -20,6 +20,7 @@ const {
 const { createWikiPage, searchWikiContent, getWikiPageDetail, updateWikiPage } = require('../services/wikiSummary.service');
 const { getPortalSummary } = require('../services/portalSummary.service');
 const { getAiConfig } = require('../services/aiConfig.service');
+const { handleSseChatStream } = require('../services/aiStream.service');
 
 // 🛡️ [보안 강화] AI 채팅 레이트 리미터 & 동시성 제어 (로컬 PC 과부하 및 DoS 방어)
 const chatRateLimitMap = new Map(); // key(user/ip) -> [timestamp]
@@ -108,10 +109,10 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. 가족 AI 챗봇 실시간 대화 (입력 검증 + 레이트 리미트 + 동시성 보호)
+// 3. 가족 AI 챗봇 실시간 대화 (입력 검증 + 레이트 리미트 + 동시성 보호 + SSE 스트리밍)
 router.post('/api/ai/chat', authenticateToken, async (req, res) => {
     try {
-        const { message, history } = req.body;
+        const { message, history, stream } = req.body;
         if (!message || typeof message !== 'string' || !message.trim()) {
             return res.status(400).json({ success: false, message: '메시지를 올바르게 입력해 주세요.' });
         }
@@ -150,6 +151,20 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
             const userName = (req.user && (req.user.nickname || req.user.username)) ? (req.user.nickname || req.user.username) : '가족';
             const safeHistory = Array.isArray(history) ? history.slice(-4) : [];
 
+            // ⚡ SSE 실시간 스트리밍 모드 분기 (stream: true 또는 Accept: text/event-stream)
+            const isStreaming = stream === true || req.headers.accept?.includes('text/event-stream');
+            if (isStreaming) {
+                await handleSseChatStream({
+                    req,
+                    res,
+                    prompt: message.trim(),
+                    history: safeHistory,
+                    summaryContext: summary,
+                    userName
+                });
+                return;
+            }
+
             const result = await askAiAssistant({
                 prompt: message.trim(),
                 history: safeHistory,
@@ -163,11 +178,13 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
         }
     } catch (err) {
         console.error('[API /api/ai/chat] 오류:', err);
-        res.status(500).json({
-            success: false,
-            message: 'AI 비서와의 연결에 실패했습니다. (로컬 PC의 Ollama 상태를 확인하세요)',
-            error: err.message
-        });
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: 'AI 비서와의 연결에 실패했습니다. (로컬 PC의 Ollama 상태를 확인하세요)',
+                error: err.message
+            });
+        }
     }
 });
 

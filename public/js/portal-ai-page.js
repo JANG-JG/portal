@@ -288,12 +288,47 @@
     };
 
     /**
-     * 입력 폼 제출 핸들러
+     * 전송 및 생성 중단 버튼 UI 상태 동기화
+     */
+    function updateSubmitButtonState(isBusy) {
+        if (!submitBtnEl) return;
+        if (isBusy) {
+            submitBtnEl.classList.add('stopping');
+            submitBtnEl.title = '답변 생성 중단';
+            submitBtnEl.setAttribute('aria-label', '답변 생성 중단');
+            submitBtnEl.innerHTML = `
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="5" y="5" width="14" height="14" rx="2"></rect>
+                </svg>
+            `;
+        } else {
+            submitBtnEl.classList.remove('stopping');
+            submitBtnEl.title = `메시지 전송 (최대 ${currentMaxPromptLength.toLocaleString()}자)`;
+            submitBtnEl.setAttribute('aria-label', '메시지 전송');
+            submitBtnEl.innerHTML = `
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            `;
+        }
+    }
+
+    /**
+     * 입력 폼 제출 핸들러 (생성 중 클릭 시 즉시 중단)
      */
     window.handleComposerSubmit = function(e) {
         if (e) e.preventDefault();
-        if (isSending || !promptInputEl) return;
 
+        // 🛑 이미 생성 중일 때 버튼 누르면 즉시 중단 (Stop Generating)
+        if (isSending) {
+            if (window.JgAiStream) {
+                window.JgAiStream.abortStream();
+            }
+            return;
+        }
+
+        if (!promptInputEl) return;
         const text = promptInputEl.value.trim();
         if (!text) return;
 
@@ -309,7 +344,7 @@
     };
 
     /**
-     * AI 비서 메시지 송수신 처리
+     * ⚡ AI 비서 실시간 SSE 스트리밍 메시지 송수신 처리
      */
     async function sendAiMessage(userText) {
         if (isSending) return;
@@ -331,7 +366,7 @@
         }
 
         isSending = true;
-        if (submitBtnEl) submitBtnEl.disabled = true;
+        updateSubmitButtonState(true);
 
         const typingId = 'typing_' + Date.now();
         if (window.JgAiRender) {
@@ -339,70 +374,60 @@
         }
         scrollToBottom();
 
-        let isStreaming = false;
-        try {
-            const res = await fetch('/api/ai/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: userText,
-                    history: currentChatHistory.slice(-4)
-                })
-            });
+        const aiTimestamp = Date.now();
+        let streamingBubble = null;
 
-            if (window.JgAiRender) {
-                window.JgAiRender.removeTypingIndicator(typingId);
-            }
-            const aiTimestamp = Date.now();
-
-            if (!res.ok) {
-                if (window.JgAiRender) {
-                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', '죄송합니다. 로컬 AI 비서 응답 중 일시적인 오류가 발생했습니다.', aiTimestamp);
-                }
-                return;
-            }
-
-            const data = await res.json();
-            if (data.success && data.answer) {
-                currentChatHistory.push({ role: 'assistant', content: data.answer, timestamp: aiTimestamp });
-                if (window.JgAiHistory) {
-                    window.JgAiHistory.addMessageToActiveSession('assistant', data.answer, aiTimestamp);
-                    renderHistorySidebar();
-                }
-
-                if (window.JgAiRender && typeof window.JgAiRender.streamAssistantBubble === 'function') {
-                    isStreaming = true;
-                    window.JgAiRender.streamAssistantBubble(messageContainerEl, data.answer, aiTimestamp, {
-                        onProgress: () => scrollToBottom(),
-                        onComplete: () => {
-                            isSending = false;
-                            if (submitBtnEl) submitBtnEl.disabled = false;
-                            scrollToBottom();
-                            if (promptInputEl) promptInputEl.focus();
-                        }
-                    });
+        if (window.JgAiStream && typeof window.JgAiStream.streamChat === 'function') {
+            await window.JgAiStream.streamChat({
+                message: userText,
+                history: currentChatHistory.slice(-4),
+                onToken: (token) => {
+                    if (!streamingBubble) {
+                        if (window.JgAiRender) window.JgAiRender.removeTypingIndicator(typingId);
+                        streamingBubble = window.JgAiRender ? window.JgAiRender.createStreamingBubble(messageContainerEl, aiTimestamp) : null;
+                    }
+                    if (streamingBubble) streamingBubble.appendToken(token);
                     scrollToBottom();
-                } else if (window.JgAiRender) {
-                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', data.answer, aiTimestamp);
+                },
+                onDone: (fullText) => {
+                    if (window.JgAiRender) window.JgAiRender.removeTypingIndicator(typingId);
+                    if (!streamingBubble) {
+                        streamingBubble = window.JgAiRender ? window.JgAiRender.createStreamingBubble(messageContainerEl, aiTimestamp) : null;
+                    }
+                    if (streamingBubble) streamingBubble.complete(fullText);
+                    currentChatHistory.push({ role: 'assistant', content: fullText, timestamp: aiTimestamp });
+                    if (window.JgAiHistory) {
+                        window.JgAiHistory.addMessageToActiveSession('assistant', fullText, aiTimestamp);
+                        renderHistorySidebar();
+                    }
+                },
+                onError: (errMsg) => {
+                    if (window.JgAiRender) {
+                        window.JgAiRender.removeTypingIndicator(typingId);
+                        window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', errMsg, aiTimestamp);
+                    }
+                },
+                onAbort: (abortMsg) => {
+                    if (window.JgAiRender) window.JgAiRender.removeTypingIndicator(typingId);
+                    if (streamingBubble) {
+                        streamingBubble.abort(abortMsg);
+                        const partialText = streamingBubble.getRawText();
+                        if (partialText) {
+                            currentChatHistory.push({ role: 'assistant', content: partialText, timestamp: aiTimestamp });
+                            if (window.JgAiHistory) {
+                                window.JgAiHistory.addMessageToActiveSession('assistant', partialText, aiTimestamp);
+                                renderHistorySidebar();
+                            }
+                        }
+                    }
                 }
-            } else {
-                if (window.JgAiRender) {
-                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', data.message || '답변을 생성하지 못했습니다.', aiTimestamp);
-                }
-            }
-        } catch (err) {
-            if (window.JgAiRender) {
-                window.JgAiRender.removeTypingIndicator(typingId);
-                window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', '로컬 PC AI 엔진과의 연결이 원활하지 않습니다. (PC의 Ollama 구동 상태를 확인해 주세요)', Date.now());
-            }
-        } finally {
-            if (!isStreaming) {
-                isSending = false;
-                if (submitBtnEl) submitBtnEl.disabled = false;
-                scrollToBottom();
-                if (promptInputEl) promptInputEl.focus();
-            }
+            });
         }
+
+        isSending = false;
+        updateSubmitButtonState(false);
+        scrollToBottom();
+        if (promptInputEl) promptInputEl.focus();
     }
 
     function scrollToBottom() {

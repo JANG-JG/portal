@@ -188,6 +188,33 @@
     box-shadow: none;
 }
 
+/* 생성 중단 버튼 (Stop Generating) */
+.ai-send-btn.stopping {
+    background-color: #374151;
+    color: #FFFFFF;
+    box-shadow: 0 2px 6px rgba(55, 65, 81, 0.3);
+    cursor: pointer;
+}
+
+.ai-send-btn.stopping:hover {
+    background-color: #DC2626;
+    box-shadow: 0 3px 8px rgba(220, 38, 38, 0.35);
+    transform: scale(1.05);
+}
+
+/* 스트리밍 중단 알림 뱃지 */
+.ai-stream-aborted-badge {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #6B7280;
+    background-color: #F3F4F6;
+    border-radius: 6px;
+    border: 1px solid #E5E7EB;
+}
+
 /* 타이핑 스트리밍 커서 (Claude/Gemini 스타일) */
 .ai-typing-cursor {
     display: inline-block;
