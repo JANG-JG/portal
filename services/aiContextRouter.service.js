@@ -249,10 +249,17 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const kst = new Date(utc + (9 * 60 * 60000));
     const days = ['일', '월', '화', '수', '목', '금', '토'];
-    const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${String(kst.getHours()).padStart(2, '0')}:${String(kst.getMinutes()).padStart(2, '0')} KST`;
+    const kstHour = kst.getHours();
+    const kstMin = String(kst.getMinutes()).padStart(2, '0');
+    const ampm = kstHour < 12 ? '오전' : '오후';
+    const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
+    const dayPart = kstHour < 6 ? '새벽' : kstHour < 12 ? '아침/오전' : kstHour < 18 ? '낮/오후' : '저녁/밤';
+    const currentTimeKo = `${ampm} ${hour12}시 ${kstMin}분`;
+    const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo} (24시간제 ${String(kstHour).padStart(2, '0')}:${kstMin}, ${dayPart}) KST`;
 
     const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 4.0)입니다.
 - [현재 기준 일시]: ${currentDateTimeStr} (현재 연도는 ${kst.getFullYear()}년입니다. 2023~2024년 등 과거 연도로 날짜를 착각하지 마세요)
+- 현재 시각을 물으면 반드시 '${currentTimeKo}'라고 그대로 답하세요. 오전/오후를 바꾸어 말하지 마세요.
 - 질문자가 가족 구성원(${userName}님)이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
 - 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키, 가족 사진첩 및 서버 인프라 현황을 파악하고 있습니다.
 - '비공개' 또는 '관리자 전용'으로 표시된 항목에 대해서는 "해당 정보는 관리자 전용 데이터로 조회 권한이 없습니다"라고 친절히 안내하세요.
