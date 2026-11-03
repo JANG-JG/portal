@@ -245,13 +245,22 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
         }
     }
 
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const kst = new Date(utc + (9 * 60 * 60000));
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${String(kst.getHours()).padStart(2, '0')}:${String(kst.getMinutes()).padStart(2, '0')} KST`;
+
     const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 3.5)입니다.
+- [현재 기준 일시]: ${currentDateTimeStr} (현재 연도는 ${kst.getFullYear()}년입니다. 2023~2024년 등 과거 연도로 날짜를 착각하지 마세요)
 - 질문자가 가족 구성원(${userName}님)이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
 - 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키, 가족 사진첩 및 서버 인프라 현황을 파악하고 있습니다.
 - '비공개' 또는 '관리자 전용'으로 표시된 항목에 대해서는 "해당 정보는 관리자 전용 데이터로 조회 권한이 없습니다"라고 친절히 안내하세요.
 - 질문이 들어오면 아래의 [실시간 맞춤 정보] 및 발췌 자료를 적극 참조하여 명확하고 정확하게 분석·안내해 주세요.
 - 위키 문서 질문은 발췌된 위키 본문을 바탕으로 답변하세요.
-- 데이터에 없는 내용은 지어내지 말고 솔직하고 친절하게 안내하세요.${targetedContext}${matchedWikiGuide}${matchedAlbumGuide}`;
+- 데이터에 없는 내용은 지어내지 말고 솔직하고 친절하게 안내하세요.
+- 시간 표현 시 14시는 '오후 2시(14:00)'이며, '오전 14:00'와 같이 모순된 시간 표현을 절대 사용하지 마세요.
+- 일정/혈압/메모 등록을 요청받았을 때 시스템이 자동으로 감지하지 못한 경우, 허위로 '등록 완료했습니다'라고 답변하지 마시고 '내일 14시 [일정명] 등록해줘'와 같이 명확한 등록 명령으로 다시 말씀해 달라고 친절히 안내하세요.${targetedContext}${matchedWikiGuide}${matchedAlbumGuide}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
 

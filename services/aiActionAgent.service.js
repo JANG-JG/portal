@@ -26,6 +26,23 @@ function formatDate(d) {
 }
 
 /**
+ * 🕒 시간 문자열을 일상 친화적인 한국어 12/24시간 병기 포맷으로 변환 (예: 14:00 -> 오후 2시 (14:00))
+ */
+function formatKoreanTime(timeStr) {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return timeStr;
+    const hour = parseInt(parts[0], 10);
+    const minute = parseInt(parts[1], 10);
+    if (isNaN(hour) || isNaN(minute)) return timeStr;
+
+    const period = hour >= 12 ? '오후' : '오전';
+    const displayHour = hour === 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    const minuteStr = minute > 0 ? ` ${minute}분` : '';
+    return `${period} ${displayHour}시${minuteStr} (${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')})`;
+}
+
+/**
  * 📅 한국어 자연어 날짜 및 시간 파서
  */
 function parseKoreanDateTime(text) {
@@ -70,21 +87,24 @@ function parseKoreanDateTime(text) {
         dateFound = true;
     }
 
-    // 4. 날짜 명시 (M월 D일, YYYY-MM-DD, M/D)
-    const monthDayMatch = text.match(/(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/) ||
-                          text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/) ||
-                          text.match(/(\d{1,2})\/(\d{1,2})/);
-    if (monthDayMatch) {
-        const year = monthDayMatch[1] && monthDayMatch[1].length === 4 ? parseInt(monthDayMatch[1], 10) : baseDate.getFullYear();
-        const month = parseInt(monthDayMatch[2] || monthDayMatch[1], 10) - 1;
-        const day = parseInt(monthDayMatch[3] || monthDayMatch[2], 10);
-        targetDate = new Date(year, month, day);
-        dateFound = true;
+    // 4. 날짜 명시 (M월 D일, YYYY-MM-DD, M/D) - 앞서 상대 날짜 미발견 시에만 적용
+    if (!dateFound) {
+        const monthDayMatch = text.match(/(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일/) ||
+                              text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/) ||
+                              text.match(/\b([1-9]|1[0-2])\/([1-9]|[12]\d|3[01])\b/);
+        if (monthDayMatch) {
+            const year = monthDayMatch[1] && monthDayMatch[1].length === 4 ? parseInt(monthDayMatch[1], 10) : baseDate.getFullYear();
+            const month = parseInt(monthDayMatch[2] || monthDayMatch[1], 10) - 1;
+            const day = parseInt(monthDayMatch[3] || monthDayMatch[2], 10);
+            targetDate = new Date(year, month, day);
+            dateFound = true;
+        }
     }
 
-    // 5. 시간 파싱 (오전/오후/저녁/아침/새벽/밤 H시 (M분|반), HH:mm)
-    const timeMatch = text.match(/(오전|오후|저녁|아침|새벽|밤)?\s*(\d{1,2})\s*시\s*(?:(\d{1,2})\s*분|반)?/) ||
-                      text.match(/(?:at|시간)?\s*([01]?\d|2[0-3]):([0-5]\d)/);
+    // 5. 시간 파싱 (HH:mm 포맷 우선 또는 오전/오후/저녁/아침/새벽/밤 H시 (M분|반))
+    // ⚠️ '1시간 전'과 같은 알림 시간 표현이 '1시'로 오인되지 않도록 시(?![간명]) 음성 룩어헤드 적용
+    const timeMatch = text.match(/(?:at|시간)?\s*([01]?\d|2[0-3]):([0-5]\d)/) ||
+                      text.match(/(오전|오후|저녁|아침|새벽|밤)?\s*(\d{1,2})\s*시(?![간명])\s*(?:(\d{1,2})\s*분|반)?/);
 
     if (timeMatch) {
         isAllDay = false;
@@ -100,6 +120,7 @@ function parseKoreanDateTime(text) {
             } else if ((period === '오전' || period === '새벽' || period === '아침') && hour === 12) {
                 hour = 0;
             }
+            if (hour >= 24) hour = hour % 24;
             eventTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
         }
     }
@@ -116,27 +137,47 @@ function parseKoreanDateTime(text) {
  * 📅 1. 일정 등록 액션 파서
  */
 function parseCalendarAction(prompt) {
-    const isRegisterCommand = /(일정|약속|스케줄|캘린더|행사)\s*(등록|추가|잡아|넣어|적어|기록|저장)/i.test(prompt) ||
-                              /(등록|추가|잡아|넣어)\s*(해줘|줄래|바래|요)/i.test(prompt);
-    const isQueryCommand = /(알려|뭐|어때|있어|조회|확인|검색|보여)/i.test(prompt);
+    if (!prompt || typeof prompt !== 'string') return null;
 
-    if (!isRegisterCommand || isQueryCommand) return null;
+    // 1. 기능 지원 여부 및 방법 문의 가드 (액션 실행하지 않고 LLM 안내로 유도)
+    const isCapabilityQuery = /(지원\s*(돼|되나|하나|해요|됩니까)|가능\s*(해|한가|해요|합니까)|할\s*수\s*(있어|있나|있나요|있습니까)|어떻게\s*(해|하나요|등록해|잡아|써)|기능\s*(있어|있나요)|방법)/i.test(prompt);
+    if (isCapabilityQuery) return null;
+
+    // 2. 등록 명령어 판별
+    const hasRegisterVerb = /(등록|추가|잡아|넣어|적어|기록|저장|예약)\s*(해줘|해\s*주세요|해주세요|해|줘|줄래|바래|요|부탁|할래)?/i.test(prompt);
+    const hasCalendarKeyword = /(일정|약속|스케줄|캘린더|행사)/i.test(prompt);
+    const isRegisterCommand = hasRegisterVerb || (hasCalendarKeyword && /(등록|추가|잡아|넣어)/i.test(prompt));
+
+    // 3. 단순 조회 명령인지 검사 (문장 끝이 알려줘, 보여줘, 뭐있어 등 순수 질문일 때만 배제)
+    const endsWithQuery = /(알려\s*줘|보여\s*줘|뭐\s*있어|뭐야|어때|있니|있나요|있어\?|조회\s*해줘)\s*$/i.test(prompt.trim());
+    if (!isRegisterCommand || (endsWithQuery && !hasRegisterVerb)) return null;
 
     const dt = parseKoreanDateTime(prompt);
 
-    // 제목 정제: 일정 등록 명령어 및 날짜/시간 수식어 제거
-    let cleanTitle = prompt
-        .replace(/(일정|약속|스케줄|캘린더|행사)\s*(등록|추가|잡아|넣어|적어|기록|저장|해줘|줄래|바래|요)+/gi, '')
-        .replace(/(오늘|내일|모레|글피|이번\s*주|다음\s*주|[월화수목금토일]요일)/gi, '')
-        .replace(/(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일|\d{1,2}\/\d{1,2}/gi, '')
-        .replace(/(오전|오후|저녁|아침|새벽|밤)?\s*\d{1,2}\s*시\s*(?:\d{1,2}\s*분|반)?/gi, '')
-        .replace(/[0-2]?\d:[0-5]\d/gi, '')
-        .replace(/(에|으로|을|를|좀|새로|새로운|내용은)\s*/gi, '')
-        .trim();
+    // 알림 설정 파싱 (exact, 10m, 30m, 1h, 1d)
+    let notifyTiming = 'exact';
+    if (/10분\s*전/.test(prompt)) notifyTiming = '10m';
+    else if (/30분\s*전/.test(prompt)) notifyTiming = '30m';
+    else if (/1시간\s*전/.test(prompt)) notifyTiming = '1h';
+    else if (/(1일|하루)\s*전/.test(prompt)) notifyTiming = '1d';
 
-    if (!cleanTitle || cleanTitle.length < 2) {
-        cleanTitle = '새로운 일정';
-    }
+    // 제목 정제
+    let cleanTitle = prompt
+        .replace(/\s*(?:을|를)?\s*(?:정시|(?:10|30)\s*분\s*전|1\s*시간\s*전|(?:1\s*일|하루)\s*전)?\s*(?:에)?\s*알림\s*(?:울리게|설정(?:해줘)?|으로)?/gi, '')
+        .replace(/정시에\s*/gi, '')
+        .replace(/\s*(?:을|를)?\s*(?:확인하고\s*)?(?:등록|추가|잡아|넣어|적어|기록|저장|예약)\s*(?:해줘|해\s*주세요|해주세요|줄래|바래|요|부탁(?:해|드립니다)?|할래)?/gi, '')
+        .replace(/\s*(?:을|를)?\s*(?:잡아줘|넣어줘|적어줘|기록해줘|저장해줘|등록해줘|추가해줘|예약해줘)/gi, '')
+        .replace(/(?:해줘|해\s*주세요|해주세요|줄래|바래|부탁해|부탁드립니다|줘)\s*$/gi, '')
+        .replace(/(?:캘린더|스케줄|일정)(?:에|으로|을|를)?/gi, '')
+        .replace(/(?:오늘|내일|모레|글피|이번\s*주|다음\s*주|[월화수목금토일]요일)/gi, '')
+        .replace(/(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일|\d{1,2}\/\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|\d+\s*일\s*(?:뒤|후)/gi, '')
+        .replace(/(?:오전|오후|저녁|아침|새벽|밤)?\s*\d{1,2}\s*시(?![간명])(?:\s*\d{1,2}\s*분|반)?|[0-2]?\d:[0-5]\d/gi, '')
+        .replace(/^[,\s.:;~-]+|[,\s.:;~-]+$/g, '').trim()
+        .replace(/^(?:에|으로|은|는|이|가|을|를|좀|새로|새로운|내용은)\s+/gi, '')
+        .replace(/\s+(?:을|를|은|는|이|가|에|으로|좀)$/gi, '')
+        .replace(/^[,\s.:;~-]+|[,\s.:;~-]+$/g, '').trim();
+
+    if (!cleanTitle || cleanTitle.length < 2) cleanTitle = '새로운 일정';
 
     // 카테고리 및 가족 공유 여부 판정
     let category = '개인';
@@ -144,7 +185,7 @@ function parseCalendarAction(prompt) {
     if (/(가족|모임|외식|제사|명절|여행|엄마|아빠|아이)/.test(prompt)) {
         category = '가족';
         isFamily = 1;
-    } else if (/(업무|회의|미팅|출장|보고|마감|프로젝트)/.test(prompt)) {
+    } else if (/(업무|회의|미팅|출장|보고|마감|프로젝트|사건처리비|국내여비|예산|서류)/.test(prompt)) {
         category = '업무';
     } else if (/(병원|치과|내과|안과|진료|처방|검진)/.test(prompt)) {
         category = '중요';
@@ -157,7 +198,8 @@ function parseCalendarAction(prompt) {
         eventTime: dt.eventTime,
         isAllDay: dt.isAllDay,
         category,
-        isFamily
+        isFamily,
+        notifyTiming
     };
 }
 
@@ -165,6 +207,10 @@ function parseCalendarAction(prompt) {
  * 🩺 2. 혈압/건강 기록 등록 액션 파서
  */
 function parseBloodAction(prompt) {
+    // 기능 지원 여부 및 방법 문의 가드
+    const isCapabilityQuery = /(지원\s*(돼|되나|하나|해요|됩니까)|가능\s*(해|한가|해요|합니까)|할\s*수\s*(있어|있나|있나요|있습니까)|어떻게\s*(해|하나요|등록해|기록해|써)|기능\s*(있어|있나요)|방법)/i.test(prompt);
+    if (isCapabilityQuery) return null;
+
     const hasBloodKeyword = /(혈압|수축기|이완기|최고혈압|최저혈압|맥박|심박)/i.test(prompt);
     const hasRecordKeyword = /(기록|저장|등록|적어|입력|측정|쟀어|나왔어)/i.test(prompt);
 
@@ -204,17 +250,9 @@ function parseBloodAction(prompt) {
 
     // 측정 시각 및 시간대 구분(timing)
     const kst = getKstDate();
-    const yyyy = kst.getFullYear();
-    const mm = String(kst.getMonth() + 1).padStart(2, '0');
-    const dd = String(kst.getDate()).padStart(2, '0');
-    const hh = String(kst.getHours()).padStart(2, '0');
-    const min = String(kst.getMinutes()).padStart(2, '0');
-    const measuredAt = `${yyyy}-${mm}-${dd}T${hh}:${min}`;
-
+    const measuredAt = `${formatDate(kst)}T${String(kst.getHours()).padStart(2, '0')}:${String(kst.getMinutes()).padStart(2, '0')}`;
     const hour = kst.getHours();
-    let timing = 'day';
-    if (hour >= 5 && hour < 12) timing = 'morning';
-    else if (hour >= 18 || hour < 5) timing = 'evening';
+    const timing = (hour >= 5 && hour < 12) ? 'morning' : ((hour >= 18 || hour < 5) ? 'evening' : 'day');
 
     return {
         type: 'BLOOD',
@@ -230,9 +268,13 @@ function parseBloodAction(prompt) {
  * 📝 3. 메모 등록 액션 파서
  */
 function parseMemoAction(prompt) {
+    // 기능 지원 여부 및 방법 문의 가드
+    const isCapabilityQuery = /(지원\s*(돼|되나|하나|해요|됩니까)|가능\s*(해|한가|해요|합니까)|할\s*수\s*(있어|있나|있나요|있습니까)|어떻게\s*(해|하나요|등록해|기록해|작성해|써)|기능\s*(있어|있나요)|방법)/i.test(prompt);
+    if (isCapabilityQuery) return null;
+
     const isMemoCommand = /(메모|메모장)\s*(해줘|남겨|추가|등록|저장|적어)/i.test(prompt) ||
                           /^메모\s*[:：]/i.test(prompt);
-    const isQueryCommand = /(알려|뭐|어때|있어|조회|확인|검색|보여)/i.test(prompt);
+    const isQueryCommand = /(알려\s*줘|보여\s*줘|뭐\s*있어|어때|있니|있나요|조회\s*해줘|검색\s*해줘)\s*$/i.test(prompt.trim());
 
     // 위키 또는 혈압/일정 관련은 메모 처리에서 제외
     if (!isMemoCommand || isQueryCommand || /위키|wiki/i.test(prompt)) return null;
@@ -278,13 +320,11 @@ async function executeAction({ action, user, userName }) {
     if (action.type === 'CALENDAR') {
         const encryptedTitle = encryptCalendarText(action.title, userId, action.isFamily);
         const isAllDayVal = action.isAllDay ? 1 : 0;
-        const color = action.category === '가족' ? '#ec4899' : (action.category === '업무' ? '#6366f1' : '#10b981');
+        const color = action.category === '가족' ? '#ec4899' : (action.category === '업무' ? '#6366f1' : (action.category === '중요' ? '#ef4444' : '#10b981'));
+        const notifyTiming = action.notifyTiming || 'exact';
 
         return new Promise((resolve) => {
-            const query = `
-                INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, is_family, notify_timing, notify_repeat)
-                VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, 'exact', 1)
-            `;
+            const query = `INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, is_family, notify_timing, notify_repeat) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, 1)`;
             portalDb.run(query, [
                 userId,
                 encryptedTitle,
@@ -293,7 +333,8 @@ async function executeAction({ action, user, userName }) {
                 action.category,
                 color,
                 isAllDayVal,
-                action.isFamily
+                action.isFamily,
+                notifyTiming
             ], function(err) {
                 if (err) {
                     console.error('[ActionAgent 캘린더 등록 실패]:', err);
@@ -303,12 +344,15 @@ async function executeAction({ action, user, userName }) {
                     });
                 }
 
-                const timeDesc = action.isAllDay ? '종일 일정' : `${action.eventTime}`;
+                const timeDesc = action.isAllDay ? '종일 일정 ☀️' : formatKoreanTime(action.eventTime);
+                const notifyMap = { 'exact': '정시 알림 🔔', '10m': '10분 전 알림 🔔', '30m': '30분 전 알림 🔔', '1h': '1시간 전 알림 🔔', '1d': '1일 전 알림 🔔' };
+                const notifyDesc = notifyMap[notifyTiming] || '정시 알림 🔔';
                 const familyBadge = action.isFamily ? ' (가족 공유 👨‍👩‍👧‍👦)' : '';
                 const card = `새로운 일정을 **캘린더**에 성공적으로 등록했습니다! 📅\n\n` +
                     `- **일정 내용**: **${action.title}**${familyBadge}\n` +
                     `- **일정 날짜**: ${action.eventDate}\n` +
-                    `- **시간**: ${timeDesc}\n` +
+                    `- **일정 시간**: ${timeDesc}\n` +
+                    `- **알림 설정**: ${notifyDesc}\n` +
                     `- **분류**: ${action.category}\n\n` +
                     `👉 [**캘린더 바로가기**](/calendar)`;
 
@@ -317,7 +361,7 @@ async function executeAction({ action, user, userName }) {
                     actionType: 'CALENDAR',
                     id: this.lastID,
                     message: card,
-                    meta: { id: this.lastID, title: action.title, date: action.eventDate, time: action.eventTime }
+                    meta: { id: this.lastID, title: action.title, date: action.eventDate, time: action.eventTime, notifyTiming }
                 });
             });
         });
