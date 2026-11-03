@@ -43,8 +43,12 @@
                 </button>
             </div>
 
-            <!-- 지난 대화 목록 -->
+            <!-- 지난 대화 목록 및 검색 -->
             <div class="ai-history-section">
+                <div class="ai-history-search-wrap">
+                    <input type="search" id="aiHistorySearchInput" class="ai-history-search-input" placeholder="대화 제목/내용 검색..." autocomplete="off">
+                    <span class="ai-history-search-icon">🔍</span>
+                </div>
                 <div class="ai-history-section-title">
                     <span>💬 지난 대화 목록</span>
                     <span class="ai-history-count-badge" id="aiHistoryCount">0</span>
@@ -118,6 +122,14 @@
                                 <span id="aiCharCount" class="ai-char-counter" title="현재 글자 수 / 최대 1,000자">0/1000</span>
                             </div>
                             <div class="ai-input-bottom-right">
+                                <button type="button" id="aiVoiceBtn" class="ai-voice-btn" aria-label="음성으로 말하기" title="음성으로 입력하기">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                                        <line x1="12" y1="19" x2="12" y2="23"></line>
+                                        <line x1="8" y1="23" x2="16" y2="23"></line>
+                                    </svg>
+                                </button>
                                 <button type="submit" id="aiSubmitBtn" class="ai-send-btn" aria-label="메시지 전송" title="메시지 전송 (최대 1,000자)">
                                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                         <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -138,6 +150,7 @@
 
     <!-- 스크립트 (캐시 제어는 deploy.sh 및 server.js가 자동 처리) -->
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
+    <script src="/js/portal-ai-voice.js"></script>
     <script src="/js/portal-ai-history.js"></script>
     <script src="/js/portal-ai-render.js"></script>
     <script src="/js/portal-ai-viewport.js"></script>

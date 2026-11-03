@@ -78,13 +78,8 @@
      */
     function initPage() {
         // 🛡️ 공통 상단 네비게이션 및 하단 티커 DOM 완전 제거 가드
-        const purgeUnifiedNav = () => {
-            document.querySelectorAll('#unified-nav-root, #unavRoot, .unav-header, #unavDrawer, header#jg-unified-nav, #jg-global-ticker-bar, #jg-global-breaking-bar, #jg-ticker-container')
-                .forEach(el => el.remove());
-        };
-        purgeUnifiedNav();
-        setTimeout(purgeUnifiedNav, 100);
-        setTimeout(purgeUnifiedNav, 500);
+        const purgeNav = () => document.querySelectorAll('#unified-nav-root, #unavRoot, .unav-header, #unavDrawer, header#jg-unified-nav, #jg-global-ticker-bar, #jg-global-breaking-bar, #jg-ticker-container').forEach(el => el.remove());
+        purgeNav(); setTimeout(purgeNav, 100); setTimeout(purgeNav, 500);
 
         sidebarEl = document.getElementById('aiSidebar');
         backdropEl = document.getElementById('aiSidebarBackdrop');
@@ -95,6 +90,24 @@
         mobileTitleEl = document.getElementById('aiMobileSessionTitle');
         historyListEl = document.getElementById('aiSidebarHistoryList');
         historyCountEl = document.getElementById('aiHistoryCount');
+
+        // 음성 입력(STT) 마이크 버튼 연동
+        const voiceBtnEl = document.getElementById('aiVoiceBtn');
+        if (voiceBtnEl && window.JgAiVoice) {
+            window.JgAiVoice.initVoiceButton(voiceBtnEl, promptInputEl);
+        }
+
+        // 사이드바 대화 실시간 키워드 검색 이벤트 연동
+        const searchInputEl = document.getElementById('aiHistorySearchInput');
+        if (searchInputEl) {
+            let searchDebounceTimer = null;
+            searchInputEl.addEventListener('input', (e) => {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(() => {
+                    renderHistorySidebar(e.target.value);
+                }, 120);
+            });
+        }
 
         // 위키 등록 성공 시 콜백 등록
         window.JgAiRenderEvents = {
@@ -178,24 +191,29 @@
         }
     };
 
-    /**
-     * 사이드바 대화 히스토리 목록 렌더링
-     */
-    function renderHistorySidebar() {
-        if (!historyListEl || !window.JgAiHistory) return;
-        const sessions = window.JgAiHistory.loadAllSessions();
-        const activeId = window.JgAiHistory.getActiveSessionId();
+    let currentSearchKeyword = '';
 
-        if (historyCountEl) {
-            historyCountEl.textContent = sessions.length;
+    /**
+     * 사이드바 대화 히스토리 목록 렌더링 (키워드 검색 지원)
+     */
+    function renderHistorySidebar(keyword) {
+        if (typeof keyword === 'string') currentSearchKeyword = keyword.trim().toLowerCase();
+        if (!historyListEl || !window.JgAiHistory) return;
+        let sessions = window.JgAiHistory.loadAllSessions();
+        const activeId = window.JgAiHistory.getActiveSessionId();
+        if (historyCountEl) historyCountEl.textContent = sessions.length;
+
+        if (currentSearchKeyword) {
+            sessions = sessions.filter(s => {
+                const titleMatch = s.title && s.title.toLowerCase().includes(currentSearchKeyword);
+                const msgMatch = s.messages && s.messages.some(m => m.content && m.content.toLowerCase().includes(currentSearchKeyword));
+                return titleMatch || msgMatch;
+            });
         }
 
         if (sessions.length === 0) {
-            historyListEl.innerHTML = `
-                <div style="text-align:center;padding:2rem 1rem;color:var(--ai-text-muted);font-size:0.8rem;line-height:1.5;">
-                    저장된 대화가 없습니다.<br>새로운 질문을 시작해보세요!
-                </div>
-            `;
+            const emptyMsg = currentSearchKeyword ? '일치하는 대화가 없습니다.' : '저장된 대화가 없습니다.<br>새로운 질문을 시작해보세요!';
+            historyListEl.innerHTML = `<div style="text-align:center;padding:2rem 1rem;color:var(--ai-text-muted);font-size:0.8rem;line-height:1.5;">${emptyMsg}</div>`;
             return;
         }
 
@@ -205,34 +223,28 @@
         sessions.forEach(sess => {
             const item = document.createElement('div');
             item.className = 'ai-history-item' + (sess.id === activeId ? ' active' : '');
-
             const userMsgCount = sess.messages ? sess.messages.filter(m => m.role === 'user').length : 0;
             const timeStr = window.JgAiHistory.formatRelativeTime ? window.JgAiHistory.formatRelativeTime(sess.updatedAt) : '';
-            const metaInfo = `${timeStr} • 대화 ${userMsgCount}개`;
 
             item.innerHTML = `
                 <div class="ai-history-item-info">
                     <div class="ai-history-item-title" title="${escapeFn(sess.title)}">${escapeFn(sess.title)}</div>
-                    <div class="ai-history-item-meta">${metaInfo}</div>
+                    <div class="ai-history-item-meta">${timeStr} • 대화 ${userMsgCount}개</div>
                 </div>
                 <button type="button" class="ai-history-del-btn" title="대화 삭제" data-del-id="${sess.id}">🗑️</button>
             `;
 
-            // 세션 선택 클릭
             item.addEventListener('click', async (e) => {
                 if (e.target.closest('.ai-history-del-btn')) return;
                 window.JgAiHistory.setActiveSessionId(sess.id);
-                if (!sess.messages || sess.messages.length === 0) {
-                    if (window.JgAiHistory.fetchSessionDetailAsync) {
-                        await window.JgAiHistory.fetchSessionDetailAsync(sess.id);
-                    }
+                if (!sess.messages || !sess.messages.length) {
+                    if (window.JgAiHistory.fetchSessionDetailAsync) await window.JgAiHistory.fetchSessionDetailAsync(sess.id);
                 }
                 restoreActiveSession();
                 renderHistorySidebar();
                 window.toggleSidebar(false);
             });
 
-            // 삭제 버튼 핸들러
             const delBtn = item.querySelector('.ai-history-del-btn');
             if (delBtn) {
                 delBtn.addEventListener('click', (e) => {
@@ -243,7 +255,6 @@
                     }
                 });
             }
-
             historyListEl.appendChild(item);
         });
     }
@@ -296,21 +307,12 @@
             submitBtnEl.classList.add('stopping');
             submitBtnEl.title = '답변 생성 중단';
             submitBtnEl.setAttribute('aria-label', '답변 생성 중단');
-            submitBtnEl.innerHTML = `
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="5" y="5" width="14" height="14" rx="2"></rect>
-                </svg>
-            `;
+            submitBtnEl.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"></rect></svg>';
         } else {
             submitBtnEl.classList.remove('stopping');
             submitBtnEl.title = `메시지 전송 (최대 ${currentMaxPromptLength.toLocaleString()}자)`;
             submitBtnEl.setAttribute('aria-label', '메시지 전송');
-            submitBtnEl.innerHTML = `
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
-            `;
+            submitBtnEl.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
         }
     }
 
