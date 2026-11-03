@@ -60,7 +60,7 @@ html, body {
 }
 
 #unified-nav-root {
-    flex-shrink: 0;
+    display: none !important;
 }
 
 /* 전체 뷰포트 레이아웃 */
@@ -601,20 +601,22 @@ html, body {
 
 .ai-prompt-textarea {
     width: 100%;
-    min-height: 28px;
+    min-height: 22px;
+    height: 22px;
     max-height: 120px;
     border: none;
     outline: none;
     resize: none;
     font-family: inherit;
     font-size: 0.95rem;
-    line-height: 1.45;
+    line-height: 1.4;
     color: var(--ai-text-primary);
     background: transparent;
     padding: 0;
     margin: 0;
     box-sizing: border-box;
     display: block;
+    overflow-y: hidden;
 }
 
 .ai-prompt-textarea::placeholder {
@@ -624,16 +626,17 @@ html, body {
 
 .ai-input-bottom-bar {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: space-between;
     width: 100%;
-    margin-top: 9pt; /* 텍스트 입력창과 하단 액션 사이 9pt 세로 간격 */
+    margin-top: 6px;
     box-sizing: border-box;
 }
 
 .ai-input-bottom-left {
     display: flex;
     align-items: center;
+    padding-bottom: 4px;
     min-width: 0;
 }
 
@@ -770,11 +773,16 @@ html, body {
     
     .ai-composer-wrapper {
         padding: 0.4rem 0.75rem 0.5rem 0.75rem;
-        padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 12px));
+        padding-bottom: max(0.45rem, env(safe-area-inset-bottom, 8px));
     }
-    /* 🛡️ 삼성 인터넷 브라우저 하단 툴바(주소창/네비게이션바) 가림 방지 가드 */
-    body.is-samsung:not(.keyboard-open) .ai-composer-wrapper {
-        padding-bottom: calc(var(--ai-samsung-offset, 84px) + max(0.5rem, env(safe-area-inset-bottom, 12px))) !important;
+    /* 🛡️ 웹앱(PWA/홈 화면 바로가기) 환경: 브라우저 툴바가 없으므로 하단 불필요 여백 완전 제거 */
+    body.is-standalone .ai-composer-wrapper,
+    body.is-standalone.is-samsung .ai-composer-wrapper {
+        padding-bottom: max(0.45rem, env(safe-area-inset-bottom, 6px)) !important;
+    }
+    /* 🛡️ 삼성 인터넷 일반 브라우징 모드 하단 툴바(주소창/네비게이션바) 가림 방지 가드 */
+    body.is-samsung:not(.keyboard-open):not(.is-standalone) .ai-composer-wrapper {
+        padding-bottom: calc(var(--ai-samsung-offset, 72px) + max(0.45rem, env(safe-area-inset-bottom, 8px))) !important;
     }
     .ai-history-del-btn { opacity: 1; }
     .ai-input-box {

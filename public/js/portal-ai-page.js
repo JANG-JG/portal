@@ -77,6 +77,8 @@
             window.toggleSidebar(false);
             if (promptInputEl) {
                 promptInputEl.value = '';
+                promptInputEl.style.height = '22px';
+                promptInputEl.style.overflowY = 'hidden';
                 promptInputEl.focus();
             }
         }
@@ -210,7 +212,8 @@
 
         sendAiMessage(text);
         promptInputEl.value = '';
-        promptInputEl.style.height = 'auto';
+        promptInputEl.style.height = '22px';
+        promptInputEl.style.overflowY = 'hidden';
         const charCounterEl = document.getElementById('aiCharCount');
         if (charCounterEl) {
             charCounterEl.textContent = '0/1000';
@@ -559,9 +562,16 @@
             charCounterEl.classList.toggle('limit', len >= 1000);
         }
 
+        function resizeInput() {
+            promptInputEl.style.height = 'auto';
+            const scrollH = promptInputEl.scrollHeight;
+            const targetH = Math.max(22, Math.min(scrollH, 120));
+            promptInputEl.style.height = targetH + 'px';
+            promptInputEl.style.overflowY = (scrollH > 120) ? 'auto' : 'hidden';
+        }
+
         promptInputEl.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            resizeInput();
             updateCharCount(this.value.length);
         });
 
@@ -577,13 +587,24 @@
     }
 
     /**
-     * 안드로이드 가상 키보드(visualViewport) 및 삼성 인터넷 브라우저 하단 툴바 완벽 대응
+     * 안드로이드 가상 키보드(visualViewport) 및 삼성 인터넷 브라우저/웹앱 완벽 대응
      */
     function initVisualViewport() {
         if (!window.visualViewport) return;
 
+        // 웹앱(PWA/홈화면 추가/독립실행) 환경 판별
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                             window.matchMedia('(display-mode: fullscreen)').matches ||
+                             window.matchMedia('(display-mode: minimal-ui)').matches ||
+                             (window.navigator.standalone === true) ||
+                             (document.referrer && document.referrer.includes('android-app://'));
+
+        if (isStandalone) {
+            document.body.classList.add('is-standalone');
+        }
+
         const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
-        if (isSamsung) {
+        if (isSamsung && !isStandalone) {
             document.body.classList.add('is-samsung');
         }
 
@@ -609,8 +630,8 @@
                 const isKeyboard = (baseInnerHeight - currentH > 120);
                 document.body.classList.toggle('keyboard-open', isKeyboard);
 
-                // 삼성 브라우저 하단 툴바 높이 동적 제어
-                if (isSamsung) {
+                // 웹앱이 아닌 일반 삼성 브라우징 모드에서만 하단 툴바 오프셋 계산 (웹앱은 툴바 없으므로 0px)
+                if (isSamsung && !isStandalone) {
                     if (isKeyboard) {
                         // 키보드 열림 시 오프셋 완전 제거 (키보드 위에 바로 밀착)
                         document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
@@ -620,10 +641,12 @@
                         if (isToolbarHidden) {
                             document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
                         } else {
-                            // 툴바 표시 중 (하단 주소창 모드 대비 84px 안전 오프셋 적용)
-                            document.documentElement.style.setProperty('--ai-samsung-offset', '84px');
+                            // 툴바 표시 중 (하단 주소창 모드 대비 72px 오프셋 적용)
+                            document.documentElement.style.setProperty('--ai-samsung-offset', '72px');
                         }
                     }
+                } else {
+                    document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
                 }
 
                 // 모바일 브라우저의 window 레벨 스크롤 강제 원복 (바닥 j-jg.cc 워터마크 및 공백 차단)
