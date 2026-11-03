@@ -587,27 +587,36 @@
             document.body.classList.add('is-samsung');
         }
 
-        // 초기 화면 높이 기록 (툴바 숨김/표시 동적 감지용)
-        let baseInnerHeight = window.innerHeight;
+        // 초기 화면 높이 기록 (키보드 없는 평상시 전체 화면 높이 기준)
+        let baseInnerHeight = Math.max(window.innerHeight, window.visualViewport.height || 0);
+
+        function resetWindowScroll() {
+            if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0 || document.body.scrollTop !== 0) {
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+            }
+        }
 
         function handleViewportChange() {
             const vv = window.visualViewport;
-            const vh = vv.height;
+            const vh = vv ? vv.height : window.innerHeight;
             document.documentElement.style.setProperty('--ai-viewport-height', `${vh}px`);
 
             if (window.innerWidth <= 768) {
-                // 키보드가 활성화되었는지 판단 (전체 높이 대비 140px 이상 줄어듦)
-                const isKeyboard = (window.innerHeight - vh > 140);
+                // 키보드 열림 판단: 초기 전체 화면 높이 대비 120px 이상 줄어듦
+                const currentH = vh || window.innerHeight;
+                const isKeyboard = (baseInnerHeight - currentH > 120);
                 document.body.classList.toggle('keyboard-open', isKeyboard);
 
                 // 삼성 브라우저 하단 툴바 높이 동적 제어
                 if (isSamsung) {
                     if (isKeyboard) {
-                        // 키보드 열림 시 오프셋 제거 (키보드 위에 바로 밀착)
+                        // 키보드 열림 시 오프셋 완전 제거 (키보드 위에 바로 밀착)
                         document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
                     } else {
-                        // 사용자가 스크롤하여 삼성 툴바를 숨겼는지 체크 (높이가 기본 대비 50px 이상 커짐)
-                        const isToolbarHidden = (window.innerHeight - baseInnerHeight >= 50);
+                        // 사용자가 스크롤하여 삼성 툴바를 숨겼는지 체크
+                        const isToolbarHidden = (window.innerHeight - baseInnerHeight >= 45);
                         if (isToolbarHidden) {
                             document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
                         } else {
@@ -617,44 +626,52 @@
                     }
                 }
 
-                // 모바일 브라우저의 window 레벨 스크롤 강제 원복 (상단 여백 발생 방지)
-                if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0) {
-                    window.scrollTo(0, 0);
-                    document.documentElement.scrollTop = 0;
-                    document.body.scrollTop = 0;
-                }
-
+                // 모바일 브라우저의 window 레벨 스크롤 강제 원복 (바닥 j-jg.cc 워터마크 및 공백 차단)
+                resetWindowScroll();
                 scrollToBottom();
             }
         }
 
         window.visualViewport.addEventListener('resize', handleViewportChange);
+        window.visualViewport.addEventListener('scroll', () => {
+            if (window.innerWidth <= 768) {
+                resetWindowScroll();
+            }
+        });
+
         window.addEventListener('resize', () => {
             if (!document.body.classList.contains('keyboard-open')) {
-                baseInnerHeight = Math.min(baseInnerHeight, window.innerHeight);
+                baseInnerHeight = Math.max(window.innerHeight, window.visualViewport ? window.visualViewport.height : 0);
             }
             handleViewportChange();
         });
-        window.visualViewport.addEventListener('scroll', () => {
-            if (window.innerWidth <= 768 && window.scrollY !== 0) {
-                window.scrollTo(0, 0);
+
+        window.addEventListener('scroll', () => {
+            if (window.innerWidth <= 768) {
+                resetWindowScroll();
             }
         });
 
         // 초기 가용 높이 세팅
         handleViewportChange();
 
-        // 입력창 포커스/블러 시 추가 방어
+        // 입력창 포커스/블러 시 가상 키보드 스크롤 밀림 방어
         if (promptInputEl) {
             promptInputEl.addEventListener('focus', () => {
+                resetWindowScroll();
+                setTimeout(resetWindowScroll, 30);
                 setTimeout(() => {
-                    window.scrollTo(0, 0);
+                    resetWindowScroll();
                     scrollToBottom();
-                }, 100);
+                }, 120);
+                setTimeout(() => {
+                    resetWindowScroll();
+                    scrollToBottom();
+                }, 300);
             });
             promptInputEl.addEventListener('blur', () => {
                 setTimeout(() => {
-                    window.scrollTo(0, 0);
+                    resetWindowScroll();
                     document.body.classList.remove('keyboard-open');
                     handleViewportChange();
                 }, 100);
