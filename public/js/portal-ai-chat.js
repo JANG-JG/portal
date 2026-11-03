@@ -239,13 +239,11 @@
     window.startNewAiSession = function() {
         if (window.JgAiHistory) {
             window.JgAiHistory.createNewSession();
+            chatHistory = [];
             restoreActiveSessionUI();
             window.toggleAiHistoryDrawer(false);
             const input = document.getElementById('aiChatInput');
-            if (input) {
-                input.value = '';
-                input.focus();
-            }
+            if (input) { input.value = ''; input.focus(); }
         }
     };
 
@@ -299,7 +297,8 @@
         const text = input.value.trim();
         if (!text) return;
 
-        // 1. 사용자 메시지 버블 추가 및 세션 보관 (프롬프트 입력 날짜/시각 기록)
+        // 1. 이번 질문 이전의 최근 히스토리(최대 4개) 추출 (새 대화일 때는 빈 배열 [])
+        const priorHistory = chatHistory.slice(-4);
         const userTimestamp = Date.now();
         appendMessageBubble('user', text, userTimestamp);
         chatHistory.push({ role: 'user', content: text, timestamp: userTimestamp });
@@ -323,7 +322,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: text,
-                    history: chatHistory.slice(-4)
+                    history: priorHistory
                 })
             });
 

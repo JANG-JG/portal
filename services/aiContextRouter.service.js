@@ -285,9 +285,15 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
 
-    // 최근 대화 히스토리 (최대 4턴, 특수 토큰 정제)
+    // 최근 대화 히스토리 (최대 4턴, 특수 토큰 정제 및 현재 질문과 중복 방지)
     if (Array.isArray(history)) {
-        history.slice(-4).forEach(h => {
+        const filteredHistory = history.filter((h, idx) => {
+            if (idx === history.length - 1 && h && h.role === 'user' && h.content?.trim() === cleanPrompt) {
+                return false;
+            }
+            return true;
+        });
+        filteredHistory.slice(-4).forEach(h => {
             const safeRole = (h && h.role === 'assistant') ? 'assistant' : 'user';
             const safeContent = sanitizeInputText(h ? h.content : '', 500);
             if (safeContent) {

@@ -131,10 +131,11 @@
         checkUrlQueryParam();
         loadAiRuntimeConfig();
 
-        // 🔄 서버 DB 대화 히스토리 동기화 완료 이벤트 감지
+        // 🔄 서버 DB 대화 히스토리 동기화 완료 시 사이드바 목록 갱신
         window.addEventListener('jg:ai-history-updated', () => {
             renderHistorySidebar();
-            restoreActiveSession();
+            const curActive = window.JgAiHistory?.getActiveSession();
+            if (curActive?.title && mobileTitleEl) mobileTitleEl.textContent = curActive.title;
         });
     }
 
@@ -148,6 +149,7 @@
             if (query && query.trim()) {
                 if (window.JgAiHistory) {
                     window.JgAiHistory.createNewSession();
+                    currentChatHistory = [];
                     restoreActiveSession();
                     renderHistorySidebar();
                 }
@@ -174,14 +176,16 @@
     };
 
     /**
-     * 새 대화 시작 버튼 클릭
+     * 새 대화 시작 버튼 클릭 (완전 격리된 새 대화창으로 리셋)
      */
     window.handleNewChatClick = function() {
         if (window.JgAiHistory) {
             window.JgAiHistory.createNewSession();
+            currentChatHistory = [];
             restoreActiveSession();
             renderHistorySidebar();
             window.toggleSidebar(false);
+            try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
             if (promptInputEl) {
                 promptInputEl.value = '';
                 promptInputEl.style.height = '24px';
@@ -237,6 +241,11 @@
             item.addEventListener('click', async (e) => {
                 if (e.target.closest('.ai-history-del-btn')) return;
                 window.JgAiHistory.setActiveSessionId(sess.id);
+                try {
+                    const u = new URL(window.location);
+                    u.searchParams.set('session', sess.id);
+                    window.history.replaceState({}, document.title, u.toString());
+                } catch (err) {}
                 if (!sess.messages || !sess.messages.length) {
                     if (window.JgAiHistory.fetchSessionDetailAsync) await window.JgAiHistory.fetchSessionDetailAsync(sess.id);
                 }
@@ -350,15 +359,13 @@
      */
     async function sendAiMessage(userText) {
         if (isSending) return;
-
-        // 히어로 카드 제거 (첫 질문 시)
         const hero = messageContainerEl.querySelector('.ai-hero-card');
         if (hero) hero.remove();
 
+        // 🛡️ 이번 질문 이전의 최근 히스토리(최대 4개)만 전송 (새 대화일 때는 빈 배열 [])
+        const priorHistory = currentChatHistory.slice(-4);
         const userTimestamp = Date.now();
-        if (window.JgAiRender) {
-            window.JgAiRender.appendMessageBubble(messageContainerEl, 'user', userText, userTimestamp);
-        }
+        if (window.JgAiRender) window.JgAiRender.appendMessageBubble(messageContainerEl, 'user', userText, userTimestamp);
         currentChatHistory.push({ role: 'user', content: userText, timestamp: userTimestamp });
 
         if (window.JgAiHistory) {
@@ -369,11 +376,8 @@
 
         isSending = true;
         updateSubmitButtonState(true);
-
         const typingId = 'typing_' + Date.now();
-        if (window.JgAiRender) {
-            window.JgAiRender.appendTypingIndicator(messageContainerEl, typingId);
-        }
+        if (window.JgAiRender) window.JgAiRender.appendTypingIndicator(messageContainerEl, typingId);
         scrollToBottom();
 
         const aiTimestamp = Date.now();
@@ -382,7 +386,7 @@
         if (window.JgAiStream && typeof window.JgAiStream.streamChat === 'function') {
             await window.JgAiStream.streamChat({
                 message: userText,
-                history: currentChatHistory.slice(-4),
+                history: priorHistory,
                 onToken: (token) => {
                     if (!streamingBubble) {
                         if (window.JgAiRender) window.JgAiRender.removeTypingIndicator(typingId);

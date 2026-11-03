@@ -64,15 +64,35 @@
         catch (e) { console.error('[AI History] 로컬 캐시 세션 저장 오류:', e); }
     }
 
-    function getActiveSessionId() { return localStorage.getItem(ACTIVE_ID_STORAGE_KEY) || null; }
+    function getActiveSessionId() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const urlSess = params.get('session');
+            if (urlSess) return urlSess;
+            return sessionStorage.getItem(ACTIVE_ID_STORAGE_KEY) || null;
+        } catch (e) {
+            return null;
+        }
+    }
     function setActiveSessionId(id) {
-        if (id) localStorage.setItem(ACTIVE_ID_STORAGE_KEY, id);
-        else localStorage.removeItem(ACTIVE_ID_STORAGE_KEY);
+        try {
+            if (id) sessionStorage.setItem(ACTIVE_ID_STORAGE_KEY, id);
+            else sessionStorage.removeItem(ACTIVE_ID_STORAGE_KEY);
+        } catch (e) {}
     }
     function generateSessionId() { return 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7); }
 
     function createNewSession(customTitle) {
         const sessions = loadAllSessions();
+        const activeId = getActiveSessionId();
+        const curActive = activeId ? sessions.find(s => s.id === activeId) : null;
+
+        // 이미 사용자의 발화가 하나도 없는 빈 '새 대화' 상태라면 중복 생성 없이 기존 빈 세션 유지
+        if (curActive && curActive.title === '새 대화' && (!curActive.messages || !curActive.messages.some(m => m.role === 'user'))) {
+            setActiveSessionId(curActive.id);
+            return curActive;
+        }
+
         const now = Date.now();
         const newSession = {
             id: generateSessionId(),
@@ -103,10 +123,7 @@
         const activeId = getActiveSessionId();
         let cur = activeId ? sessions.find(s => s.id === activeId) : null;
 
-        if (!cur && sessions.length > 0) {
-            cur = sessions[0];
-            setActiveSessionId(cur.id);
-        }
+        // 활성 세션이 없거나 찾을 수 없으면 과거 대화를 강제로 열지 않고 항상 깨끗한 '새 대화' 시작
         if (!cur) cur = createNewSession();
 
         if (!cur.messages || cur.messages.length === 0) {
@@ -235,17 +252,23 @@
                             messages: (local?.messages?.length > 0) ? local.messages : null
                         };
                     });
+                    // 로컬 전용 신규 세션(새 대화 등) 보존
+                    localSessions.forEach(loc => {
+                        if (!mergedSessions.some(s => s.id === loc.id)) {
+                            mergedSessions.unshift(loc);
+                        }
+                    });
                     saveAllSessions(mergedSessions);
 
-                    let activeId = getActiveSessionId();
-                    if (!activeId || !mergedSessions.some(s => s.id === activeId)) {
-                        activeId = mergedSessions[0].id;
-                        setActiveSessionId(activeId);
+                    const activeId = getActiveSessionId();
+                    // 사용자가 현재 보고 있는 세션이 서버 목록에 있는 경우에만 상세 동기화
+                    if (activeId && mergedSessions.some(s => s.id === activeId)) {
+                        const cur = mergedSessions.find(s => s.id === activeId);
+                        if (!cur?.messages?.length) await fetchSessionDetailAsync(activeId);
+                        else notifyChange();
+                    } else {
+                        notifyChange();
                     }
-
-                    const cur = mergedSessions.find(s => s.id === activeId);
-                    if (!cur?.messages?.length) await fetchSessionDetailAsync(activeId);
-                    else notifyChange();
                 }
             }
         } catch (e) {
@@ -283,14 +306,18 @@
         if (!containerEl) return;
         const sessions = loadAllSessions();
         const activeId = getActiveSessionId();
+        const displaySessions = sessions.filter(s => {
+            const hasUser = s.messages ? s.messages.some(m => m.role === 'user') : (s.messageCount > 0);
+            return hasUser || s.id === activeId;
+        });
 
-        if (sessions.length === 0) {
+        if (displaySessions.length === 0) {
             containerEl.innerHTML = `<div class="ai-history-empty"><div class="ai-history-empty-icon">💬</div><div class="ai-history-empty-text">저장된 대화 기록이 없습니다.<br>AI 비서에게 새로운 질문을 해보세요!</div></div>`;
             return;
         }
 
         containerEl.innerHTML = '';
-        sessions.forEach(sess => {
+        displaySessions.forEach(sess => {
             const item = document.createElement('div');
             item.className = 'ai-history-item' + (sess.id === activeId ? ' active' : '');
             const count = sess.messages ? sess.messages.filter(m => m.role === 'user').length : (sess.messageCount || 0);
