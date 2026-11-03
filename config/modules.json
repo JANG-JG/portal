@@ -456,6 +456,73 @@
     "serverName": "HP 보조 서버"
   },
   {
+    "id": "ai",
+    "name": "우리 집 AI 비서",
+    "icon": "🤖",
+    "description": "LG EXAONE 3.5 기반 가족 맞춤형 AI 비서 (건강, 자산, 일정, 위키 질의응답)",
+    "category": "인텔리전스",
+    "entryUrl": "/ai",
+    "baseUrl": "",
+    "ssoEnabled": false,
+    "adminOnly": false,
+    "defaultFamilyAllowed": true,
+    "order": 85,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "AI 비서",
+      "entryUrl": "/ai",
+      "subLinks": [
+        {
+          "name": "AI 대화방",
+          "url": "/ai",
+          "icon": "💬",
+          "desc": "실시간 가족 맞춤형 AI 비서 대화방"
+        },
+        {
+          "name": "가족 위키 지식",
+          "url": "/wiki",
+          "icon": "📚",
+          "desc": "AI가 정리한 생활 지식 및 꿀팁 보관소"
+        }
+      ]
+    },
+    "quickStrip": [
+      {
+        "id": "ai-chat-quick",
+        "label": "AI 비서",
+        "icon": "🤖",
+        "type": "link",
+        "url": "/ai"
+      }
+    ],
+    "portalWidget": {
+      "enabled": true,
+      "type": "ai-assistant",
+      "cardId": "smartDailyBriefingCard",
+      "apiEndpoint": "/api/ai/briefing"
+    },
+    "admin": {
+      "enabled": true,
+      "title": "AI 비서 인프라 제어",
+      "icon": "🤖",
+      "tabId": "tab-ai",
+      "subMenus": [
+        {
+          "id": "subpane-ai-health",
+          "title": "AI 엔진 헬스체크",
+          "icon": "🟢",
+          "type": "api",
+          "endpoint": "/api/ai/health"
+        }
+      ]
+    },
+    "isRemote": true,
+    "remoteServer": "local_pc",
+    "remoteHost": "192.168.50.66",
+    "serverName": "로컬 PC (Ollama)"
+  },
+  {
     "id": "kindergarten",
     "name": "유치원 사진 다운로더",
     "icon": "🏫",
