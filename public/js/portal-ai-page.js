@@ -391,12 +391,20 @@
                     if (streamingBubble) streamingBubble.appendToken(token);
                     scrollToBottom();
                 },
-                onDone: (fullText) => {
+                onThinking: (token) => {
+                    if (!streamingBubble) {
+                        if (window.JgAiRender) window.JgAiRender.removeTypingIndicator(typingId);
+                        streamingBubble = window.JgAiRender ? window.JgAiRender.createStreamingBubble(messageContainerEl, aiTimestamp) : null;
+                    }
+                    if (streamingBubble && streamingBubble.appendThinking) streamingBubble.appendThinking(token);
+                    scrollToBottom();
+                },
+                onDone: (fullText, doneData) => {
                     if (window.JgAiRender) window.JgAiRender.removeTypingIndicator(typingId);
                     if (!streamingBubble) {
                         streamingBubble = window.JgAiRender ? window.JgAiRender.createStreamingBubble(messageContainerEl, aiTimestamp) : null;
                     }
-                    if (streamingBubble) streamingBubble.complete(fullText);
+                    if (streamingBubble) streamingBubble.complete(fullText, doneData && doneData.thinkingText);
                     currentChatHistory.push({ role: 'assistant', content: fullText, timestamp: aiTimestamp });
                     if (window.JgAiHistory) {
                         window.JgAiHistory.addMessageToActiveSession('assistant', fullText, aiTimestamp);

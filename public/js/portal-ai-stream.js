@@ -11,7 +11,7 @@
     /**
      * SSE 실시간 대화 스트리밍 요청
      */
-    async function streamChat({ message, history = [], onStart, onToken, onDone, onError, onAbort }) {
+    async function streamChat({ message, history = [], onStart, onToken, onThinking, onDone, onError, onAbort }) {
         if (activeAbortController) {
             activeAbortController.abort();
         }
@@ -69,7 +69,9 @@
                         const dataStr = trimmed.slice(5).trim();
                         try {
                             const data = JSON.parse(dataStr);
-                            if (currentEventType === 'token' || data.token) {
+                            if (currentEventType === 'thinking') {
+                                if (typeof onThinking === 'function') onThinking(data.token || '');
+                            } else if (currentEventType === 'token' || data.token) {
                                 const t = data.token || '';
                                 fullText += t;
                                 if (typeof onToken === 'function') onToken(t);

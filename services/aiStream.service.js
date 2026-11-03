@@ -16,15 +16,26 @@ const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
 
 /**
- * 스트리밍 중 표시 가능한 답변 계산: <think> 구간 제거 + 끝부분 미완성 '<think' 조각은 다음 토큰까지 보류
+ * 스트리밍 원문을 생각 과정/답변으로 분리
+ * - EXAONE 4.0 템플릿은 프롬프트 끝에 <think>를 미리 넣으므로 여는 태그 없이 '생각 + </think> + 답변' 형태로 올 수 있음
+ * - </think> 전까지는 생각 과정으로 간주, final(종료 시점)까지 </think>가 없으면 전체를 답변으로 처리
+ * - 끝부분의 미완성 태그 조각('</thi' 등)은 다음 토큰까지 보류
  */
-function getVisibleStreamText(raw) {
-    let visible = stripThinkTags(raw) || '';
-    const tag = '<think>';
-    for (let k = tag.length - 1; k > 0; k--) {
-        if (visible.endsWith(tag.slice(0, k))) { visible = visible.slice(0, -k); break; }
+function splitThinkStream(raw, final = false) {
+    const s = (raw || '').replace(/^\s*<think>/i, '');
+    const closeIdx = s.search(/<\/think>/i);
+    if (closeIdx >= 0) {
+        const answer = stripThinkTags(s.slice(closeIdx + 8)) || '';
+        return { thinking: s.slice(0, closeIdx), answer: answer.replace(/^\s+/, ''), closed: true };
     }
-    return visible.replace(/^\s+/, '');
+    if (final) return { thinking: '', answer: (stripThinkTags(s) || '').trim(), closed: false };
+    let hold = 0;
+    for (const tag of ['</think>', '<think>']) {
+        for (let k = tag.length - 1; k > 0; k--) {
+            if (s.toLowerCase().endsWith(tag.slice(0, k))) { hold = Math.max(hold, k); break; }
+        }
+    }
+    return { thinking: s.slice(0, s.length - hold).replace(/^\s+/, ''), answer: '', closed: false };
 }
 
 /**
@@ -169,6 +180,8 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
     let isFinished = false;
     let fullAnswer = '';
     let rawAnswer = '';
+    let sentThinking = '';
+    let nativeThinking = '';
     let ollamaReq = null;
 
     // 4. 클라이언트 연결 끊김(Stop 버튼 / 탭 닫기) 감지 시 Ollama 요청 즉시 파기
@@ -227,9 +240,20 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                     if (!trimmed) continue;
                     try {
                         const parsed = JSON.parse(trimmed);
+                        if (parsed.thinking) {
+                            // Ollama think 모드: 생각 과정이 별도 필드로 오는 경우
+                            nativeThinking += parsed.thinking;
+                            sendSseEvent(res, 'thinking', { token: parsed.thinking });
+                        }
                         if (parsed.response) {
                             rawAnswer += parsed.response;
-                            const visible = getVisibleStreamText(rawAnswer);
+                            const part = splitThinkStream(rawAnswer);
+                            if (part.thinking.length > sentThinking.length && part.thinking.startsWith(sentThinking)) {
+                                const tDelta = part.thinking.slice(sentThinking.length);
+                                sentThinking = part.thinking;
+                                sendSseEvent(res, 'thinking', { token: tDelta });
+                            }
+                            const visible = part.answer;
                             if (visible.length > fullAnswer.length && visible.startsWith(fullAnswer)) {
                                 const delta = visible.slice(fullAnswer.length);
                                 fullAnswer = visible;
@@ -238,9 +262,11 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                         }
                         if (parsed.done) {
                             isFinished = true;
-                            fullAnswer = (stripThinkTags(rawAnswer) || '').trim();
+                            const finalPart = splitThinkStream(rawAnswer, true);
+                            fullAnswer = finalPart.answer.trim();
                             sendSseEvent(res, 'done', {
                                 fullText: fullAnswer.trim(),
+                                thinkingText: (nativeThinking + finalPart.thinking).trim(),
                                 model: OLLAMA_MODEL
                             });
                             res.end();
@@ -262,9 +288,11 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                             if (parsed.response) rawAnswer += parsed.response;
                         } catch (e) {}
                     }
-                    fullAnswer = (stripThinkTags(rawAnswer) || '').trim();
+                    const finalPart = splitThinkStream(rawAnswer, true);
+                    fullAnswer = finalPart.answer.trim();
                     sendSseEvent(res, 'done', {
                         fullText: fullAnswer.trim() || '답변을 생성하지 못했습니다.',
+                        thinkingText: (nativeThinking + finalPart.thinking).trim(),
                         model: OLLAMA_MODEL
                     });
                     res.end();
