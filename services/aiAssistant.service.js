@@ -113,7 +113,31 @@ async function checkAiHealth() {
 }
 
 /**
- * 2. LG EXAONE 기반 맞춤형 데일리 건강/일정 브리핑 문장 생성
+ * D-Day 항목에서 오늘 기준 남은 일수 계산 (당일: 0, 내일: 1, ...)
+ */
+function parseDDayDiff(ddayItem) {
+    if (!ddayItem) return null;
+    if (ddayItem.targetDate || ddayItem.target_date) {
+        const dateStr = (ddayItem.targetDate || ddayItem.target_date).slice(0, 10);
+        const target = new Date(dateStr + 'T00:00:00+09:00');
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+        const today = new Date(todayStr + 'T00:00:00+09:00');
+        if (!isNaN(target.getTime()) && !isNaN(today.getTime())) {
+            return Math.round((target - today) / (1000 * 60 * 60 * 24));
+        }
+    }
+    const dStr = String(ddayItem.dday || '').trim();
+    if (dStr === 'D-Day' || dStr === 'D-0') return 0;
+    const m = /^D-(\d+)$/.exec(dStr);
+    if (m) return parseInt(m[1], 10);
+    return null;
+}
+
+/**
+ * 2. LG EXAONE 기반 오늘 맞춤형 데일리 건강/일정 조언 문장 생성
+ * - [원칙] 먼 미래 D-Day 원천 배제, 오늘 당일(D-Day) 및 3일 이내 초임박 일정만 엄선
+ * - [원칙] 자산/사진첩 등 잡음 제거, 사용자의 '오늘 하루'에 꼭 필요한 핵심 1~2가지만 간결 조언
  */
 async function generateAiDailyBriefing({ blood, medication, weather, todayEvents = [], asset = null, wiki = null, album = null, userName = '가족' }, forceRefresh = false) {
     const now = Date.now();
@@ -121,60 +145,75 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         return cachedAiBriefing;
     }
 
-    // 상황 데이터 텍스트 조합
+    // 1) 오늘 건강 상태 (복약 & 혈압)
     const bloodText = blood 
-        ? `최근 혈압: 수축기 ${blood.systolic} / 이완기 ${blood.diastolic} mmHg (맥박 ${blood.pulse || '-'}회, ${blood.grade ? blood.grade.name : '정상'}). ${blood.is_today_measured ? '오늘 측정 완료.' : '오늘 아직 미측정.'}` 
-        : '혈압 정보 없음.';
-    const medText = medication && medication.is_today_taken ? '오늘 복약 완료.' : '오늘 혈압약 아직 미복용(주의 필요).';
-    const weatherText = weather ? `현재 날씨: ${weather.city || '서울'} ${weather.temp || ''}, ${weather.condition || '맑음'}.` : '날씨 정보 없음.';
-    const assetText = (asset && asset.totalKrw) ? `가족 총 자산: ${asset.totalKrw}` : '';
-    
-    let eventText = '오늘 예정된 특별한 일정 없음.';
+        ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'}), ${blood.is_today_measured ? '오늘 측정 완료 ✅' : '오늘 아직 미측정 ⚠️'}` 
+        : '혈압 기록 없음';
+    const medText = medication && medication.is_today_taken 
+        ? '오늘 약 복용 완료 ✅' 
+        : '오늘 혈압약 아직 안 챙겨드심(복용 필요 ⚠️)';
+
+    // 2) 오늘 날씨 & 외출 주의사항
+    const weatherText = weather 
+        ? `${weather.city || '계룡'} ${weather.temp || ''}, ${weather.condition || '맑음'}` 
+        : '';
+
+    // 3) 오늘 당일 캘린더 일정 (오늘 일정이 있는 경우만)
+    let eventText = '';
     if (Array.isArray(todayEvents) && todayEvents.length > 0) {
-        eventText = `오늘 일정 ${todayEvents.length}건: ` + todayEvents.map(e => `${e.event_time ? e.event_time.slice(0, 5) + ' ' : ''}${e.title}`).join(', ');
+        eventText = todayEvents.map(e => `${e.event_time ? e.event_time.slice(0, 5) + ' ' : ''}${e.title}`).join(', ');
     }
 
-    let wikiText = '';
-    if (wiki) {
-        const parts = [];
-        if (wiki.proactiveTip) {
-            parts.push(`오늘의 위키 추천 생활 지식: [${wiki.proactiveTip.title}] (${wiki.proactiveTip.reason})`);
+    // 4) D-Day 엄격 필터링: 오직 오늘 당일(D-Day) 또는 3일 이내 초임박 일정만 허용 (먼 D-Day 완전 배제)
+    let nearDdayText = '';
+    if (wiki && Array.isArray(wiki.ddays)) {
+        const urgentDdays = [];
+        for (const item of wiki.ddays) {
+            const diff = parseDDayDiff(item);
+            if (diff === null) continue;
+            if (diff === 0) {
+                urgentDdays.push(`오늘이 [${item.title}] D-Day 당일입니다`);
+            } else if (diff === 1) {
+                urgentDdays.push(`내일이 [${item.title}] (D-1)입니다`);
+            } else if (diff >= 2 && diff <= 3) {
+                urgentDdays.push(`[${item.title}] 일정이 D-${diff}일 남았습니다`);
+            }
+            // 4일 이상 남은 먼 D-Day나 이미 지난 D+ 일정은 절대 포함하지 않음!
         }
-        if (Array.isArray(wiki.ddays) && wiki.ddays.length > 0) {
-            const nearDday = wiki.ddays[0];
-            parts.push(`다가오는 D-Day: ${nearDday.title} (${nearDday.dday || '예정'})`);
-        }
-        if (Array.isArray(wiki.todos) && wiki.todos.length > 0) {
-            const pending = wiki.todos.slice(0, 2).map(t => `${t.assignee ? `[${t.assignee}] ` : ''}${t.content}`).join(', ');
-            parts.push(`가족 루틴/할 일: ${pending}`);
-        }
-        if (parts.length > 0) wikiText = parts.join(' | ');
-    }
-
-    let albumText = '';
-    if (album) {
-        if (Array.isArray(album.onThisDay) && album.onThisDay.length > 0) {
-            const mem = album.onThisDay[0];
-            albumText = `${mem.yearsAgo}년 전 오늘 추억 사진: ${mem.author}님이 올린 '${mem.caption || mem.location || '가족 사진'}'${mem.location ? ` (${mem.location})` : ''}`;
-        } else if (album.activity && album.activity.unreactedPhoto) {
-            const un = album.activity.unreactedPhoto;
-            albumText = `최근 사진: ${un.author}님이 올린 '${un.caption || un.location || '추억 사진'}'`;
+        if (urgentDdays.length > 0) {
+            nearDdayText = urgentDdays.slice(0, 2).join(', ');
         }
     }
 
-    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 다정하고 유능한 가족 전용 AI 비서(LG EXAONE)입니다.
-가족 구성원에게 다정한 한국어 경어(존댓말)로 말하세요.
-주어진 건강, 날씨, 일정, 자산, 가족 위키(추천 생활 지식), 가족 사진첩(추억 사진) 데이터를 바탕으로 2~3문장 이내의 따뜻하고 실천적인 데일리 조언과 인사를 작성하세요.
-위키 추천 생활 지식이 있다면 날씨나 상황에 맞추어 유용하게 활용할 수 있도록 다정하게 곁들여 권유하세요. 불필요한 서론 없이 바로 조언과 인사만 말하세요.`;
+    // 5) 날씨 맞춤형 위키 생활 팁 (선택적)
+    let tipText = '';
+    if (wiki && wiki.proactiveTip && wiki.proactiveTip.title) {
+        tipText = `[${wiki.proactiveTip.title}] ${wiki.proactiveTip.reason || ''}`;
+    }
 
-    const userPrompt = `[상황 데이터]
-- 사용자: ${userName}님
-- 날씨: ${weatherText}
-- 복약: ${medText}
-- 혈압: ${bloodText}
-- 일정: ${eventText}${assetText ? `\n- 자산: ${assetText}` : ''}${wikiText ? `\n- 가족 위키: ${wikiText}` : ''}${albumText ? `\n- 가족 사진첩: ${albumText}` : ''}
+    // 상황 데이터 조합 (자산, 사진첩 등 산만한 잡음 정보 완전 배제하고 '오늘'에만 집중)
+    const situationLines = [`- 사용자: ${userName}님`];
+    if (weatherText) situationLines.push(`- 오늘 날씨: ${weatherText}`);
+    situationLines.push(`- 오늘 복약: ${medText}`);
+    situationLines.push(`- 오늘 혈압: ${bloodText}`);
+    if (eventText) situationLines.push(`- 오늘 일정: ${eventText}`);
+    if (nearDdayText) situationLines.push(`- 임박 디데이: ${nearDdayText}`);
+    if (tipText) situationLines.push(`- 오늘 생활 팁: ${tipText}`);
 
-위 상황을 보고 ${userName}님에게 건넬 다정하고 따뜻한 2~3문장 조언을 작성해 주세요.`;
+    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 다정하고 섬세한 가족 AI 비서(LG EXAONE)입니다.
+가족 구성원이 '오늘 하루'를 건강하고 기분 좋게 보낼 수 있도록 따뜻한 한국어 존댓말로 조언을 건넵니다.
+
+[핵심 작성 원칙]
+1. 🎯 오직 '오늘(Today)'에만 집중: 모든 항목을 백과사전처럼 억지로 다 나열하지 마세요.
+2. 💡 가장 중요한 1~2가지만 선택: 주어진 오늘 상황(날씨/외출, 복약 여부, 오늘 일정) 중 사용자의 오늘 하루에 가장 필요하고 실천해야 할 1~2가지만 자연스럽게 골라 다정하게 이야기하세요.
+   - 예: 아직 약을 안 드셨다면 다정하게 약 챙겨드시길 권유, 비 소식이 있다면 우산 챙기기, 오늘 중요한 일정이 있다면 응원
+3. 🚫 먼 D-Day나 과거 절대 언급 금지: 오늘 당일이나 1~2일 내 임박한 일이 아니면 D-Day를 억지로 언급하지 마세요.
+4. 📏 분량: 인사치레나 서론 없이 바로 실용적이고 따뜻한 1~2문장으로 간결하게 작성하세요.`;
+
+    const userPrompt = `[오늘의 상황 데이터]
+${situationLines.join('\n')}
+
+위 상황 중 ${userName}님의 '오늘 하루'에 가장 중요하고 필요한 핵심 1~2가지만 골라 다정하고 따뜻하게 1~2문장으로 조언해 주세요.`;
 
     try {
         const result = await sendOllamaRequest('/api/generate', {

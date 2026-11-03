@@ -19,6 +19,28 @@ function sanitizeInputText(text, maxLength = 1000) {
 }
 
 /**
+ * D-Day 항목에서 오늘 기준 남은 일수 계산
+ */
+function parseDDayDiff(ddayItem) {
+    if (!ddayItem) return null;
+    if (ddayItem.targetDate || ddayItem.target_date) {
+        const dateStr = (ddayItem.targetDate || ddayItem.target_date).slice(0, 10);
+        const target = new Date(dateStr + 'T00:00:00+09:00');
+        const now = new Date();
+        const todayStr = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+        const today = new Date(todayStr + 'T00:00:00+09:00');
+        if (!isNaN(target.getTime()) && !isNaN(today.getTime())) {
+            return Math.round((target - today) / (1000 * 60 * 60 * 24));
+        }
+    }
+    const dStr = String(ddayItem.dday || '').trim();
+    if (dStr === 'D-Day' || dStr === 'D-0') return 0;
+    const m = /^D-(\d+)$/.exec(dStr);
+    if (m) return parseInt(m[1], 10);
+    return null;
+}
+
+/**
  * 사용자 질문 의도(Intent) 분석기
  * @param {string} prompt 정제된 사용자 질문
  * @returns {Set<string>} 감지된 의도 세트
@@ -113,8 +135,16 @@ function buildSelectiveContext(summaryContext, intents) {
         }
 
         if (wiki && Array.isArray(wiki.ddays) && wiki.ddays.length > 0) {
-            const ddayStr = wiki.ddays.slice(0, 3).map(d => `${d.title}(${d.dday || d.targetDate})`).join(', ');
-            parts.push(`- ⏳ 중요 D-Day: ${ddayStr}`);
+            // 의도가 명시적 일정(SCHEDULE)이면 14일 이내, 일반 요약이면 3일 이내 초임박 일정만 포함
+            const maxDays = intents.has('SCHEDULE') ? 14 : 3;
+            const urgentDdays = wiki.ddays.filter(d => {
+                const diff = parseDDayDiff(d);
+                return diff !== null && diff >= 0 && diff <= maxDays;
+            });
+            if (urgentDdays.length > 0) {
+                const ddayStr = urgentDdays.slice(0, 3).map(d => `${d.title}(${d.dday || d.targetDate})`).join(', ');
+                parts.push(`- ⏳ 중요 D-Day: ${ddayStr}`);
+            }
         }
         if (wiki && Array.isArray(wiki.todos) && wiki.todos.length > 0) {
             const todoStr = wiki.todos.slice(0, 3).map(t => `${t.assignee ? `[${t.assignee}] ` : ''}${t.content}`).join(', ');
