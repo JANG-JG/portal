@@ -1,6 +1,6 @@
 /**
  * 🤖 JG 포털 지식 관리 및 위키/루틴 AI 서비스 (aiKnowledge.service.js)
- * - 로컬 워크스테이션 PC (192.168.50.164:11434) Ollama LG EXAONE 3.5 모델 연동
+ * - 로컬 워크스테이션 PC (192.168.50.164:11434) Ollama LG EXAONE 4.0 모델 연동
  * - 메모 ➔ 위키 정돈, 루틴/일정 자동 감지, 3줄 요약, 위키 초안 자동 작성
  * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화
  */
@@ -8,7 +8,15 @@
 const http = require('http');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
+
+/**
+ * EXAONE 4.0 추론 모드 대비: <think>...</think> 사고 과정 텍스트 제거 (미종결 태그 포함)
+ */
+function stripThinkTags(text) {
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/<think>[\s\S]*$/i, '');
+}
 
 /**
  * Ollama 서버에 HTTP POST 요청을 보내는 경량 헬퍼
@@ -34,6 +42,7 @@ function sendOllamaRequest(endpoint, payload, timeoutMs = 60000) {
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         try {
                             const parsed = JSON.parse(rawData);
+                            if (parsed && typeof parsed.response === 'string') parsed.response = stripThinkTags(parsed.response);
                             resolve(parsed);
                         } catch (e) {
                             reject(new Error('응답 JSON 파싱 실패'));
@@ -383,5 +392,6 @@ module.exports = {
     extractRoutineAndTodos,
     summarizeText,
     generateWikiDraft,
-    smartMergeOrDraftWiki
+    smartMergeOrDraftWiki,
+    stripThinkTags
 };

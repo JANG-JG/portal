@@ -9,11 +9,23 @@
 const http = require('http');
 const { buildAiChatPrompt, sanitizeInputText } = require('./aiContextRouter.service');
 const { searchWikiContent, createWikiPage, getWikiPageDetail, updateWikiPage } = require('./wikiSummary.service');
-const { smartMergeOrDraftWiki } = require('./aiKnowledge.service');
+const { smartMergeOrDraftWiki, stripThinkTags } = require('./aiKnowledge.service');
 const { handleActionIntent } = require('./aiActionAgent.service');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
+
+/**
+ * 스트리밍 중 표시 가능한 답변 계산: <think> 구간 제거 + 끝부분 미완성 '<think' 조각은 다음 토큰까지 보류
+ */
+function getVisibleStreamText(raw) {
+    let visible = stripThinkTags(raw) || '';
+    const tag = '<think>';
+    for (let k = tag.length - 1; k > 0; k--) {
+        if (visible.endsWith(tag.slice(0, k))) { visible = visible.slice(0, -k); break; }
+    }
+    return visible.replace(/^\s+/, '');
+}
 
 /**
  * SSE 포맷 이벤트 전송 헬퍼
@@ -156,6 +168,7 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
 
     let isFinished = false;
     let fullAnswer = '';
+    let rawAnswer = '';
     let ollamaReq = null;
 
     // 4. 클라이언트 연결 끊김(Stop 버튼 / 탭 닫기) 감지 시 Ollama 요청 즉시 파기
@@ -215,11 +228,17 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                     try {
                         const parsed = JSON.parse(trimmed);
                         if (parsed.response) {
-                            fullAnswer += parsed.response;
-                            sendSseEvent(res, 'token', { token: parsed.response });
+                            rawAnswer += parsed.response;
+                            const visible = getVisibleStreamText(rawAnswer);
+                            if (visible.length > fullAnswer.length && visible.startsWith(fullAnswer)) {
+                                const delta = visible.slice(fullAnswer.length);
+                                fullAnswer = visible;
+                                sendSseEvent(res, 'token', { token: delta });
+                            }
                         }
                         if (parsed.done) {
                             isFinished = true;
+                            fullAnswer = (stripThinkTags(rawAnswer) || '').trim();
                             sendSseEvent(res, 'done', {
                                 fullText: fullAnswer.trim(),
                                 model: OLLAMA_MODEL
@@ -240,9 +259,10 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                     if (buffer.trim()) {
                         try {
                             const parsed = JSON.parse(buffer.trim());
-                            if (parsed.response) fullAnswer += parsed.response;
+                            if (parsed.response) rawAnswer += parsed.response;
                         } catch (e) {}
                     }
+                    fullAnswer = (stripThinkTags(rawAnswer) || '').trim();
                     sendSseEvent(res, 'done', {
                         fullText: fullAnswer.trim() || '답변을 생성하지 못했습니다.',
                         model: OLLAMA_MODEL

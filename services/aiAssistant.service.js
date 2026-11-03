@@ -1,7 +1,7 @@
 /**
- * 🤖 JG 포털 LG EXAONE 3.5 로컬 AI 비서 서비스 (aiAssistant.service.js)
+ * 🤖 JG 포털 LG EXAONE 4.0 로컬 AI 비서 서비스 (aiAssistant.service.js)
  * - 로컬 워크스테이션 PC (192.168.50.164:11434) Ollama API 내부망 연동
- * - 모델: exaone3.5:2.4b (LG AI연구원 국산 초경량 LLM)
+ * - 모델: exaone4:opt (LG AI연구원 국산 초경량 LLM EXAONE 4.0 1.2B)
  * - 건강 데이터 기반 스마트 데일리 브리핑 및 가족 대화형 챗봇
  * - 무장애 설계: PC 오프라인/지연 시 0.1초 만에 기본 규칙 브리핑으로 자동 폴백
  * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화
@@ -10,12 +10,12 @@
 const http = require('http');
 const { searchWikiContent, createWikiPage, getWikiPageDetail, updateWikiPage } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
-const { refineMemoToWiki, smartMergeOrDraftWiki } = require('./aiKnowledge.service');
+const { refineMemoToWiki, smartMergeOrDraftWiki, stripThinkTags } = require('./aiKnowledge.service');
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { buildAiChatPrompt } = require('./aiContextRouter.service');
 
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone3.5:2.4b';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
 
 // 브리핑 캐시 (1시간 유효, 데이터 변경 시 자동 갱신)
 let cachedAiBriefing = null;
@@ -46,6 +46,7 @@ function sendOllamaRequest(endpoint, payload, timeoutMs = 45000) {
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         try {
                             const parsed = JSON.parse(rawData);
+                            if (parsed && typeof parsed.response === 'string') parsed.response = stripThinkTags(parsed.response);
                             resolve(parsed);
                         } catch (e) {
                             reject(new Error('응답 JSON 파싱 실패'));
@@ -93,7 +94,8 @@ async function checkAiHealth() {
                 res.on('end', () => {
                     try {
                         const parsed = JSON.parse(data);
-                        const hasModel = Array.isArray(parsed.models) && parsed.models.some(m => m.name.includes('exaone3.5'));
+                        const modelBase = OLLAMA_MODEL.split(':')[0];
+                        const hasModel = Array.isArray(parsed.models) && parsed.models.some(m => m.name === OLLAMA_MODEL || m.name === `${OLLAMA_MODEL}:latest` || (OLLAMA_MODEL.indexOf(':') === -1 && m.name.split(':')[0] === modelBase));
                         resolve({
                             online: true,
                             modelReady: hasModel,

@@ -251,7 +251,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     const days = ['일', '월', '화', '수', '목', '금', '토'];
     const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${String(kst.getHours()).padStart(2, '0')}:${String(kst.getMinutes()).padStart(2, '0')} KST`;
 
-    const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 3.5)입니다.
+    const systemPrompt = `당신은 대한민국 JG 홈서버의 전용 AI 비서이자 가족 데이터 통합 분석가(LG EXAONE 4.0)입니다.
 - [현재 기준 일시]: ${currentDateTimeStr} (현재 연도는 ${kst.getFullYear()}년입니다. 2023~2024년 등 과거 연도로 날짜를 착각하지 마세요)
 - 질문자가 가족 구성원(${userName}님)이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
 - 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키, 가족 사진첩 및 서버 인프라 현황을 파악하고 있습니다.
