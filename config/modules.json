@@ -466,7 +466,7 @@
     "ssoEnabled": false,
     "adminOnly": false,
     "defaultFamilyAllowed": true,
-    "order": 85,
+    "order": 90,
     "enabled": true,
     "nav": {
       "enabled": true,
@@ -552,7 +552,7 @@
     "portalWidget": null,
     "admin": null,
     "dbPath": "",
-    "order": 90
+    "order": 100
   },
   {
     "id": "admin",
@@ -581,6 +581,6 @@
     "portalWidget": null,
     "admin": null,
     "dbPath": "",
-    "order": 100
+    "order": 110
   }
 ]
