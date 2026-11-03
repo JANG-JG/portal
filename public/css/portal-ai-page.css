@@ -400,7 +400,52 @@ html, body {
     border-bottom-left-radius: 4px;
 }
 
+.ai-bubble-content {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.ai-bubble-time,
+.ai-bubble-meta,
+.ai-bubble-actions,
+.ai-bubble-action-btn,
+.ai-bubble-wiki-action,
+.ai-bubble-wiki-btn,
+.ai-user-copy-btn,
+.ai-code-header,
+.ai-typing-indicator {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
 .ai-bubble-time { font-size: 0.7rem; color: var(--ai-text-muted); margin-top: 4px; padding: 0 4px; }
+
+.ai-bubble-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+.ai-user-copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--ai-text-muted);
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 1px 5px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    transition: all 0.15s ease;
+}
+.ai-user-copy-btn:hover,
+.ai-user-copy-btn:active {
+    color: var(--ai-text-primary);
+    background-color: #f1f5f9;
+}
 
 /* 3. 서식 효과 (strong 등) */
 .ai-bubble strong, .ai-bubble b { font-weight: 750 !important; color: inherit; }
@@ -415,10 +460,57 @@ html, body {
 .ai-code-wrapper { background: #0f172a; border-radius: 8px; overflow: hidden; margin: 8px 0; border: 1px solid #1e293b; width: 100%; }
 .ai-code-header { background: #1e293b; padding: 4px 10px; display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: #94a3b8; font-family: monospace; }
 .ai-code-copy-btn { background: transparent; border: 1px solid #334155; color: #cbd5e1; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; cursor: pointer; }
-.ai-code-pre { padding: 8px 12px; overflow-x: auto; font-size: 0.84rem; color: #f8fafc; font-family: monospace; margin: 0; }
+.ai-code-pre { padding: 8px 12px; overflow-x: auto; font-size: 0.84rem; color: #f8fafc; font-family: monospace; margin: 0; user-select: text; -webkit-user-select: text; }
 
-.ai-bubble-wiki-action { margin-top: 8px; padding-top: 6px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; }
-.ai-bubble-wiki-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; font-size: 0.75rem; font-weight: 700; color: #065f46; background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 9999px; cursor: pointer; }
+.ai-bubble-actions,
+.ai-bubble-wiki-action {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ai-bubble-action-btn,
+.ai-bubble-wiki-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 0.73rem;
+    font-weight: 600;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    border: 1px solid transparent;
+}
+
+.ai-bubble-action-btn.copy {
+    color: var(--ai-text-secondary);
+    background-color: #f8fafc;
+    border-color: #e2e8f0;
+}
+.ai-bubble-action-btn.copy:hover,
+.ai-bubble-action-btn.copy:active {
+    background-color: #f1f5f9;
+    color: var(--ai-text-primary);
+    border-color: #cbd5e1;
+}
+
+.ai-bubble-action-btn.wiki,
+.ai-bubble-wiki-btn {
+    color: #065f46;
+    background-color: #ecfdf5;
+    border-color: #a7f3d0;
+}
+.ai-bubble-action-btn.wiki:hover,
+.ai-bubble-action-btn.wiki:active,
+.ai-bubble-wiki-btn:hover {
+    background-color: #d1fae5;
+}
 
 .ai-typing-indicator { display: inline-flex; align-items: center; gap: 6px; color: var(--ai-text-muted); font-size: 0.85rem; }
 .ai-typing-dot { width: 6px; height: 6px; background-color: var(--ai-primary); border-radius: 50%; animation: aiPulse 1.2s infinite ease-in-out; }

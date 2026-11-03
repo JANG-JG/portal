@@ -372,29 +372,88 @@
         const timeStr = (window.JgAiHistory && window.JgAiHistory.formatMessageDateTime) ? window.JgAiHistory.formatMessageDateTime(timestamp) : '';
         const isEligibleForWiki = (role === 'assistant' && text.length >= 25 && !text.includes('가족 위키에') && !text.includes('무엇을 도와드릴까요'));
 
-        const wikiActionHtml = isEligibleForWiki ? `
-            <div class="ai-bubble-wiki-action">
-                <button type="button" class="ai-bubble-wiki-btn" onclick="window.saveBubbleToWiki(this)">
+        let actionsHtml = '';
+        if (role === 'assistant') {
+            const wikiBtnHtml = isEligibleForWiki ? `
+                <button type="button" class="ai-bubble-action-btn wiki" onclick="window.saveBubbleToWiki(this)">
                     <span>📚</span><span>가족 위키로 저장</span>
                 </button>
+            ` : '';
+            actionsHtml = `
+                <div class="ai-bubble-actions">
+                    <button type="button" class="ai-bubble-action-btn copy" onclick="window.copyBubbleText(this)" title="대화 내용 복사">
+                        <span>📋</span><span>내용 복사</span>
+                    </button>
+                    ${wikiBtnHtml}
+                </div>
+            `;
+        }
+
+        const metaHtml = (role === 'user') ? `
+            <div class="ai-bubble-meta">
+                <button type="button" class="ai-user-copy-btn" onclick="window.copyBubbleText(this)" title="내용 복사">📋 복사</button>
+                ${timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : ''}
             </div>
-        ` : '';
+        ` : (timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : '');
 
         row.innerHTML = `
             <div class="ai-bubble-wrap">
                 <div class="ai-bubble">
                     <div class="ai-bubble-content">${htmlContent}</div>
-                    ${wikiActionHtml}
+                    ${actionsHtml}
                 </div>
-                ${timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : ''}
+                ${metaHtml}
             </div>
         `;
 
-        if (isEligibleForWiki) {
-            row.dataset.rawText = text;
+        row.dataset.rawText = text;
+        messageContainerEl.appendChild(row);
+    }
+
+    /**
+     * 말풍선 본문 복사 (클립보드 연동)
+     */
+    window.copyBubbleText = function(btn) {
+        const row = btn.closest('.ai-bubble-row');
+        if (!row) return;
+
+        const rawText = row.dataset.rawText || (row.querySelector('.ai-bubble-content') ? row.querySelector('.ai-bubble-content').innerText.trim() : '');
+        if (!rawText) return;
+
+        const originalHtml = btn.innerHTML;
+        const isUserBtn = btn.classList.contains('ai-user-copy-btn');
+
+        function setFeedback(success) {
+            btn.innerHTML = success ? (isUserBtn ? '✅ 복사 완료' : '<span>✅</span><span>복사 완료</span>') : '<span>❌</span><span>실패</span>';
+            btn.disabled = true;
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }, 1500);
         }
 
-        messageContainerEl.appendChild(row);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(rawText).then(() => setFeedback(true)).catch(() => fallbackCopy(rawText, setFeedback));
+        } else {
+            fallbackCopy(rawText, setFeedback);
+        }
+    };
+
+    function fallbackCopy(text, callback) {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            const ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            callback(ok);
+        } catch (e) {
+            callback(false);
+        }
     }
 
     /**
