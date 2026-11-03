@@ -506,6 +506,32 @@ html, body {
 }
 .ai-send-btn:disabled { background-color: #cbd5e1; cursor: not-allowed; }
 
+.ai-input-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.ai-char-counter {
+    font-size: 0.72rem;
+    color: var(--ai-text-muted);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.3px;
+    user-select: none;
+    transition: color 0.15s ease;
+}
+
+.ai-char-counter.warning {
+    color: #f59e0b;
+    font-weight: 600;
+}
+
+.ai-char-counter.limit {
+    color: #ef4444;
+    font-weight: 700;
+}
+
 .ai-disclaimer {
     text-align: center;
     font-size: 0.68rem;

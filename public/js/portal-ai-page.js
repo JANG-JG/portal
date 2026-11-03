@@ -211,6 +211,11 @@
         sendAiMessage(text);
         promptInputEl.value = '';
         promptInputEl.style.height = 'auto';
+        const charCounterEl = document.getElementById('aiCharCount');
+        if (charCounterEl) {
+            charCounterEl.textContent = '0/1000';
+            charCounterEl.classList.remove('warning', 'limit');
+        }
     };
 
     /**
@@ -485,9 +490,18 @@
     function initInputAutoResize() {
         if (!promptInputEl) return;
 
+        const charCounterEl = document.getElementById('aiCharCount');
+        function updateCharCount(len) {
+            if (!charCounterEl) return;
+            charCounterEl.textContent = `${len}/1000`;
+            charCounterEl.classList.toggle('warning', len >= 900 && len < 1000);
+            charCounterEl.classList.toggle('limit', len >= 1000);
+        }
+
         promptInputEl.addEventListener('input', function() {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            updateCharCount(this.value.length);
         });
 
         promptInputEl.addEventListener('keydown', function(e) {

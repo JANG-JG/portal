@@ -105,11 +105,11 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: '메시지를 올바르게 입력해 주세요.' });
         }
 
-        // 🛡️ 입력 길이 제한 (500자 이하)
-        if (message.length > 500) {
+        // 🛡️ 입력 길이 제한 (1,000자 이하)
+        if (message.length > 1000) {
             return res.status(400).json({
                 success: false,
-                message: '질문이 너무 깁니다. 500자 이하로 간결하게 입력해 주세요.'
+                message: '질문이 너무 깁니다. 1,000자 이하로 간결하게 입력해 주세요.'
             });
         }
 
