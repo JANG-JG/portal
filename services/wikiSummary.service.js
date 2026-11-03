@@ -213,7 +213,8 @@ async function searchWikiContent(query, limit = 2) {
 
     const stopWords = new Set([
         '우리', '우리집', '위키', '가족', '가족위키', '알려줘', '알려', '어떻게', '뭐야', '무엇', '있는', '있어', 
-        '검색', '내용', '적혀', '관련', '확인', '진짜', '정말', '해줘', '부탁', '저장된', '저장', '추천', '추천해줘', '골라줘'
+        '검색', '내용', '적혀', '관련', '확인', '진짜', '정말', '해줘', '부탁', '저장된', '저장', '추천', '추천해줘', '골라줘',
+        '찾아', '찾아서', '정리', '정리해', '정리해줘', '달라는데', '달라', '왜', '안될까', '목록', '전체', '모든'
     ]);
 
     // 의미적 동의어 확장 맵
@@ -235,42 +236,35 @@ async function searchWikiContent(query, limit = 2) {
     // 의미 연관 단어 추가 주입
     for (const syn of semanticSynonyms) {
         if (syn.triggers.some(trig => query.includes(trig))) {
-            syn.words.forEach(sw => {
-                if (!words.includes(sw)) words.push(sw);
-            });
+            syn.words.forEach(sw => { if (!words.includes(sw)) words.push(sw); });
         }
     }
 
-    if (words.length === 0) return [];
+    const isOverview = /(위키|문서|목록|전체|내용)/.test(query);
 
     return new Promise((resolve) => {
+        const mapRows = (rows) => (rows || []).map(r => ({
+            id: r.id, category: r.category, title: r.title, slug: r.slug,
+            excerpt: (r.content_md || '').trim().slice(0, 400) + ((r.content_md || '').length > 400 ? '...' : ''),
+            updated_at: r.updated_at
+        }));
+
+        if (words.length === 0) {
+            if (!isOverview) return resolve([]);
+            return wikiDb.all("SELECT id, category, title, slug, content_md, updated_at FROM wiki_pages ORDER BY updated_at DESC LIMIT ?", [limit], (err, rows) => resolve(mapRows(rows)));
+        }
+
         const clauses = words.slice(0, 6).map(() => '(title LIKE ? OR content_md LIKE ?)').join(' OR ');
         const params = [];
-        words.slice(0, 6).forEach(w => {
-            const pattern = `%${w}%`;
-            params.push(pattern, pattern);
-        });
-
+        words.slice(0, 6).forEach(w => params.push(`%${w}%`, `%${w}%`));
         const sql = `SELECT id, category, title, slug, content_md, updated_at FROM wiki_pages WHERE ${clauses} ORDER BY updated_at DESC LIMIT ${limit}`;
 
         wikiDb.all(sql, params, (err, rows) => {
-            if (err || !rows || rows.length === 0) return resolve([]);
-
-            const results = rows.map(r => {
-                let excerpt = (r.content_md || '').trim();
-                if (excerpt.length > 700) {
-                    excerpt = excerpt.slice(0, 700) + '\n... (이하 생략)';
-                }
-                return {
-                    id: r.id,
-                    category: r.category,
-                    title: r.title,
-                    slug: r.slug,
-                    excerpt,
-                    updated_at: r.updated_at
-                };
-            });
-            resolve(results);
+            if (!err && rows && rows.length > 0) return resolve(mapRows(rows));
+            if (isOverview) {
+                return wikiDb.all("SELECT id, category, title, slug, content_md, updated_at FROM wiki_pages ORDER BY updated_at DESC LIMIT ?", [limit], (fErr, fRows) => resolve(mapRows(fRows)));
+            }
+            resolve([]);
         });
     });
 }

@@ -224,7 +224,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     // 위키 의도가 감지된 경우에만 위키 RAG 검색 실행 (타인 작성자명 및 불필요한 위키 본문 유입 방지)
     if (intents.has('WIKI')) {
         try {
-            const matchedPages = await searchWikiContent(cleanPrompt, 2);
+            const matchedPages = await searchWikiContent(cleanPrompt, 5);
             if (Array.isArray(matchedPages) && matchedPages.length > 0) {
                 matchedWikiGuide = '\n\n[질문 연관 가족 위키 발췌]\n' + 
                     matchedPages.map(p => `■ [${p.category}] ${p.title}\n${p.excerpt}`).join('\n\n');
