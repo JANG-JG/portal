@@ -9,6 +9,7 @@
     let isSending = false;
     let currentChatHistory = [];
     let currentMaxPromptLength = 1000;
+    let currentAiConfig = null;
 
     // DOM 참조 캐싱
     let sidebarEl, backdropEl, messageScrollEl, messageContainerEl, promptInputEl, submitBtnEl, mobileTitleEl, historyListEl, historyCountEl;
@@ -22,6 +23,8 @@
             if (!res.ok) return;
             const data = await res.json();
             if (data.success && data.config) {
+                currentAiConfig = data.config;
+
                 // 1. 최대 글자 수 한도 적용
                 if (data.config.maxPromptLength && Number.isInteger(data.config.maxPromptLength)) {
                     currentMaxPromptLength = data.config.maxPromptLength;
@@ -49,6 +52,19 @@
                     const activeSession = window.JgAiHistory.getActiveSession();
                     if (firstBubble && activeSession && activeSession.messages && activeSession.messages.length === 1) {
                         firstBubble.innerHTML = window.JgAiRender ? window.JgAiRender.renderMarkdown(window.JgAiHistory.getCustomWelcomeMessage()) : window.JgAiHistory.getCustomWelcomeMessage();
+                    }
+                }
+
+                // 3. 현재 화면에 표시된 히어로 카드 즉시 갱신
+                const existingHero = messageContainerEl ? messageContainerEl.querySelector('.ai-hero-card') : null;
+                if (existingHero) {
+                    const iconEl = existingHero.querySelector('.ai-hero-icon');
+                    const titleEl = existingHero.querySelector('.ai-hero-title');
+                    const descEl = existingHero.querySelector('.ai-hero-desc');
+                    if (iconEl && data.config.heroIcon) iconEl.textContent = data.config.heroIcon;
+                    if (titleEl && data.config.heroTitle) titleEl.textContent = data.config.heroTitle;
+                    if (descEl && data.config.heroDescription) {
+                        descEl.innerHTML = data.config.heroDescription.replace(/\n/g, '<br>');
                     }
                 }
             }
@@ -228,7 +244,7 @@
 
         // 대화 메시지가 없거나 웰컴 메시지만 있는 경우: 히어로 카드 표시
         if (messages.length <= 1 && window.JgAiRender) {
-            window.JgAiRender.renderHeroWelcomeCard(messageContainerEl);
+            window.JgAiRender.renderHeroWelcomeCard(messageContainerEl, currentAiConfig);
         }
 
         messages.forEach(msg => {

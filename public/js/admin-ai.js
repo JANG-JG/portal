@@ -20,11 +20,18 @@
             if (data.success && data.config) {
                 const welcomeInput = document.getElementById('inputAiWelcomeMessage');
                 const maxLenInput = document.getElementById('inputAiMaxPromptLength');
+                const heroIconInput = document.getElementById('inputAiHeroIcon');
+                const heroTitleInput = document.getElementById('inputAiHeroTitle');
+                const heroDescInput = document.getElementById('inputAiHeroDesc');
 
                 if (welcomeInput) welcomeInput.value = data.config.welcomeMessage || '';
                 if (maxLenInput) maxLenInput.value = data.config.maxPromptLength || 1000;
+                if (heroIconInput) heroIconInput.value = data.config.heroIcon || '🤖';
+                if (heroTitleInput) heroTitleInput.value = data.config.heroTitle || 'AI 비서에게 무엇이든 물어보세요';
+                if (heroDescInput) heroDescInput.value = data.config.heroDescription || 'LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
 
                 updateAiWelcomePreview();
+                updateAiHeroPreview();
             }
         } catch (err) {
             console.error('[admin-ai] 설정 로드 오류:', err);
@@ -42,10 +49,16 @@
 
         const welcomeInput = document.getElementById('inputAiWelcomeMessage');
         const maxLenInput = document.getElementById('inputAiMaxPromptLength');
+        const heroIconInput = document.getElementById('inputAiHeroIcon');
+        const heroTitleInput = document.getElementById('inputAiHeroTitle');
+        const heroDescInput = document.getElementById('inputAiHeroDesc');
         if (!welcomeInput || !maxLenInput) return;
 
         const welcomeMessage = welcomeInput.value.trim();
         const maxPromptLength = parseInt(maxLenInput.value, 10);
+        const heroIcon = heroIconInput ? heroIconInput.value.trim() : '🤖';
+        const heroTitle = heroTitleInput ? heroTitleInput.value.trim() : 'AI 비서에게 무엇이든 물어보세요';
+        const heroDescription = heroDescInput ? heroDescInput.value.trim() : '';
 
         if (!welcomeMessage) {
             alert('새 대화 첫 환영 인사말을 입력해 주세요.');
@@ -59,6 +72,18 @@
             return;
         }
 
+        if (!heroIcon) {
+            alert('대표 아이콘(이모지)을 입력해 주세요.');
+            if (heroIconInput) heroIconInput.focus();
+            return;
+        }
+
+        if (!heroTitle) {
+            alert('히어로 카드 메인 타이틀을 입력해 주세요.');
+            if (heroTitleInput) heroTitleInput.focus();
+            return;
+        }
+
         try {
             const res = await fetch('/api/admin/ai', {
                 method: 'POST',
@@ -66,7 +91,13 @@
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ welcomeMessage, maxPromptLength })
+                body: JSON.stringify({
+                    welcomeMessage,
+                    maxPromptLength,
+                    heroIcon,
+                    heroTitle,
+                    heroDescription
+                })
             });
 
             const data = await res.json();
@@ -75,9 +106,9 @@
             }
 
             if (typeof showToast === 'function') {
-                showToast('AI 비서 설정이 성공적으로 저장되었습니다. ✅', 'success');
+                showToast('AI 비서 설정이 DB에 성공적으로 저장되었습니다. ✅', 'success');
             } else {
-                alert('AI 비서 설정이 성공적으로 저장되었습니다.');
+                alert('AI 비서 설정이 DB에 성공적으로 저장되었습니다.');
             }
         } catch (err) {
             console.error('[admin-ai] 설정 저장 오류:', err);
@@ -176,10 +207,62 @@
         }
     }
 
+    /**
+     * 히어로 카드 실시간 미리보기 및 글자 수 카운터
+     */
+    function updateAiHeroPreview() {
+        const iconInput = document.getElementById('inputAiHeroIcon');
+        const titleInput = document.getElementById('inputAiHeroTitle');
+        const descInput = document.getElementById('inputAiHeroDesc');
+
+        const previewIcon = document.getElementById('aiHeroPreviewIcon');
+        const previewTitle = document.getElementById('aiHeroPreviewTitle');
+        const previewDesc = document.getElementById('aiHeroPreviewDesc');
+
+        const titleCounter = document.getElementById('aiHeroTitleCounter');
+        const descCounter = document.getElementById('aiHeroDescCounter');
+
+        const iconVal = (iconInput && iconInput.value.trim()) ? iconInput.value.trim() : '🤖';
+        const titleVal = (titleInput && titleInput.value.trim()) ? titleInput.value.trim() : 'AI 비서에게 무엇이든 물어보세요';
+        const descVal = (descInput && descInput.value.trim()) ? descInput.value.trim() : 'LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
+
+        if (titleCounter && titleInput) {
+            titleCounter.textContent = `${titleInput.value.length}/100자`;
+        }
+        if (descCounter && descInput) {
+            descCounter.textContent = `${descInput.value.length}/300자`;
+        }
+
+        if (previewIcon) previewIcon.textContent = iconVal;
+        if (previewTitle) previewTitle.textContent = titleVal;
+        if (previewDesc) {
+            previewDesc.innerHTML = descVal
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;')
+                .replace(/\n/g, '<br>');
+        }
+    }
+
+    /**
+     * 대표 아이콘 프리셋 클릭 핸들러
+     */
+    function setAiHeroIconPreset(icon) {
+        const iconInput = document.getElementById('inputAiHeroIcon');
+        if (iconInput) {
+            iconInput.value = icon;
+            updateAiHeroPreview();
+        }
+    }
+
     // 전역 노출
     window.loadAdminAiConfig = loadAdminAiConfig;
     window.saveAdminAiConfig = saveAdminAiConfig;
     window.updateAiWelcomePreview = updateAiWelcomePreview;
+    window.updateAiHeroPreview = updateAiHeroPreview;
+    window.setAiHeroIconPreset = setAiHeroIconPreset;
     window.setAiLengthPreset = setAiLengthPreset;
     window.checkAdminAiHealth = checkAdminAiHealth;
 

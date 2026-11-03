@@ -9,9 +9,6 @@
     let chatHistory = [];
     let isSending = false;
 
-    /**
-     * 모바일 배경 스크롤 차단 (Body Scroll Lock)
-     */
     function lockBodyScroll() {
         if (window.innerWidth <= 768) {
             const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
@@ -20,7 +17,6 @@
             document.body.classList.add('ai-chat-modal-open');
         }
     }
-
     function unlockBodyScroll() {
         if (document.body.classList.contains('ai-chat-modal-open') || document.body.dataset.aiScrollY !== undefined) {
             const scrollY = parseInt(document.body.dataset.aiScrollY || '0', 10);
@@ -59,9 +55,22 @@
         fab.id = 'aiChatFabBtn';
         fab.className = 'ai-fab-btn';
         fab.type = 'button';
-        fab.innerHTML = '<span class="ai-fab-pulse"></span><span>🤖</span><span>AI 비서</span>';
+        fab.innerHTML = '<span class="ai-fab-pulse"></span><span id="aiFabIcon">🤖</span><span>AI 비서</span>';
         fab.onclick = function() { window.location.href = '/ai'; };
         document.body.appendChild(fab);
+
+        // 런타임 설정 비동기 반영
+        fetch('/api/ai/config').then(r => r.json()).then(d => {
+            if (d && d.success && d.config) {
+                if (d.config.heroIcon) {
+                    const iconEl = document.getElementById('aiFabIcon');
+                    if (iconEl) iconEl.textContent = d.config.heroIcon;
+                }
+                if (d.config.welcomeMessage && window.JgAiHistory && typeof window.JgAiHistory.setCustomWelcomeMessage === 'function') {
+                    window.JgAiHistory.setCustomWelcomeMessage(d.config.welcomeMessage);
+                }
+            }
+        }).catch(() => {});
 
         // 2. 모바일 백드롭 딤 오버레이 생성 (배경 터치 및 스크롤 방지)
         const backdrop = document.createElement('div');
@@ -158,34 +167,24 @@
             lockBodyScroll();
             win.style.display = 'flex';
             if (backdrop) backdrop.classList.add('active');
-
             if (window.visualViewport) {
                 window.visualViewport.addEventListener('resize', handleVisualViewportResize);
                 window.visualViewport.addEventListener('scroll', handleVisualViewportResize);
                 handleVisualViewportResize();
             }
-
             const input = document.getElementById('aiChatInput');
             if (input) setTimeout(() => input.focus(), 150);
             scrollMessagesToBottom();
         } else {
             win.style.display = 'none';
             if (backdrop) backdrop.classList.remove('active');
-
-            // 동적 뷰포트 인라인 스타일 초기화
-            win.style.height = '';
-            win.style.top = '';
-            win.style.bottom = '';
-            win.style.position = '';
-
+            Object.assign(win.style, { height: '', top: '', bottom: '', position: '' });
             if (window.visualViewport) {
                 window.visualViewport.removeEventListener('resize', handleVisualViewportResize);
                 window.visualViewport.removeEventListener('scroll', handleVisualViewportResize);
             }
-
             const drawer = document.getElementById('aiChatHistoryDrawer');
             if (drawer) drawer.classList.remove('active');
-
             unlockBodyScroll();
         }
     };

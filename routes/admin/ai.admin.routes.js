@@ -20,9 +20,9 @@ router.get('/', (req, res) => {
 });
 
 // 2. AI 설정 저장 (관리자)
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     try {
-        const { welcomeMessage, maxPromptLength } = req.body;
+        const { welcomeMessage, maxPromptLength, heroIcon, heroTitle, heroDescription } = req.body;
 
         if (welcomeMessage !== undefined && (typeof welcomeMessage !== 'string' || !welcomeMessage.trim())) {
             return res.status(400).json({ success: false, message: '첫 인사말을 올바르게 입력해 주세요.' });
@@ -35,9 +35,24 @@ router.post('/', (req, res) => {
             }
         }
 
-        const result = updateAiConfig({ welcomeMessage, maxPromptLength });
+        if (heroIcon !== undefined && (typeof heroIcon !== 'string' || !heroIcon.trim())) {
+            return res.status(400).json({ success: false, message: '히어로 아이콘을 올바르게 입력해 주세요.' });
+        }
+
+        if (heroTitle !== undefined && (typeof heroTitle !== 'string' || !heroTitle.trim())) {
+            return res.status(400).json({ success: false, message: '히어로 타이틀을 올바르게 입력해 주세요.' });
+        }
+
+        const result = await updateAiConfig({
+            welcomeMessage,
+            maxPromptLength,
+            heroIcon,
+            heroTitle,
+            heroDescription
+        });
+
         if (!result.success) {
-            return res.status(500).json({ success: false, message: '설정 파일 저장에 실패했습니다.' });
+            return res.status(500).json({ success: false, message: '설정 데이터베이스 저장에 실패했습니다.' });
         }
 
         res.json({ success: true, message: 'AI 비서 설정이 성공적으로 저장되었습니다.', config: result.config });

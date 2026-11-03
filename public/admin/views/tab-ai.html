@@ -83,6 +83,84 @@
                     </div>
                 </div>
 
+                <!-- 3. 대화창 대표 아이콘 및 히어로 카드 설정 -->
+                <div style="margin-bottom:1.5rem; border-top:1px solid #f1f5f9; padding-top:1.25rem;">
+                    <label style="display:block; font-weight:700; color:#1e293b; margin-bottom:0.5rem; font-size:0.9rem;">
+                        🎨 AI 비서 대표 아이콘 및 안내 카드(히어로 카드) 설정
+                    </label>
+                    <p style="font-size:0.82rem; color:#64748b; margin:0 0 0.8rem; line-height:1.4;">
+                        전체화면 대화창 첫 진입 시 표시되는 대표 아이콘(이모지), 제목 타이틀, 안내 설명을 맞춤 수정합니다.
+                    </p>
+
+                    <!-- 대표 아이콘 -->
+                    <div style="margin-bottom:0.9rem;">
+                        <label style="display:block; font-size:0.83rem; font-weight:600; color:#475569; margin-bottom:0.35rem;">
+                            대표 아이콘 (이모지 / 심볼)
+                        </label>
+                        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                            <input 
+                                type="text" 
+                                id="inputAiHeroIcon" 
+                                maxlength="10" 
+                                value="🤖" 
+                                oninput="updateAiHeroPreview()"
+                                style="width:70px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:1.3rem; text-align:center; background:#fff;">
+                            <!-- 빠른 이모지 선택 버튼 -->
+                            <div style="display:flex; gap:0.3rem; flex-wrap:wrap;">
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiHeroIconPreset('🤖')">🤖 로봇</button>
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiHeroIconPreset('💬')">💬 말풍선</button>
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiHeroIconPreset('💡')">💡 지혜</button>
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiHeroIconPreset('🧙‍♂️')">🧙‍♂️ 마법사</button>
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiHeroIconPreset('🌟')">🌟 별</button>
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiHeroIconPreset('🏠')">🏠 우리집</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 히어로 카드 제목 -->
+                    <div style="margin-bottom:0.9rem;">
+                        <label style="display:flex; justify-content:space-between; align-items:center; font-size:0.83rem; font-weight:600; color:#475569; margin-bottom:0.35rem;">
+                            <span>메인 타이틀 문구</span>
+                            <span id="aiHeroTitleCounter" style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">0/100자</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            id="inputAiHeroTitle" 
+                            maxlength="100" 
+                            oninput="updateAiHeroPreview()"
+                            placeholder="AI 비서에게 무엇이든 물어보세요"
+                            value="AI 비서에게 무엇이든 물어보세요"
+                            style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.92rem; box-sizing:border-box; background:#fff;">
+                    </div>
+
+                    <!-- 히어로 카드 설명글 -->
+                    <div style="margin-bottom:0.9rem;">
+                        <label style="display:flex; justify-content:space-between; align-items:center; font-size:0.83rem; font-weight:600; color:#475569; margin-bottom:0.35rem;">
+                            <span>안내 설명글</span>
+                            <span id="aiHeroDescCounter" style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">0/300자</span>
+                        </label>
+                        <textarea 
+                            id="inputAiHeroDesc" 
+                            rows="2" 
+                            maxlength="300" 
+                            oninput="updateAiHeroPreview()"
+                            placeholder="LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다."
+                            style="width:100%; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem; line-height:1.45; box-sizing:border-box; resize:vertical; background:#fff;"></textarea>
+                    </div>
+
+                    <!-- 실시간 히어로 카드 미리보기 -->
+                    <div style="margin-top:0.75rem; background:#FAF9F5; border:1px solid #E5E0D8; border-radius:0.75rem; padding:1.25rem 1rem; text-align:center;">
+                        <div style="font-size:0.75rem; font-weight:700; color:#87867F; text-transform:uppercase; margin-bottom:0.75rem; text-align:left;">
+                            👀 대화창 히어로 카드 실제 표시 미리보기
+                        </div>
+                        <div id="aiHeroPreviewCard" style="display:flex; flex-direction:column; align-items:center; justify-content:center; max-width:440px; margin:0 auto;">
+                            <div id="aiHeroPreviewIcon" style="font-size:2.8rem; line-height:1; margin-bottom:0.5rem;">🤖</div>
+                            <h3 id="aiHeroPreviewTitle" style="font-size:1.15rem; font-weight:700; color:#1F1E1D; margin:0 0 0.35rem;">AI 비서에게 무엇이든 물어보세요</h3>
+                            <p id="aiHeroPreviewDesc" style="font-size:0.85rem; color:#6B6964; margin:0; line-height:1.45;">LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- 하단 저장 액션 바 -->
                 <div style="display:flex; justify-content:flex-end; gap:0.5rem; padding-top:1rem; border-top:1px solid #e2e8f0;">
                     <button type="button" class="btn-admin btn-admin-outline" onclick="loadAdminAiConfig()">취소 / 초기화</button>

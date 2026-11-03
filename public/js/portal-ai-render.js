@@ -147,16 +147,20 @@
     /**
      * 웰컴 히어로 카드 렌더링
      */
-    function renderHeroWelcomeCard(container) {
+    function renderHeroWelcomeCard(container, config = {}) {
         if (!container) return;
+        const icon = (config && config.heroIcon && config.heroIcon.trim()) ? escapeHtml(config.heroIcon.trim()) : '🤖';
+        const title = (config && config.heroTitle && config.heroTitle.trim()) ? escapeHtml(config.heroTitle.trim()) : 'AI 비서에게 무엇이든 물어보세요';
+        const desc = (config && config.heroDescription && config.heroDescription.trim())
+            ? escapeHtml(config.heroDescription.trim()).replace(/\n/g, '<br>')
+            : 'LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
+
         const hero = document.createElement('div');
         hero.className = 'ai-hero-card';
         hero.innerHTML = `
-            <div class="ai-hero-icon">🤖</div>
-            <h2 class="ai-hero-title">AI 비서에게 무엇이든 물어보세요</h2>
-            <p class="ai-hero-desc">
-                LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.
-            </p>
+            <div class="ai-hero-icon">${icon}</div>
+            <h2 class="ai-hero-title">${title}</h2>
+            <p class="ai-hero-desc">${desc}</p>
         `;
         container.appendChild(hero);
     }
