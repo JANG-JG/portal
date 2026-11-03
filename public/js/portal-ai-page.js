@@ -1,5 +1,6 @@
 /**
  * 🤖 JG 포털 전용 AI 비서 풀스크린 페이지 제어 엔진 (portal-ai-page.js)
+ * - [핵심 역할] 대화 세션 관리, 메시지 송수신 오케스트레이션, 컴포저 인터랙션
  * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 대응
  */
 (function() {
@@ -12,6 +13,9 @@
     // DOM 참조 캐싱
     let sidebarEl, backdropEl, messageScrollEl, messageContainerEl, promptInputEl, submitBtnEl, mobileTitleEl, historyListEl, historyCountEl;
 
+    /**
+     * 서버 런타임 설정 비동기 로드
+     */
     async function loadAiRuntimeConfig() {
         try {
             const res = await fetch('/api/ai/config', { headers: { 'Accept': 'application/json' } });
@@ -41,10 +45,10 @@
                 // 2. 첫 환영 인사말 적용
                 if (data.config.welcomeMessage && window.JgAiHistory && typeof window.JgAiHistory.setCustomWelcomeMessage === 'function') {
                     window.JgAiHistory.setCustomWelcomeMessage(data.config.welcomeMessage);
-                    const firstBubble = messageContainerEl ? messageContainerEl.querySelector('.ai-msg-bubble-assistant .ai-bubble-text') : null;
+                    const firstBubble = messageContainerEl ? messageContainerEl.querySelector('.ai-bubble-row.assistant .ai-bubble-content') : null;
                     const activeSession = window.JgAiHistory.getActiveSession();
                     if (firstBubble && activeSession && activeSession.messages && activeSession.messages.length === 1) {
-                        firstBubble.innerHTML = window.JgAiHistory.getCustomWelcomeMessage();
+                        firstBubble.innerHTML = window.JgAiRender ? window.JgAiRender.renderMarkdown(window.JgAiHistory.getCustomWelcomeMessage()) : window.JgAiHistory.getCustomWelcomeMessage();
                     }
                 }
             }
@@ -53,6 +57,9 @@
         }
     }
 
+    /**
+     * 메인 페이지 초기화
+     */
     function initPage() {
         sidebarEl = document.getElementById('aiSidebar');
         backdropEl = document.getElementById('aiSidebarBackdrop');
@@ -64,8 +71,23 @@
         historyListEl = document.getElementById('aiSidebarHistoryList');
         historyCountEl = document.getElementById('aiHistoryCount');
 
+        // 위키 등록 성공 시 콜백 등록
+        window.JgAiRenderEvents = {
+            onWikiSuccess: function(successMsg) {
+                if (window.JgAiRender) {
+                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', successMsg, Date.now());
+                }
+                if (window.JgAiHistory) {
+                    window.JgAiHistory.addMessageToActiveSession('assistant', successMsg, Date.now());
+                }
+                scrollToBottom();
+            }
+        };
+
         initInputAutoResize();
-        initVisualViewport();
+        if (window.JgAiViewport && typeof window.JgAiViewport.init === 'function') {
+            window.JgAiViewport.init(promptInputEl, scrollToBottom);
+        }
         renderHistorySidebar();
         restoreActiveSession();
         checkUrlQueryParam();
@@ -80,7 +102,6 @@
             const urlParams = new URLSearchParams(window.location.search);
             const query = urlParams.get('q');
             if (query && query.trim()) {
-                // 새 세션으로 시작하여 질문 자동 실행
                 if (window.JgAiHistory) {
                     window.JgAiHistory.createNewSession();
                     restoreActiveSession();
@@ -88,7 +109,6 @@
                 }
                 setTimeout(() => {
                     sendAiMessage(query.trim());
-                    // URL 파라미터 정리 (뒤로가기 시 중복 실행 방지)
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }, 300);
             }
@@ -120,7 +140,7 @@
             window.toggleSidebar(false);
             if (promptInputEl) {
                 promptInputEl.value = '';
-                promptInputEl.style.height = '22px';
+                promptInputEl.style.height = '24px';
                 promptInputEl.style.overflowY = 'hidden';
                 promptInputEl.focus();
             }
@@ -149,6 +169,8 @@
         }
 
         historyListEl.innerHTML = '';
+        const escapeFn = (window.JgAiRender && window.JgAiRender.escapeHtml) ? window.JgAiRender.escapeHtml : (s => s);
+
         sessions.forEach(sess => {
             const item = document.createElement('div');
             item.className = 'ai-history-item' + (sess.id === activeId ? ' active' : '');
@@ -159,7 +181,7 @@
 
             item.innerHTML = `
                 <div class="ai-history-item-info">
-                    <div class="ai-history-item-title" title="${escapeHtml(sess.title)}">${escapeHtml(sess.title)}</div>
+                    <div class="ai-history-item-title" title="${escapeFn(sess.title)}">${escapeFn(sess.title)}</div>
                     <div class="ai-history-item-meta">${metaInfo}</div>
                 </div>
                 <button type="button" class="ai-history-del-btn" title="대화 삭제" data-del-id="${sess.id}">🗑️</button>
@@ -205,32 +227,18 @@
         const messages = (session && Array.isArray(session.messages)) ? session.messages : [];
 
         // 대화 메시지가 없거나 웰컴 메시지만 있는 경우: 히어로 카드 표시
-        if (messages.length <= 1) {
-            renderHeroWelcomeCard();
+        if (messages.length <= 1 && window.JgAiRender) {
+            window.JgAiRender.renderHeroWelcomeCard(messageContainerEl);
         }
 
         messages.forEach(msg => {
-            appendMessageBubble(msg.role, msg.content, msg.timestamp || session.createdAt);
+            if (window.JgAiRender) {
+                window.JgAiRender.appendMessageBubble(messageContainerEl, msg.role, msg.content, msg.timestamp || session.createdAt);
+            }
             currentChatHistory.push({ role: msg.role, content: msg.content, timestamp: msg.timestamp });
         });
 
         scrollToBottom();
-    }
-
-    /**
-     * 웰컴 히어로 카드 렌더링
-     */
-    function renderHeroWelcomeCard() {
-        const hero = document.createElement('div');
-        hero.className = 'ai-hero-card';
-        hero.innerHTML = `
-            <div class="ai-hero-icon">🤖</div>
-            <h2 class="ai-hero-title">AI 비서에게 무엇이든 물어보세요</h2>
-            <p class="ai-hero-desc">
-                LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.
-            </p>
-        `;
-        messageContainerEl.appendChild(hero);
     }
 
     /**
@@ -255,7 +263,7 @@
 
         sendAiMessage(text);
         promptInputEl.value = '';
-        promptInputEl.style.height = '22px';
+        promptInputEl.style.height = '24px';
         promptInputEl.style.overflowY = 'hidden';
         const charCounterEl = document.getElementById('aiCharCount');
         if (charCounterEl) {
@@ -275,7 +283,9 @@
         if (hero) hero.remove();
 
         const userTimestamp = Date.now();
-        appendMessageBubble('user', userText, userTimestamp);
+        if (window.JgAiRender) {
+            window.JgAiRender.appendMessageBubble(messageContainerEl, 'user', userText, userTimestamp);
+        }
         currentChatHistory.push({ role: 'user', content: userText, timestamp: userTimestamp });
 
         if (window.JgAiHistory) {
@@ -288,7 +298,9 @@
         if (submitBtnEl) submitBtnEl.disabled = true;
 
         const typingId = 'typing_' + Date.now();
-        appendTypingIndicator(typingId);
+        if (window.JgAiRender) {
+            window.JgAiRender.appendTypingIndicator(messageContainerEl, typingId);
+        }
         scrollToBottom();
 
         try {
@@ -301,288 +313,44 @@
                 })
             });
 
-            removeTypingIndicator(typingId);
+            if (window.JgAiRender) {
+                window.JgAiRender.removeTypingIndicator(typingId);
+            }
             const aiTimestamp = Date.now();
 
             if (!res.ok) {
-                appendMessageBubble('assistant', '죄송합니다. 로컬 AI 비서 응답 중 일시적인 오류가 발생했습니다.', aiTimestamp);
+                if (window.JgAiRender) {
+                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', '죄송합니다. 로컬 AI 비서 응답 중 일시적인 오류가 발생했습니다.', aiTimestamp);
+                }
                 return;
             }
 
             const data = await res.json();
             if (data.success && data.answer) {
-                appendMessageBubble('assistant', data.answer, aiTimestamp);
+                if (window.JgAiRender) {
+                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', data.answer, aiTimestamp);
+                }
                 currentChatHistory.push({ role: 'assistant', content: data.answer, timestamp: aiTimestamp });
                 if (window.JgAiHistory) {
                     window.JgAiHistory.addMessageToActiveSession('assistant', data.answer, aiTimestamp);
                     renderHistorySidebar();
                 }
             } else {
-                appendMessageBubble('assistant', data.message || '답변을 생성하지 못했습니다.', aiTimestamp);
+                if (window.JgAiRender) {
+                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', data.message || '답변을 생성하지 못했습니다.', aiTimestamp);
+                }
             }
         } catch (err) {
-            removeTypingIndicator(typingId);
-            appendMessageBubble('assistant', '로컬 PC AI 엔진과의 연결이 원활하지 않습니다. (PC의 Ollama 구동 상태를 확인해 주세요)', Date.now());
+            if (window.JgAiRender) {
+                window.JgAiRender.removeTypingIndicator(typingId);
+                window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', '로컬 PC AI 엔진과의 연결이 원활하지 않습니다. (PC의 Ollama 구동 상태를 확인해 주세요)', Date.now());
+            }
         } finally {
             isSending = false;
             if (submitBtnEl) submitBtnEl.disabled = false;
             scrollToBottom();
             if (promptInputEl) promptInputEl.focus();
         }
-    }
-
-    /**
-     * 🛡️ [핵심 버그 수정] 마크다운 및 <strong> 태그 안전 렌더러
-     */
-    function renderAiMarkdown(text) {
-        if (!text) return '';
-
-        // 1. 코드 블록 보호 (``` ... ```)
-        const codeBlocks = [];
-        let str = String(text).replace(/```([a-zA-Z0-9_\-]+)?\n([\s\S]*?)```/g, (match, lang, code) => {
-            const placeholder = `__AI_CODE_BLOCK_${codeBlocks.length}__`;
-            codeBlocks.push({ lang: lang || 'text', code });
-            return placeholder;
-        });
-
-        // 2. 인라인 코드 보호 (`...`)
-        const inlineCodes = [];
-        str = str.replace(/`([^`\n]+)`/g, (match, code) => {
-            const placeholder = `__AI_INLINE_CODE_${inlineCodes.length}__`;
-            inlineCodes.push(code);
-            return placeholder;
-        });
-
-        // 3. XSS 방지를 위한 기본 HTML 이스케이프
-        let safe = escapeHtml(str);
-
-        // 4. 🛡️ [버그 해결] 안전한 서식 태그 복원 (<strong>, <b>, <em>, <mark>, <del>, <br>)
-        safe = safe.replace(/&lt;strong&gt;([\s\S]*?)&lt;\/strong&gt;/gi, '<strong>$1</strong>');
-        safe = safe.replace(/&lt;b&gt;([\s\S]*?)&lt;\/b&gt;/gi, '<strong>$1</strong>');
-        safe = safe.replace(/&lt;em&gt;([\s\S]*?)&lt;\/em&gt;/gi, '<em>$1</em>');
-        safe = safe.replace(/&lt;mark&gt;([\s\S]*?)&lt;\/mark&gt;/gi, '<mark class="ai-highlight">$1</mark>');
-        safe = safe.replace(/&lt;del&gt;([\s\S]*?)&lt;\/del&gt;/gi, '<del>$1</del>');
-        safe = safe.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
-
-        // 5. 마크다운 헤딩 (#, ##, ###, ####) 및 볼드/취소선/링크 변환
-        safe = safe.replace(/^[ \t]*#{1,2}[ \t]+(.*)$/gm, '<strong class="ai-md-heading ai-md-h3">$1</strong>');
-        safe = safe.replace(/^[ \t]*#{3,4}[ \t]+(.*)$/gm, '<strong class="ai-md-heading ai-md-h4">$1</strong>');
-        safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-        safe = safe.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
-        safe = safe.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
-        safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
-        safe = safe.replace(/^[ \t]*[-*][ \t]+(.*)$/gm, '• $1');
-
-        // 6. 인라인 코드 복원
-        safe = safe.replace(/__AI_INLINE_CODE_(\d+)__/g, (match, idx) => {
-            const item = inlineCodes[parseInt(idx, 10)];
-            return `<code class="ai-inline-code">${escapeHtml(item || '')}</code>`;
-        });
-
-        // 7. 코드 블록 복원
-        safe = safe.replace(/__AI_CODE_BLOCK_(\d+)__/g, (match, idx) => {
-            const block = codeBlocks[parseInt(idx, 10)];
-            if (!block) return '';
-            return `
-                <div class="ai-code-wrapper">
-                    <div class="ai-code-header">
-                        <span>${escapeHtml(block.lang)}</span>
-                        <button type="button" class="ai-code-copy-btn" onclick="window.copyAiCodeText(this)">복사</button>
-                    </div>
-                    <pre class="ai-code-pre"><code>${escapeHtml(block.code || '')}</code></pre>
-                </div>
-            `;
-        });
-
-        // 8. 줄바꿈
-        safe = safe.replace(/\n/g, '<br>');
-        safe = safe.replace(/<\/div><br>/g, '</div>');
-
-        return safe;
-    }
-
-    /**
-     * 메시지 버블 DOM 추가
-     */
-    function appendMessageBubble(role, text, timestamp) {
-        if (!messageContainerEl) return;
-
-        const row = document.createElement('div');
-        row.className = `ai-bubble-row ${role}`;
-
-        let htmlContent = '';
-        if (role === 'assistant') {
-            htmlContent = renderAiMarkdown(text);
-        } else {
-            htmlContent = escapeHtml(text).replace(/\n/g, '<br>');
-        }
-
-        const timeStr = (window.JgAiHistory && window.JgAiHistory.formatMessageDateTime) ? window.JgAiHistory.formatMessageDateTime(timestamp) : '';
-        const isEligibleForWiki = (role === 'assistant' && text.length >= 25 && !text.includes('가족 위키에') && !text.includes('무엇을 도와드릴까요'));
-
-        let actionsHtml = '';
-        if (role === 'assistant') {
-            const wikiBtnHtml = isEligibleForWiki ? `
-                <button type="button" class="ai-bubble-action-btn wiki" onclick="window.saveBubbleToWiki(this)">
-                    <span>📚</span><span>가족 위키로 저장</span>
-                </button>
-            ` : '';
-            actionsHtml = `
-                <div class="ai-bubble-actions">
-                    <button type="button" class="ai-bubble-action-btn copy" onclick="window.copyBubbleText(this)" title="대화 내용 복사">
-                        <span>📋</span><span>내용 복사</span>
-                    </button>
-                    ${wikiBtnHtml}
-                </div>
-            `;
-        }
-
-        const metaHtml = (role === 'user') ? `
-            <div class="ai-bubble-meta">
-                <button type="button" class="ai-user-copy-btn" onclick="window.copyBubbleText(this)" title="내용 복사">📋 복사</button>
-                ${timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : ''}
-            </div>
-        ` : (timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : '');
-
-        row.innerHTML = `
-            <div class="ai-bubble-wrap">
-                <div class="ai-bubble">
-                    <div class="ai-bubble-content">${htmlContent}</div>
-                    ${actionsHtml}
-                </div>
-                ${metaHtml}
-            </div>
-        `;
-
-        row.dataset.rawText = text;
-        messageContainerEl.appendChild(row);
-    }
-
-    /**
-     * 말풍선 본문 복사 (클립보드 연동)
-     */
-    window.copyBubbleText = function(btn) {
-        const row = btn.closest('.ai-bubble-row');
-        if (!row) return;
-
-        const rawText = row.dataset.rawText || (row.querySelector('.ai-bubble-content') ? row.querySelector('.ai-bubble-content').innerText.trim() : '');
-        if (!rawText) return;
-
-        const originalHtml = btn.innerHTML;
-        const isUserBtn = btn.classList.contains('ai-user-copy-btn');
-
-        function setFeedback(success) {
-            btn.innerHTML = success ? (isUserBtn ? '✅ 복사 완료' : '<span>✅</span><span>복사 완료</span>') : '<span>❌</span><span>실패</span>';
-            btn.disabled = true;
-            setTimeout(() => {
-                btn.innerHTML = originalHtml;
-                btn.disabled = false;
-            }, 1500);
-        }
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(rawText).then(() => setFeedback(true)).catch(() => fallbackCopy(rawText, setFeedback));
-        } else {
-            fallbackCopy(rawText, setFeedback);
-        }
-    };
-
-    function fallbackCopy(text, callback) {
-        try {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.focus();
-            ta.select();
-            const ok = document.execCommand('copy');
-            document.body.removeChild(ta);
-            callback(ok);
-        } catch (e) {
-            callback(false);
-        }
-    }
-
-    /**
-     * 원터치 가족 위키 저장 연동
-     */
-    window.saveBubbleToWiki = async function(btn) {
-        const row = btn.closest('.ai-bubble-row');
-        const rawText = row ? row.dataset.rawText : '';
-        if (!rawText) return;
-
-        btn.disabled = true;
-        btn.innerHTML = '<span>⏳</span><span>위키 등록 중...</span>';
-
-        try {
-            const res = await fetch('/api/ai/publish-to-wiki', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: rawText })
-            });
-
-            const data = await res.json();
-            if (data.success) {
-                btn.innerHTML = '<span>✅</span><span>위키 등록 완료</span>';
-                btn.style.backgroundColor = '#d1fae5';
-                const successMsg = `가족 위키에 **[${data.category}] ${data.title}** 문서를 등록했습니다! 📚\n\n👉 [**위키 문서 바로가기**](${data.view_url})`;
-                appendMessageBubble('assistant', successMsg, Date.now());
-                if (window.JgAiHistory) {
-                    window.JgAiHistory.addMessageToActiveSession('assistant', successMsg, Date.now());
-                }
-                scrollToBottom();
-            } else {
-                btn.disabled = false;
-                btn.innerHTML = '<span>❌</span><span>실패 (다시 시도)</span>';
-            }
-        } catch (e) {
-            btn.disabled = false;
-            btn.innerHTML = '<span>❌</span><span>연결 오류</span>';
-        }
-    };
-
-    /**
-     * 코드 블록 복사 버튼
-     */
-    window.copyAiCodeText = function(btn) {
-        const wrapper = btn.closest('.ai-code-wrapper');
-        const codeEl = wrapper ? wrapper.querySelector('code') : null;
-        if (!codeEl) return;
-
-        navigator.clipboard.writeText(codeEl.textContent).then(() => {
-            const originalText = btn.textContent;
-            btn.textContent = '복사됨 ✓';
-            setTimeout(() => { btn.textContent = originalText; }, 1800);
-        }).catch(() => {
-            btn.textContent = '실패';
-        });
-    };
-
-    /**
-     * 타이핑 대기 인디케이터
-     */
-    function appendTypingIndicator(id) {
-        if (!messageContainerEl) return;
-        const row = document.createElement('div');
-        row.id = id;
-        row.className = 'ai-bubble-row assistant';
-        row.innerHTML = `
-            <div class="ai-bubble-wrap">
-                <div class="ai-bubble">
-                    <div class="ai-typing-indicator">
-                        <span>AI 비서가 생각하는 중입니다</span>
-                        <span class="ai-typing-dot"></span>
-                    </div>
-                </div>
-            </div>
-        `;
-        messageContainerEl.appendChild(row);
-    }
-
-    function removeTypingIndicator(id) {
-        const el = document.getElementById(id);
-        if (el) el.remove();
     }
 
     function scrollToBottom() {
@@ -609,7 +377,7 @@
         function resizeInput() {
             promptInputEl.style.height = 'auto';
             const scrollH = promptInputEl.scrollHeight;
-            const targetH = Math.max(22, Math.min(scrollH, 120));
+            const targetH = Math.max(24, Math.min(scrollH, 120));
             promptInputEl.style.height = targetH + 'px';
             promptInputEl.style.overflowY = (scrollH > 120) ? 'auto' : 'hidden';
         }
@@ -621,156 +389,12 @@
 
         promptInputEl.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
-                // 모바일 가상키보드 줄바꿈 유지 고려 (데스크톱은 Enter로 전송)
                 if (window.innerWidth > 768) {
                     e.preventDefault();
                     handleComposerSubmit();
                 }
             }
         });
-    }
-
-    /**
-     * 안드로이드 가상 키보드(visualViewport) 및 삼성 인터넷 브라우저/웹앱 완벽 대응
-     */
-    function initVisualViewport() {
-        if (!window.visualViewport) return;
-
-        // 웹앱(PWA/홈화면 추가/독립실행) 환경 판별
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-                             window.matchMedia('(display-mode: fullscreen)').matches ||
-                             window.matchMedia('(display-mode: minimal-ui)').matches ||
-                             (window.navigator.standalone === true) ||
-                             (document.referrer && document.referrer.includes('android-app://'));
-
-        if (isStandalone) {
-            document.body.classList.add('is-standalone');
-        }
-
-        const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
-        if (isSamsung && !isStandalone) {
-            document.body.classList.add('is-samsung');
-        }
-
-        // 초기 화면 높이 및 너비 기록 (키보드 없는 평상시 세로 기준)
-        let baseInnerHeight = Math.max(window.innerHeight, (window.visualViewport && window.visualViewport.height) || 0);
-        let lastInnerWidth = window.innerWidth;
-
-        function resetWindowScroll() {
-            if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0 || document.body.scrollTop !== 0) {
-                window.scrollTo(0, 0);
-                document.documentElement.scrollTop = 0;
-                document.body.scrollTop = 0;
-            }
-        }
-
-        function handleViewportChange() {
-            const vv = window.visualViewport;
-            const vh = vv ? vv.height : window.innerHeight;
-            const vTop = (vv && vv.offsetTop) ? vv.offsetTop : 0;
-
-            document.documentElement.style.setProperty('--ai-viewport-height', `${vh}px`);
-            document.documentElement.style.setProperty('--ai-viewport-top', `${vTop}px`);
-
-            if (window.innerWidth <= 768) {
-                // 키보드 열림 판단: 입력창 포커스 중이거나 화면 높이가 100px 이상 줄어듦
-                const isInputFocused = (document.activeElement === promptInputEl);
-                const heightDrop = baseInnerHeight - vh;
-                const isKeyboard = isInputFocused || (heightDrop > 100);
-
-                document.body.classList.toggle('keyboard-open', isKeyboard);
-
-                // 웹앱이 아닌 일반 삼성 브라우징 모드에서만 하단 툴바 오프셋 계산 (웹앱은 툴바 없으므로 0px)
-                if (isSamsung && !isStandalone) {
-                    if (isKeyboard) {
-                        // 키보드 열림 시 오프셋 완전 제거 (키보드 위에 바로 밀착)
-                        document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
-                    } else {
-                        // 사용자가 스크롤하여 삼성 툴바를 숨겼는지 체크
-                        const isToolbarHidden = (window.innerHeight - baseInnerHeight >= 45);
-                        if (isToolbarHidden) {
-                            document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
-                        } else {
-                            // 툴바 표시 중 (하단 주소창 모드 대비 72px 오프셋 적용)
-                            document.documentElement.style.setProperty('--ai-samsung-offset', '72px');
-                        }
-                    }
-                } else {
-                    document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
-                }
-
-                // 키보드가 닫혀 있고 포커스가 없을 때만 baseInnerHeight 갱신 (키보드 개폐 도중 오염 방지)
-                if (!isKeyboard && !isInputFocused) {
-                    if (vh > baseInnerHeight || Math.abs(window.innerWidth - lastInnerWidth) > 50) {
-                        baseInnerHeight = vh;
-                        lastInnerWidth = window.innerWidth;
-                    }
-                }
-
-                resetWindowScroll();
-                scrollToBottom();
-            }
-        }
-
-        window.visualViewport.addEventListener('resize', handleViewportChange);
-        window.visualViewport.addEventListener('scroll', () => {
-            if (window.innerWidth <= 768) {
-                handleViewportChange();
-            }
-        });
-
-        window.addEventListener('resize', () => {
-            handleViewportChange();
-        });
-
-        window.addEventListener('scroll', () => {
-            if (window.innerWidth <= 768) {
-                resetWindowScroll();
-            }
-        });
-
-        // 초기 가용 높이 세팅
-        handleViewportChange();
-
-        // 입력창 포커스/블러 시 가상 키보드 스크롤 밀림 방어 및 즉각 키보드 밀착 모드 전환
-        if (promptInputEl) {
-            promptInputEl.addEventListener('focus', () => {
-                document.body.classList.add('keyboard-open');
-                document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
-                resetWindowScroll();
-                setTimeout(() => {
-                    handleViewportChange();
-                    resetWindowScroll();
-                }, 30);
-                setTimeout(() => {
-                    handleViewportChange();
-                    resetWindowScroll();
-                    scrollToBottom();
-                }, 120);
-                setTimeout(() => {
-                    handleViewportChange();
-                    resetWindowScroll();
-                    scrollToBottom();
-                }, 300);
-            });
-            promptInputEl.addEventListener('blur', () => {
-                setTimeout(() => {
-                    resetWindowScroll();
-                    document.body.classList.remove('keyboard-open');
-                    handleViewportChange();
-                }, 100);
-            });
-        }
-    }
-
-    function escapeHtml(str) {
-        if (!str) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
     }
 
     // 초기 마운트

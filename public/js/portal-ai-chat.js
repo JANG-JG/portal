@@ -16,28 +16,15 @@
         if (window.innerWidth <= 768) {
             const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
             document.body.dataset.aiScrollY = scrollY;
-            document.body.style.position = 'fixed';
-            document.body.style.top = `-${scrollY}px`;
-            document.body.style.left = '0';
-            document.body.style.right = '0';
-            document.body.style.width = '100%';
-            document.body.style.overflow = 'hidden';
+            Object.assign(document.body.style, { position: 'fixed', top: `-${scrollY}px`, left: '0', right: '0', width: '100%', overflow: 'hidden' });
             document.body.classList.add('ai-chat-modal-open');
         }
     }
 
-    /**
-     * 모바일 배경 스크롤 복원
-     */
     function unlockBodyScroll() {
         if (document.body.classList.contains('ai-chat-modal-open') || document.body.dataset.aiScrollY !== undefined) {
             const scrollY = parseInt(document.body.dataset.aiScrollY || '0', 10);
-            document.body.style.position = '';
-            document.body.style.top = '';
-            document.body.style.left = '';
-            document.body.style.right = '';
-            document.body.style.width = '';
-            document.body.style.overflow = '';
+            Object.assign(document.body.style, { position: '', top: '', left: '', right: '', width: '', overflow: '' });
             delete document.body.dataset.aiScrollY;
             document.body.classList.remove('ai-chat-modal-open');
             window.scrollTo(0, scrollY);
@@ -55,10 +42,7 @@
         if (window.visualViewport) {
             const vp = window.visualViewport;
             // 키보드가 올라온 가용 뷰포트 높이와 위치에 정확히 동기화
-            win.style.height = `${vp.height}px`;
-            win.style.top = `${vp.offsetTop}px`;
-            win.style.bottom = 'auto';
-            win.style.position = 'fixed';
+            Object.assign(win.style, { height: `${vp.height}px`, top: `${vp.offsetTop}px`, bottom: 'auto', position: 'fixed' });
             window.scrollTo(0, 0);
             scrollMessagesToBottom();
         }
@@ -75,14 +59,8 @@
         fab.id = 'aiChatFabBtn';
         fab.className = 'ai-fab-btn';
         fab.type = 'button';
-        fab.innerHTML = `
-            <span class="ai-fab-pulse"></span>
-            <span>🤖</span>
-            <span>AI 비서</span>
-        `;
-        fab.onclick = function() {
-            window.location.href = '/ai';
-        };
+        fab.innerHTML = '<span class="ai-fab-pulse"></span><span>🤖</span><span>AI 비서</span>';
+        fab.onclick = function() { window.location.href = '/ai'; };
         document.body.appendChild(fab);
 
         // 2. 모바일 백드롭 딤 오버레이 생성 (배경 터치 및 스크롤 방지)
@@ -113,21 +91,14 @@
                     <button type="button" class="ai-chat-close-btn" onclick="toggleAiChatWindow(false)" title="대화창 닫기">✕</button>
                 </div>
             </div>
-
             <!-- 대화 목록 서랍 (History Drawer) -->
             <div class="ai-chat-history-drawer" id="aiChatHistoryDrawer">
                 <div class="ai-history-header">
-                    <div class="ai-history-title-area">
-                        <span>💬</span>
-                        <span>지난 대화 목록</span>
-                    </div>
+                    <div class="ai-history-title-area"><span>💬</span><span>지난 대화 목록</span></div>
                     <button type="button" class="ai-history-close-btn" onclick="toggleAiHistoryDrawer(false)" title="대화 목록 닫기">✕</button>
                 </div>
                 <div class="ai-history-actions-bar">
-                    <button type="button" class="ai-new-session-full-btn" onclick="startNewAiSession()">
-                        <span>➕</span>
-                        <span>새 대화 시작하기</span>
-                    </button>
+                    <button type="button" class="ai-new-session-full-btn" onclick="startNewAiSession()"><span>➕</span><span>새 대화 시작하기</span></button>
                 </div>
                 <div class="ai-history-list" id="aiHistoryList"></div>
             </div>
@@ -148,12 +119,10 @@
                 <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 날씨와 외출 옷차림 팁 알려줘')">🌤️ 날씨 팁</button>
                 <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('주서버와 보조서버 가동 상태 알려줘')">🖥️ 서버 상태</button>
             </div>
-
             <form class="ai-chat-input-bar" onsubmit="handleSendAiMessage(event)">
                 <input type="text" id="aiChatInput" class="ai-chat-input" placeholder="메시지를 입력하세요..." autocomplete="off">
                 <button type="submit" id="aiChatSendBtn" class="ai-chat-send-btn">전송</button>
-            </form>
-        `;
+            </form>`;
         document.body.appendChild(win);
 
         // 안드로이드 키보드 팝업 시 화면 튕김 방지 리스너 바인딩
@@ -409,20 +378,18 @@
         // 3. XSS 방지를 위한 기본 HTML 이스케이프
         let safe = escapeHtml(str);
 
-        // 4. 🛡️ [버그 수정] 안전한 서식 태그 복원 (<strong>, <b>, <em>, <mark>, <del>, <br>)
-        safe = safe.replace(/&lt;strong&gt;([\s\S]*?)&lt;\/strong&gt;/gi, '<strong>$1</strong>');
-        safe = safe.replace(/&lt;b&gt;([\s\S]*?)&lt;\/b&gt;/gi, '<strong>$1</strong>');
-        safe = safe.replace(/&lt;em&gt;([\s\S]*?)&lt;\/em&gt;/gi, '<em>$1</em>');
-        safe = safe.replace(/&lt;mark&gt;([\s\S]*?)&lt;\/mark&gt;/gi, '<mark class="ai-highlight">$1</mark>');
-        safe = safe.replace(/&lt;del&gt;([\s\S]*?)&lt;\/del&gt;/gi, '<del>$1</del>');
-        safe = safe.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
-
-        // 5. 마크다운 볼드/취소선/링크 변환
-        safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-        safe = safe.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
-        safe = safe.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
-        safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:underline; font-weight:700;">$1</a>');
-        safe = safe.replace(/^[ \t]*[-*][ \t]+(.*)$/gm, '• $1');
+        // 4. 🛡️ 안전한 서식 태그 복원 및 마크다운 변환
+        safe = safe.replace(/&lt;strong&gt;([\s\S]*?)&lt;\/strong&gt;/gi, '<strong>$1</strong>')
+                   .replace(/&lt;b&gt;([\s\S]*?)&lt;\/b&gt;/gi, '<strong>$1</strong>')
+                   .replace(/&lt;em&gt;([\s\S]*?)&lt;\/em&gt;/gi, '<em>$1</em>')
+                   .replace(/&lt;mark&gt;([\s\S]*?)&lt;\/mark&gt;/gi, '<mark class="ai-highlight">$1</mark>')
+                   .replace(/&lt;del&gt;([\s\S]*?)&lt;\/del&gt;/gi, '<del>$1</del>')
+                   .replace(/&lt;br\s*\/?&gt;/gi, '<br>')
+                   .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+                   .replace(/__([^_\n]+)__/g, '<strong>$1</strong>')
+                   .replace(/~~([^~\n]+)~~/g, '<del>$1</del>')
+                   .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:underline; font-weight:700;">$1</a>')
+                   .replace(/^[ \t]*[-*][ \t]+(.*)$/gm, '• $1');
 
         // 6. 인라인 코드 복원
         safe = safe.replace(/__AI_INLINE_CODE_(\d+)__/g, (match, idx) => {

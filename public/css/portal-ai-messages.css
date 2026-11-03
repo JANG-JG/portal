@@ -1,0 +1,373 @@
+/**
+ * 🤖 JG 포털 AI 비서 - 대화 메시지 및 서식 렌더링 스타일 (portal-ai-chat.css)
+ * - [스타일 레퍼런스] Claude (테두리 없는 에디토리얼 본문 전개, 웜 그레이 사용자 버블)
+ * - [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 대응
+ */
+
+/* 2. 중앙 메인 챗 캔버스 */
+.ai-main-canvas {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--ai-bg-main);
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-messages-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 1.25rem 1rem 1.25rem;
+    scroll-behavior: smooth;
+}
+
+.ai-messages-container {
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding-bottom: 1.5rem;
+}
+
+/* 웰컴 히어로 카드 (Claude 웜 미니멀리즘) */
+.ai-hero-card {
+    background: #FFFFFF;
+    border: 1px solid var(--ai-border);
+    border-radius: 20px;
+    padding: 1.75rem 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    margin: 1.5rem auto 1rem auto;
+    max-width: 620px;
+    width: 100%;
+}
+
+.ai-hero-icon {
+    font-size: 2.4rem;
+    margin-bottom: 0.6rem;
+    line-height: 1;
+}
+
+.ai-hero-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--ai-text-primary);
+    margin-bottom: 0.45rem;
+    letter-spacing: -0.3px;
+}
+
+.ai-hero-desc {
+    font-size: 0.9rem;
+    color: var(--ai-text-secondary);
+    line-height: 1.6;
+}
+
+/* 메시지 버블 행 레이아웃 */
+.ai-bubble-row {
+    display: flex;
+    width: 100%;
+    margin-bottom: 0.25rem;
+}
+
+.ai-bubble-row.user {
+    justify-content: flex-end;
+}
+
+.ai-bubble-row.assistant {
+    justify-content: flex-start;
+}
+
+.ai-bubble-wrap {
+    display: flex;
+    flex-direction: column;
+    max-width: 84%;
+    min-width: 0;
+}
+
+.ai-bubble-row.user .ai-bubble-wrap {
+    align-items: flex-end;
+}
+
+.ai-bubble-row.assistant .ai-bubble-wrap {
+    align-items: flex-start;
+    max-width: 100%;
+    width: 100%;
+}
+
+/* 💬 말풍선 본문 스타일 (Claude 에디토리얼 테마) */
+.ai-bubble {
+    font-size: 0.95rem;
+    line-height: 1.68;
+    word-break: break-word;
+}
+
+/* 사용자 말풍선: 차분한 웜 그레이/베이지, 둥근 라운드 코너 */
+.ai-bubble-row.user .ai-bubble {
+    background-color: var(--ai-bubble-user);
+    color: var(--ai-bubble-user-text);
+    padding: 0.85rem 1.15rem;
+    border-radius: 20px;
+    border-bottom-right-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* 어시스턴트 메시지: 테두리 박스를 벗어나 편안하게 펼쳐지는 본문 에디토리얼 레이아웃 */
+.ai-bubble-row.assistant .ai-bubble {
+    background-color: transparent;
+    color: var(--ai-text-primary);
+    border: none;
+    box-shadow: none;
+    padding: 0.2rem 0;
+    width: 100%;
+}
+
+.ai-bubble-content {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.ai-bubble-time,
+.ai-bubble-meta,
+.ai-bubble-actions,
+.ai-bubble-action-btn,
+.ai-bubble-wiki-action,
+.ai-bubble-wiki-btn,
+.ai-user-copy-btn,
+.ai-code-header,
+.ai-typing-indicator {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+}
+
+.ai-bubble-time {
+    font-size: 0.69rem;
+    color: var(--ai-text-muted);
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+.ai-bubble-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+.ai-user-copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--ai-text-muted);
+    font-size: 0.7rem;
+    cursor: pointer;
+    padding: 1px 5px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    transition: all 0.15s ease;
+}
+
+.ai-user-copy-btn:hover,
+.ai-user-copy-btn:active {
+    color: var(--ai-text-primary);
+    background-color: #E9E6DE;
+}
+
+/* 3. 에디토리얼 서식 효과 (strong, 제목 등) */
+.ai-bubble strong, .ai-bubble b {
+    font-weight: 700 !important;
+    color: inherit;
+}
+
+.ai-bubble-row.assistant .ai-bubble strong,
+.ai-bubble-row.assistant .ai-bubble b {
+    color: #1F1E1D;
+}
+
+.ai-bubble .ai-md-heading {
+    display: block;
+    font-weight: 700;
+    color: #1F1E1D;
+    margin: 0.75rem 0 0.35rem 0;
+    line-height: 1.4;
+    letter-spacing: -0.2px;
+}
+
+.ai-bubble .ai-md-h3 {
+    font-size: 1.05rem;
+}
+
+.ai-bubble .ai-md-h4 {
+    font-size: 0.96rem;
+}
+
+.ai-bubble .ai-md-heading:first-child {
+    margin-top: 0;
+}
+
+.ai-bubble mark.ai-highlight {
+    background-color: #FEF3C7;
+    color: #92400E;
+    padding: 1px 5px;
+    border-radius: 4px;
+}
+
+.ai-bubble code.ai-inline-code {
+    background-color: #EFECE6;
+    color: #8C3B24;
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.88em;
+}
+
+.ai-bubble-row.user code.ai-inline-code {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #1F1E1D;
+}
+
+.ai-bubble a.ai-link {
+    color: var(--ai-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 600;
+}
+
+.ai-bubble-row.user a.ai-link {
+    color: var(--ai-primary);
+}
+
+/* 코드 블록 (다크 슬레이트 에디토리얼 스타일) */
+.ai-code-wrapper {
+    background: #1E1E1E;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 10px 0;
+    border: 1px solid #333333;
+    width: 100%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.ai-code-header {
+    background: #282828;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: #A0A0A0;
+    font-family: monospace;
+    border-bottom: 1px solid #333333;
+}
+
+.ai-code-copy-btn {
+    background: transparent;
+    border: 1px solid #444444;
+    color: #CCCCCC;
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ai-code-copy-btn:hover {
+    background-color: #383838;
+    color: #FFFFFF;
+}
+
+.ai-code-pre {
+    padding: 10px 14px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    color: #E6E6E6;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    line-height: 1.55;
+    margin: 0;
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+/* 어시스턴트 메시지 하단 액션 버튼 (미니멀 고스트 버튼) */
+.ai-bubble-actions,
+.ai-bubble-wiki-action {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--ai-border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ai-bubble-action-btn,
+.ai-bubble-wiki-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 0.73rem;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid var(--ai-border);
+    background-color: #FFFFFF;
+}
+
+.ai-bubble-action-btn.copy {
+    color: var(--ai-text-secondary);
+}
+
+.ai-bubble-action-btn.copy:hover,
+.ai-bubble-action-btn.copy:active {
+    background-color: #F3F1EB;
+    color: var(--ai-text-primary);
+    border-color: var(--ai-border-hover);
+}
+
+.ai-bubble-action-btn.wiki,
+.ai-bubble-wiki-btn {
+    color: #2D6A4F;
+    background-color: #E8F5E9;
+    border-color: #C8E6C9;
+}
+
+.ai-bubble-action-btn.wiki:hover,
+.ai-bubble-action-btn.wiki:active,
+.ai-bubble-wiki-btn:hover {
+    background-color: #C8E6C9;
+}
+
+/* 타이핑 대기 인디케이터 (Claude 테라코타 펄스) */
+.ai-typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ai-text-muted);
+    font-size: 0.85rem;
+    padding: 0.4rem 0;
+}
+
+.ai-typing-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--ai-primary);
+    border-radius: 50%;
+    animation: aiPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes aiPulse {
+    0%, 100% { transform: scale(0.6); opacity: 0.35; }
+    50% { transform: scale(1.15); opacity: 1; }
+}

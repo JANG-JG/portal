@@ -117,7 +117,14 @@ function assembleAdminHtml() {
         return fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
     }).join('\n');
 
-    return shell.replace('<!-- @@ADMIN_TAB_PANES@@ -->', panes);
+    shell = shell.replace('<!-- @@ADMIN_TAB_PANES@@ -->', panes);
+
+    const modalsPath = path.join(viewsDir, 'admin-modals.html');
+    if (fs.existsSync(modalsPath)) {
+        shell = shell.replace('<!-- @@ADMIN_MODALS@@ -->', fs.readFileSync(modalsPath, 'utf8'));
+    }
+
+    return shell;
 }
 
 // 🧩 메인 포털 홈(views/header-navbar.html, views/modal-*.html) SSR 결합 엔진 (파일당 500줄 이하 모듈화)

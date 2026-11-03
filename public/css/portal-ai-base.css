@@ -1,0 +1,347 @@
+/**
+ * 🤖 JG 포털 AI 비서 - 전역 기본 레이아웃 및 사이드바 (portal-ai-base.css)
+ * - [스타일 레퍼런스] Claude (따뜻한 웜 크림 베이지 에디토리얼 테마)
+ * - [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 대응
+ */
+
+:root {
+    /* 🎨 Claude 스타일 웜 에디토리얼 컬러 팔레트 */
+    --ai-bg-main: #FAF9F5;         /* 따뜻한 웜 크림 / 오프화이트 배경 */
+    --ai-bg-surface: #FFFFFF;      /* 깨끗한 화이트 서피스 */
+    --ai-sidebar-bg: #F3F1EB;      /* 차분하고 정갈한 미색 사이드바 */
+    --ai-sidebar-width: 270px;
+    --ai-border: #E8E6DF;          /* 부드러운 웜 그레이 보더 */
+    --ai-border-hover: #DCD9D0;
+    --ai-border-subtle: #F0EDE6;
+
+    /* 타이포그래피 컬러 */
+    --ai-text-primary: #1F1E1D;    /* 눈이 편안한 차콜 블랙 */
+    --ai-text-secondary: #4D4B46;  /* 부드러운 서브 텍스트 */
+    --ai-text-muted: #7E7B75;      /* 뮤트 그레이 */
+
+    /* 포인트 컬러 (Claude 시그니처 테라코타) */
+    --ai-primary: #C96442;         /* 따뜻한 테라코타 오렌지 브라운 */
+    --ai-primary-hover: #B55737;
+    --ai-primary-light: #FDF4EE;   /* 테라코타 틴트 */
+    --ai-primary-border: #F4CEBD;
+
+    /* 말풍선 컬러 (Claude 에디토리얼 스타일) */
+    --ai-bubble-user: #EBE8E0;     /* 차분한 소프트 웜 그레이 말풍선 */
+    --ai-bubble-user-text: #1F1E1D;/* 가독성 높은 다크 텍스트 */
+    --ai-bubble-assistant: transparent; /* 본문과 자연스럽게 융합되는 에디토리얼 레이아웃 */
+    --ai-bubble-border: transparent;
+
+    --ai-radius: 12px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* 🛑 [하단 뉴스바 및 불필요한 바닥 여백 원천 차단] */
+#jg-global-ticker-bar,
+#jg-global-breaking-bar {
+    display: none !important;
+}
+
+#unified-nav-root {
+    display: none !important;
+}
+
+html, body {
+    position: fixed;
+    top: var(--ai-viewport-top, 0px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+    height: var(--ai-viewport-height, 100dvh); /* 모바일 동적 가용 뷰포트 100% 동기화 */
+    max-height: var(--ai-viewport-height, 100dvh);
+    margin: 0;
+    padding: 0;
+    padding-bottom: 0 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
+    background-color: var(--ai-bg-main);
+    color: var(--ai-text-primary);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 전체 뷰포트 레이아웃 */
+.ai-app-wrapper {
+    display: flex;
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--ai-bg-main);
+}
+
+/* 1. 좌측 사이드바 */
+.ai-sidebar {
+    width: var(--ai-sidebar-width);
+    height: 100%;
+    background-color: var(--ai-sidebar-bg);
+    border-right: 1px solid var(--ai-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 100;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-sidebar-header {
+    padding: 0.95rem 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ai-border);
+}
+
+.ai-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+}
+
+.ai-sidebar-avatar {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.ai-sidebar-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ai-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.2px;
+}
+
+.ai-sidebar-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #2D6A4F;
+    background-color: #E8F5E9;
+    border: 1px solid #C8E6C9;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    display: inline-block;
+}
+
+.ai-sidebar-close-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--ai-text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.ai-sidebar-action {
+    padding: 0.8rem 1rem;
+}
+
+.ai-new-chat-btn {
+    width: 100%;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: var(--ai-bg-surface);
+    border: 1px solid var(--ai-border);
+    border-radius: var(--ai-radius);
+    color: var(--ai-text-primary);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    transition: all 0.15s ease;
+}
+
+.ai-new-chat-btn:hover {
+    background-color: var(--ai-primary-light);
+    border-color: var(--ai-primary-border);
+    color: var(--ai-primary);
+}
+
+.ai-history-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0.4rem 0.75rem;
+}
+
+.ai-history-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.73rem;
+    font-weight: 600;
+    color: var(--ai-text-muted);
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.2rem;
+    letter-spacing: -0.1px;
+}
+
+.ai-history-count-badge {
+    background-color: #E6E3DA;
+    color: var(--ai-text-secondary);
+    font-size: 0.7rem;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    font-weight: 600;
+}
+
+.ai-sidebar-history-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-right: 2px;
+}
+
+.ai-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.55rem 0.7rem;
+    border-radius: 8px;
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+    gap: 0.5rem;
+}
+
+.ai-history-item:hover {
+    background-color: #E9E6DE;
+}
+
+.ai-history-item.active {
+    background-color: var(--ai-bg-surface);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    border: 1px solid var(--ai-border);
+}
+
+.ai-history-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-history-item-title {
+    font-size: 0.84rem;
+    font-weight: 500;
+    color: var(--ai-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ai-history-item.active .ai-history-item-title {
+    color: var(--ai-primary);
+    font-weight: 700;
+}
+
+.ai-history-item-meta {
+    font-size: 0.69rem;
+    color: var(--ai-text-muted);
+    margin-top: 2px;
+}
+
+.ai-history-del-btn {
+    opacity: 0;
+    background: transparent;
+    border: none;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 3px;
+    border-radius: 4px;
+    color: var(--ai-text-muted);
+    transition: opacity 0.15s ease;
+}
+
+.ai-history-item:hover .ai-history-del-btn {
+    opacity: 1;
+}
+
+.ai-sidebar-footer {
+    padding: 0.7rem 0.9rem;
+    border-top: 1px solid var(--ai-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.ai-footer-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    color: var(--ai-text-secondary);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.12s ease;
+}
+
+.ai-footer-link:hover {
+    background-color: #E9E6DE;
+    color: var(--ai-text-primary);
+}
+
+.ai-mobile-header {
+    display: none;
+    height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.85rem;
+    background-color: var(--ai-bg-main);
+    border-bottom: 1px solid var(--ai-border);
+    flex-shrink: 0;
+}
+
+.ai-mobile-menu-btn, .ai-mobile-action-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--ai-text-primary);
+    padding: 6px 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-mobile-title-wrap {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+}
+
+.ai-mobile-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--ai-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 100%;
+}

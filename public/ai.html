@@ -8,16 +8,18 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#FAF9F5">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="JG AI비서">
     <meta name="color-scheme" content="light">
 
-    <!-- 스타일시트 -->
+    <!-- 스타일시트 (Claude 에디토리얼 모듈형 CSS) -->
     <link rel="stylesheet" href="/css/pretendard.css">
     <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="/css/portal-ai-page.css">
+    <link rel="stylesheet" href="/css/portal-ai-base.css">
+    <link rel="stylesheet" href="/css/portal-ai-messages.css">
+    <link rel="stylesheet" href="/css/portal-ai-composer.css">
 </head>
 <body>
     <!-- 🌐 JG 통합 상단 내비게이션 바 (AI 단독 전체화면을 위해 숨김) -->
@@ -140,6 +142,8 @@
     <!-- 스크립트 (캐시 제어는 deploy.sh 및 server.js가 자동 처리) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>
     <script src="/js/portal-ai-history.js"></script>
+    <script src="/js/portal-ai-render.js"></script>
+    <script src="/js/portal-ai-viewport.js"></script>
     <script src="/js/portal-ai-page.js"></script>
 </body>
 </html>
