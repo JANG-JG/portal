@@ -85,8 +85,8 @@ function detectIntents(prompt) {
         intents.add('ALBUM');
     }
 
-    // 8. 가족 위키 / 매뉴얼
-    if (/(위키|wiki|매뉴얼|사용법|설명서|방법|요리|레시피|비번|가이드)/.test(p)) {
+    // 8. 가족 위키 / 매뉴얼 / 생활 팁
+    if (/(위키|wiki|매뉴얼|사용법|설명서|방법|요리|레시피|비번|가이드|생활\s*팁|꿀팁|노하우|살림)/.test(p)) {
         intents.add('WIKI');
     }
 
