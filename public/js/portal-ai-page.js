@@ -577,10 +577,18 @@
     }
 
     /**
-     * 안드로이드 가상 키보드(visualViewport) 대응 및 상단 여백/스크롤 밀림 원천 방어
+     * 안드로이드 가상 키보드(visualViewport) 및 삼성 인터넷 브라우저 하단 툴바 완벽 대응
      */
     function initVisualViewport() {
         if (!window.visualViewport) return;
+
+        const isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
+        if (isSamsung) {
+            document.body.classList.add('is-samsung');
+        }
+
+        // 초기 화면 높이 기록 (툴바 숨김/표시 동적 감지용)
+        let baseInnerHeight = window.innerHeight;
 
         function handleViewportChange() {
             const vv = window.visualViewport;
@@ -591,6 +599,23 @@
                 // 키보드가 활성화되었는지 판단 (전체 높이 대비 140px 이상 줄어듦)
                 const isKeyboard = (window.innerHeight - vh > 140);
                 document.body.classList.toggle('keyboard-open', isKeyboard);
+
+                // 삼성 브라우저 하단 툴바 높이 동적 제어
+                if (isSamsung) {
+                    if (isKeyboard) {
+                        // 키보드 열림 시 오프셋 제거 (키보드 위에 바로 밀착)
+                        document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
+                    } else {
+                        // 사용자가 스크롤하여 삼성 툴바를 숨겼는지 체크 (높이가 기본 대비 50px 이상 커짐)
+                        const isToolbarHidden = (window.innerHeight - baseInnerHeight >= 50);
+                        if (isToolbarHidden) {
+                            document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
+                        } else {
+                            // 툴바 표시 중 (하단 주소창 모드 대비 84px 안전 오프셋 적용)
+                            document.documentElement.style.setProperty('--ai-samsung-offset', '84px');
+                        }
+                    }
+                }
 
                 // 모바일 브라우저의 window 레벨 스크롤 강제 원복 (상단 여백 발생 방지)
                 if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0) {
@@ -604,6 +629,12 @@
         }
 
         window.visualViewport.addEventListener('resize', handleViewportChange);
+        window.addEventListener('resize', () => {
+            if (!document.body.classList.contains('keyboard-open')) {
+                baseInnerHeight = Math.min(baseInnerHeight, window.innerHeight);
+            }
+            handleViewportChange();
+        });
         window.visualViewport.addEventListener('scroll', () => {
             if (window.innerWidth <= 768 && window.scrollY !== 0) {
                 window.scrollTo(0, 0);
@@ -625,6 +656,7 @@
                 setTimeout(() => {
                     window.scrollTo(0, 0);
                     document.body.classList.remove('keyboard-open');
+                    handleViewportChange();
                 }, 100);
             });
         }
