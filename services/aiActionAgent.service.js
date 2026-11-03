@@ -483,6 +483,7 @@ async function handleActionIntent({ prompt, user, userName }) {
 }
 
 module.exports = {
+    formatKoreanTime,
     parseKoreanDateTime,
     parseCalendarAction,
     parseBloodAction,
