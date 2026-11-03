@@ -11,6 +11,7 @@ const http = require('http');
 const { searchWikiContent, createWikiPage, getWikiPageDetail, updateWikiPage } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
 const { refineMemoToWiki, smartMergeOrDraftWiki, stripThinkTags } = require('./aiKnowledge.service');
+const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { buildAiChatPrompt } = require('./aiContextRouter.service');
 
@@ -156,8 +157,9 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         : '오늘 혈압약 아직 안 챙겨드심(복용 필요 ⚠️)';
 
     // 2) 오늘 날씨 & 외출 주의사항
+    const feelKo = weather ? describeFeelKo(weather.feels_like || weather.temp) : '';
     const weatherText = weather 
-        ? `${weather.city || '계룡'} ${weather.temp || ''}, ${weather.condition || '맑음'}` 
+        ? `${weather.city || '계룡'} ${weather.temp || ''}, ${weather.condition || '맑음'}${feelKo ? `, 체감 ${feelKo}` : ''}` 
         : '';
 
     // 3) 오늘 당일 캘린더 일정 (오늘 일정이 있는 경우만)
@@ -210,7 +212,8 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
 2. 💡 가장 중요한 1~2가지만 선택: 주어진 오늘 상황(날씨/외출, 복약 여부, 오늘 일정) 중 사용자의 오늘 하루에 가장 필요하고 실천해야 할 1~2가지만 자연스럽게 골라 다정하게 이야기하세요.
    - 예: 아직 약을 안 드셨다면 다정하게 약 챙겨드시길 권유, 비 소식이 있다면 우산 챙기기, 오늘 중요한 일정이 있다면 응원
 3. 🚫 먼 D-Day나 과거 절대 언급 금지: 오늘 당일이나 1~2일 내 임박한 일이 아니면 D-Day를 억지로 언급하지 마세요.
-4. 📏 분량: 인사치레나 서론 없이 바로 실용적이고 따뜻한 1~2문장으로 간결하게 작성하세요.`;
+4. 📏 분량: 인사치레나 서론 없이 바로 실용적이고 따뜻한 1~2문장으로 간결하게 작성하세요.
+5. 🇰🇷 영어 단어를 섞지 말고 날씨는 '쌀쌀해요', '맑아요'처럼 자연스러운 한국어로만 표현하세요.`;
 
     const userPrompt = `[오늘의 상황 데이터]
 ${situationLines.join('\n')}
@@ -226,12 +229,19 @@ ${situationLines.join('\n')}
             options: {
                 temperature: 0.7,
                 top_p: 0.9,
-                num_predict: 250
+                // EXAONE 4.0은 <think> 생각 과정이 토큰을 먼저 소모하므로 250 → 1024로 확대 (브리핑 잘림 방지)
+                num_predict: 1024
             }
         }, 90000);
 
         if (result && result.response) {
-            const cleanText = result.response.trim();
+            let cleanText = koreanizeWeatherWords(result.response.trim());
+            // 토큰 상한 도달로 문장 중간에서 끊긴 경우: 마지막 완결 문장까지만 사용 (없으면 기본 브리핑 폴백)
+            if (result.done_reason === 'length') {
+                const lastEnd = Math.max(cleanText.lastIndexOf('.'), cleanText.lastIndexOf('!'), cleanText.lastIndexOf('?'), cleanText.lastIndexOf('요'));
+                if (lastEnd < 10) return null;
+                cleanText = cleanText.slice(0, lastEnd + 1).trim();
+            }
             cachedAiBriefing = {
                 success: true,
                 message: cleanText,

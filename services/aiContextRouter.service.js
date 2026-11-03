@@ -7,6 +7,7 @@
 
 const { searchWikiContent } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
+const { describeFeelKo } = require('./weatherKo.util');
 
 /**
  * 🛡️ 프롬프트 템플릿 탈취 및 제어 문자 인젝션 방어 유틸리티
@@ -154,8 +155,9 @@ function buildSelectiveContext(summaryContext, intents) {
 
     // 3. 날씨 & 옷차림
     if (isOverview || intents.has('WEATHER')) {
+        const feelKo = weather ? describeFeelKo(weather.feels_like || weather.temp) : '';
         const weatherInfo = weather 
-            ? `${weather.city || '서울'} ${weather.temp || ''} (${weather.condition || '맑음'}), 습도 ${weather.humidity || '-'}` 
+            ? `${weather.city || '서울'} ${weather.temp || ''} (${weather.condition || '맑음'}), 습도 ${weather.humidity || '-'}${feelKo ? `, 체감 ${weather.feels_like || weather.temp} (${feelKo})` : ''}` 
             : '날씨 정보 없음';
         parts.push(`- 🌤️ 날씨: ${weatherInfo}`);
     }
@@ -261,6 +263,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
 - [현재 기준 일시]: ${currentDateTimeStr} (현재 연도는 ${kst.getFullYear()}년입니다. 2023~2024년 등 과거 연도로 날짜를 착각하지 마세요)
 - 현재 시각을 물으면 반드시 '${currentTimeKo}'라고 그대로 답하세요. 오전/오후를 바꾸어 말하지 마세요.
 - 질문자가 가족 구성원(${userName}님)이므로 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
+- 영어 단어를 섞지 말고 날씨는 '쌀쌀해요', '맑아요', '흐려요'처럼 자연스러운 한국어로만 표현하세요.
 - 우리 집의 자산 관리, 건강(혈압·복약·병원), 가족 일정, 메모, 가족 위키, 가족 사진첩 및 서버 인프라 현황을 파악하고 있습니다.
 - '비공개' 또는 '관리자 전용'으로 표시된 항목에 대해서는 "해당 정보는 관리자 전용 데이터로 조회 권한이 없습니다"라고 친절히 안내하세요.
 - 질문이 들어오면 아래의 [실시간 맞춤 정보] 및 발췌 자료를 적극 참조하여 명확하고 정확하게 분석·안내해 주세요.
