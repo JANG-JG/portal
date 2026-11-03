@@ -5,18 +5,10 @@ const path = require('path');
 const os = require('os');
 const { exec, execFile } = require('child_process');
 
-const { WORKSPACE_ROOT } = require('../../config/constants');
-const { getAllModules } = require('../../services/moduleRegistry.service');
-
-function resolveModuleDbPath(p) {
-    if (!p) return null;
-    if (path.isAbsolute(p)) return p;
-    const c1 = path.join(WORKSPACE_ROOT, p);
-    if (fs.existsSync(c1)) return c1;
-    const c2 = path.join(os.homedir(), 'workspace', p);
-    if (fs.existsSync(c2)) return c2;
-    return c1;
-}
+const {
+    getDynamicDbMap,
+    getFileSizeStr
+} = require('../../services/adminDbInspector.service');
 
 const { db, newsDb } = require('../../services/db');
 const { sendServerTelegram } = require('../../services/unifiedNotificationScheduler');
@@ -103,32 +95,30 @@ router.get('/overview', async (req, res) => {
                 } catch (e) {}
             }
 
-            const formatSize = (bytes) => {
-                if (!bytes || bytes <= 0) return '0 KB';
-                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-                return (bytes / 1024 / 1024).toFixed(2) + ' MB';
-            };
-
-            const getFileSize = (filePath) => {
-                try { return formatSize(fs.statSync(filePath).size); }
-                catch (e) { return '미존재'; }
-            };
-
             const dbs = {};
+            const dbList = [];
             try {
-                const mods = getAllModules(true);
-                mods.forEach(m => {
-                    if (m.dbPath) {
-                        const fullP = resolveModuleDbPath(m.dbPath);
-                        if (fullP) {
-                            const sizeStr = getFileSize(fullP);
-                            dbs[m.id] = sizeStr;
-                            if (m.id === 'blood') dbs.health = sizeStr;
-                            if (m.id === 'news') dbs.briefing = sizeStr;
-                        }
+                const dynMap = getDynamicDbMap();
+                Object.values(dynMap).forEach(item => {
+                    if (item.isPrimaryForPath) {
+                        const sizeStr = getFileSizeStr(item.path);
+                        dbs[item.key] = sizeStr;
+                        if (item.key === 'blood') dbs.health = sizeStr;
+                        if (item.key === 'news') dbs.briefing = sizeStr;
+                        dbList.push({
+                            key: item.key,
+                            name: item.name,
+                            size: sizeStr,
+                            path: item.path,
+                            isRemote: Boolean(item.isRemote),
+                            isAutoDiscovered: Boolean(item.isAutoDiscovered),
+                            serverName: item.serverName
+                        });
                     }
                 });
-            } catch (e) {}
+            } catch (e) {
+                console.error('[System Admin] 동적 DB 목록 수집 오류:', e.message);
+            }
 
             const memoryInfo = getRealMemoryInfo();
             const uptimeStr = realUptime || formatUptime(os.uptime());
@@ -137,6 +127,7 @@ router.get('/overview', async (req, res) => {
                 success: true,
                 processes,
                 dbs,
+                dbList,
                 topMemoryProcesses: topMemList || [],
                 dualServers: {
                     primary: {

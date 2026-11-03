@@ -34,7 +34,7 @@
                             </div>
                             <div class="dual-server-submeta">
                                 <span>가동: <strong id="systemUptime">-</strong></span>
-                                <span>PM2: <strong id="activeProcessCount" style="color:#2563eb;">- / 6</strong></span>
+                                <span>PM2: <strong id="activeProcessCount" style="color:#2563eb;">- / -</strong></span>
                             </div>
                             <div class="dual-metric-rows">
                                 <div class="dual-metric-row">
@@ -145,12 +145,28 @@
                         <div class="admin-card-header">
                             <div>
                                 <h3 style="margin-bottom:0.2rem;">🚀 주 서버 서비스 프로세스 제어 (PM2)</h3>
-                                <span style="font-size:0.8rem; color:#64748b;">6대 핵심 서비스 시작 / 중지 / 재기동 원클릭 제어</span>
+                                <span style="font-size:0.8rem; color:#64748b;" id="primaryServiceSubtitle">주 서버 핵심 서비스 시작 / 중지 / 재기동 원클릭 제어</span>
                             </div>
                             <span class="live-indicator"><span class="live-dot"></span>실시간</span>
                         </div>
                         <div id="processListContainer" class="process-list-grid">
                             <div style="text-align:center; padding:1.5rem; color:#64748b;">프로세스 상태 조회 중...</div>
+                        </div>
+                    </div>
+
+                    <!-- 🗄️ 활성 데이터베이스 실시간 스토리지 및 자동 감지 현황 -->
+                    <div class="admin-card">
+                        <div class="admin-card-header" style="margin-bottom:0.75rem;">
+                            <div>
+                                <h3 style="margin-bottom:0.2rem;">🗄️ 데이터베이스 스토리지 및 자동 감지 현황</h3>
+                                <span style="font-size:0.8rem; color:#64748b;" id="dbOverviewSubtitle">시스템 내 모든 SQLite DB 실시간 용량 및 상태</span>
+                            </div>
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="if(typeof switchAdminTab==='function') switchAdminTab('tab-database')">
+                                🗄️ DB 관리자 열기
+                            </button>
+                        </div>
+                        <div id="overviewDbContainer" class="db-storage-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:0.65rem;">
+                            <div style="text-align:center; padding:1.5rem; color:#94a3b8; grid-column: 1 / -1;">데이터베이스 상태 조회 중...</div>
                         </div>
                     </div>
 

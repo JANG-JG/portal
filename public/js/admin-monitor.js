@@ -9,14 +9,12 @@ async function loadOverviewData() {
         const res = await fetch('/api/admin/overview');
         const data = await res.json();
         if (!data.success) throw new Error(data.message);
-
         // 1) 상단 통계 갱신
         const onlineCount = data.processes.filter(p => p.status === 'online').length;
         const activeProcEl = document.getElementById('activeProcessCount');
         const sysUptimeEl = document.getElementById('systemUptime');
         if (activeProcEl) activeProcEl.textContent = `${onlineCount} / ${data.processes.length}`;
         if (sysUptimeEl) sysUptimeEl.textContent = data.system.uptimeStr;
-
         // 2) 주 서버 리소스 수치 계산
         const cpuPct = data.system.cpu ? data.system.cpu.percentNum : 0;
         const memPct = data.system.memory ? data.system.memory.percentNum : 0;
@@ -117,7 +115,6 @@ async function loadOverviewData() {
                 secPaneTempEl.className = 'temp-badge temp-badge-' + (isSecOnline ? tStatus : 'normal');
             }
         }
-
         if (overallBadge) {
             if (onlineCount === data.processes.length && isSecOnline) {
                 overallBadge.className = 'badge-online';
@@ -130,15 +127,8 @@ async function loadOverviewData() {
                 overallBadge.textContent = `⚠️ 프로세스 점검 (${onlineCount}/${data.processes.length})`;
             }
         }
-
-        // 6) DB 크기
-        const dbHealth = document.getElementById('dbSizeHealth');
-        const dbAsset = document.getElementById('dbSizeAsset');
-        const dbNews = document.getElementById('dbSizeNews');
-        if (dbHealth) dbHealth.textContent = data.dbs.health;
-        if (dbAsset) dbAsset.textContent = data.dbs.asset;
-        if (dbNews) dbNews.textContent = data.dbs.briefing;
-
+        // 6) 동적 DB 스토리지 및 자동 감지 현황 실시간 렌더링
+        renderOverviewDbList(data.dbList || []);
         // 4) 프로세스 카드 목록 렌더링 (시작 / 중지 / 재기동 3버튼 제어 및 실시간 상태 동기화)
         const container = document.getElementById('processListContainer');
         if (container) {
@@ -243,6 +233,32 @@ async function loadOverviewData() {
     } catch (err) {
         console.error('관리자 상태 로드 오류:', err);
     }
+}
+
+// 4-1. 🗄️ 동적 감지된 모든 SQLite DB 스토리지 현황 렌더링
+function renderOverviewDbList(dbList) {
+    const container = document.getElementById('overviewDbContainer');
+    if (!container || !Array.isArray(dbList) || !dbList.length) return;
+    const subTitle = document.getElementById('dbOverviewSubtitle');
+    if (subTitle) subTitle.textContent = `총 ${dbList.length}개 SQLite DB 실시간 자동 감지 및 용량`;
+
+    container.innerHTML = dbList.map(db => {
+        const isAuto = db.isAutoDiscovered;
+        const tagText = db.isRemote ? '🌐 HP보조' : (isAuto ? '✨ 자동감지' : '🟢 정상');
+        const tagColor = db.isRemote ? '#7c3aed' : (isAuto ? '#0284c7' : '#16a34a');
+        const tagBg = db.isRemote ? '#f3e8ff' : (isAuto ? '#e0f2fe' : '#dcfce7');
+        const dbName = typeof escapeHtml === 'function' ? escapeHtml(db.name) : db.name;
+        return `<div class="db-overview-card" onclick="if(window.DbManager){DbManager.switchDb('${db.key}');} if(typeof switchAdminTab==='function') switchAdminTab('tab-database');" style="cursor:pointer; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.65rem 0.8rem; display:flex; flex-direction:column; justify-content:space-between;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.4rem; margin-bottom:0.35rem;">
+                <strong style="font-size:0.82rem; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${dbName}">${dbName}</strong>
+                <span style="font-size:0.68rem; font-weight:700; color:${tagColor}; background:${tagBg}; padding:1px 5px; border-radius:4px; white-space:nowrap;">${tagText}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#64748b;">
+                <span>용량: <strong style="color:#0f172a;">${db.size}</strong></span>
+                <span style="font-size:0.72rem; color:#3b82f6;">관리 ↗</span>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 // 5. 10초 주기 실시간 자동 갱신 폴링
@@ -475,15 +491,9 @@ async function downloadAllDatabases() {
 }
 
 // 전역 window 바인딩
-window.loadOverviewData = loadOverviewData;
-window.startOverviewPolling = startOverviewPolling;
-window.executePm2Action = executePm2Action;
-window.restartPm2Process = restartPm2Process;
-window.fetchPm2Logs = fetchPm2Logs;
-window.clearPm2Logs = clearPm2Logs;
-window.setPm2LogFilter = setPm2LogFilter;
-window.filterPm2ConsoleLogs = filterPm2ConsoleLogs;
-window.togglePm2LogOrder = togglePm2LogOrder;
-window.scrollPm2LogsToBottom = scrollPm2LogsToBottom;
-window.downloadAllDatabases = downloadAllDatabases;
-window.testTelegramAlert = testTelegramAlert;
+Object.assign(window, {
+    loadOverviewData, startOverviewPolling, executePm2Action,
+    restartPm2Process, fetchPm2Logs, clearPm2Logs, setPm2LogFilter,
+    filterPm2ConsoleLogs, togglePm2LogOrder, scrollPm2LogsToBottom,
+    downloadAllDatabases, testTelegramAlert
+});

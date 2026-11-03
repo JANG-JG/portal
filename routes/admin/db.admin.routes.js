@@ -2,98 +2,31 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
-const sqlite3 = require('sqlite3').verbose();
-const { WORKSPACE_ROOT } = require('../../config/constants');
 const { getAllModules } = require('../../services/moduleRegistry.service');
-const { isRemoteDb, pullRemoteDb, pushRemoteDb, getSyncStatus } = require('../../services/remoteDbSync.service');
-
-// 동적 등록된 서비스 모듈 DB 인스턴스 캐시 풀 (절대 경로별 인스턴스 싱글톤 관리)
-const DYNAMIC_DB_POOL = new Map();
-
-function resolveDbPath(p) {
-    if (!p) return null;
-    if (path.isAbsolute(p)) return p;
-    const c1 = path.join(WORKSPACE_ROOT, p);
-    if (fs.existsSync(c1)) return c1;
-    const c2 = path.join(os.homedir(), 'workspace', p);
-    if (fs.existsSync(c2)) return c2;
-    return c1;
-}
-
-function getDbConnection(resolvedPath) {
-    if (!DYNAMIC_DB_POOL.has(resolvedPath)) {
-        const dynDb = new sqlite3.Database(resolvedPath, (err) => {
-            if (!err) {
-                dynDb.run('PRAGMA journal_mode = WAL;');
-                dynDb.run('PRAGMA busy_timeout = 5000;');
-            }
-        });
-        DYNAMIC_DB_POOL.set(resolvedPath, dynDb);
-    }
-    return DYNAMIC_DB_POOL.get(resolvedPath);
-}
-
-function getDynamicDbMap() {
-    const map = {};
-    const seenPaths = new Set();
-    try {
-        const allMods = getAllModules(true);
-        allMods.forEach(mod => {
-            if (!mod.dbPath) return;
-            const resolved = resolveDbPath(mod.dbPath);
-            const isRemote = isRemoteDb(mod);
-
-            if (resolved && fs.existsSync(resolved)) {
-                const dbConn = getDbConnection(resolved);
-                const isFirst = !seenPaths.has(resolved);
-                seenPaths.add(resolved);
-
-                map[mod.id] = {
-                    key: mod.id,
-                    name: `${mod.icon || '📦'} ${mod.name} (${path.basename(resolved)})`,
-                    db: dbConn,
-                    path: resolved,
-                    isPrimaryForPath: isFirst,
-                    isRemote,
-                    serverName: mod.serverName || (isRemote ? 'HP 보조 서버 (192.168.50.75)' : '메인 서버 (로컬)'),
-                    remoteHost: mod.remoteHost || null
-                };
-            }
-        });
-    } catch (e) {
-        console.error('[DB Manager] 동적 DB 매핑 실패:', e.message);
-    }
-    return map;
-}
-
-function getDbInstance(dbKey) {
-    const dynamicMap = getDynamicDbMap();
-    if (dynamicMap[dbKey]) return dynamicMap[dbKey];
-
-    // 하위 호환 별칭 매핑 (구 URL / 캐시 호환)
-    if (dbKey === 'health' && dynamicMap['blood']) return dynamicMap['blood'];
-    if (dbKey === 'briefing' && dynamicMap['news']) return dynamicMap['news'];
-    if (dbKey === 'portal' && (dynamicMap['portal'] || dynamicMap['calendar'] || dynamicMap['memo'])) {
-        return dynamicMap['portal'] || dynamicMap['calendar'] || dynamicMap['memo'];
-    }
-
-    const list = Object.values(dynamicMap);
-    return list.length > 0 ? list[0] : null;
-}
-
-function getFileSizeStr(filePath) {
-    try {
-        const bytes = fs.statSync(filePath).size;
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-    } catch (e) {
-        return '-';
-    }
-}
+const { isRemoteDb, pullRemoteDb, getSyncStatus } = require('../../services/remoteDbSync.service');
+const {
+    resolveDbPath,
+    getFileSizeStr,
+    getDynamicDbMap,
+    getDbInstance,
+    getAllDatabasesOverview
+} = require('../../services/adminDbInspector.service');
 
 /**
- * 1. 데이터베이스 목록 조회 (모듈 레지스트리 기반 100% 동적 수집 + 보조 서버 원격 DB 자동 감지)
+ * 0. 전체 데이터베이스 및 테이블 통합 현황 실시간 요약 (신규 감지 DB 포함)
+ * GET /api/admin/db/overview
+ */
+router.get('/overview', async (req, res) => {
+    try {
+        const overview = await getAllDatabasesOverview();
+        res.json({ success: true, databases: overview });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'DB 개요 조회 실패: ' + err.message });
+    }
+});
+
+/**
+ * 1. 데이터베이스 목록 조회 (모듈 레지스트리 + 워크스페이스 실시간 자동 감지)
  * GET /api/admin/db/databases
  */
 router.get('/databases', async (req, res) => {
@@ -109,7 +42,7 @@ router.get('/databases', async (req, res) => {
     }
 
     const dynamicMap = getDynamicDbMap();
-    // 동일 DB 파일 중복 노출을 방지하고 유효 DB만 고유하게 목록화
+    // 동일 DB 파일 중복 노출을 방지하고 유효 DB만 고유하게 목록화 (신규 감지 DB 포함)
     const list = Object.values(dynamicMap)
         .filter(item => item.isPrimaryForPath)
         .map(item => ({
@@ -118,6 +51,7 @@ router.get('/databases', async (req, res) => {
             size: getFileSizeStr(item.path),
             path: item.path,
             isRemote: Boolean(item.isRemote),
+            isAutoDiscovered: Boolean(item.isAutoDiscovered),
             serverName: item.serverName,
             syncStatus: item.isRemote ? getSyncStatus(item.key) : null
         }));

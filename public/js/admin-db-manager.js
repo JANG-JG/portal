@@ -51,12 +51,8 @@ const DbManager = {
         const select = document.getElementById('dbSelect');
         if (!select) return;
         select.innerHTML = this.state.databases.map(db => {
-            const remoteBadge = db.isRemote ? '🌐 [HP 보조서버] ' : '';
-            return `
-                <option value="${db.key}" ${db.key === this.state.currentDb ? 'selected' : ''}>
-                    ${remoteBadge}${escapeHtml(db.name)} (${db.size})
-                </option>
-            `;
+            const badge = db.isRemote ? '🌐 [HP 보조서버] ' : (db.isAutoDiscovered ? '✨ [자동 감지] ' : '');
+            return `<option value="${db.key}" ${db.key === this.state.currentDb ? 'selected' : ''}>${badge}${escapeHtml(db.name)} (${db.size})</option>`;
         }).join('');
     },
 
