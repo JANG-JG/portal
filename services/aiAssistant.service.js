@@ -138,6 +138,21 @@ function parseDDayDiff(ddayItem) {
 }
 
 /**
+ * 브리핑 말투 후처리: '님아/님님' 호칭 정리 + 질문형(?) 문장 제거 (평서문만 남김, 전부 질문이면 null)
+ */
+function polishBriefingTone(text) {
+    let t = String(text || '')
+        .replace(/님\s*님/g, '님')
+        .replace(/님아(?=[\s,.!~]|$)/g, '님')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+    const sentences = t.split(/(?<=[.!?？。])\s+/);
+    const kept = sentences.map(s => s.trim()).filter(s => s && !/[?？]$/.test(s));
+    t = kept.join(' ').trim();
+    return t.length >= 10 ? t : null;
+}
+
+/**
  * 2. LG EXAONE 기반 오늘 맞춤형 데일리 건강/일정 조언 문장 생성
  * - [원칙] 먼 미래 D-Day 원천 배제, 오늘 당일(D-Day) 및 3일 이내 초임박 일정만 엄선
  * - [원칙] 자산/사진첩 등 잡음 제거, 사용자의 '오늘 하루'에 꼭 필요한 핵심 1~2가지만 간결 조언
@@ -213,12 +228,15 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
    - 예: 아직 약을 안 드셨다면 다정하게 약 챙겨드시길 권유, 비 소식이 있다면 우산 챙기기, 오늘 중요한 일정이 있다면 응원
 3. 🚫 먼 D-Day나 과거 절대 언급 금지: 오늘 당일이나 1~2일 내 임박한 일이 아니면 D-Day를 억지로 언급하지 마세요.
 4. 📏 분량: 인사치레나 서론 없이 바로 실용적이고 따뜻한 1~2문장으로 간결하게 작성하세요.
-5. 🇰🇷 영어 단어를 섞지 말고 날씨는 '쌀쌀해요', '맑아요'처럼 자연스러운 한국어로만 표현하세요.`;
+5. 🇰🇷 영어 단어를 섞지 말고 날씨는 '쌀쌀해요', '맑아요'처럼 자연스러운 한국어로만 표현하세요.
+6. 🗣️ 말투: 질문하지 말고 모든 문장을 '~세요', '~해요', '~예요' 같은 다정한 존댓말 평서문으로 끝내세요. 물음표(?)는 쓰지 마세요.
+7. 🙋 호칭: 이름을 부를 때는 '${userName}님,' 형식만 사용하세요. '님아', '씨', '님님'은 쓰지 마세요.
+[좋은 예시 - 말투만 참고하고 내용은 오늘 상황에 맞게 바꾸세요] ${userName}님, 오늘은 쌀쌀하니 따뜻한 겉옷 챙기시고 아침 약도 잊지 말고 챙겨 드세요.`;
 
     const userPrompt = `[오늘의 상황 데이터]
 ${situationLines.join('\n')}
 
-위 상황 중 ${userName}님의 '오늘 하루'에 가장 중요하고 필요한 핵심 1~2가지만 골라 다정하고 따뜻하게 1~2문장으로 조언해 주세요.`;
+위 상황 중 ${userName}님의 '오늘 하루'에 가장 중요하고 필요한 핵심 1~2가지만 골라 다정한 존댓말 평서문 1~2문장으로 조언해 주세요. 질문은 하지 마세요.`;
 
     try {
         const result = await sendOllamaRequest('/api/generate', {
@@ -227,7 +245,7 @@ ${situationLines.join('\n')}
             stream: false,
             keep_alive: '24h',
             options: {
-                temperature: 0.7,
+                temperature: 0.5,
                 top_p: 0.9,
                 // EXAONE 4.0은 <think> 생각 과정이 토큰을 먼저 소모하므로 250 → 1024로 확대 (브리핑 잘림 방지)
                 num_predict: 1024
@@ -242,6 +260,9 @@ ${situationLines.join('\n')}
                 if (lastEnd < 10) return null;
                 cleanText = cleanText.slice(0, lastEnd + 1).trim();
             }
+            // 말투 정리: '님아' 호칭 교정 + 질문형 문장 제거 (전부 질문이면 기본 브리핑 폴백)
+            cleanText = polishBriefingTone(cleanText);
+            if (!cleanText) return null;
             cachedAiBriefing = {
                 success: true,
                 message: cleanText,
