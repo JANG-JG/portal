@@ -116,14 +116,18 @@
                             placeholder="우리 집 건강, 자산, 일정, 위키 지식 질문... (최대 1,000자)" 
                             autocomplete="off"
                             maxlength="1000"></textarea>
-                        <div class="ai-input-actions">
-                            <span id="aiCharCount" class="ai-char-counter" title="현재 글자 수 / 최대 1,000자">0/1000</span>
-                            <button type="submit" id="aiSubmitBtn" class="ai-send-btn" aria-label="메시지 전송" title="메시지 전송 (최대 1,000자)">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                                </svg>
-                            </button>
+                        <div class="ai-input-bottom-bar">
+                            <div class="ai-input-bottom-left">
+                                <span id="aiCharCount" class="ai-char-counter" title="현재 글자 수 / 최대 1,000자">0/1000</span>
+                            </div>
+                            <div class="ai-input-bottom-right">
+                                <button type="submit" id="aiSubmitBtn" class="ai-send-btn" aria-label="메시지 전송" title="메시지 전송 (최대 1,000자)">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </form>
