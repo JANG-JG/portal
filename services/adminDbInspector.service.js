@@ -49,6 +49,7 @@ function findWorkspaceDbs(dir = WORKSPACE_ROOT, depth = 0) {
         if (!fs.existsSync(dir)) return results;
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         for (const entry of entries) {
+            if (entry.name.startsWith('.')) continue;
             if (entry.isDirectory()) {
                 if (!IGNORE_DIRS.has(entry.name)) {
                     results = results.concat(findWorkspaceDbs(path.join(dir, entry.name), depth + 1));
