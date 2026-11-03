@@ -319,6 +319,7 @@
         }
         scrollToBottom();
 
+        let isStreaming = false;
         try {
             const res = await fetch('/api/ai/chat', {
                 method: 'POST',
@@ -343,13 +344,26 @@
 
             const data = await res.json();
             if (data.success && data.answer) {
-                if (window.JgAiRender) {
-                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', data.answer, aiTimestamp);
-                }
                 currentChatHistory.push({ role: 'assistant', content: data.answer, timestamp: aiTimestamp });
                 if (window.JgAiHistory) {
                     window.JgAiHistory.addMessageToActiveSession('assistant', data.answer, aiTimestamp);
                     renderHistorySidebar();
+                }
+
+                if (window.JgAiRender && typeof window.JgAiRender.streamAssistantBubble === 'function') {
+                    isStreaming = true;
+                    window.JgAiRender.streamAssistantBubble(messageContainerEl, data.answer, aiTimestamp, {
+                        onProgress: () => scrollToBottom(),
+                        onComplete: () => {
+                            isSending = false;
+                            if (submitBtnEl) submitBtnEl.disabled = false;
+                            scrollToBottom();
+                            if (promptInputEl) promptInputEl.focus();
+                        }
+                    });
+                    scrollToBottom();
+                } else if (window.JgAiRender) {
+                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', data.answer, aiTimestamp);
                 }
             } else {
                 if (window.JgAiRender) {
@@ -362,10 +376,12 @@
                 window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', '로컬 PC AI 엔진과의 연결이 원활하지 않습니다. (PC의 Ollama 구동 상태를 확인해 주세요)', Date.now());
             }
         } finally {
-            isSending = false;
-            if (submitBtnEl) submitBtnEl.disabled = false;
-            scrollToBottom();
-            if (promptInputEl) promptInputEl.focus();
+            if (!isStreaming) {
+                isSending = false;
+                if (submitBtnEl) submitBtnEl.disabled = false;
+                scrollToBottom();
+                if (promptInputEl) promptInputEl.focus();
+            }
         }
     }
 

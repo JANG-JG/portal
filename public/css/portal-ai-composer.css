@@ -69,18 +69,18 @@
     display: flex;
     flex-direction: column;
     background: #FFFFFF;
-    border: 1.5px solid var(--ai-border);
+    border: 1px solid #E5E0D8;
     border-radius: 20px;
-    padding: 0.75rem 0.95rem 0.6rem 0.95rem;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+    padding: 0.75rem 0.95rem 0.55rem 0.95rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
     box-sizing: border-box;
     width: 100%;
 }
 
 .ai-input-box:focus-within {
-    border-color: var(--ai-primary);
-    box-shadow: 0 4px 20px rgba(201, 100, 66, 0.12);
+    border-color: var(--ai-primary, #C96442);
+    box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.12), 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
 .ai-prompt-textarea {
@@ -93,8 +93,8 @@
     resize: none;
     font-family: inherit;
     font-size: 0.95rem;
-    line-height: 1.45;
-    color: var(--ai-text-primary);
+    line-height: 1.5;
+    color: var(--ai-text-primary, #1F1E1D);
     background: transparent;
     padding: 0;
     margin: 0;
@@ -104,8 +104,8 @@
 }
 
 .ai-prompt-textarea::placeholder {
-    color: var(--ai-text-muted);
-    font-size: 0.9rem;
+    color: #9E9A90;
+    font-size: 0.92rem;
 }
 
 .ai-input-bottom-bar {
@@ -130,12 +130,12 @@
     flex-shrink: 0;
 }
 
-/* 글자 수 카운터 (전송 버튼과 균형 잡힌 가독성) */
+/* 글자 수 카운터 (Claude 스타일 정돈된 폰트) */
 .ai-char-counter {
-    font-size: 1.05rem;
+    font-size: 0.9rem;
     font-weight: 500;
     line-height: 1;
-    color: var(--ai-text-muted);
+    color: #9E9A90;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.2px;
     user-select: none;
@@ -153,12 +153,12 @@
     font-weight: 700;
 }
 
-/* 전송 버튼 (Claude 테라코타 포인트) */
+/* 전송 버튼 (Claude 테라코타 원형 포인트) */
 .ai-send-btn {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background-color: var(--ai-primary);
+    background-color: var(--ai-primary, #C96442);
     color: #FFFFFF;
     border: none;
     display: flex;
@@ -166,13 +166,14 @@
     justify-content: center;
     cursor: pointer;
     flex-shrink: 0;
-    transition: transform 0.12s ease, background-color 0.15s ease;
-    box-shadow: 0 2px 6px rgba(201, 100, 66, 0.25);
+    transition: transform 0.12s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 2px 6px rgba(201, 100, 66, 0.28);
 }
 
 .ai-send-btn:hover:not(:disabled) {
-    background-color: var(--ai-primary-hover);
-    transform: scale(1.05);
+    background-color: var(--ai-primary-hover, #B85535);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(201, 100, 66, 0.35);
 }
 
 .ai-send-btn:active:not(:disabled) {
@@ -180,10 +181,44 @@
 }
 
 .ai-send-btn:disabled {
-    background-color: #DCD9D0;
+    background-color: #E8E5DF;
+    color: #BCB8B0;
     cursor: not-allowed;
-    opacity: 0.65;
+    opacity: 0.8;
     box-shadow: none;
+}
+
+/* 타이핑 스트리밍 커서 (Claude/Gemini 스타일) */
+.ai-typing-cursor {
+    display: inline-block;
+    width: 3px;
+    height: 1.05em;
+    background-color: var(--ai-primary, #C96442);
+    margin-left: 3px;
+    vertical-align: -2px;
+    border-radius: 1px;
+    animation: aiCursorBlink 0.75s ease-in-out infinite;
+}
+
+@keyframes aiCursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* 버블 액션 바 페이드인 효과 */
+.ai-bubble-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(229, 224, 216, 0.7);
+    animation: aiActionsFadeIn 0.25s ease-out;
+}
+
+@keyframes aiActionsFadeIn {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .ai-disclaimer {

@@ -293,11 +293,106 @@
         if (el) el.remove();
     }
 
+    /**
+     * ⚡ 클로드/제미나이 스타일 점진적 타이핑 스트리밍 렌더러
+     * @param {HTMLElement} container 메시지 컨테이너
+     * @param {string} fullText 완성된 답변 전체 텍스트
+     * @param {number} timestamp 수신 시각 타임스탬프
+     * @param {Object} options { onProgress: Function, onComplete: Function }
+     */
+    function streamAssistantBubble(container, fullText, timestamp, options = {}) {
+        if (!container) return null;
+        if (!fullText) {
+            return appendMessageBubble(container, 'assistant', '', timestamp);
+        }
+
+        const row = document.createElement('div');
+        row.className = 'ai-bubble-row assistant';
+        row.dataset.rawText = fullText;
+
+        const timeStr = (window.JgAiHistory && window.JgAiHistory.formatMessageDateTime) ? window.JgAiHistory.formatMessageDateTime(timestamp) : '';
+        const isEligibleForWiki = (fullText.length >= 25 && !fullText.includes('가족 위키에') && !fullText.includes('무엇을 도와드릴까요'));
+
+        const wikiBtnHtml = isEligibleForWiki ? `
+            <button type="button" class="ai-bubble-action-btn wiki" onclick="window.saveBubbleToWiki(this)">
+                <span>📚</span><span>가족 위키로 저장</span>
+            </button>
+        ` : '';
+
+        const actionsHtml = `
+            <div class="ai-bubble-actions" style="display:none;">
+                <button type="button" class="ai-bubble-action-btn copy" onclick="window.copyBubbleText(this)" title="대화 내용 복사">
+                    <span>📋</span><span>내용 복사</span>
+                </button>
+                ${wikiBtnHtml}
+            </div>
+        `;
+
+        const metaHtml = timeStr ? `<span class="ai-bubble-time">${timeStr}</span>` : '';
+
+        row.innerHTML = `
+            <div class="ai-bubble-wrap">
+                <div class="ai-bubble">
+                    <div class="ai-bubble-content"><span class="ai-typing-cursor"></span></div>
+                    ${actionsHtml}
+                </div>
+                ${metaHtml}
+            </div>
+        `;
+
+        container.appendChild(row);
+
+        const contentEl = row.querySelector('.ai-bubble-content');
+        const actionsEl = row.querySelector('.ai-bubble-actions');
+
+        const len = fullText.length;
+        // 템포 계산: 전체 텍스트를 약 60~75프레임 (약 1.0~1.3초) 동안 매끄럽게 흘려보냄
+        const step = Math.max(1, Math.ceil(len / 70));
+        let currentIndex = 0;
+        let isDone = false;
+
+        function finish() {
+            if (isDone) return;
+            isDone = true;
+            clearInterval(timer);
+            if (contentEl) {
+                contentEl.innerHTML = renderAiMarkdown(fullText);
+            }
+            if (actionsEl) {
+                actionsEl.style.display = 'flex';
+            }
+            if (typeof options.onComplete === 'function') {
+                options.onComplete(fullText);
+            }
+        }
+
+        // 사용자가 말풍선을 클릭/터치하면 즉시 전체 내용 표시 (스킵)
+        row.addEventListener('click', finish, { once: true });
+
+        const timer = setInterval(() => {
+            currentIndex += step;
+            if (currentIndex >= len) {
+                finish();
+            } else {
+                const sliceText = fullText.slice(0, currentIndex);
+                if (contentEl) {
+                    contentEl.innerHTML = renderAiMarkdown(sliceText) + '<span class="ai-typing-cursor"></span>';
+                }
+                if (typeof options.onProgress === 'function') {
+                    options.onProgress();
+                }
+            }
+        }, 16);
+
+        return row;
+    }
+
     // 전역 렌더러 노출
     window.JgAiRender = {
         escapeHtml: escapeHtml,
         renderMarkdown: renderAiMarkdown,
         appendMessageBubble: appendMessageBubble,
+        streamAssistantBubble: streamAssistantBubble,
         appendTypingIndicator: appendTypingIndicator,
         removeTypingIndicator: removeTypingIndicator,
         renderHeroWelcomeCard: renderHeroWelcomeCard
