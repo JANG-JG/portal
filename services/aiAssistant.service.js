@@ -71,7 +71,7 @@ function sendOllamaRequest(endpoint, payload, timeoutMs = 45000) {
 /**
  * 🛡️ [보안 강화] 프롬프트 템플릿 탈취 및 제어 문자 인젝션 방어 유틸리티
  */
-function sanitizeInputText(text, maxLength = 500) {
+function sanitizeInputText(text, maxLength = 1000) {
     if (!text || typeof text !== 'string') return '';
     // 모델 템플릿 제어 토큰 (<|system|>, <|user|>, <|assistant|>, <|end_of_turn|> 등) 제거
     const cleaned = text.replace(/<\|[a-zA-Z0-9_\-:]+\|>/g, '');
@@ -209,7 +209,7 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
  * 3. 우리 집 AI 챗봇 실시간 대화 (전체 서브 서비스 통합 분석가)
  */
 async function askAiAssistant({ prompt, history = [], summaryContext = null, userName = '가족' }) {
-    const cleanPrompt = sanitizeInputText(prompt, 500);
+    const cleanPrompt = sanitizeInputText(prompt, 1000);
     if (!cleanPrompt) {
         throw new Error('유효한 질문 내용을 입력해 주세요.');
     }
