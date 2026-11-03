@@ -28,7 +28,7 @@
                 if (maxLenInput) maxLenInput.value = data.config.maxPromptLength || 1000;
                 if (heroIconInput) heroIconInput.value = data.config.heroIcon || '🤖';
                 if (heroTitleInput) heroTitleInput.value = data.config.heroTitle || 'AI 비서에게 무엇이든 물어보세요';
-                if (heroDescInput) heroDescInput.value = data.config.heroDescription || 'LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
+                if (heroDescInput) heroDescInput.value = data.config.heroDescription || 'LG EXAONE 4.0 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
 
                 updateAiWelcomePreview();
                 updateAiHeroPreview();
@@ -224,7 +224,7 @@
 
         const iconVal = (iconInput && iconInput.value.trim()) ? iconInput.value.trim() : '🤖';
         const titleVal = (titleInput && titleInput.value.trim()) ? titleInput.value.trim() : 'AI 비서에게 무엇이든 물어보세요';
-        const descVal = (descInput && descInput.value.trim()) ? descInput.value.trim() : 'LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
+        const descVal = (descInput && descInput.value.trim()) ? descInput.value.trim() : 'LG EXAONE 4.0 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
 
         if (titleCounter && titleInput) {
             titleCounter.textContent = `${titleInput.value.length}/100자`;

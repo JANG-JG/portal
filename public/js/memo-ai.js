@@ -1,6 +1,6 @@
 /**
  * 🤖 JG 포털 메모장 AI 지식/루틴 연동 모듈 (memo-ai.js)
- * - 로컬 Ollama(LG EXAONE 3.5) 기반 메모 ➔ 위키 정돈, 루틴 추출, 3줄 요약
+ * - 로컬 Ollama(LG EXAONE 4.0) 기반 메모 ➔ 위키 정돈, 루틴 추출, 3줄 요약
  * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화
  * - [규칙 6] 모바일 360px 터치 및 레이아웃 최적화
  */
@@ -166,7 +166,7 @@ function openAiLoadingModal(msg) {
             <div class="memo-ai-loading-box">
                 <div class="memo-ai-spinner"></div>
                 <div id="memoAiLoadingMsg" class="memo-ai-loading-text">${escapeHtml(msg)}</div>
-                <div class="memo-ai-loading-sub">로컬 PC의 LG EXAONE 3.5 모델이 처리 중입니다</div>
+                <div class="memo-ai-loading-sub">로컬 PC의 LG EXAONE 4.0 모델이 처리 중입니다</div>
             </div>
         `;
         document.body.appendChild(el);

@@ -459,7 +459,7 @@
     "id": "ai",
     "name": "우리 집 AI 비서",
     "icon": "🤖",
-    "description": "LG EXAONE 3.5 기반 가족 맞춤형 AI 비서 (건강, 자산, 일정, 위키 질의응답)",
+    "description": "LG EXAONE 4.0 기반 가족 맞춤형 AI 비서 (건강, 자산, 일정, 위키 질의응답)",
     "category": "인텔리전스",
     "entryUrl": "/ai",
     "baseUrl": "",

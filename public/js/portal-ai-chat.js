@@ -1,5 +1,5 @@
 /**
- * 🤖 JG 포털 로컬 AI 비서 (LG EXAONE 3.5) 챗봇 프론트엔드 엔진 (portal-ai-chat.js)
+ * 🤖 JG 포털 로컬 AI 비서 (LG EXAONE 4.0) 챗봇 프론트엔드 엔진 (portal-ai-chat.js)
  * - 우하단 플로팅 비서 버튼 및 실시간 대화창 제어
  * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 호환
  */
@@ -115,7 +115,7 @@
             <div class="ai-chat-messages" id="aiChatMessages">
                 <div class="ai-bubble-row assistant">
                     <div class="ai-bubble">
-                        안녕하세요! JG 포털 AI 비서(LG EXAONE 3.5)입니다. 🇰🇷<br>
+                        안녕하세요! JG 포털 AI 비서(LG EXAONE 4.0)입니다. 🇰🇷<br>
                         궁금한 점이 있으시면 무엇이든 편하게 물어보세요! 😊
                     </div>
                 </div>

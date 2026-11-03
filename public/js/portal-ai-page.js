@@ -41,7 +41,7 @@
                     }
                     const disclaimerEl = document.querySelector('.ai-disclaimer span');
                     if (disclaimerEl) {
-                        disclaimerEl.textContent = `🛡️ 가족 데이터 전용 로컬 AI (LG EXAONE 3.5) • 1회 질문당 최대 ${currentMaxPromptLength.toLocaleString()}자`;
+                        disclaimerEl.textContent = `🛡️ 가족 데이터 전용 로컬 AI (LG EXAONE 4.0) • 1회 질문당 최대 ${currentMaxPromptLength.toLocaleString()}자`;
                     }
                 }
 
