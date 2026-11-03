@@ -19,6 +19,7 @@ const {
 } = require('../services/aiAssistant.service');
 const { createWikiPage, searchWikiContent, getWikiPageDetail, updateWikiPage } = require('../services/wikiSummary.service');
 const { getPortalSummary } = require('../services/portalSummary.service');
+const { getAiConfig } = require('../services/aiConfig.service');
 
 // 🛡️ [보안 강화] AI 채팅 레이트 리미터 & 동시성 제어 (로컬 PC 과부하 및 DoS 방어)
 const chatRateLimitMap = new Map(); // key(user/ip) -> [timestamp]
@@ -47,6 +48,16 @@ setInterval(() => {
         else chatRateLimitMap.set(k, valid);
     }
 }, 10 * 60 * 1000);
+
+// 0. AI 비서 런타임 설정 조회 (웰컴 메시지 및 글자 수 제한)
+router.get('/api/ai/config', (req, res) => {
+    try {
+        const config = getAiConfig();
+        res.json({ success: true, config });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'AI 설정을 불러오지 못했습니다.', error: err.message });
+    }
+});
 
 // 1. AI 노드 헬스체크 (인증 필수 적용)
 router.get('/api/ai/health', authenticateToken, async (req, res) => {
@@ -105,11 +116,13 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: '메시지를 올바르게 입력해 주세요.' });
         }
 
-        // 🛡️ 입력 길이 제한 (1,000자 이하)
-        if (message.length > 1000) {
+        // 🛡️ 입력 길이 제한 (동적 설정 반영)
+        const aiConfig = getAiConfig();
+        const maxLen = aiConfig.maxPromptLength || 1000;
+        if (message.length > maxLen) {
             return res.status(400).json({
                 success: false,
-                message: '질문이 너무 깁니다. 1,000자 이하로 간결하게 입력해 주세요.'
+                message: `질문이 너무 깁니다. ${maxLen.toLocaleString()}자 이하로 간결하게 입력해 주세요.`
             });
         }
 

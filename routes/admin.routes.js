@@ -11,6 +11,7 @@ const albumAdminRoutes = require('./admin/album.admin.routes');
 const backupAdminRoutes = require('./admin/backup.admin.routes');
 const dbAdminRoutes = require('./admin/db.admin.routes');
 const assetAdminRoutes = require('./admin/asset.admin.routes');
+const aiAdminRoutes = require('./admin/ai.admin.routes');
 const systemAdminRoutes = require('./admin/system.admin.routes');
 
 router.use('/blood', bloodAdminRoutes);
@@ -20,6 +21,7 @@ router.use('/album', albumAdminRoutes);
 router.use('/backup', backupAdminRoutes);
 router.use('/db', dbAdminRoutes);
 router.use('/asset', assetAdminRoutes);
+router.use('/ai', aiAdminRoutes);
 router.use('/', systemAdminRoutes);
 
 // 관리자 마스터 비밀번호 변경

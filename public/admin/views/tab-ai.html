@@ -1,0 +1,135 @@
+<!-- ==========================================
+     🤖 탭: AI 비서 관리 (tab-ai.html)
+     ========================================== -->
+<div id="tab-ai" class="admin-tab-pane">
+    <!-- 서브 1: AI 비서 운영 및 대화창 설정 -->
+    <div id="subpane-ai-config" class="admin-sub-pane active">
+        <div class="admin-card">
+            <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                    <h3>🤖 AI 비서 운영 및 프롬프트 설정</h3>
+                    <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
+                        새 대화 첫 인사말(웰컴 메시지)과 1회 질문당 최대 글자 수 한도를 실시간 제어합니다.
+                    </p>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminAiConfig()">
+                        🔄 새로고침
+                    </button>
+                    <button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="saveAdminAiConfig()">
+                        💾 설정 저장하기
+                    </button>
+                </div>
+            </div>
+
+            <form id="adminAiConfigForm" onsubmit="saveAdminAiConfig(event)" style="margin-top:1.25rem;">
+                <!-- 1. 첫 환영 인사말 설정 -->
+                <div style="margin-bottom:1.5rem;">
+                    <label style="display:flex; align-items:center; justify-content:space-between; font-weight:700; color:#1e293b; margin-bottom:0.5rem; font-size:0.9rem;">
+                        <span>💬 새 대화 첫 환영 인사말</span>
+                        <span id="aiWelcomeLengthCounter" style="font-size:0.8rem; color:#64748b; font-weight:normal;">0/500자</span>
+                    </label>
+                    <p style="font-size:0.82rem; color:#64748b; margin:0 0 0.5rem; line-height:1.4;">
+                        사용자가 새로운 AI 대화를 시작할 때 처음 화면에 표시되는 인사말입니다. 줄바꿈과 이모지가 지원됩니다.
+                    </p>
+                    <textarea 
+                        id="inputAiWelcomeMessage" 
+                        rows="4" 
+                        maxlength="500" 
+                        oninput="updateAiWelcomePreview()"
+                        placeholder="안녕하세요! JG 포털 AI 비서입니다. 궁금한 점을 물어보세요."
+                        style="width:100%; padding:0.75rem; border:1px solid #cbd5e1; border-radius:0.6rem; font-size:0.92rem; line-height:1.5; font-family:inherit; box-sizing:border-box; resize:vertical; background:#fff;"></textarea>
+
+                    <!-- 실시간 말풍선 미리보기 -->
+                    <div style="margin-top:0.75rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.85rem 1rem;">
+                        <div style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:0.4rem;">
+                            👀 대화창 실제 표시 미리보기
+                        </div>
+                        <div style="display:flex; gap:0.6rem; align-items:flex-start;">
+                            <span style="font-size:1.3rem; line-height:1;">🤖</span>
+                            <div id="aiWelcomeBubblePreview" style="background:#fff; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.65rem 0.9rem; font-size:0.88rem; color:#1e293b; line-height:1.5; max-width:85%; box-shadow:0 1px 2px rgba(0,0,0,0.03); word-break:break-word;">
+                                인사말을 입력하면 이곳에 실시간 표시됩니다.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 1회 질문 글자 수 제한 -->
+                <div style="margin-bottom:1.5rem; border-top:1px solid #f1f5f9; padding-top:1.25rem;">
+                    <label style="display:block; font-weight:700; color:#1e293b; margin-bottom:0.5rem; font-size:0.9rem;">
+                        📏 1회 질문당 최대 글자 수 제한
+                    </label>
+                    <p style="font-size:0.82rem; color:#64748b; margin:0 0 0.6rem; line-height:1.4;">
+                        가족 구성원이 1번에 질문할 수 있는 글자 수를 제한합니다. 로컬 노드(LG EXAONE 3.5)의 추론 속도와 메모리를 감안하여 1,000자 내외를 권장합니다.
+                    </p>
+                    <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+                        <input 
+                            type="number" 
+                            id="inputAiMaxPromptLength" 
+                            min="100" 
+                            max="4000" 
+                            step="50" 
+                            value="1000" 
+                            style="width:140px; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; font-weight:700; text-align:right;">
+                        <span style="font-size:0.9rem; font-weight:600; color:#475569;">글자</span>
+                        
+                        <!-- 빠른 프리셋 버튼 -->
+                        <div style="display:flex; gap:0.35rem; margin-left:auto; flex-wrap:wrap;">
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiLengthPreset(500)">500자 (간결형)</button>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiLengthPreset(1000)">1,000자 (권장 기본)</button>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiLengthPreset(2000)">2,000자 (확장형)</button>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiLengthPreset(3000)">3,000자 (장문형)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 하단 저장 액션 바 -->
+                <div style="display:flex; justify-content:flex-end; gap:0.5rem; padding-top:1rem; border-top:1px solid #e2e8f0;">
+                    <button type="button" class="btn-admin btn-admin-outline" onclick="loadAdminAiConfig()">취소 / 초기화</button>
+                    <button type="submit" class="btn-admin btn-admin-primary" style="padding:0.6rem 1.5rem;">
+                        💾 AI 비서 설정 저장 완료
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 서브 2: AI 엔진 상태 및 점검 -->
+    <div id="subpane-ai-status" class="admin-sub-pane">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <div>
+                    <h3>🤖 로컬 AI 엔진(Ollama) 가동 상태</h3>
+                    <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
+                        포털과 연동된 로컬 AI 노드의 구동 및 응답 상태를 실시간 진단합니다.
+                    </p>
+                </div>
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="checkAdminAiHealth()">
+                    ⚡ 실시간 진단 실행
+                </button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1rem;">
+                    <div style="font-size:0.75rem; color:#64748b; font-weight:700;">탑재 모델</div>
+                    <div style="font-size:1.05rem; font-weight:700; color:#1e293b; margin-top:0.25rem;">LG EXAONE 3.5 (8B)</div>
+                    <div style="font-size:0.75rem; color:#10b981; margin-top:0.25rem;">국산 한국어 특화 파운데이션 모델</div>
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1rem;">
+                    <div style="font-size:0.75rem; color:#64748b; font-weight:700;">엔진 통신 상태</div>
+                    <div id="adminAiStatusBadge" style="font-size:1.05rem; font-weight:700; color:#10b981; margin-top:0.25rem;">🟢 정상 가동 중</div>
+                    <div id="adminAiStatusLatency" style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">지연 시간: 측정 대기 중</div>
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1rem;">
+                    <div style="font-size:0.75rem; color:#64748b; font-weight:700;">보안 및 동시성 가드</div>
+                    <div style="font-size:0.95rem; font-weight:700; color:#334155; margin-top:0.25rem;">최대 2건 동시 추론</div>
+                    <div style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">1분당 최대 12회 질문 제한</div>
+                </div>
+            </div>
+
+            <div style="margin-top:1rem; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:0.75rem; padding:0.85rem 1rem; font-size:0.83rem; color:#166534; line-height:1.5;">
+                🔒 <strong>완전 독립 프라이빗 보안:</strong> 대화 데이터 및 가족 정보는 외부 상용 클라우드(OpenAI 등)로 유출되지 않으며, 가정 내부 로컬 PC에서 100% 암호화 및 자체 추론 처리됩니다.
+            </div>
+        </div>
+    </div>
+</div>

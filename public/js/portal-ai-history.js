@@ -15,6 +15,40 @@
         content: '안녕하세요! JG 포털 AI 비서(LG EXAONE 3.5)입니다. 🇰🇷<br>궁금한 점이 있으시면 무엇이든 편하게 물어보세요! 😊'
     };
 
+    let activeWelcomeContent = DEFAULT_WELCOME_MSG.content;
+
+    /**
+     * 서버 설정의 첫 환영 인사말 동적 주입
+     */
+    function setCustomWelcomeMessage(rawText) {
+        if (!rawText || typeof rawText !== 'string' || !rawText.trim()) return;
+        // 이미 HTML 태그가 포함되어 있지 않다면 줄바꿈을 <br>로 변환
+        let formatted = rawText.trim();
+        if (!formatted.includes('<br>') && !formatted.includes('<p>')) {
+            formatted = formatted
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/\n/g, '<br>');
+        }
+        activeWelcomeContent = formatted;
+
+        // 현재 활성 세션이 아직 대화를 시작하지 않은 첫 인사말 상태(메시지 1개)라면 인사말 즉시 동기화
+        const sessions = loadAllSessions();
+        const activeId = getActiveSessionId();
+        if (sessions.length > 0) {
+            const curSession = sessions.find(s => s.id === activeId) || sessions[0];
+            if (curSession && curSession.messages && curSession.messages.length === 1 && curSession.messages[0].role === 'assistant') {
+                curSession.messages[0].content = activeWelcomeContent;
+                saveAllSessions(sessions);
+            }
+        }
+    }
+
+    function getCustomWelcomeMessage() {
+        return activeWelcomeContent;
+    }
+
     /**
      * 로컬 스토리지에서 전체 세션 배열 로드
      */
@@ -77,7 +111,11 @@
             title: customTitle || '새 대화',
             createdAt: now,
             updatedAt: now,
-            messages: [Object.assign({}, DEFAULT_WELCOME_MSG, { timestamp: now })]
+            messages: [{
+                role: 'assistant',
+                content: activeWelcomeContent,
+                timestamp: now
+            }]
         };
 
         sessions.unshift(newSession);
@@ -302,6 +340,8 @@
         renderHistoryList,
         formatRelativeTime,
         formatMessageDateTime,
+        setCustomWelcomeMessage,
+        getCustomWelcomeMessage,
         DEFAULT_WELCOME_MSG
     };
 

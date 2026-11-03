@@ -57,6 +57,10 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-modules-list', label: '서비스 모듈 목록', icon: '📋' },
         { id: 'subpane-modules-widgets', label: '대시보드 위젯 배치', icon: '🍱' },
         { id: 'subpane-modules-guide', label: '모듈 개발 가이드', icon: '📖' }
+    ],
+    'tab-ai': [
+        { id: 'subpane-ai-config', label: 'AI 비서 운영 설정', icon: '⚙️' },
+        { id: 'subpane-ai-status', label: 'AI 엔진 상태 및 점검', icon: '🤖' }
     ]
 };
 

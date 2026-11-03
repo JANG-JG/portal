@@ -253,6 +253,25 @@
                     </button>
                 </div>
             </div>
+
+            <!-- 그룹 11: AI 비서 관리 -->
+            <div class="admin-sidebar-group" id="sidebar-group-ai">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('ai')">
+                    <span class="admin-sidebar-parent-left">
+                        <span>🤖</span>
+                        <span>AI 비서 관리</span>
+                    </span>
+                    <span class="admin-sidebar-parent-chevron">▼</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-ai" data-sub="subpane-ai-config" onclick="switchAdminTabAndSub('tab-ai', 'subpane-ai-config')">
+                        <span>⚙️</span> AI 비서 운영 설정
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-ai" data-sub="subpane-ai-status" onclick="switchAdminTabAndSub('tab-ai', 'subpane-ai-status')">
+                        <span>🤖</span> AI 엔진 상태 및 점검
+                    </button>
+                </div>
+            </div>
         </nav>
         <div class="admin-sidebar-footer">
             <button class="btn-admin btn-admin-success btn-admin-sm" onclick="downloadAllDatabases()" style="width:100%; justify-content:center;">
@@ -323,6 +342,9 @@
                 </button>
                 <button class="admin-tab-btn" data-tab="tab-modules" onclick="switchAdminTab('tab-modules', this)">
                     🧩 서비스 모듈
+                </button>
+                <button class="admin-tab-btn" data-tab="tab-ai" onclick="switchAdminTab('tab-ai', this)">
+                    🤖 AI 비서
                 </button>
             </nav>
             <!-- 2단 서브메뉴 탭 (선택된 대메뉴에 따라 동적 주입) -->
@@ -542,6 +564,7 @@
     <script src="/js/admin-modules-manager.js"></script>
     <script src="/js/admin-metrics-renderer.js"></script>
     <script src="/js/admin-dashboard-config.js"></script>
+    <script src="/js/admin-ai.js"></script>
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>

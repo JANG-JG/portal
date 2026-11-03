@@ -7,9 +7,51 @@
 
     let isSending = false;
     let currentChatHistory = [];
+    let currentMaxPromptLength = 1000;
 
     // DOM 참조 캐싱
     let sidebarEl, backdropEl, messageScrollEl, messageContainerEl, promptInputEl, submitBtnEl, mobileTitleEl, historyListEl, historyCountEl;
+
+    async function loadAiRuntimeConfig() {
+        try {
+            const res = await fetch('/api/ai/config', { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.success && data.config) {
+                // 1. 최대 글자 수 한도 적용
+                if (data.config.maxPromptLength && Number.isInteger(data.config.maxPromptLength)) {
+                    currentMaxPromptLength = data.config.maxPromptLength;
+                    if (promptInputEl) {
+                        promptInputEl.maxLength = currentMaxPromptLength;
+                    }
+                    const charCounterEl = document.getElementById('aiCharCount');
+                    if (charCounterEl && (!promptInputEl || !promptInputEl.value.length)) {
+                        charCounterEl.textContent = `0/${currentMaxPromptLength}`;
+                        charCounterEl.title = `현재 글자 수 / 최대 ${currentMaxPromptLength.toLocaleString()}자`;
+                    }
+                    if (submitBtnEl) {
+                        submitBtnEl.title = `메시지 전송 (최대 ${currentMaxPromptLength.toLocaleString()}자)`;
+                    }
+                    const disclaimerEl = document.querySelector('.ai-disclaimer span');
+                    if (disclaimerEl) {
+                        disclaimerEl.textContent = `🛡️ 가족 데이터 전용 로컬 AI (LG EXAONE 3.5) • 1회 질문당 최대 ${currentMaxPromptLength.toLocaleString()}자`;
+                    }
+                }
+
+                // 2. 첫 환영 인사말 적용
+                if (data.config.welcomeMessage && window.JgAiHistory && typeof window.JgAiHistory.setCustomWelcomeMessage === 'function') {
+                    window.JgAiHistory.setCustomWelcomeMessage(data.config.welcomeMessage);
+                    const firstBubble = messageContainerEl ? messageContainerEl.querySelector('.ai-msg-bubble-assistant .ai-bubble-text') : null;
+                    const activeSession = window.JgAiHistory.getActiveSession();
+                    if (firstBubble && activeSession && activeSession.messages && activeSession.messages.length === 1) {
+                        firstBubble.innerHTML = window.JgAiHistory.getCustomWelcomeMessage();
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[AI Page] 런타임 설정 로드 실패 (기본값 유지):', e);
+        }
+    }
 
     function initPage() {
         sidebarEl = document.getElementById('aiSidebar');
@@ -27,6 +69,7 @@
         renderHistorySidebar();
         restoreActiveSession();
         checkUrlQueryParam();
+        loadAiRuntimeConfig();
     }
 
     /**
@@ -216,7 +259,7 @@
         promptInputEl.style.overflowY = 'hidden';
         const charCounterEl = document.getElementById('aiCharCount');
         if (charCounterEl) {
-            charCounterEl.textContent = '0/1000';
+            charCounterEl.textContent = `0/${currentMaxPromptLength}`;
             charCounterEl.classList.remove('warning', 'limit');
         }
     };
@@ -557,9 +600,10 @@
         const charCounterEl = document.getElementById('aiCharCount');
         function updateCharCount(len) {
             if (!charCounterEl) return;
-            charCounterEl.textContent = `${len}/1000`;
-            charCounterEl.classList.toggle('warning', len >= 900 && len < 1000);
-            charCounterEl.classList.toggle('limit', len >= 1000);
+            charCounterEl.textContent = `${len}/${currentMaxPromptLength}`;
+            const warnThreshold = Math.floor(currentMaxPromptLength * 0.9);
+            charCounterEl.classList.toggle('warning', len >= warnThreshold && len < currentMaxPromptLength);
+            charCounterEl.classList.toggle('limit', len >= currentMaxPromptLength);
         }
 
         function resizeInput() {

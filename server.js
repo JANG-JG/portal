@@ -108,7 +108,8 @@ function assembleAdminHtml() {
         'tab-backup.html',
         'tab-database.html',
         'tab-security.html',
-        'tab-modules.html'
+        'tab-modules.html',
+        'tab-ai.html'
     ];
 
     const panes = tabFiles.map(file => {

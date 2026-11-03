@@ -1,0 +1,190 @@
+/**
+ * 🤖 관리자 AI 비서 운영 관리 엔진 (admin-ai.js)
+ * - 첫 환영 인사말 및 1회 질문 글자 수 제한 설정 제어
+ * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화
+ */
+
+(function() {
+    'use strict';
+
+    /**
+     * AI 비서 설정 불러오기
+     */
+    async function loadAdminAiConfig() {
+        try {
+            const res = await fetch('/api/admin/ai', {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!res.ok) throw new Error('설정을 불러오지 못했습니다.');
+            const data = await res.json();
+            if (data.success && data.config) {
+                const welcomeInput = document.getElementById('inputAiWelcomeMessage');
+                const maxLenInput = document.getElementById('inputAiMaxPromptLength');
+
+                if (welcomeInput) welcomeInput.value = data.config.welcomeMessage || '';
+                if (maxLenInput) maxLenInput.value = data.config.maxPromptLength || 1000;
+
+                updateAiWelcomePreview();
+            }
+        } catch (err) {
+            console.error('[admin-ai] 설정 로드 오류:', err);
+            if (typeof showToast === 'function') {
+                showToast('AI 비서 설정을 불러오는 중 오류가 발생했습니다.', 'error');
+            }
+        }
+    }
+
+    /**
+     * AI 비서 설정 저장
+     */
+    async function saveAdminAiConfig(e) {
+        if (e && e.preventDefault) e.preventDefault();
+
+        const welcomeInput = document.getElementById('inputAiWelcomeMessage');
+        const maxLenInput = document.getElementById('inputAiMaxPromptLength');
+        if (!welcomeInput || !maxLenInput) return;
+
+        const welcomeMessage = welcomeInput.value.trim();
+        const maxPromptLength = parseInt(maxLenInput.value, 10);
+
+        if (!welcomeMessage) {
+            alert('새 대화 첫 환영 인사말을 입력해 주세요.');
+            welcomeInput.focus();
+            return;
+        }
+
+        if (isNaN(maxPromptLength) || maxPromptLength < 100 || maxPromptLength > 4000) {
+            alert('최대 글자 수는 100자에서 4,000자 사이로 설정해 주세요.');
+            maxLenInput.focus();
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/ai', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ welcomeMessage, maxPromptLength })
+            });
+
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || '저장 실패');
+            }
+
+            if (typeof showToast === 'function') {
+                showToast('AI 비서 설정이 성공적으로 저장되었습니다. ✅', 'success');
+            } else {
+                alert('AI 비서 설정이 성공적으로 저장되었습니다.');
+            }
+        } catch (err) {
+            console.error('[admin-ai] 설정 저장 오류:', err);
+            if (typeof showToast === 'function') {
+                showToast(`설정 저장 실패: ${err.message}`, 'error');
+            } else {
+                alert(`설정 저장 실패: ${err.message}`);
+            }
+        }
+    }
+
+    /**
+     * 환영 인사말 실시간 미리보기 및 글자 수 카운터
+     */
+    function updateAiWelcomePreview() {
+        const welcomeInput = document.getElementById('inputAiWelcomeMessage');
+        const previewEl = document.getElementById('aiWelcomeBubblePreview');
+        const counterEl = document.getElementById('aiWelcomeLengthCounter');
+        if (!welcomeInput) return;
+
+        const text = welcomeInput.value || '';
+        if (counterEl) {
+            counterEl.textContent = `${text.length}/500자`;
+        }
+
+        if (previewEl) {
+            if (!text.trim()) {
+                previewEl.textContent = '인사말을 입력하면 이곳에 실시간 표시됩니다.';
+                previewEl.style.color = '#94a3b8';
+            } else {
+                // XSS 방어 후 안전한 줄바꿈 <br> 변환
+                const safeText = text
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;')
+                    .replace(/\n/g, '<br>');
+                previewEl.innerHTML = safeText;
+                previewEl.style.color = '#1e293b';
+            }
+        }
+    }
+
+    /**
+     * 글자 수 프리셋 버튼 클릭
+     */
+    function setAiLengthPreset(len) {
+        const maxLenInput = document.getElementById('inputAiMaxPromptLength');
+        if (maxLenInput) {
+            maxLenInput.value = len;
+        }
+    }
+
+    /**
+     * 로컬 AI 노드 헬스체크
+     */
+    async function checkAdminAiHealth() {
+        const statusBadge = document.getElementById('adminAiStatusBadge');
+        const latencyEl = document.getElementById('adminAiStatusLatency');
+        if (statusBadge) statusBadge.textContent = '🟡 진단 중...';
+
+        const startTime = Date.now();
+        try {
+            const res = await fetch('/api/admin/ai/health', {
+                headers: { 'Accept': 'application/json' }
+            });
+            const latency = Date.now() - startTime;
+            const data = await res.json();
+
+            if (res.ok && data.success && data.health && data.health.healthy) {
+                if (statusBadge) {
+                    statusBadge.textContent = '🟢 정상 가동 중 (온라인)';
+                    statusBadge.style.color = '#10b981';
+                }
+                if (latencyEl) {
+                    latencyEl.textContent = `지연 시간: ${latency}ms (응답 양호)`;
+                }
+            } else {
+                if (statusBadge) {
+                    statusBadge.textContent = '🔴 연결 지연 또는 오프라인';
+                    statusBadge.style.color = '#ef4444';
+                }
+                if (latencyEl) {
+                    latencyEl.textContent = `확인 필요: 로컬 PC Ollama 데몬 상태를 점검하세요.`;
+                }
+            }
+        } catch (err) {
+            if (statusBadge) {
+                statusBadge.textContent = '🔴 점검 오류';
+                statusBadge.style.color = '#ef4444';
+            }
+            if (latencyEl) {
+                latencyEl.textContent = `네트워크 오류: ${err.message}`;
+            }
+        }
+    }
+
+    // 전역 노출
+    window.loadAdminAiConfig = loadAdminAiConfig;
+    window.saveAdminAiConfig = saveAdminAiConfig;
+    window.updateAiWelcomePreview = updateAiWelcomePreview;
+    window.setAiLengthPreset = setAiLengthPreset;
+    window.checkAdminAiHealth = checkAdminAiHealth;
+
+    // DOM 로드 시 초기화
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAdminAiConfig();
+    });
+})();
