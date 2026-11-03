@@ -274,7 +274,7 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                         if (parsed.done) {
                             isFinished = true;
                             const finalPart = splitThinkStream(rawAnswer, true);
-                            fullAnswer = finalPart.answer.trim();
+                            fullAnswer = koreanizeWeatherWords(finalPart.answer.trim());
                             sendSseEvent(res, 'done', {
                                 fullText: fullAnswer.trim(),
                                 thinkingText: (nativeThinking + finalPart.thinking).trim(),

@@ -7,7 +7,7 @@
 
 const { searchWikiContent } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
-const { describeFeelKo } = require('./weatherKo.util');
+const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 
 /**
  * 🛡️ 프롬프트 템플릿 탈취 및 제어 문자 인젝션 방어 유틸리티
@@ -116,7 +116,7 @@ function buildSelectiveContext(summaryContext, intents) {
         const medInfo = medication && medication.is_today_taken ? '오늘 복약 완료 ✅' : (medication ? '오늘 혈압약 아직 미복용 ⚠️' : '복약 정보 없음');
         let hospInfo = '예정된 진료 없음';
         if (hospital) {
-            hospInfo = `다음 진료: ${hospital.displayNextVisit || '미정'} (${hospital.nextVisitDDay || 'D-Day 미정'}), 잔여 처방약: ${hospital.remainingPills || 0}일분`;
+            hospInfo = `다음 진료: ${hospital.displayNextVisit || '미정'} (${hospital.nextVisitDDay || '디데이 미정'}), 잔여 처방약: ${hospital.remainingPills || 0}일분`;
         }
         parts.push(`- 🩺 혈압 건강: ${bloodInfo}`);
         parts.push(`- 💊 오늘 복약: ${medInfo}`);
@@ -144,7 +144,7 @@ function buildSelectiveContext(summaryContext, intents) {
             });
             if (urgentDdays.length > 0) {
                 const ddayStr = urgentDdays.slice(0, 3).map(d => `${d.title}(${d.dday || d.targetDate})`).join(', ');
-                parts.push(`- ⏳ 중요 D-Day: ${ddayStr}`);
+                parts.push(`- ⏳ 중요 디데이: ${ddayStr}`);
             }
         }
         if (wiki && Array.isArray(wiki.todos) && wiki.todos.length > 0) {
@@ -156,8 +156,10 @@ function buildSelectiveContext(summaryContext, intents) {
     // 3. 날씨 & 옷차림
     if (isOverview || intents.has('WEATHER')) {
         const feelKo = weather ? describeFeelKo(weather.feels_like || weather.temp) : '';
+        const weatherCityKo = (weather && weather.city) ? koreanizeWeatherWords(weather.city) : '서울';
+        const weatherCondKo = (weather && weather.condition) ? koreanizeWeatherWords(weather.condition) : '맑음';
         const weatherInfo = weather 
-            ? `${weather.city || '서울'} ${weather.temp || ''} (${weather.condition || '맑음'}), 습도 ${weather.humidity || '-'}${feelKo ? `, 체감 ${weather.feels_like || weather.temp} (${feelKo})` : ''}` 
+            ? `${weatherCityKo} ${weather.temp || ''} (${weatherCondKo}), 습도 ${weather.humidity || '-'}${feelKo ? `, 체감 ${weather.feels_like || weather.temp} (${feelKo})` : ''}` 
             : '날씨 정보 없음';
         parts.push(`- 🌤️ 날씨: ${weatherInfo}`);
     }
@@ -257,7 +259,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
     const dayPart = kstHour < 6 ? '새벽' : kstHour < 12 ? '아침/오전' : kstHour < 18 ? '낮/오후' : '저녁/밤';
     const currentTimeKo = `${ampm} ${hour12}시 ${kstMin}분`;
-    const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo} (24시간제 ${String(kstHour).padStart(2, '0')}:${kstMin}, ${dayPart}) KST`;
+    const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo} (24시간제 ${String(kstHour).padStart(2, '0')}:${kstMin}, ${dayPart}) 한국 표준시`;
     const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide].filter(Boolean).join('\n').trim();
 
     const systemPrompt = `당신은 JG 홈서버 가족의 하루를 돕는 다정하고 똑똑한 AI 비서입니다.
@@ -265,7 +267,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
 
 [대화 규칙]
 1. 상대방을 부를 때는 다른 이름이나 임의의 호칭을 쓰지 말고, 반드시 "${userName}님"으로만 부르세요.
-2. 모든 답변은 100% 자연스럽고 다정한 한국어 존댓말('~해요', '~에요', '~습니다')로 친절하게 답하세요. 영어를 쓰거나 번역하지 마세요.
+2. 모든 답변은 100% 자연스럽고 다정한 한국어 존댓말('~해요', '~에요', '~습니다')로 친절하게 답하세요. 날씨 표현(chilly, sunny, clear, cold 등)이나 외래어를 포함하여 영어 단어를 일절 섞지 말고, 반드시 '쌀쌀함', '맑음', '포근함' 등 100% 순수한 우리말 한국어로만 답변하세요.
 3. 브리핑처럼 지나치게 짧게 줄이지 마세요. 날씨, 실시간 뉴스, 경제/증시, 자산, 건강, 일정 등 정보 관련 질문은 [우리 집 참고 정보]를 꼼꼼히 살피고 필요한 맥락과 유용한 조언을 덧붙여 충분히 생각하고 친절하게 설명하세요.
 4. 없는 사실을 지어내거나 추측하는 거짓 답변(환각)은 절대 하지 마세요. 제공된 참고 정보나 실제 사실에 기반하여 정직하게 설명하세요.
 5. 현재 일시: ${currentDateTimeStr} (현재 시각: ${currentTimeKo})
