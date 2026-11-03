@@ -156,7 +156,7 @@
         messageContainerEl.innerHTML = '';
         currentChatHistory = [];
 
-        const title = (session && session.title) ? session.title : '우리 집 AI 비서';
+        const title = (session && session.title) ? session.title : 'AI 비서';
         if (mobileTitleEl) mobileTitleEl.textContent = title;
 
         const messages = (session && Array.isArray(session.messages)) ? session.messages : [];
@@ -182,9 +182,9 @@
         hero.className = 'ai-hero-card';
         hero.innerHTML = `
             <div class="ai-hero-icon">🤖</div>
-            <h2 class="ai-hero-title">우리 집 전용 AI 비서에게 물어보세요</h2>
+            <h2 class="ai-hero-title">AI 비서에게 무엇이든 물어보세요</h2>
             <p class="ai-hero-desc">
-                LG EXAONE 3.5 기반 로컬 AI가 가족의 <strong>건강·혈압, 자산·포트폴리오, 오늘 일정, 서버 상태, 가족 위키 지식</strong>까지 무엇이든 안전하게 분석해 드립니다.
+                LG EXAONE 3.5 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.
             </p>
         `;
         messageContainerEl.appendChild(hero);

@@ -135,24 +135,22 @@
             <div class="ai-chat-messages" id="aiChatMessages">
                 <div class="ai-bubble-row assistant">
                     <div class="ai-bubble">
-                        안녕하세요! JG 포털 전용 AI 비서(LG EXAONE 3.5)입니다. 🇰🇷<br>
-                        우리 집 <strong>자산 현황, 혈압 건강, 오늘 일정, 서버 인프라 상태, 최신 뉴스</strong>까지 무엇이든 편하게 물어보세요! 😊
+                        안녕하세요! JG 포털 AI 비서(LG EXAONE 3.5)입니다. 🇰🇷<br>
+                        궁금한 점이 있으시면 무엇이든 편하게 물어보세요! 😊
                     </div>
                 </div>
             </div>
 
             <!-- 빠른 질문 칩 바 (전체 서비스 통합) -->
             <div class="ai-quick-prompts">
-                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('우리 집 총 자산과 주요 주식 현황 분석해줘')">💰 자산 현황</button>
-                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('최근 혈압 상태와 오늘 복약 여부 알려줘')">🩺 혈압·복약</button>
-                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 챙겨야 할 가족 일정과 메모 알려줘')">📅 오늘 일정</button>
-                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('주서버와 보조서버 가동 상태 알려줘')">🖥️ 서버 상태</button>
+                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 챙겨야 할 주요 일정과 메모 알려줘')">📅 오늘 일정</button>
                 <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 주요 뉴스와 실시간 속보 알려줘')">📰 주요 뉴스</button>
                 <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('오늘 날씨와 외출 옷차림 팁 알려줘')">🌤️ 날씨 팁</button>
+                <button type="button" class="ai-prompt-chip" onclick="handleQuickPrompt('주서버와 보조서버 가동 상태 알려줘')">🖥️ 서버 상태</button>
             </div>
 
             <form class="ai-chat-input-bar" onsubmit="handleSendAiMessage(event)">
-                <input type="text" id="aiChatInput" class="ai-chat-input" placeholder="AI 비서에게 물어보세요 (예: 내 자산 얼마야?)..." autocomplete="off">
+                <input type="text" id="aiChatInput" class="ai-chat-input" placeholder="메시지를 입력하세요..." autocomplete="off">
                 <button type="submit" id="aiChatSendBtn" class="ai-chat-send-btn">전송</button>
             </form>
         `;

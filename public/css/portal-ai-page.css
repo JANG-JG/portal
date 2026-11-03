@@ -626,7 +626,7 @@ html, body {
 
 .ai-input-bottom-bar {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     width: 100%;
     margin-top: 6px;
@@ -636,7 +636,6 @@ html, body {
 .ai-input-bottom-left {
     display: flex;
     align-items: center;
-    padding-bottom: 4px;
     min-width: 0;
 }
 
@@ -648,7 +647,8 @@ html, body {
 }
 
 .ai-char-counter {
-    font-size: 0.72rem;
+    font-size: 1.05rem;
+    font-weight: 600;
     line-height: 1;
     color: var(--ai-text-muted);
     font-variant-numeric: tabular-nums;

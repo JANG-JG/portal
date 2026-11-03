@@ -12,7 +12,7 @@
 
     const DEFAULT_WELCOME_MSG = {
         role: 'assistant',
-        content: '안녕하세요! JG 포털 전용 AI 비서(LG EXAONE 3.5)입니다. 🇰🇷<br>우리 집 <strong>자산 현황, 혈압 건강, 오늘 일정, 서버 인프라 상태, 최신 뉴스</strong>까지 무엇이든 편하게 물어보세요! 😊'
+        content: '안녕하세요! JG 포털 AI 비서(LG EXAONE 3.5)입니다. 🇰🇷<br>궁금한 점이 있으시면 무엇이든 편하게 물어보세요! 😊'
     };
 
     /**
