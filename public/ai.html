@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AI 비서 - JG 포털</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="JG AI비서">
+    <meta name="color-scheme" content="light">
+
+    <!-- 스타일시트 -->
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/portal-ai-page.css">
+</head>
+<body>
+    <!-- 🌐 JG 통합 상단 내비게이션 바 -->
+    <div id="unified-nav-root" style="min-height: 54px;"></div>
+
+    <div class="ai-app-wrapper">
+        <!-- 1. 좌측 대화 관리 사이드바 (모바일은 슬라이드 드로어) -->
+        <aside class="ai-sidebar" id="aiSidebar">
+            <div class="ai-sidebar-header">
+                <div class="ai-sidebar-brand">
+                    <span class="ai-sidebar-avatar">🤖</span>
+                    <div class="ai-sidebar-title-wrap">
+                        <div class="ai-sidebar-title">우리 집 AI 비서</div>
+                        <div class="ai-sidebar-badge" id="aiSidebarModelBadge">LG 엑사원 3.5 🟢</div>
+                    </div>
+                </div>
+                <button type="button" class="ai-sidebar-close-btn" id="aiSidebarCloseBtn" onclick="toggleSidebar(false)" aria-label="사이드바 닫기">✕</button>
+            </div>
+
+            <div class="ai-sidebar-action">
+                <button type="button" class="ai-new-chat-btn" id="aiNewChatBtn" onclick="handleNewChatClick()">
+                    <span class="ai-new-chat-icon">➕</span>
+                    <span class="ai-new-chat-text">새 대화 시작하기</span>
+                </button>
+            </div>
+
+            <!-- 지난 대화 목록 -->
+            <div class="ai-history-section">
+                <div class="ai-history-section-title">
+                    <span>💬 지난 대화 목록</span>
+                    <span class="ai-history-count-badge" id="aiHistoryCount">0</span>
+                </div>
+                <div class="ai-sidebar-history-list" id="aiSidebarHistoryList">
+                    <!-- portal-ai-page.js에서 동적 렌더링 -->
+                </div>
+            </div>
+
+            <!-- 사이드바 하단 바로가기 메뉴 -->
+            <div class="ai-sidebar-footer">
+                <a href="/wiki" class="ai-footer-link">
+                    <span class="ai-footer-icon">📚</span>
+                    <span>가족 위키 지식</span>
+                </a>
+                <a href="/" class="ai-footer-link">
+                    <span class="ai-footer-icon">🏠</span>
+                    <span>메인 대시보드</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- 모바일 백드롭 딤 오버레이 -->
+        <div class="ai-sidebar-backdrop" id="aiSidebarBackdrop" onclick="toggleSidebar(false)"></div>
+
+        <!-- 2. 중앙 챗 캔버스 (대화 영역) -->
+        <main class="ai-main-canvas">
+            <!-- 모바일 슬림 헤더 -->
+            <header class="ai-mobile-header">
+                <button type="button" class="ai-mobile-menu-btn" onclick="toggleSidebar(true)" aria-label="대화 목록 열기">
+                    <span class="ai-menu-icon">☰</span>
+                </button>
+                <div class="ai-mobile-title-wrap">
+                    <span class="ai-mobile-title" id="aiMobileSessionTitle">우리 집 AI 비서</span>
+                </div>
+                <button type="button" class="ai-mobile-action-btn" onclick="handleNewChatClick()" title="새 대화">
+                    <span>➕</span>
+                </button>
+            </header>
+
+            <!-- 메시지 스크롤 컨테이너 -->
+            <div class="ai-messages-scroll" id="aiMessagesScroll">
+                <div class="ai-messages-container" id="aiMessagesContainer">
+                    <!-- 메시지 버블이 동적으로 마운트되는 영역 -->
+                </div>
+            </div>
+
+            <!-- 하단 고정 프롬프트 입력 영역 -->
+            <div class="ai-composer-wrapper" id="aiComposerWrapper">
+                <!-- 추천 질문 칩 바 -->
+                <div class="ai-prompt-chips-bar" id="aiPromptChipsBar">
+                    <button type="button" class="ai-chip-btn" onclick="sendQuickPrompt('우리 집 총 자산과 주요 주식 현황 분석해줘')">💰 자산 현황</button>
+                    <button type="button" class="ai-chip-btn" onclick="sendQuickPrompt('최근 혈압 상태와 오늘 복약 여부 알려줘')">🩺 혈압·복약</button>
+                    <button type="button" class="ai-chip-btn" onclick="sendQuickPrompt('오늘 챙겨야 할 가족 일정과 메모 알려줘')">📅 오늘 일정</button>
+                    <button type="button" class="ai-chip-btn" onclick="sendQuickPrompt('주서버와 보조서버 가동 상태 알려줘')">🖥️ 서버 상태</button>
+                    <button type="button" class="ai-chip-btn" onclick="sendQuickPrompt('오늘 주요 뉴스와 실시간 속보 알려줘')">📰 주요 뉴스</button>
+                    <button type="button" class="ai-chip-btn" onclick="sendQuickPrompt('오늘 날씨와 외출 옷차림 팁 알려줘')">🌤️ 날씨 팁</button>
+                    <button type="button" class="ai-chip-btn" onclick="sendQuickPrompt('가족 위키에 저장된 생활 팁 추천해줘')">📚 위키 추천</button>
+                </div>
+
+                <!-- 입력 폼 -->
+                <form class="ai-composer-form" id="aiComposerForm" onsubmit="handleComposerSubmit(event)">
+                    <div class="ai-input-box">
+                        <textarea 
+                            id="aiPromptInput" 
+                            class="ai-prompt-textarea" 
+                            rows="1" 
+                            placeholder="우리 집 건강, 자산, 일정, 위키 지식에 대해 물어보세요... (Shift+Enter 줄바꿈)" 
+                            autocomplete="off"
+                            maxlength="500"></textarea>
+                        <button type="submit" id="aiSubmitBtn" class="ai-send-btn" aria-label="메시지 전송" title="메시지 전송">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+
+                <div class="ai-disclaimer">
+                    <span>🛡️ 가족 데이터 전용 로컬 AI (LG EXAONE 3.5) • 외부 유출 없는 안전한 인프라</span>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 스크립트 (캐시 제어는 deploy.sh 및 server.js가 자동 처리) -->
+    <script src="/api/jg-ui" defer></script>
+    <script src="/js/portal-ai-history.js"></script>
+    <script src="/js/portal-ai-page.js"></script>
+</body>
+</html>

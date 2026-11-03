@@ -1,0 +1,812 @@
+/**
+ * 🤖 JG 포털 전용 AI 비서 풀스크린 페이지 스타일시트 (portal-ai-page.css)
+ * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 대응
+ */
+
+:root {
+    --ai-bg-main: #f8fafc;
+    --ai-bg-surface: #ffffff;
+    --ai-sidebar-bg: #f1f5f9;
+    --ai-sidebar-width: 270px;
+    --ai-border: #e2e8f0;
+    --ai-border-hover: #cbd5e1;
+    --ai-text-primary: #0f172a;
+    --ai-text-secondary: #475569;
+    --ai-text-muted: #64748b;
+    --ai-primary: #2563eb;
+    --ai-primary-hover: #1d4ed8;
+    --ai-primary-light: #eff6ff;
+    --ai-primary-border: #bfdbfe;
+    --ai-bubble-user: #2563eb;
+    --ai-bubble-user-text: #ffffff;
+    --ai-bubble-assistant: #ffffff;
+    --ai-bubble-border: #e2e8f0;
+    --ai-radius: 12px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    background-color: var(--ai-bg-main);
+    color: var(--ai-text-primary);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    overflow: hidden;
+}
+
+/* 전체 뷰포트 레이아웃 */
+.ai-app-wrapper {
+    display: flex;
+    width: 100%;
+    height: calc(100vh - 54px);
+    position: relative;
+    overflow: hidden;
+    background-color: var(--ai-bg-main);
+}
+
+/* ==========================================================================
+   1. 좌측 사이드바 (데스크톱 상시 고정 / 모바일 슬라이드 드로어)
+   ========================================================================== */
+.ai-sidebar {
+    width: var(--ai-sidebar-width);
+    height: 100%;
+    background-color: var(--ai-sidebar-bg);
+    border-right: 1px solid var(--ai-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 100;
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-sidebar-header {
+    padding: 1rem 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ai-border);
+    background-color: var(--ai-sidebar-bg);
+}
+
+.ai-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.ai-sidebar-avatar {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.ai-sidebar-title-wrap {
+    min-width: 0;
+}
+
+.ai-sidebar-title {
+    font-size: 0.98rem;
+    font-weight: 800;
+    color: var(--ai-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ai-sidebar-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #166534;
+    background-color: #dcfce7;
+    border: 1px solid #bbf7d0;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.ai-sidebar-close-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--ai-text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.ai-sidebar-close-btn:hover {
+    background-color: var(--ai-border);
+    color: var(--ai-text-primary);
+}
+
+.ai-sidebar-action {
+    padding: 0.85rem 1rem;
+}
+
+.ai-new-chat-btn {
+    width: 100%;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: #ffffff;
+    border: 1px solid var(--ai-border);
+    border-radius: var(--ai-radius);
+    color: var(--ai-text-primary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: all 0.15s ease;
+}
+
+.ai-new-chat-btn:hover {
+    background-color: var(--ai-primary-light);
+    border-color: var(--ai-primary-border);
+    color: var(--ai-primary);
+}
+
+/* 사이드바 대화 히스토리 목록 */
+.ai-history-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0.5rem 0.75rem;
+}
+
+.ai-history-section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--ai-text-muted);
+    padding: 0.35rem 0.5rem;
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+}
+
+.ai-history-count-badge {
+    background-color: #e2e8f0;
+    color: var(--ai-text-secondary);
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border-radius: 9999px;
+}
+
+.ai-sidebar-history-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding-right: 2px;
+}
+
+/* 개별 히스토리 아이템 */
+.ai-history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.7rem;
+    border-radius: 8px;
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+    gap: 0.5rem;
+}
+
+.ai-history-item:hover {
+    background-color: #e2e8f0;
+}
+
+.ai-history-item.active {
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--ai-border);
+}
+
+.ai-history-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.ai-history-item-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ai-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ai-history-item.active .ai-history-item-title {
+    color: var(--ai-primary);
+    font-weight: 700;
+}
+
+.ai-history-item-meta {
+    font-size: 0.72rem;
+    color: var(--ai-text-muted);
+    margin-top: 2px;
+}
+
+.ai-history-del-btn {
+    opacity: 0;
+    background: transparent;
+    border: none;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    color: var(--ai-text-muted);
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.ai-history-item:hover .ai-history-del-btn {
+    opacity: 1;
+}
+
+.ai-history-del-btn:hover {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+/* 사이드바 푸터 */
+.ai-sidebar-footer {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--ai-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    background-color: var(--ai-sidebar-bg);
+}
+
+.ai-footer-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 6px;
+    color: var(--ai-text-secondary);
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.ai-footer-link:hover {
+    background-color: #e2e8f0;
+    color: var(--ai-text-primary);
+}
+
+.ai-footer-icon {
+    font-size: 1rem;
+}
+
+/* ==========================================================================
+   2. 중앙 메인 챗 캔버스
+   ========================================================================== */
+.ai-main-canvas {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--ai-bg-main);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 모바일 슬림 헤더 */
+.ai-mobile-header {
+    display: none;
+    height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.85rem;
+    background-color: var(--ai-bg-surface);
+    border-bottom: 1px solid var(--ai-border);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.ai-mobile-menu-btn, .ai-mobile-action-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--ai-text-primary);
+    padding: 6px 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-mobile-title-wrap {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    padding: 0 0.5rem;
+}
+
+.ai-mobile-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--ai-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+    max-width: 100%;
+}
+
+/* 메시지 스크롤 영역 */
+.ai-messages-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 1rem 0.5rem 1rem;
+    scroll-behavior: smooth;
+}
+
+.ai-messages-container {
+    width: 100%;
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding-bottom: 1rem;
+}
+
+/* 웰컴 히어로 카드 (첫 화면) */
+.ai-hero-card {
+    background: #ffffff;
+    border: 1px solid var(--ai-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    margin: 1.5rem auto;
+    max-width: 680px;
+    width: 100%;
+}
+
+.ai-hero-icon {
+    font-size: 2.75rem;
+    margin-bottom: 0.65rem;
+}
+
+.ai-hero-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--ai-text-primary);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.02em;
+}
+
+.ai-hero-desc {
+    font-size: 0.92rem;
+    color: var(--ai-text-secondary);
+    line-height: 1.55;
+    margin-bottom: 1.25rem;
+}
+
+/* 메시지 버블 행 */
+.ai-bubble-row {
+    display: flex;
+    width: 100%;
+    margin-bottom: 0.15rem;
+}
+
+.ai-bubble-row.user {
+    justify-content: flex-end;
+}
+
+.ai-bubble-row.assistant {
+    justify-content: flex-start;
+}
+
+.ai-bubble-wrap {
+    display: flex;
+    flex-direction: column;
+    max-width: 82%;
+    min-width: 0;
+}
+
+.ai-bubble-row.user .ai-bubble-wrap {
+    align-items: flex-end;
+}
+
+.ai-bubble-row.assistant .ai-bubble-wrap {
+    align-items: flex-start;
+}
+
+/* 말풍선 본체 */
+.ai-bubble {
+    padding: 0.85rem 1.15rem;
+    border-radius: 16px;
+    font-size: 0.95rem;
+    line-height: 1.62;
+    word-break: break-word;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.ai-bubble-row.user .ai-bubble {
+    background-color: var(--ai-bubble-user);
+    color: var(--ai-bubble-user-text);
+    border-bottom-right-radius: 4px;
+}
+
+.ai-bubble-row.assistant .ai-bubble {
+    background-color: var(--ai-bubble-assistant);
+    color: var(--ai-text-primary);
+    border: 1px solid var(--ai-bubble-border);
+    border-bottom-left-radius: 4px;
+}
+
+/* 시간 스탬프 */
+.ai-bubble-time {
+    font-size: 0.7rem;
+    color: var(--ai-text-muted);
+    margin-top: 4px;
+    padding: 0 4px;
+}
+
+/* ==========================================================================
+   3. 마크다운 및 태그 서식 스타일링 (<strong> 등 완벽 지원)
+   ========================================================================== */
+.ai-bubble strong,
+.ai-bubble b {
+    font-weight: 750 !important;
+    color: inherit;
+}
+
+.ai-bubble-row.assistant .ai-bubble strong,
+.ai-bubble-row.assistant .ai-bubble b {
+    color: #0f172a;
+}
+
+.ai-bubble mark.ai-highlight {
+    background-color: #fef08a;
+    color: #854d0e;
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+.ai-bubble code.ai-inline-code {
+    background-color: #f1f5f9;
+    color: #0f172a;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    font-size: 0.88em;
+}
+
+.ai-bubble-row.user code.ai-inline-code {
+    background-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+}
+
+.ai-bubble a.ai-link {
+    color: #2563eb;
+    text-decoration: underline;
+    font-weight: 700;
+}
+
+.ai-bubble-row.user a.ai-link {
+    color: #ffffff;
+}
+
+/* 코드 블록 */
+.ai-code-wrapper {
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 8px 0;
+    border: 1px solid #1e293b;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.ai-code-header {
+    background: #1e293b;
+    padding: 5px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-family: monospace;
+}
+
+.ai-code-copy-btn {
+    background: transparent;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ai-code-copy-btn:hover {
+    background: #334155;
+    color: #ffffff;
+}
+
+.ai-code-pre {
+    padding: 10px 14px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: #f8fafc;
+    font-family: 'JetBrains Mono', Consolas, monospace;
+    margin: 0;
+}
+
+/* 위키 저장 버튼 */
+.ai-bubble-wiki-action {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ai-bubble-wiki-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #065f46;
+    background-color: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.ai-bubble-wiki-btn:hover {
+    background-color: #d1fae5;
+    border-color: #6ee7b7;
+    transform: translateY(-1px);
+}
+
+.ai-bubble-wiki-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* 타이핑 인디케이터 */
+.ai-typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ai-text-muted);
+    font-size: 0.85rem;
+}
+
+.ai-typing-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--ai-primary);
+    border-radius: 50%;
+    animation: aiPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes aiPulse {
+    0%, 100% { transform: scale(0.6); opacity: 0.4; }
+    50% { transform: scale(1.1); opacity: 1; }
+}
+
+/* ==========================================================================
+   4. 하단 고정 입력 영역 (모바일 360px 완벽 대응)
+   ========================================================================== */
+.ai-composer-wrapper {
+    background-color: var(--ai-bg-surface);
+    border-top: 1px solid var(--ai-border);
+    padding: 0.65rem 1rem 0.85rem 1rem;
+    width: 100%;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.ai-prompt-chips-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+.ai-prompt-chips-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.ai-chip-btn {
+    white-space: nowrap;
+    background: #f8fafc;
+    border: 1px solid var(--ai-border);
+    border-radius: 9999px;
+    padding: 5px 11px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--ai-text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.ai-chip-btn:hover {
+    background: var(--ai-primary-light);
+    border-color: var(--ai-primary-border);
+    color: var(--ai-primary);
+}
+
+.ai-composer-form {
+    max-width: 860px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.ai-input-box {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    background: #ffffff;
+    border: 1.5px solid var(--ai-border);
+    border-radius: 20px;
+    padding: 0.45rem 0.55rem 0.45rem 1rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-input-box:focus-within {
+    border-color: var(--ai-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.ai-prompt-textarea {
+    flex: 1;
+    min-height: 24px;
+    max-height: 120px;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.45;
+    color: var(--ai-text-primary);
+    background: transparent;
+    padding: 3px 0;
+    box-sizing: border-box;
+}
+
+.ai-prompt-textarea::placeholder {
+    color: #94a3b8;
+}
+
+.ai-send-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background-color: var(--ai-primary);
+    color: #ffffff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s ease;
+}
+
+.ai-send-btn:hover {
+    background-color: var(--ai-primary-hover);
+    transform: scale(1.04);
+}
+
+.ai-send-btn:disabled {
+    background-color: #cbd5e1;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.ai-disclaimer {
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--ai-text-muted);
+    margin-top: 0.45rem;
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ==========================================================================
+   5. 모바일 360px 반응형 미디어 쿼리
+   ========================================================================== */
+@media (max-width: 768px) {
+    .ai-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 82%;
+        max-width: 320px;
+        height: 100%;
+        transform: translateX(-100%);
+        box-shadow: none;
+        z-index: 100000;
+    }
+
+    .ai-sidebar.active {
+        transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .ai-sidebar-close-btn {
+        display: block;
+    }
+
+    .ai-sidebar-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.45);
+        backdrop-filter: blur(2px);
+        z-index: 99999;
+    }
+
+    .ai-sidebar-backdrop.active {
+        display: block;
+    }
+
+    .ai-mobile-header {
+        display: flex;
+    }
+
+    .ai-messages-scroll {
+        padding: 0.85rem 0.65rem 0.5rem 0.65rem;
+    }
+
+    .ai-bubble-wrap {
+        max-width: 90%;
+    }
+
+    .ai-bubble {
+        padding: 0.75rem 0.95rem;
+        font-size: 0.9rem;
+    }
+
+    .ai-composer-wrapper {
+        padding: 0.5rem 0.65rem 0.75rem 0.65rem;
+    }
+
+    .ai-history-del-btn {
+        opacity: 1;
+    }
+}

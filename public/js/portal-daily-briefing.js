@@ -304,9 +304,9 @@
                     aiBadge.style.background = '#dbeafe';
                     aiBadge.style.color = '#1d4ed8';
                     aiBadge.style.cursor = 'pointer';
-                    aiBadge.title = '클릭 시 우리 집 AI 비서 챗봇 열기';
+                    aiBadge.title = '클릭 시 우리 집 AI 비서 대화방 열기';
                     aiBadge.onclick = () => {
-                        if (typeof window.openAiChatModal === 'function') window.openAiChatModal();
+                        window.location.href = '/ai';
                     };
                 }
             }

@@ -211,6 +211,11 @@ app.get(['/kindergarten', '/kindergarten.html'], authenticateToken, (req, res) =
     sendHtml(res, 'kindergarten.html');
 });
 
+// 1-4. AI 비서 전용 풀스크린 대화 화면
+app.get(['/ai', '/ai.html', '/chat'], authenticateToken, (req, res) => {
+    sendHtml(res, 'ai.html');
+});
+
 // 1-4. 오프라인 대체 화면
 app.get('/offline.html', (req, res) => {
     sendHtml(res, 'offline.html');

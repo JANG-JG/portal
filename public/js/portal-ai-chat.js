@@ -80,7 +80,9 @@
             <span>🤖</span>
             <span>AI 비서</span>
         `;
-        fab.onclick = toggleAiChatWindow;
+        fab.onclick = function() {
+            window.location.href = '/ai';
+        };
         document.body.appendChild(fab);
 
         // 2. 모바일 백드롭 딤 오버레이 생성 (배경 터치 및 스크롤 방지)
@@ -221,8 +223,12 @@
         }
     };
 
-    window.openAiChatModal = function() {
-        window.toggleAiChatWindow(true);
+    window.openAiChatModal = function(initialQuery) {
+        if (initialQuery && typeof initialQuery === 'string') {
+            window.location.href = '/ai?q=' + encodeURIComponent(initialQuery);
+        } else {
+            window.location.href = '/ai';
+        }
     };
 
     /**
@@ -385,12 +391,59 @@
 
     function formatAiMarkdown(text) {
         if (!text) return '';
-        if (text.includes('class="ai-') || text.includes('<table')) return text;
-        let safe = escapeHtml(text);
-        safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        safe = safe.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:underline; font-weight:700;">$1</a>');
-        safe = safe.replace(/^[ \t]*-[ \t]+(.*)$/gm, '• $1');
-        return safe.replace(/\n/g, '<br>');
+
+        // 1. 코드 블록 보호 (``` ... ```)
+        const codeBlocks = [];
+        let str = String(text).replace(/```([a-zA-Z0-9_\-]+)?\n([\s\S]*?)```/g, (match, lang, code) => {
+            const placeholder = `__AI_CODE_BLOCK_${codeBlocks.length}__`;
+            codeBlocks.push({ lang: lang || 'text', code });
+            return placeholder;
+        });
+
+        // 2. 인라인 코드 보호 (`...`)
+        const inlineCodes = [];
+        str = str.replace(/`([^`\n]+)`/g, (match, code) => {
+            const placeholder = `__AI_INLINE_CODE_${inlineCodes.length}__`;
+            inlineCodes.push(code);
+            return placeholder;
+        });
+
+        // 3. XSS 방지를 위한 기본 HTML 이스케이프
+        let safe = escapeHtml(str);
+
+        // 4. 🛡️ [버그 수정] 안전한 서식 태그 복원 (<strong>, <b>, <em>, <mark>, <del>, <br>)
+        safe = safe.replace(/&lt;strong&gt;([\s\S]*?)&lt;\/strong&gt;/gi, '<strong>$1</strong>');
+        safe = safe.replace(/&lt;b&gt;([\s\S]*?)&lt;\/b&gt;/gi, '<strong>$1</strong>');
+        safe = safe.replace(/&lt;em&gt;([\s\S]*?)&lt;\/em&gt;/gi, '<em>$1</em>');
+        safe = safe.replace(/&lt;mark&gt;([\s\S]*?)&lt;\/mark&gt;/gi, '<mark class="ai-highlight">$1</mark>');
+        safe = safe.replace(/&lt;del&gt;([\s\S]*?)&lt;\/del&gt;/gi, '<del>$1</del>');
+        safe = safe.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
+
+        // 5. 마크다운 볼드/취소선/링크 변환
+        safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+        safe = safe.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+        safe = safe.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
+        safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color:#2563eb; text-decoration:underline; font-weight:700;">$1</a>');
+        safe = safe.replace(/^[ \t]*[-*][ \t]+(.*)$/gm, '• $1');
+
+        // 6. 인라인 코드 복원
+        safe = safe.replace(/__AI_INLINE_CODE_(\d+)__/g, (match, idx) => {
+            const item = inlineCodes[parseInt(idx, 10)];
+            return `<code style="background:#f1f5f9;color:#0f172a;padding:2px 5px;border-radius:4px;font-size:0.88em;font-family:monospace;">${escapeHtml(item || '')}</code>`;
+        });
+
+        // 7. 코드 블록 복원
+        safe = safe.replace(/__AI_CODE_BLOCK_(\d+)__/g, (match, idx) => {
+            const block = codeBlocks[parseInt(idx, 10)];
+            if (!block) return '';
+            return `<pre style="background:#1e293b;color:#f8fafc;padding:10px 12px;border-radius:8px;font-size:0.85rem;overflow-x:auto;margin:6px 0;font-family:monospace;"><code>${escapeHtml(block.code || '')}</code></pre>`;
+        });
+
+        // 8. 줄바꿈
+        safe = safe.replace(/\n/g, '<br>');
+        safe = safe.replace(/<\/pre><br>/g, '</pre>');
+
+        return safe;
     }
 
     function appendMessageBubble(role, text, timestamp) {
