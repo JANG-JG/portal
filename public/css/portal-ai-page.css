@@ -38,7 +38,8 @@
 
 html, body {
     height: 100%;
-    height: 100dvh; /* 모바일 동적 가용 뷰포트 100% 동기화 */
+    height: var(--ai-viewport-height, 100dvh); /* 모바일 동적 가용 뷰포트 100% 동기화 */
+    max-height: var(--ai-viewport-height, 100dvh);
     margin: 0;
     padding: 0;
     padding-bottom: 0 !important;
@@ -447,10 +448,14 @@ html, body {
     background-color: #f1f5f9;
 }
 
-/* 3. 서식 효과 (strong 등) */
+/* 3. 서식 효과 (strong, 제목 등) */
 .ai-bubble strong, .ai-bubble b { font-weight: 750 !important; color: inherit; }
 .ai-bubble-row.assistant .ai-bubble strong,
 .ai-bubble-row.assistant .ai-bubble b { color: #0f172a; }
+.ai-bubble .ai-md-heading { display: block; font-weight: 800; color: #0f172a; margin: 0.55rem 0 0.25rem 0; line-height: 1.45; }
+.ai-bubble .ai-md-h3 { font-size: 1.02rem; }
+.ai-bubble .ai-md-h4 { font-size: 0.94rem; }
+.ai-bubble .ai-md-heading:first-child { margin-top: 0; }
 .ai-bubble mark.ai-highlight { background-color: #fef08a; color: #854d0e; padding: 1px 4px; border-radius: 3px; }
 .ai-bubble code.ai-inline-code { background-color: #f1f5f9; color: #0f172a; padding: 2px 5px; border-radius: 4px; font-family: monospace; font-size: 0.88em; }
 .ai-bubble-row.user code.ai-inline-code { background-color: rgba(255, 255, 255, 0.22); color: #ffffff; }
@@ -642,6 +647,11 @@ html, body {
 
 /* 5. 모바일 반응형 (360px 대응) */
 @media (max-width: 768px) {
+    /* 가상 키보드 활성화 시 상단 포털 바 숨김 처리하여 54px 세로 공간 확보 및 윈도우 스크롤 밀림 원천 차단 */
+    body.keyboard-open #unified-nav-root {
+        display: none !important;
+    }
+
     .ai-sidebar {
         position: fixed;
         top: 0;
@@ -664,8 +674,15 @@ html, body {
         z-index: 99999;
     }
     .ai-sidebar-backdrop.active { display: block; }
-    .ai-mobile-header { display: flex; }
-    .ai-messages-scroll { padding: 0.75rem 0.55rem 0.4rem 0.55rem; }
+    .ai-mobile-header {
+        display: flex;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .ai-messages-scroll {
+        padding: 0.5rem 0.55rem 0.4rem 0.55rem;
+    }
     .ai-bubble-wrap { max-width: 90%; }
     .ai-bubble { padding: 0.7rem 0.9rem; font-size: 0.88rem; }
     .ai-composer-wrapper { padding: 0.4rem 0.55rem 0.5rem 0.55rem; }

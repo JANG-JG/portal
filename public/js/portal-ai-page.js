@@ -318,7 +318,9 @@
         safe = safe.replace(/&lt;del&gt;([\s\S]*?)&lt;\/del&gt;/gi, '<del>$1</del>');
         safe = safe.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
 
-        // 5. 마크다운 볼드/취소선/링크 변환
+        // 5. 마크다운 헤딩 (#, ##, ###, ####) 및 볼드/취소선/링크 변환
+        safe = safe.replace(/^[ \t]*#{1,2}[ \t]+(.*)$/gm, '<strong class="ai-md-heading ai-md-h3">$1</strong>');
+        safe = safe.replace(/^[ \t]*#{3,4}[ \t]+(.*)$/gm, '<strong class="ai-md-heading ai-md-h4">$1</strong>');
         safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
         safe = safe.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
         safe = safe.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
@@ -575,12 +577,55 @@
     }
 
     /**
-     * 안드로이드 가상 키보드(visualViewport) 대응
+     * 안드로이드 가상 키보드(visualViewport) 대응 및 상단 여백/스크롤 밀림 원천 방어
      */
     function initVisualViewport() {
-        if (window.visualViewport && window.innerWidth <= 768) {
-            window.visualViewport.addEventListener('resize', () => {
+        if (!window.visualViewport) return;
+
+        function handleViewportChange() {
+            const vv = window.visualViewport;
+            const vh = vv.height;
+            document.documentElement.style.setProperty('--ai-viewport-height', `${vh}px`);
+
+            if (window.innerWidth <= 768) {
+                // 키보드가 활성화되었는지 판단 (전체 높이 대비 140px 이상 줄어듦)
+                const isKeyboard = (window.innerHeight - vh > 140);
+                document.body.classList.toggle('keyboard-open', isKeyboard);
+
+                // 모바일 브라우저의 window 레벨 스크롤 강제 원복 (상단 여백 발생 방지)
+                if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0) {
+                    window.scrollTo(0, 0);
+                    document.documentElement.scrollTop = 0;
+                    document.body.scrollTop = 0;
+                }
+
                 scrollToBottom();
+            }
+        }
+
+        window.visualViewport.addEventListener('resize', handleViewportChange);
+        window.visualViewport.addEventListener('scroll', () => {
+            if (window.innerWidth <= 768 && window.scrollY !== 0) {
+                window.scrollTo(0, 0);
+            }
+        });
+
+        // 초기 가용 높이 세팅
+        handleViewportChange();
+
+        // 입력창 포커스/블러 시 추가 방어
+        if (promptInputEl) {
+            promptInputEl.addEventListener('focus', () => {
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    scrollToBottom();
+                }, 100);
+            });
+            promptInputEl.addEventListener('blur', () => {
+                setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    document.body.classList.remove('keyboard-open');
+                }, 100);
             });
         }
     }
