@@ -42,6 +42,7 @@ const adminRoutes = require('./routes/admin.routes');
 const wikiProxyRoutes = require('./routes/wiki.proxy.routes');
 const modulesRoutes = require('./routes/modules.routes');
 const aiRoutes = require('./routes/ai.routes');
+const aiHistoryRoutes = require('./routes/ai-history.routes');
 const kindergartenRoutes = require('./routes/kindergarten.routes');
 
 const app = express();
@@ -343,6 +344,7 @@ app.use('/api/modules', modulesRoutes);
 
 // 🤖 로컬 AI 비서 API (/api/ai/*)
 app.use('/', aiRoutes);
+app.use('/', aiHistoryRoutes);
 
 // 🏫 유치원 사진 수집 API (/api/kindergarten/*)
 app.use('/api/kindergarten', kindergartenRoutes);

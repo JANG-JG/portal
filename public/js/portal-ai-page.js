@@ -117,6 +117,12 @@
         restoreActiveSession();
         checkUrlQueryParam();
         loadAiRuntimeConfig();
+
+        // 🔄 서버 DB 대화 히스토리 동기화 완료 이벤트 감지
+        window.addEventListener('jg:ai-history-updated', () => {
+            renderHistorySidebar();
+            restoreActiveSession();
+        });
     }
 
     /**
@@ -213,9 +219,14 @@
             `;
 
             // 세션 선택 클릭
-            item.addEventListener('click', (e) => {
+            item.addEventListener('click', async (e) => {
                 if (e.target.closest('.ai-history-del-btn')) return;
                 window.JgAiHistory.setActiveSessionId(sess.id);
+                if (!sess.messages || sess.messages.length === 0) {
+                    if (window.JgAiHistory.fetchSessionDetailAsync) {
+                        await window.JgAiHistory.fetchSessionDetailAsync(sess.id);
+                    }
+                }
                 restoreActiveSession();
                 renderHistorySidebar();
                 window.toggleSidebar(false);
