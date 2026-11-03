@@ -38,10 +38,9 @@
 
 html, body {
     position: fixed;
-    top: 0;
+    top: var(--ai-viewport-top, 0px);
     left: 0;
     right: 0;
-    bottom: 0;
     width: 100%;
     height: 100%;
     height: var(--ai-viewport-height, 100dvh); /* 모바일 동적 가용 뷰포트 100% 동기화 */
@@ -783,6 +782,12 @@ html, body {
     /* 🛡️ 삼성 인터넷 일반 브라우징 모드 하단 툴바(주소창/네비게이션바) 가림 방지 가드 */
     body.is-samsung:not(.keyboard-open):not(.is-standalone) .ai-composer-wrapper {
         padding-bottom: calc(var(--ai-samsung-offset, 72px) + max(0.45rem, env(safe-area-inset-bottom, 8px))) !important;
+    }
+    /* 🛡️ 가상 키보드 활성화 시 (삼성/크롬/사파리 공통): 하단 여백 완전 제로화 및 키보드 직상단 밀착 */
+    body.keyboard-open .ai-composer-wrapper,
+    body.keyboard-open.is-samsung .ai-composer-wrapper,
+    body.keyboard-open.is-standalone .ai-composer-wrapper {
+        padding-bottom: 0.35rem !important;
     }
     .ai-history-del-btn { opacity: 1; }
     .ai-input-box {

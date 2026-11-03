@@ -608,8 +608,9 @@
             document.body.classList.add('is-samsung');
         }
 
-        // 초기 화면 높이 기록 (키보드 없는 평상시 전체 화면 높이 기준)
-        let baseInnerHeight = Math.max(window.innerHeight, window.visualViewport.height || 0);
+        // 초기 화면 높이 및 너비 기록 (키보드 없는 평상시 세로 기준)
+        let baseInnerHeight = Math.max(window.innerHeight, (window.visualViewport && window.visualViewport.height) || 0);
+        let lastInnerWidth = window.innerWidth;
 
         function resetWindowScroll() {
             if (window.scrollY !== 0 || document.documentElement.scrollTop !== 0 || document.body.scrollTop !== 0) {
@@ -622,12 +623,17 @@
         function handleViewportChange() {
             const vv = window.visualViewport;
             const vh = vv ? vv.height : window.innerHeight;
+            const vTop = (vv && vv.offsetTop) ? vv.offsetTop : 0;
+
             document.documentElement.style.setProperty('--ai-viewport-height', `${vh}px`);
+            document.documentElement.style.setProperty('--ai-viewport-top', `${vTop}px`);
 
             if (window.innerWidth <= 768) {
-                // 키보드 열림 판단: 초기 전체 화면 높이 대비 120px 이상 줄어듦
-                const currentH = vh || window.innerHeight;
-                const isKeyboard = (baseInnerHeight - currentH > 120);
+                // 키보드 열림 판단: 입력창 포커스 중이거나 화면 높이가 100px 이상 줄어듦
+                const isInputFocused = (document.activeElement === promptInputEl);
+                const heightDrop = baseInnerHeight - vh;
+                const isKeyboard = isInputFocused || (heightDrop > 100);
+
                 document.body.classList.toggle('keyboard-open', isKeyboard);
 
                 // 웹앱이 아닌 일반 삼성 브라우징 모드에서만 하단 툴바 오프셋 계산 (웹앱은 툴바 없으므로 0px)
@@ -649,7 +655,14 @@
                     document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
                 }
 
-                // 모바일 브라우저의 window 레벨 스크롤 강제 원복 (바닥 j-jg.cc 워터마크 및 공백 차단)
+                // 키보드가 닫혀 있고 포커스가 없을 때만 baseInnerHeight 갱신 (키보드 개폐 도중 오염 방지)
+                if (!isKeyboard && !isInputFocused) {
+                    if (vh > baseInnerHeight || Math.abs(window.innerWidth - lastInnerWidth) > 50) {
+                        baseInnerHeight = vh;
+                        lastInnerWidth = window.innerWidth;
+                    }
+                }
+
                 resetWindowScroll();
                 scrollToBottom();
             }
@@ -658,14 +671,11 @@
         window.visualViewport.addEventListener('resize', handleViewportChange);
         window.visualViewport.addEventListener('scroll', () => {
             if (window.innerWidth <= 768) {
-                resetWindowScroll();
+                handleViewportChange();
             }
         });
 
         window.addEventListener('resize', () => {
-            if (!document.body.classList.contains('keyboard-open')) {
-                baseInnerHeight = Math.max(window.innerHeight, window.visualViewport ? window.visualViewport.height : 0);
-            }
             handleViewportChange();
         });
 
@@ -678,16 +688,23 @@
         // 초기 가용 높이 세팅
         handleViewportChange();
 
-        // 입력창 포커스/블러 시 가상 키보드 스크롤 밀림 방어
+        // 입력창 포커스/블러 시 가상 키보드 스크롤 밀림 방어 및 즉각 키보드 밀착 모드 전환
         if (promptInputEl) {
             promptInputEl.addEventListener('focus', () => {
+                document.body.classList.add('keyboard-open');
+                document.documentElement.style.setProperty('--ai-samsung-offset', '0px');
                 resetWindowScroll();
-                setTimeout(resetWindowScroll, 30);
                 setTimeout(() => {
+                    handleViewportChange();
+                    resetWindowScroll();
+                }, 30);
+                setTimeout(() => {
+                    handleViewportChange();
                     resetWindowScroll();
                     scrollToBottom();
                 }, 120);
                 setTimeout(() => {
+                    handleViewportChange();
                     resetWindowScroll();
                     scrollToBottom();
                 }, 300);
