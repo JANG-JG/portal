@@ -20,11 +20,25 @@ const { isRemoteDb, getSyncStatus } = require('./remoteDbSync.service');
 // 동적 등록된 서비스 모듈 DB 인스턴스 캐시 풀 (절대 경로별 인스턴스 싱글톤 관리)
 const DYNAMIC_DB_POOL = new Map();
 
-// 자동 스캔 제외 디렉토리 목록
+// 자동 스캔 제외 디렉토리 목록 (개발 PC 및 임시/캐시 폴더)
 const IGNORE_DIRS = new Set([
-    'node_modules', '.git', '.gemini', 'backups', 'backup',
-    'tmp', 'temp', 'scratch', 'dist', 'build', '.cache', 'logs'
+    'node_modules', '.git', '.gemini', '.aider', 'backups', 'backup',
+    'tmp', 'temp', 'scratch', 'dist', 'build', '.cache', 'logs',
+    'portal-dev', 'dev', 'development', 'staging', 'test', 'tests', 'fixtures',
+    'hp17', 'hp-17', 'hp_17'
 ]);
+
+/**
+ * 스캔 제외 대상 디렉토리 판별 (개발 PC HP 17 및 임시 폴더 차단)
+ */
+function isIgnoredDir(dirName) {
+    if (!dirName) return true;
+    if (dirName.startsWith('.')) return true;
+    const lower = dirName.toLowerCase();
+    if (IGNORE_DIRS.has(lower)) return true;
+    if (/(-dev$|^dev-|_dev$|hp17|hp-17)/i.test(lower)) return true;
+    return false;
+}
 
 /**
  * DB 파일 상대/절대 경로 해결
@@ -41,6 +55,7 @@ function resolveDbPath(p) {
 
 /**
  * 워크스페이스 내 모든 SQLite DB 파일 자동 감지 (Auto-Discovery)
+ * - 개발 PC(HP 17) 동기화 폴더 및 임시 중복 DB 파일 원천 배제
  */
 function findWorkspaceDbs(dir = WORKSPACE_ROOT, depth = 0) {
     if (depth > 3) return [];
@@ -49,14 +64,17 @@ function findWorkspaceDbs(dir = WORKSPACE_ROOT, depth = 0) {
         if (!fs.existsSync(dir)) return results;
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         for (const entry of entries) {
-            if (entry.name.startsWith('.')) continue;
             if (entry.isDirectory()) {
-                if (!IGNORE_DIRS.has(entry.name)) {
+                if (!isIgnoredDir(entry.name)) {
                     results = results.concat(findWorkspaceDbs(path.join(dir, entry.name), depth + 1));
                 }
             } else if (entry.isFile()) {
                 if (/\.(db|sqlite|sqlite3)$/i.test(entry.name) && !/-(wal|shm|journal)$/i.test(entry.name)) {
-                    results.push(path.join(dir, entry.name));
+                    const fullPath = path.join(dir, entry.name);
+                    // 개발 PC(HP 17) 폴더, 임시 복사본(/portal/health.db), 테스트용 임시 파일 필터링
+                    if (/hp17|hp-17|portal-dev|\/portal\/health\.db/i.test(fullPath)) continue;
+                    if (/^(test|temp|backup|sample)|_(test|temp|bak)\./i.test(entry.name)) continue;
+                    results.push(fullPath);
                 }
             }
         }
@@ -122,7 +140,7 @@ function getDynamicDbMap() {
                     path: resolved,
                     isPrimaryForPath: isFirst,
                     isRemote,
-                    serverName: mod.serverName || (isRemote ? 'HP 보조 서버 (192.168.50.75)' : '메인 서버 (로컬)'),
+                    serverName: isRemote ? '💻 HP 보조 서버 (192.168.50.75)' : (mod.serverName || '📱 메인 서버 (로컬)'),
                     remoteHost: mod.remoteHost || null,
                     isAutoDiscovered: false
                 };
@@ -141,6 +159,7 @@ function getDynamicDbMap() {
                 const baseName = path.basename(filePath, path.extname(filePath));
                 const key = `auto_${baseName}`.replace(/[^a-zA-Z0-9_]/g, '_');
                 const dbConn = getDbConnection(filePath);
+                const isSecondaryFile = /wiki|secondary/i.test(filePath);
 
                 map[key] = {
                     key: key,
@@ -148,9 +167,9 @@ function getDynamicDbMap() {
                     db: dbConn,
                     path: filePath,
                     isPrimaryForPath: true,
-                    isRemote: false,
-                    serverName: '메인 서버 (로컬 자동 감지)',
-                    remoteHost: null,
+                    isRemote: isSecondaryFile,
+                    serverName: isSecondaryFile ? '💻 HP 보조 서버 (192.168.50.75)' : '📱 메인 서버 (로컬 자동 감지)',
+                    remoteHost: isSecondaryFile ? '192.168.50.75' : null,
                     isAutoDiscovered: true
                 };
             }
