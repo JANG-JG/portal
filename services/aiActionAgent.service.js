@@ -9,6 +9,11 @@ const { db, portalDb } = require('./db');
 const { encryptCalendarText, encryptMemoText } = require('./crypto.service');
 const { classifyBloodPressure } = require('./bloodClassifier.util');
 const { ADMIN_USERS } = require('../config/constants');
+const {
+    parseNotifyTimingFromPrompt,
+    getNotifyTimingDisplay,
+    cleanCalendarTitle
+} = require('./calendarTimingParser.util');
 
 const isAdminUser = (u) => !!(u && (u.role === 'admin' || (u.username && ADMIN_USERS && (ADMIN_USERS.has ? ADMIN_USERS.has(u.username) : ADMIN_USERS.includes(u.username)))));
 const isAdminPageQuery = (p) => typeof p === 'string' && /(관리자\s*(페이지|화면|메뉴|설정|계정|비번|비밀번호)|admin\s*(page|view)?|마스터\s*비번|db\s*(인스펙터|관리|원시)|서버\s*설정\s*(변경|수정))/i.test(p);
@@ -108,7 +113,7 @@ function parseKoreanDateTime(text) {
     // 5. 시간 파싱 (HH:mm 포맷 우선 또는 오전/오후/저녁/아침/새벽/밤 H시 (M분|반))
     // ⚠️ '1시간 전'과 같은 알림 시간 표현이 '1시'로 오인되지 않도록 시(?![간명]) 음성 룩어헤드 적용
     const timeMatch = text.match(/(?:at|시간)?\s*([01]?\d|2[0-3]):([0-5]\d)/) ||
-                      text.match(/(오전|오후|저녁|아침|새벽|밤)?\s*(\d{1,2})\s*시(?![간명])\s*(?:(\d{1,2})\s*분|반)?/);
+                      text.match(/(오전|오후|저녁|아침|새벽|밤)?\s*(\d{1,2})\s*시(?![간명])\s*(?:(\d{1,2})\s*분(?!\s*전)|반)?/);
 
     if (timeMatch) {
         isAllDay = false;
@@ -146,8 +151,9 @@ function parseCalendarAction(prompt) {
     // 1. 기능 지원 여부 및 사용 방법 문의 가드
     if (/(지원\s*(돼|되나|하나|해요|됩니까)|가능\s*(해|한가|해요|합니까)|할\s*수\s*(있어|있나|있나요|있습니까)|어떻게\s*(해|하나요|등록해|잡아|써)|기능\s*(있어|있나요)|방법)/i.test(prompt)) return null;
 
-    // 2. 조회 / 추천 / 정리 / 검색 / 질문 의도 배제
-    const isQueryOrRecommend = /(추천|알려\s*(줘|달라|주세요|줄래|주라)|보여\s*(줘|달라|주세요|줄래)|정리\s*(해|해줘|해달라|해주세요)|요약|뭐\s*있|무엇이|어떤|어때|있니|있나요|있어\?|조회|검색|찾아|골라|안\s*될까|왜\s*안)/i.test(prompt);
+    // 2. 조회 / 추천 / 정리 / 검색 / 질문 의도 배제 (단, '~전에 알려줘' 알림 요청 문구는 제외)
+    const promptForQueryCheck = prompt.replace(/(?:\d+\s*분|(?:한|두|세|\d+)\s*시간|(?:하루|이틀|\d+\s*일))\s*전(?:에)?\s*알려\s*(?:줘|달라|주세요|줄래|주라)/gi, '');
+    const isQueryOrRecommend = /(추천|알려\s*(줘|달라|주세요|줄래|주라)|보여\s*(줘|달라|주세요|줄래)|정리\s*(해|해줘|해달라|해주세요)|요약|뭐\s*있|무엇이|어떤|어때|있니|있나요|있어\?|조회|검색|찾아|골라|안\s*될까|왜\s*안)/i.test(promptForQueryCheck);
     const hasExplicitCalendarCommand = /(?:캘린더|스케줄|일정|약속)\s*(?:에|으로)?\s*(?:등록|추가|잡아|예약)\s*(?:해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)/i.test(prompt);
     if (isQueryOrRecommend && !hasExplicitCalendarCommand) return null;
 
@@ -159,8 +165,9 @@ function parseCalendarAction(prompt) {
     const promptWithoutAdjectives = prompt.replace(/(?:저장|등록|추가|기록|예약)된/g, '');
     const dt = parseKoreanDateTime(prompt);
 
-    // 5. 명확한 등록 동사 판별
-    const hasRegisterVerb = /(등록|추가|잡아|넣어|예약)\s*(해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)|(?:일정|스케줄|약속|캘린더)\s*(?:저장|기록)\s*(?:해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)/i.test(promptWithoutAdjectives);
+    // 5. 명확한 등록 동사 판별 ('~전에 알려줘' 리마인더 요청 동사 포함)
+    const hasReminderVerb = /(?:\d+\s*분|(?:한|두|세|\d+)\s*시간|(?:하루|이틀|\d+\s*일))\s*전(?:에)?\s*알려/i.test(prompt);
+    const hasRegisterVerb = /(등록|추가|잡아|넣어|예약)\s*(해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)|(?:일정|스케줄|약속|캘린더)\s*(?:저장|기록)\s*(?:해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)/i.test(promptWithoutAdjectives) || hasReminderVerb;
     const hasCalendarKeyword = /(일정|약속|스케줄|캘린더|행사)/i.test(prompt);
 
     const isValidCalendarCommand = (hasCalendarKeyword && hasRegisterVerb) ||
@@ -169,26 +176,11 @@ function parseCalendarAction(prompt) {
 
     if (!isValidCalendarCommand) return null;
 
-    // 알림 설정 파싱 (exact, 10m, 30m, 1h, 1d)
-    let notifyTiming = /10분\s*전/.test(prompt) ? '10m' : (/30분\s*전/.test(prompt) ? '30m' : (/1시간\s*전/.test(prompt) ? '1h' : (/(1일|하루)\s*전/.test(prompt) ? '1d' : 'exact')));
+    // 알림 설정 파싱 (exact, 5m, 10m, 15m, 30m, 1h, 2h, 3h, 1d, 2d, custom, allday)
+    const notifyTiming = parseNotifyTimingFromPrompt(prompt, dt.isAllDay);
 
     // 제목 정제
-    let cleanTitle = prompt
-        .replace(/\s*(?:을|를)?\s*(?:정시|(?:10|30)\s*분\s*전|1\s*시간\s*전|(?:1\s*일|하루)\s*전)?\s*(?:에)?\s*알림\s*(?:울리게|설정(?:해줘)?|으로)?/gi, '')
-        .replace(/정시에\s*/gi, '')
-        .replace(/\s*(?:을|를)?\s*(?:확인하고\s*)?(?:등록|추가|잡아|넣어|적어|기록|저장|예약)\s*(?:해줘|해\s*주세요|해주세요|줄래|바래|요|부탁(?:해|드립니다)?|할래)?/gi, '')
-        .replace(/\s*(?:을|를)?\s*(?:잡아줘|넣어줘|적어줘|기록해줘|저장해줘|등록해줘|추가해줘|예약해줘)/gi, '')
-        .replace(/(?:해줘|해\s*주세요|해주세요|줄래|바래|부탁해|부탁드립니다|줘)\s*$/gi, '')
-        .replace(/(?:캘린더|스케줄|일정)(?:에|으로|을|를)?/gi, '')
-        .replace(/(?:오늘|내일|모레|글피|이번\s*주|다음\s*주|[월화수목금토일]요일)/gi, '')
-        .replace(/(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일|\d{1,2}\/\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|\d+\s*일\s*(?:뒤|후)/gi, '')
-        .replace(/(?:오전|오후|저녁|아침|새벽|밤)?\s*\d{1,2}\s*시(?![간명])(?:\s*\d{1,2}\s*분|반)?|[0-2]?\d:[0-5]\d/gi, '')
-        .replace(/^[,\s.:;~-]+|[,\s.:;~-]+$/g, '').trim()
-        .replace(/^(?:에|으로|은|는|이|가|을|를|좀|새로|새로운|내용은)\s+/gi, '')
-        .replace(/\s+(?:을|를|은|는|이|가|에|으로|좀)$/gi, '')
-        .replace(/^[,\s.:;~-]+|[,\s.:;~-]+$/g, '').trim();
-
-    if (!cleanTitle || cleanTitle.length < 2) cleanTitle = '새로운 일정';
+    const cleanTitle = cleanCalendarTitle(prompt);
 
     // 카테고리 및 가족 공유 여부 판정
     let category = '개인';
@@ -356,8 +348,7 @@ async function executeAction({ action, user, userName }) {
                 }
 
                 const timeDesc = action.isAllDay ? '종일 일정 ☀️' : formatKoreanTime(action.eventTime);
-                const notifyMap = { 'exact': '정시 알림 🔔', '10m': '10분 전 알림 🔔', '30m': '30분 전 알림 🔔', '1h': '1시간 전 알림 🔔', '1d': '1일 전 알림 🔔' };
-                const notifyDesc = notifyMap[notifyTiming] || '정시 알림 🔔';
+                const notifyDesc = getNotifyTimingDisplay(notifyTiming);
                 const familyBadge = action.isFamily ? ' (가족 공유 👨‍👩‍👧‍👦)' : '';
                 const card = `새로운 일정을 **캘린더**에 성공적으로 등록했습니다! 📅\n\n` +
                     `- **일정 내용**: **${action.title}**${familyBadge}\n` +
