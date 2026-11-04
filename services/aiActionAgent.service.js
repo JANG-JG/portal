@@ -8,6 +8,7 @@
 const { db, portalDb } = require('./db');
 const { encryptCalendarText, encryptMemoText } = require('./crypto.service');
 const { classifyBloodPressure } = require('./bloodClassifier.util');
+const { invalidateSummaryCache } = require('./portalSummary.service');
 const { ADMIN_USERS } = require('../config/constants');
 const {
     parseNotifyTimingFromPrompt,
@@ -349,6 +350,7 @@ async function executeAction({ action, user, userName }) {
                         message: `일정 등록 중 오류가 발생했습니다: ${err.message}`
                     });
                 }
+                try { invalidateSummaryCache(); } catch (_) {}
 
                 const timeDesc = action.isAllDay ? '종일 일정 ☀️' : formatKoreanTime(action.eventTime);
                 const notifyDesc = getNotifyTimingDisplay(notifyTiming);

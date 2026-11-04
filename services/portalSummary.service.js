@@ -5,6 +5,7 @@ const { getCurrentCpuPercent, getRealMemoryInfo, getSecondaryServerStatus, getDi
 const { decryptMemoText } = require('./crypto.service');
 const { calculateReservationOpenDate, classifyBloodPressure } = require('./bloodClassifier.util');
 const { generateDailyBriefing } = require('./dailyBriefing.service');
+const { getTodayCalendarEvents } = require('./calendarSummary.service');
 const { getWikiSummary, fetchProactiveWikiTip } = require('./wikiSummary.service');
 const { getAlbumSummary } = require('./albumSummary.service');
 const { getTopNewsIssues } = require('./newsHeadline.service');
@@ -220,14 +221,8 @@ async function buildSummaryData() {
     // 7) 실시간 시장 지표 Promise
     const marketPromise = getLiveMarketData();
 
-    // 8) 오늘 캘린더 일정 Promise
-    const calendarPromise = new Promise((resolve) => {
-        db.all(
-            "SELECT id, title, event_date, event_time, category, color, is_all_day FROM calendar_events WHERE event_date = ? ORDER BY is_all_day DESC, event_time ASC LIMIT 5",
-            [todayKst],
-            (cErr, rows) => resolve(rows || [])
-        );
-    });
+    // 8) 오늘 캘린더 일정 Promise (portal.db 기반 복호화 조회)
+    const calendarPromise = getTodayCalendarEvents(1, true).catch(() => []);
 
     const [blood, medication, hospital, memoData, assetQuoteResult, weather, newsRecommendation, breakingArticles, marketData, todayEvents, wikiData, albumData, topIssues] = await Promise.all([
         bloodPromise,
@@ -453,12 +448,18 @@ async function attachUserWeather(baseSummary, reqUser) {
         } catch (_) {}
     }
 
-    // 🌅 능동형 스마트 데일리 브리핑 객체 생성 및 첨부
+    // 📅 사용자 맞춤형 오늘 캘린더 일정 조회 (portal.db 복호화 반영)
     const userRole = reqUser ? reqUser.role : 'admin';
     const userName = (reqUser && (reqUser.nickname || reqUser.username)) ? (reqUser.nickname || reqUser.username) : '가족';
+    const userId = reqUser ? reqUser.id : 1;
+    const isAdmin = (userRole === 'admin');
+    const userTodayEvents = await getTodayCalendarEvents(userId, isAdmin).catch(() => baseSummary.todayEvents || []);
+    result.todayEvents = userTodayEvents;
+
+    // 🌅 능동형 스마트 데일리 브리핑 객체 생성 및 첨부
     result.briefing = generateDailyBriefing({
         summary: result,
-        todayEvents: baseSummary.todayEvents || [],
+        todayEvents: userTodayEvents,
         userRole,
         userName
     });

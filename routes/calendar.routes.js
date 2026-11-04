@@ -4,6 +4,7 @@ const { db, newsDb, portalDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { ADMIN_USERS } = require('../config/constants');
 const { encryptCalendarText, decryptCalendarText } = require('../services/crypto.service');
+const { invalidateSummaryCache } = require('../services/portalSummary.service');
 
 // 📅 대한민국 주요 공휴일 (2026년)
 const KOREAN_HOLIDAYS_2026 = [
@@ -323,6 +324,7 @@ router.post('/events', authenticateToken, (req, res) => {
             console.error('[Calendar 등록 실패]:', err.message);
             return res.status(500).json({ success: false, message: '일정 등록 실패' });
         }
+        try { invalidateSummaryCache(); } catch (_) {}
         res.json({ success: true, id: this.lastID, message: '새 일정이 등록되었습니다.' });
     });
 });
@@ -381,6 +383,7 @@ router.put('/events/:id', authenticateToken, (req, res) => {
             console.error('[Calendar 일정 수정 실패]:', err.message);
             return res.status(500).json({ success: false, message: '일정 수정 실패' });
         }
+        try { invalidateSummaryCache(); } catch (_) {}
         res.json({ success: true, message: '일정이 수정되었습니다.' });
     });
 });
@@ -393,6 +396,7 @@ router.delete('/events/:id', authenticateToken, (req, res) => {
 
     portalDb.run("DELETE FROM calendar_events WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))", [eventId, userId, isAdmin], function(err) {
         if (err) return res.status(500).json({ success: false, message: '일정 삭제 실패' });
+        try { invalidateSummaryCache(); } catch (_) {}
         res.json({ success: true, message: '일정이 삭제되었습니다.' });
     });
 });
@@ -409,6 +413,7 @@ router.patch('/events/:id/toggle', authenticateToken, (req, res) => {
         WHERE id = ? AND (user_id = ? OR (? = 1 AND (is_family = 1 OR category = '가족')))
     `, [eventId, userId, isAdmin], function(err) {
         if (err) return res.status(500).json({ success: false, message: '완료 토글 실패' });
+        try { invalidateSummaryCache(); } catch (_) {}
         res.json({ success: true, message: '일정 상태가 변경되었습니다.' });
     });
 });

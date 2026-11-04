@@ -64,7 +64,7 @@ function fetchWikiApi(apiPath, timeoutMs = 3000) {
 }
 
 /**
- * 날씨/계절 기반 선제적 위키 생활 지식 팁 조회 (3초 타임아웃)
+ * 날씨/계절 기반 선제적 위키 생활 지식 팁 조회 (보조서버 API 우선, 실패 시 로컬 DB 일자별 순환 폴백)
  */
 async function fetchProactiveWikiTip(weather = null) {
     try {
@@ -75,13 +75,26 @@ async function fetchProactiveWikiTip(weather = null) {
             qs = `?condition=${cond}&temp=${temp}`;
         }
         const data = await fetchWikiApi(`/api/wiki/intel/proactive-tip${qs}`, 2500);
-        if (data && data.success && data.has_tip && data.tip) {
-            return data.tip;
-        }
-    } catch (e) {
-        // 무장애 원칙: 실패 시 조용히 무시
-    }
-    return null;
+        if (data && data.success && data.has_tip && data.tip) return data.tip;
+    } catch (_) {}
+
+    // 보조 서버 미응답 시 로컬 wikiDb 일자별 순환 폴백 (특정 팁 고착 원천 방지)
+    if (!wikiDb) return null;
+    return new Promise((resolve) => {
+        wikiDb.all("SELECT id, category, title, slug, content_md FROM wiki_pages ORDER BY updated_at DESC LIMIT 6", [], (err, rows) => {
+            if (err || !rows || rows.length === 0) return resolve(null);
+            const chosen = rows[new Date().getDate() % rows.length];
+            const rawExcerpt = (chosen.content_md || '').replace(/[#*`\r\n|]/g, ' ').replace(/\s+/g, ' ').trim();
+            const excerpt = rawExcerpt.slice(0, 90) + (rawExcerpt.length > 90 ? '...' : '');
+            resolve({
+                title: chosen.title,
+                slug: chosen.slug,
+                category: chosen.category || '생활',
+                reason: '오늘 우리 가족을 위한 추천 생활 지식이에요 💡',
+                excerpt
+            });
+        });
+    }).catch(() => null);
 }
 
 /**
@@ -99,22 +112,12 @@ async function getWikiSummary(weather = null) {
 
         if (liveData && liveData.success) {
             const ddays = (liveData.dday || []).slice(0, 5).map(r => ({
-                id: r.id,
-                category: r.category,
-                title: r.title,
-                targetDate: r.target_date,
-                dday: (r.dday_info && r.dday_info.dday_str) ? r.dday_info.dday_str : calcDDay(r.target_date),
-                memo: r.memo
+                id: r.id, category: r.category, title: r.title, targetDate: r.target_date,
+                dday: (r.dday_info && r.dday_info.dday_str) ? r.dday_info.dday_str : calcDDay(r.target_date), memo: r.memo
             }));
 
-            const todos = (liveData.todos || [])
-                .filter(t => !t.is_completed)
-                .slice(0, 5)
-                .map(r => ({
-                id: r.id,
-                content: r.content,
-                isRoutine: !!r.is_routine,
-                assignee: r.assignee || '가족'
+            const todos = (liveData.todos || []).filter(t => !t.is_completed).slice(0, 5).map(r => ({
+                id: r.id, content: r.content, isRoutine: !!r.is_routine, assignee: r.assignee || '가족'
             }));
 
             const pages = (liveData.pages || []).slice(0, 5);

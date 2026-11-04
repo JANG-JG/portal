@@ -1,0 +1,5 @@
+FROM gemma2:2b
+
+# VRAM 1,973MiB 상한 고정 및 100% GPU 가속 (데스크톱 GUI 여유 2GB 확보)
+PARAMETER num_ctx 2048
+PARAMETER num_gpu 99
