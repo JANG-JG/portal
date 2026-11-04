@@ -155,7 +155,7 @@ function searchNewsByKeyword(prompt, todayKst, limit = 5) {
     keywords.forEach(k => params.push(`%${k}%`, `%${k}%`));
     return new Promise(resolve => {
         newsDb.all(
-            `SELECT id, date, category_name, title, media_name, summary FROM news_articles
+            `SELECT id, date, category_name, title, media_name, summary, published_at FROM news_articles
              WHERE date >= ? AND (${cond}) ORDER BY id DESC LIMIT 200`,
             params,
             (err, rows) => {
@@ -179,4 +179,32 @@ function searchNewsByKeyword(prompt, todayKst, limit = 5) {
     });
 }
 
-module.exports = { getTopNewsIssues, searchNewsByKeyword };
+/**
+ * 최근 N시간 이내 속보 (발행 시각 최신순, 중복 제목 제거)
+ * @returns {Promise<object[]>}
+ */
+function getRecentBreaking(hours = 2, limit = 3) {
+    if (!newsDb) return Promise.resolve([]);
+    const threshold = new Date(Date.now() - hours * 3600000)
+        .toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).slice(0, 16);
+    return new Promise(resolve => {
+        newsDb.all(
+            `SELECT id, date, category_name, title, media_name, summary, published_at FROM news_articles
+             WHERE (category_name = '속보' OR title LIKE '%[속보]%' OR title LIKE '%(속보)%')
+               AND published_at >= ?
+             ORDER BY published_at DESC, id DESC LIMIT 30`,
+            [threshold],
+            (err, rows) => {
+                if (err || !rows) return resolve([]);
+                const seen = new Set();
+                resolve(rows.filter(r => {
+                    if (!r.title || seen.has(r.title)) return false;
+                    seen.add(r.title);
+                    return true;
+                }).slice(0, limit));
+            }
+        );
+    });
+}
+
+module.exports = { getTopNewsIssues, searchNewsByKeyword, getRecentBreaking };

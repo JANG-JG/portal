@@ -7,7 +7,7 @@
 
 const { searchWikiContent } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
-const { searchNewsByKeyword } = require('./newsHeadline.service');
+const { searchNewsByKeyword, getRecentBreaking } = require('./newsHeadline.service');
 const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 const { ADMIN_USERS } = require('../config/constants');
 
@@ -271,17 +271,28 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
         }
     }
 
-    // 뉴스 의도 + 구체 키워드가 있으면 뉴스 DB 키워드 검색 (최근 7일)
+    // 뉴스 의도 → 질문 키워드 검색(최근 7일) + 최근 2시간 속보를 병합해 실시간 근거로 주입
     let matchedNewsGuide = '';
     if (intents.has('NEWS')) {
         try {
             const todayKst = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
-            const { keywords, items } = await searchNewsByKeyword(cleanPrompt, todayKst, 5);
-            if (keywords.length > 0) {
-                matchedNewsGuide = items.length > 0
-                    ? `\n\n[질문 연관 뉴스 검색 결과 (키워드: ${keywords.join(', ')})]\n` +
-                      items.map(a => `■ [${a.category_name || '기타'}] ${a.title} (${a.media_name || '언론사 미상'}, ${a.date})${a.summary ? `\n- 요약: ${String(a.summary).slice(0, 160)}` : ''}`).join('\n')
-                    : `\n\n[질문 연관 뉴스 검색 결과 (키워드: ${keywords.join(', ')})]\n- 최근 7일 뉴스룸에 해당 키워드 기사가 없습니다. 지어내지 말고 찾지 못했다고 솔직히 안내하세요.`;
+            const nowHm = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' });
+            const wantsLatest = /(최신|속보|방금|지금|실시간|최근|새로운)/.test(cleanPrompt);
+            const [{ keywords, items }, breaking] = await Promise.all([
+                searchNewsByKeyword(cleanPrompt, todayKst, wantsLatest ? 4 : 6),
+                getRecentBreaking(2, wantsLatest ? 5 : 2)
+            ]);
+            // 속보성 질문은 속보 우선, 그 외에는 질문 연관 기사 우선 (중복 제목 제거, 최대 8건)
+            const ordered = wantsLatest ? [...breaking, ...items] : [...items, ...breaking];
+            const seen = new Set();
+            const merged = ordered.filter(a => a && a.title && !seen.has(a.title) && seen.add(a.title)).slice(0, 8);
+            const fmtTime = a => (a.published_at ? String(a.published_at).slice(5, 16) : (a.date || ''));
+            const header = `\n\n[질문 연관 뉴스 검색 결과 (기준 시각: 오늘 ${nowHm}${keywords.length ? `, 키워드: ${keywords.join(', ')}` : ''})]\n`;
+            if (merged.length > 0) {
+                matchedNewsGuide = header +
+                    merged.map(a => `■ [${a.category_name || '기타'}] ${a.title} (${a.media_name || '언론사 미상'}, ${fmtTime(a)})${a.summary ? `\n- 요약: ${String(a.summary).slice(0, 100)}` : ''}`).join('\n');
+            } else if (keywords.length > 0) {
+                matchedNewsGuide = header + '- 뉴스룸에서 해당 기사를 찾지 못했습니다. 지어내지 말고 찾지 못했다고 솔직히 안내하세요.';
             }
         } catch (e) {
             // 뉴스 검색 실패 시 무중단 진행
