@@ -83,6 +83,44 @@
                     </div>
                 </div>
 
+                <!-- 2-1. AI 모델 및 답변 길이(컨텍스트 창) 설정 -->
+                <div style="margin-bottom:1.5rem; border-top:1px solid #f1f5f9; padding-top:1.25rem;">
+                    <label style="display:block; font-weight:700; color:#1e293b; margin-bottom:0.5rem; font-size:0.9rem;">
+                        🧠 AI 모델 및 답변 길이 설정
+                    </label>
+                    <p style="font-size:0.82rem; color:#64748b; margin:0 0 0.6rem; line-height:1.4;">
+                        모델명을 비워 두면 서버 기본값(<span id="aiEnvModelHint">.env</span>)을 사용합니다. 답변 길이(컨텍스트 창)는 0이면 모델 기본값이며, 크게 할수록 긴 답변이 가능하지만 보조서버 메모리를 더 사용합니다. 저장 즉시 반영됩니다.
+                    </p>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap:0.75rem;">
+                        <div style="min-width:0;">
+                            <label style="display:block; font-size:0.83rem; font-weight:600; color:#475569; margin-bottom:0.35rem;">⚡ 빠른 대화 모델</label>
+                            <input type="text" id="inputAiChatModel" maxlength="100" placeholder="예: gemma2:jg" autocomplete="off"
+                                style="width:100%; max-width:100%; box-sizing:border-box; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
+                        </div>
+                        <div style="min-width:0;">
+                            <label style="display:block; font-size:0.83rem; font-weight:600; color:#475569; margin-bottom:0.35rem;">🧠 깊은 생각 모델</label>
+                            <input type="text" id="inputAiReasoningModel" maxlength="100" placeholder="예: exaone4:opt" autocomplete="off"
+                                style="width:100%; max-width:100%; box-sizing:border-box; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem;">
+                        </div>
+                        <div style="min-width:0;">
+                            <label style="display:block; font-size:0.83rem; font-weight:600; color:#475569; margin-bottom:0.35rem;">⚡ 빠른 대화 컨텍스트 창 (토큰)</label>
+                            <input type="number" id="inputAiChatNumCtx" min="0" max="131072" step="1024" value="0"
+                                style="width:100%; max-width:100%; box-sizing:border-box; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; font-weight:700; text-align:right;">
+                        </div>
+                        <div style="min-width:0;">
+                            <label style="display:block; font-size:0.83rem; font-weight:600; color:#475569; margin-bottom:0.35rem;">🧠 깊은 생각 컨텍스트 창 (토큰)</label>
+                            <input type="number" id="inputAiReasoningNumCtx" min="0" max="131072" step="1024" value="0"
+                                style="width:100%; max-width:100%; box-sizing:border-box; padding:0.6rem 0.75rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.95rem; font-weight:700; text-align:right;">
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:0.35rem; margin-top:0.6rem; flex-wrap:wrap;">
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiReasoningCtxPreset(0)">기본값</button>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiReasoningCtxPreset(8192)">깊은 생각 8K</button>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiReasoningCtxPreset(16384)">깊은 생각 16K (긴 답변)</button>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" onclick="setAiReasoningCtxPreset(32768)">깊은 생각 32K (메모리 주의)</button>
+                    </div>
+                </div>
+
                 <!-- 3. 대화창 대표 아이콘 및 히어로 카드 설정 -->
                 <div style="margin-bottom:1.5rem; border-top:1px solid #f1f5f9; padding-top:1.25rem;">
                     <label style="display:block; font-weight:700; color:#1e293b; margin-bottom:0.5rem; font-size:0.9rem;">

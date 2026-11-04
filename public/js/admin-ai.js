@@ -30,6 +30,20 @@
                 if (heroTitleInput) heroTitleInput.value = data.config.heroTitle || 'AI 비서에게 무엇이든 물어보세요';
                 if (heroDescInput) heroDescInput.value = data.config.heroDescription || 'JG 포털 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
 
+                // 모델 및 컨텍스트 창 설정
+                const env = data.envDefaults || {};
+                const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+                setVal('inputAiChatModel', data.config.chatModel || '');
+                setVal('inputAiReasoningModel', data.config.reasoningModel || '');
+                setVal('inputAiChatNumCtx', data.config.chatNumCtx || 0);
+                setVal('inputAiReasoningNumCtx', data.config.reasoningNumCtx || 0);
+                const chatModelEl = document.getElementById('inputAiChatModel');
+                const reasonModelEl = document.getElementById('inputAiReasoningModel');
+                if (chatModelEl && env.chatModel) chatModelEl.placeholder = `기본값: ${env.chatModel}`;
+                if (reasonModelEl && env.reasoningModel) reasonModelEl.placeholder = `기본값: ${env.reasoningModel}`;
+                const hintEl = document.getElementById('aiEnvModelHint');
+                if (hintEl && env.chatModel) hintEl.textContent = `${env.chatModel} / ${env.reasoningModel || env.chatModel}`;
+
                 updateAiWelcomePreview();
                 updateAiHeroPreview();
             }
@@ -96,7 +110,11 @@
                     maxPromptLength,
                     heroIcon,
                     heroTitle,
-                    heroDescription
+                    heroDescription,
+                    chatModel: (document.getElementById('inputAiChatModel') || {}).value?.trim() ?? undefined,
+                    reasoningModel: (document.getElementById('inputAiReasoningModel') || {}).value?.trim() ?? undefined,
+                    chatNumCtx: parseInt((document.getElementById('inputAiChatNumCtx') || {}).value, 10) || 0,
+                    reasoningNumCtx: parseInt((document.getElementById('inputAiReasoningNumCtx') || {}).value, 10) || 0
                 })
             });
 
@@ -161,6 +179,11 @@
         if (maxLenInput) {
             maxLenInput.value = len;
         }
+    }
+
+    function setAiReasoningCtxPreset(ctx) {
+        const ctxInput = document.getElementById('inputAiReasoningNumCtx');
+        if (ctxInput) ctxInput.value = ctx;
     }
 
     /**
@@ -264,6 +287,7 @@
     window.updateAiHeroPreview = updateAiHeroPreview;
     window.setAiHeroIconPreset = setAiHeroIconPreset;
     window.setAiLengthPreset = setAiLengthPreset;
+    window.setAiReasoningCtxPreset = setAiReasoningCtxPreset;
     window.checkAdminAiHealth = checkAdminAiHealth;
 
     // DOM 로드 시 초기화

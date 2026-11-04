@@ -15,8 +15,8 @@ const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { buildAiChatPrompt } = require('./aiContextRouter.service');
 
-const { OLLAMA_HOST, CHAT_MODEL, selectChatModel } = require('./aiModelRouter.service');
-const OLLAMA_MODEL = CHAT_MODEL; // 브리핑·상태 점검·위키 처리는 평상시 대화 모델 사용
+const { OLLAMA_HOST, getChatModel, selectChatModel } = require('./aiModelRouter.service');
+// 브리핑·상태 점검·위키 처리는 평상시 대화 모델 사용 (getChatModel: 관리자 설정 즉시 반영)
 
 // 브리핑 캐시 (1시간 유효, 데이터 변경 시 자동 갱신)
 let cachedAiBriefing = null;
@@ -95,12 +95,12 @@ async function checkAiHealth() {
                 res.on('end', () => {
                     try {
                         const parsed = JSON.parse(data);
-                        const modelBase = OLLAMA_MODEL.split(':')[0];
-                        const hasModel = Array.isArray(parsed.models) && parsed.models.some(m => m.name === OLLAMA_MODEL || m.name === `${OLLAMA_MODEL}:latest` || (OLLAMA_MODEL.indexOf(':') === -1 && m.name.split(':')[0] === modelBase));
+                        const modelBase = getChatModel().split(':')[0];
+                        const hasModel = Array.isArray(parsed.models) && parsed.models.some(m => m.name === getChatModel() || m.name === `${getChatModel()}:latest` || (getChatModel().indexOf(':') === -1 && m.name.split(':')[0] === modelBase));
                         resolve({
                             online: true,
                             modelReady: hasModel,
-                            modelName: OLLAMA_MODEL
+                            modelName: getChatModel()
                         });
                     } catch (e) {
                         resolve({ online: false, error: 'JSON 응답 오류' });
@@ -259,7 +259,7 @@ ${situationText}
 
     try {
         const result = await sendOllamaRequest('/api/generate', {
-            model: OLLAMA_MODEL,
+            model: getChatModel(),
             prompt: `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`,
             stream: false,
             keep_alive: '24h',
@@ -286,7 +286,7 @@ ${situationText}
                 success: true,
                 message: cleanText,
                 generatedAt: new Date().toISOString(),
-                model: OLLAMA_MODEL
+                model: getChatModel()
             };
             cachedAiBriefingTime = now;
             return cachedAiBriefing;
@@ -355,7 +355,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
                 return {
                     success: true,
                     answer: '어떤 내용을 가족 위키에 저장할까요? 위키로 보관하고 싶은 레시피, 생활 팁, 가전 사용법 등을 말씀해 주시면 알기 쉽게 마크다운 문서로 정리하여 바로 등록해 드릴게요! 😊',
-                    model: OLLAMA_MODEL
+                    model: getChatModel()
                 };
             }
 
@@ -401,7 +401,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
                         category: processed.category,
                         view_url: updateRes.view_url || `/wiki/${candidateDoc.slug}`
                     },
-                    model: OLLAMA_MODEL
+                    model: getChatModel()
                 };
             }
 
@@ -424,14 +424,14 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
                     slug: saveRes.slug || processed.slug,
                     view_url: saveRes.view_url || `/wiki/${saveRes.slug}`
                 },
-                model: OLLAMA_MODEL
+                model: getChatModel()
             };
         } catch (wikiErr) {
             console.error('[AiAssistant] 위키 문서 자동 처리 실패:', wikiErr);
             return {
                 success: true,
                 answer: `위키 문서 처리 중 오류가 발생했습니다 (${wikiErr.message}). 잠시 후 다시 시도해 주세요.`,
-                model: OLLAMA_MODEL
+                model: getChatModel()
             };
         }
     }
@@ -453,11 +453,11 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         messages,
         stream: false,
         keep_alive: picked.keepAlive,
-        options: {
+        options: Object.assign({
             temperature: 0.5,
             top_p: 0.9,
             num_predict: -1 // 대화 모드: 답변이 끝날 때까지 생성 (상한 없음)
-        }
+        }, picked.numCtx ? { num_ctx: picked.numCtx } : {})
     }, picked.timeoutMs);
 
     const replyText = (result.message && result.message.content) || result.response;

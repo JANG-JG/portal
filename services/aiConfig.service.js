@@ -16,8 +16,17 @@ const DEFAULT_AI_CONFIG = {
     maxPromptLength: 1000,
     heroIcon: '🤖',
     heroTitle: 'AI 비서에게 무엇이든 물어보세요',
-    heroDescription: 'JG 포털 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.'
+    heroDescription: 'JG 포털 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.',
+    // 모델 설정 (빈 값 = .env OLLAMA_CHAT_MODEL / OLLAMA_REASONING_MODEL 사용)
+    chatModel: '',
+    reasoningModel: '',
+    // 컨텍스트 창 (0 = 모델 기본값 / 클수록 긴 답변 가능하지만 보조서버 메모리 사용 증가)
+    chatNumCtx: 0,
+    reasoningNumCtx: 0
 };
+
+const MODEL_NAME_REGEX = /^[A-Za-z0-9._:\/-]{1,100}$/;
+const MODEL_KEYS = ['chatModel', 'reasoningModel', 'chatNumCtx', 'reasoningNumCtx'];
 
 let cachedConfig = { ...DEFAULT_AI_CONFIG };
 let isDbInitialized = false;
@@ -83,6 +92,8 @@ function initAiConfigDb() {
                 if (dbMap.heroIcon) merged.heroIcon = dbMap.heroIcon;
                 if (dbMap.heroTitle) merged.heroTitle = dbMap.heroTitle;
                 if (dbMap.heroDescription) merged.heroDescription = dbMap.heroDescription;
+                // 모델 설정 (빈 값·0도 유효한 저장값이므로 키 존재 여부로 병합)
+                MODEL_KEYS.forEach((k) => { if (dbMap[k] !== undefined) merged[k] = dbMap[k]; });
 
                 // 옛 기본 문구의 모델명 브랜딩 → JG 포털로 치환 (나머지 사용자 문구는 보존)
                 if (merged.welcomeMessage) merged.welcomeMessage = String(merged.welcomeMessage).replace(/\s*\(LG EXAONE 4\.0\)/g, '');
@@ -137,6 +148,16 @@ function sanitizeConfig(input = {}) {
         output.heroDescription = input.heroDescription.trim().slice(0, 300);
     }
 
+    ['chatModel', 'reasoningModel'].forEach((k) => {
+        const v = typeof input[k] === 'string' ? input[k].trim() : '';
+        output[k] = MODEL_NAME_REGEX.test(v) ? v : '';
+    });
+
+    ['chatNumCtx', 'reasoningNumCtx'].forEach((k) => {
+        const n = parseInt(input[k], 10);
+        output[k] = (!isNaN(n) && n >= 512 && n <= 131072) ? n : 0;
+    });
+
     return output;
 }
 
@@ -152,6 +173,7 @@ function getAiConfig() {
  */
 function updateAiConfig(updates = {}) {
     return new Promise((resolve) => {
+        MODEL_KEYS.forEach((k) => { if (updates[k] === undefined) delete updates[k]; });
         const next = sanitizeConfig({
             ...cachedConfig,
             ...updates

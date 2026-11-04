@@ -7,7 +7,7 @@
 
 const http = require('http');
 
-const { OLLAMA_HOST, CHAT_MODEL: OLLAMA_MODEL } = require('./aiModelRouter.service'); // 위키 초안/요약은 평상시 대화 모델 사용
+const { OLLAMA_HOST, getChatModel } = require('./aiModelRouter.service'); // 위키 초안/요약은 평상시 대화 모델 사용
 
 /**
  * EXAONE 4.0 추론 모드 대비: <think>...</think> 사고 과정 텍스트 제거 (미종결 태그 포함)
@@ -122,7 +122,7 @@ JSON 필드:
     let parsed = null;
     try {
         const result = await sendOllamaRequest('/api/generate', {
-            model: OLLAMA_MODEL,
+            model: getChatModel(),
             prompt: fullPrompt,
             stream: false,
             keep_alive: '24h',
@@ -142,7 +142,7 @@ JSON 필드:
             category: parsed.category || '생활',
             slug: (parsed.slug || parsed.title).replace(/[^a-zA-Z0-9가-힣\s-]/g, '').trim().replace(/\s+/g, '-').slice(0, 50),
             content_md: parsed.content_md,
-            model: OLLAMA_MODEL
+            model: getChatModel()
         };
     }
 
@@ -152,7 +152,7 @@ JSON 필드:
         category: '생활',
         slug: `memo-${Date.now().toString(36)}`,
         content_md: `## 개요\n\n${raw || cleanContent}\n\n---\n*작성자: ${userName}*`,
-        model: OLLAMA_MODEL
+        model: getChatModel()
     };
 }
 
@@ -184,7 +184,7 @@ JSON 필드:
     const fullPrompt = `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`;
 
     const result = await sendOllamaRequest('/api/generate', {
-        model: OLLAMA_MODEL,
+        model: getChatModel(),
         prompt: fullPrompt,
         stream: false,
         keep_alive: '24h',
@@ -195,7 +195,7 @@ JSON 필드:
     const parsed = extractJsonFromText(raw);
 
     if (parsed) {
-        return { success: true, data: parsed, model: OLLAMA_MODEL };
+        return { success: true, data: parsed, model: getChatModel() };
     }
 
     return {
@@ -210,7 +210,7 @@ JSON 필드:
             todoText: cleanContent.slice(0, 50),
             summary: '자동 감지된 일정입니다.'
         },
-        model: OLLAMA_MODEL
+        model: getChatModel()
     };
 }
 
@@ -231,7 +231,7 @@ async function summarizeText({ text = '', maxLines = 3 }) {
     const fullPrompt = `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`;
 
     const result = await sendOllamaRequest('/api/generate', {
-        model: OLLAMA_MODEL,
+        model: getChatModel(),
         prompt: fullPrompt,
         stream: false,
         keep_alive: '24h',
@@ -241,7 +241,7 @@ async function summarizeText({ text = '', maxLines = 3 }) {
     return {
         success: true,
         summary: result && result.response ? result.response.trim() : '요약문을 생성하지 못했습니다.',
-        model: OLLAMA_MODEL
+        model: getChatModel()
     };
 }
 
@@ -267,7 +267,7 @@ async function generateWikiDraft({ prompt = '', category = '생활' }) {
     const fullPrompt = `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`;
 
     const result = await sendOllamaRequest('/api/generate', {
-        model: OLLAMA_MODEL,
+        model: getChatModel(),
         prompt: fullPrompt,
         stream: false,
         keep_alive: '24h',
@@ -283,7 +283,7 @@ async function generateWikiDraft({ prompt = '', category = '생활' }) {
             title: parsed.title,
             category: parsed.category || category,
             content_md: parsed.content_md,
-            model: OLLAMA_MODEL
+            model: getChatModel()
         };
     }
 
@@ -292,7 +292,7 @@ async function generateWikiDraft({ prompt = '', category = '생활' }) {
         title: cleanPrompt,
         category: category,
         content_md: `## 개요\n\n${raw || cleanPrompt}에 대한 위키 문서입니다.\n\n## 상세 내용\n\n- 내용을 작성해 주세요.`,
-        model: OLLAMA_MODEL
+        model: getChatModel()
     };
 }
 
@@ -346,7 +346,7 @@ ${cleanContent}
     let parsed = null;
     try {
         const result = await sendOllamaRequest('/api/generate', {
-            model: OLLAMA_MODEL,
+            model: getChatModel(),
             prompt: fullPrompt,
             stream: false,
             keep_alive: '24h',
@@ -369,7 +369,7 @@ ${cleanContent}
             slug: (action === 'merge') ? candidateDoc.slug : (parsed.slug || candidateDoc.slug),
             content_md: parsed.content_md,
             merge_summary: parsed.merge_summary || `${todayStr} 내용 추가 보강`,
-            model: OLLAMA_MODEL
+            model: getChatModel()
         };
     }
 
@@ -382,7 +382,7 @@ ${cleanContent}
         slug: candidateDoc.slug,
         content_md: candidateDoc.content_md + appendSection,
         merge_summary: `${todayStr} 추가 내용 누적 보강`,
-        model: OLLAMA_MODEL
+        model: getChatModel()
     };
 }
 

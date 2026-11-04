@@ -13,8 +13,8 @@ const { smartMergeOrDraftWiki, stripThinkTags } = require('./aiKnowledge.service
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { koreanizeWeatherWords } = require('./weatherKo.util');
 
-const { OLLAMA_HOST, CHAT_MODEL, selectChatModel } = require('./aiModelRouter.service');
-const OLLAMA_MODEL = CHAT_MODEL; // 위키 안내 등 기본 응답 표기용 (대화는 selectChatModel로 자동 선택)
+const { OLLAMA_HOST, getChatModel, selectChatModel } = require('./aiModelRouter.service');
+// 위키 안내 등 기본 응답 표기용 (대화는 selectChatModel로 자동 선택) (getChatModel: 관리자 설정 즉시 반영)
 
 /**
  * 스트리밍 원문을 생각 과정(thinking)과 답변 본문(answer)으로 분리
@@ -100,12 +100,13 @@ function requestAnswerFromThinking(messages, thinkingText, picked) {
         }]);
         const bodyStr = JSON.stringify({
             model: picked.model, messages: followUp, stream: false, think: false,
-            keep_alive: picked.keepAlive, options: { temperature: 0.5, top_p: 0.9, num_predict: 2048 }
+            keep_alive: picked.keepAlive,
+            options: Object.assign({ temperature: 0.5, top_p: 0.9, num_predict: -1 }, picked.numCtx ? { num_ctx: picked.numCtx } : {})
         });
         const r = http.request(new URL('/api/chat', OLLAMA_HOST), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr) },
-            timeout: 180000
+            timeout: picked.timeoutMs || 180000
         }, (resp) => {
             let data = '';
             resp.setEncoding('utf8');
@@ -174,7 +175,7 @@ async function handleWikiIntent({ prompt, history, userName, res }) {
     if (!targetContent || targetContent.length < 5) {
         const guideMsg = '어떤 내용을 가족 위키에 저장할까요? 위키로 보관하고 싶은 레시피, 생활 팁, 가전 사용법 등을 말씀해 주시면 알기 쉽게 마크다운 문서로 정리하여 바로 등록해 드릴게요! 😊';
         sendSseEvent(res, 'token', { token: guideMsg });
-        sendSseEvent(res, 'done', { fullText: guideMsg, model: OLLAMA_MODEL });
+        sendSseEvent(res, 'done', { fullText: guideMsg, model: getChatModel() });
         res.end();
         return true;
     }
@@ -226,7 +227,7 @@ async function handleWikiIntent({ prompt, history, userName, res }) {
     }
 
     sendSseEvent(res, 'token', { token: answerMsg });
-    sendSseEvent(res, 'done', { fullText: answerMsg, wiki: wikiMeta, model: OLLAMA_MODEL });
+    sendSseEvent(res, 'done', { fullText: answerMsg, wiki: wikiMeta, model: getChatModel() });
     res.end();
     return true;
 }
@@ -327,11 +328,11 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
             messages,
             stream: true,
             keep_alive: picked.keepAlive,
-            options: {
+            options: Object.assign({
                 temperature: 0.5,
                 top_p: 0.9,
                 num_predict: -1 // 대화 모드: 답변이 끝날 때까지 생성 (상한 없음)
-            }
+            }, picked.numCtx ? { num_ctx: picked.numCtx } : {}) // 추론 모델 컨텍스트 창 확장 (env 설정 시)
         });
 
         ollamaReq = http.request(urlObj, {
