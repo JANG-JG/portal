@@ -129,14 +129,123 @@ function getNotifyTimingDisplay(timing) {
 }
 
 /**
- * 🧹 일정 프롬프트에서 알림 관련 문구 제거
+ * 🧹 일정 프롬프트에서 알림 관련 문구 완전 제거
  */
 function stripNotifyTimingPatterns(text) {
     if (!text || typeof text !== 'string') return '';
+    let res = text;
+
+    // 1. "알림"이 앞에 오거나 중간에 오는 복합 패턴:
+    // 예: "알림 2시간 전에 보내줘", "알림 두시간 전으로 설정해줘", "알림 15분 전에 알려줘", "알림 보내줘"
+    res = res.replace(/알림(?:은|을|이)?\s*(?:정시|정각|반\s*시간\s*전|\d+\s*분\s*전|(?:한|두|세|\d+)\s*시간\s*전|(?:하루|이틀|\d+\s*일)\s*전|(?:당일|오늘|전날|하루\s*전|이틀\s*전|\d+\s*일\s*전)\s*(?:오전|오후|저녁|아침|새벽|밤)?\s*(?:\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?|[0-2]?\d:[0-5]\d))?(?:에|으로)?\s*(?:보내|알려|울리|설정|등록|잡아|띄워)?\s*(?:줘|달라|주세요|해줘|해달라|해주세요|줄래|바래|부탁해|주라)?/gi, '');
+
+    // 2. 시간/시점이 앞에 오고 "알림" 또는 "알려줘"가 오는 패턴:
+    // 예: "2시간 전에 알림 보내줘", "30분 전에 알려줘", "하루 전 오전 9시에 알림 보내줘", "1시간 전 알림"
+    res = res.replace(/(?:당일|오늘|전날|하루\s*전|이틀\s*전|\d+\s*일\s*전)\s*(?:오전|오후|저녁|아침|새벽|밤)?\s*(?:\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?|[0-2]?\d:[0-5]\d)(?:에|으로)?\s*(?:알림(?:을|은|이)?|알려|울리게|울려|보내)?\s*(?:보내|띄워|설정|등록|잡아)?\s*(?:줘|달라|주세요|해줘|해달라|해주세요|줄래|바래|부탁해|주라)?/gi, '');
+    res = res.replace(/(?:정시|정각|반\s*시간\s*전|\d+\s*분\s*전|(?:한|두|세|\d+)\s*시간\s*전|(?:하루|이틀|\d+\s*일)\s*전)(?:에|으로)?\s*(?:알림(?:을|은|이)?|알려|울리게|울려)?\s*(?:보내|띄워|설정|등록|잡아)?\s*(?:줘|달라|주세요|해줘|해달라|해주세요|줄래|바래|부탁해|주라)?/gi, '');
+
+    // 3. 단순 알림 요청/해제 잔여 문구:
+    res = res.replace(/알림\s*(?:없|끄|해제|끄기|안\s*울리게|없이|빼고)/gi, '');
+    res = res.replace(/알림\s*(?:보내|띄워|울려|설정|등록)?\s*(?:줘|달라|주세요|해줘|해달라|해주세요|줄래|바래|부탁해|주라)/gi, '');
+    res = res.replace(/(?:정시|정각)에\s*/gi, '');
+
+    // 4. "보내줘 / 알려줘" 단독 어미 제거 (알림 문구 뒤에 남은 경우)
+    res = res.replace(/\s*(?:보내\s*줘|보내\s*주세요|보내\s*달라|보내\s*줄래|보내\s*주라|보내)\s*$/gi, '');
+
+    return res;
+}
+
+/**
+ * 🕒 날짜/시간 토큰 패턴 제거 (장소 추출 정확도 향상용)
+ */
+function removeDateTimePatterns(text) {
+    if (!text || typeof text !== 'string') return '';
     return text
-        .replace(/(?:당일|오늘|전날|하루\s*전|이틀\s*전|\d+\s*일\s*전)?\s*(?:오전|오후|저녁|아침|새벽|밤)?\s*(?:\d{1,2}\s*시(?:\s*\d{1,2}\s*분)?|[0-2]?\d:[0-5]\d)\s*(?:에)?\s*(?:알림|알려|울리)(?:게|줘|달라|주세요|으로|설정)?/gi, '')
-        .replace(/\s*(?:을|를)?\s*(?:정시|정각|반\s*시간\s*전|\d+\s*분\s*전|(?:한|두|세|\d+)\s*시간\s*전|(?:하루|이틀|\d+\s*일)\s*전)?\s*(?:에)?\s*(?:알림|알려|울리)(?:게|줘|달라|주세요|으로|설정)?/gi, '')
-        .replace(/(?:정시|정각)에\s*/gi, '');
+        .replace(/(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일|\d{1,2}\/\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|\d+\s*일\s*(?:뒤|후)/gi, ' ')
+        .replace(/(?:오늘|내일|모레|글피|이번\s*주|다음\s*주|[월화수목금토일]요일)/gi, ' ')
+        .replace(/(?:at|시간)?\s*([01]?\d|2[0-3]):([0-5]\d)/gi, ' ')
+        .replace(/(?:오전|오후|저녁|아침|새벽|밤)?\s*\d{1,2}\s*시(?![간명])(?:\s*\d{1,2}\s*분(?!\s*전)|반)?/gi, ' ')
+        .replace(/\s+/g, ' ');
+}
+
+/**
+ * 📍 장소명 후보 문자열 정제
+ */
+function cleanLocationCandidate(loc) {
+    if (!loc) return '';
+    let l = removeDateTimePatterns(loc);
+    l = l.replace(/^[,\s.:;~-]+|[,\s.:;~-]+$/g, '')
+         .replace(/^(?:에|은|는|이|가|을|를)\s+/gi, '')
+         .replace(/\s*(?:에서)$/gi, '')
+         .trim();
+    return l;
+}
+
+/**
+ * 📍 장소(Location) 및 메모(Memo) 분리 추출
+ * @param {string} text 
+ * @returns {{ location: string, note: string, combinedMemo: string, textWithoutMemo: string }}
+ */
+function extractLocationAndMemo(text) {
+    if (!text || typeof text !== 'string') return { location: '', note: '', combinedMemo: '', textWithoutMemo: '' };
+
+    let cleanedText = text;
+    let location = '';
+    let note = '';
+
+    // 1. 명시적 메모/준비물/비고/참석자/내용 추출
+    const memoPrefixMatch = cleanedText.match(/(?:메모|내용|준비물|참석자|비고|참고)\s*[:：]\s*([^\n,]+)/i);
+    if (memoPrefixMatch) {
+        note = memoPrefixMatch[0].trim();
+        cleanedText = cleanedText.replace(memoPrefixMatch[0], ' ');
+    }
+
+    // 2. 명시적 장소/위치 접두사 추출 (예: "장소: 판교 카카오아지트", "위치: 강남역 11번 출구")
+    const locPrefixMatch = cleanedText.match(/(?:장소|위치)\s*[:：]\s*([^\n,]+)/i);
+    if (locPrefixMatch) {
+        let locRaw = locPrefixMatch[1].trim();
+        const eventBoundary = locRaw.match(/^(.*?(?:역|출구|점|센터|빌딩|타워|아지트|사옥|본사|병원|치과|카페|스벅|스타벅스|룸|회의실|식당|호텔|홀|관|캠퍼스|도서관|아울렛|매장|지점|학교))\s+(미팅|회의|보고|모임|약속|진료|식사|점심|저녁|세미나|워크숍|파티|행사.*)$/i);
+        if (eventBoundary) {
+            locRaw = eventBoundary[1].trim();
+            cleanedText = cleanedText.replace(locPrefixMatch[0], ` ${eventBoundary[2]} `);
+        } else {
+            cleanedText = cleanedText.replace(locPrefixMatch[0], ' ');
+        }
+        location = cleanLocationCandidate(locRaw);
+    }
+
+    // 3. '~에서', '~서', '~앞에서', '~근처에서', '~맞은편에서' 자연어 장소 추출
+    if (!location) {
+        const textForLocSearch = removeDateTimePatterns(cleanedText);
+        const locRegex = /([가-힣a-zA-Z0-9_\-\(\)·\s]{1,30}?)(?:\s*(?:앞|근처|주변|맞은편|인근|입구|출구))?\s*(?:에서|서\b)/g;
+        let match;
+        while ((match = locRegex.exec(textForLocSearch)) !== null) {
+            const rawCandidate = match[0].trim();
+            const candidate = cleanLocationCandidate(match[1]);
+
+            // 시스템 키워드, 시간, 조사, 대명사 배제
+            if (/^(?:캘린더|일정|스케줄|앱|여기|거기|어디|밖|내용|등록|추가|잡아|예약)$/.test(candidate)) continue;
+            if (!candidate || candidate.length < 2) continue;
+
+            location = cleanLocationCandidate(rawCandidate);
+            const escapedPattern = rawCandidate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*');
+            cleanedText = cleanedText.replace(new RegExp(escapedPattern, 'g'), ' ');
+            break;
+        }
+    }
+
+    // 4. 최종 조합 메모 생성
+    const memoParts = [];
+    if (location) memoParts.push(`장소: ${location}`);
+    if (note) memoParts.push(note);
+    const combinedMemo = memoParts.join('\n');
+
+    return {
+        location,
+        note,
+        combinedMemo,
+        textWithoutMemo: cleanedText
+    };
 }
 
 /**
@@ -145,25 +254,55 @@ function stripNotifyTimingPatterns(text) {
 function cleanCalendarTitle(prompt) {
     if (!prompt || typeof prompt !== 'string') return '새로운 일정';
     let t = stripNotifyTimingPatterns(prompt);
+
+    // 장소 및 메모 부분 분리/제거
+    const extracted = extractLocationAndMemo(t);
+    t = extracted.textWithoutMemo;
+
     t = t
         .replace(/\s*(?:을|를)?\s*(?:확인하고\s*)?(?:등록|추가|잡아|넣어|적어|기록|저장|예약)\s*(?:해줘|해\s*주세요|해주세요|줄래|바래|요|부탁(?:해|드립니다)?|할래)?/gi, '')
         .replace(/\s*(?:을|를)?\s*(?:잡아줘|넣어줘|적어줘|기록해줘|저장해줘|등록해줘|추가해줘|예약해줘)/gi, '')
-        .replace(/(?:해줘|해\s*주세요|해주세요|줄래|바래|부탁해|부탁드립니다|줘)\s*$/gi, '')
+        .replace(/(?:해줘|해\s*주세요|해주세요|줄래|바래|부탁해|부탁드립니다|보내줘|보내주세요|보내달라|보내|줘)\s*$/gi, '')
         .replace(/(?:캘린더|스케줄|일정)(?:에|으로|을|를)?/gi, '')
         .replace(/(?:오늘|내일|모레|글피|이번\s*주|다음\s*주|[월화수목금토일]요일)/gi, '')
         .replace(/(?:\d{4}년\s*)?\d{1,2}월\s*\d{1,2}일|\d{1,2}\/\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|\d+\s*일\s*(?:뒤|후)/gi, '')
-        .replace(/(?:오전|오후|저녁|아침|새벽|밤)?\s*\d{1,2}\s*시(?![간명])(?:\s*\d{1,2}\s*분(?!\s*전)|반)?|[0-2]?\d:[0-5]\d/gi, '')
+        .replace(/(?:at|시간)?\s*([01]?\d|2[0-3]):([0-5]\d)/gi, '')
+        .replace(/(?:오전|오후|저녁|아침|새벽|밤)?\s*\d{1,2}\s*시(?![간명])(?:\s*\d{1,2}\s*분(?!\s*전)|반)?/gi, '')
         .replace(/^[,\s.:;~-]+|[,\s.:;~-]+$/g, '').trim()
         .replace(/^(?:에|으로|은|는|이|가|을|를|좀|새로|새로운|내용은)\s+/gi, '')
         .replace(/\s+(?:을|를|은|는|이|가|에|으로|좀)$/gi, '')
         .replace(/^[,\s.:;~-]+|[,\s.:;~-]+$/g, '').trim();
 
-    return (!t || t.length < 2) ? '새로운 일정' : t;
+    if (!t || t.length < 2) {
+        if (extracted.location) return extracted.location;
+        return '새로운 일정';
+    }
+
+    return t;
+}
+
+/**
+ * 🧩 일정 자연어에서 제목, 메모(장소 포함), 알림 시점을 원스톱 파싱
+ */
+function parseCalendarDetails(prompt, isAllDay = false) {
+    const notifyTiming = parseNotifyTimingFromPrompt(prompt, isAllDay);
+    const timingStripped = stripNotifyTimingPatterns(prompt);
+    const { location, combinedMemo, textWithoutMemo } = extractLocationAndMemo(timingStripped);
+    const title = cleanCalendarTitle(prompt);
+
+    return {
+        title,
+        memo: combinedMemo,
+        location,
+        notifyTiming
+    };
 }
 
 module.exports = {
     parseNotifyTimingFromPrompt,
     getNotifyTimingDisplay,
     stripNotifyTimingPatterns,
-    cleanCalendarTitle
+    extractLocationAndMemo,
+    cleanCalendarTitle,
+    parseCalendarDetails
 };

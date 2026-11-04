@@ -12,7 +12,8 @@ const { ADMIN_USERS } = require('../config/constants');
 const {
     parseNotifyTimingFromPrompt,
     getNotifyTimingDisplay,
-    cleanCalendarTitle
+    cleanCalendarTitle,
+    parseCalendarDetails
 } = require('./calendarTimingParser.util');
 
 const isAdminUser = (u) => !!(u && (u.role === 'admin' || (u.username && ADMIN_USERS && (ADMIN_USERS.has ? ADMIN_USERS.has(u.username) : ADMIN_USERS.includes(u.username)))));
@@ -165,8 +166,10 @@ function parseCalendarAction(prompt) {
     const promptWithoutAdjectives = prompt.replace(/(?:저장|등록|추가|기록|예약)된/g, '');
     const dt = parseKoreanDateTime(prompt);
 
-    // 5. 명확한 등록 동사 판별 ('~전에 알려줘' 리마인더 요청 동사 포함)
-    const hasReminderVerb = /(?:\d+\s*분|(?:한|두|세|\d+)\s*시간|(?:하루|이틀|\d+\s*일))\s*전(?:에)?\s*알려/i.test(prompt);
+    // 5. 명확한 등록 동사 판별 ('~전에 알려줘/보내줘', '알림 보내줘' 리마인더 요청 동사 포함)
+    const hasReminderVerb = /(?:\d+\s*분|(?:한|두|세|\d+)\s*시간|(?:하루|이틀|\d+\s*일))\s*전(?:에)?\s*(?:알려|알림|보내|울려)/i.test(prompt) ||
+                            /알림(?:은|을|이)?\s*(?:정시|정각|\d+\s*분\s*전|(?:한|두|세|\d+)\s*시간\s*전|(?:하루|이틀|\d+\s*일)\s*전)?\s*(?:에)?\s*(?:보내|알려|울려|설정|등록)/i.test(prompt) ||
+                            /알림\s*(?:보내|알려|울려|설정)/i.test(prompt);
     const hasRegisterVerb = /(등록|추가|잡아|넣어|예약)\s*(해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)|(?:일정|스케줄|약속|캘린더)\s*(?:저장|기록)\s*(?:해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)/i.test(promptWithoutAdjectives) || hasReminderVerb;
     const hasCalendarKeyword = /(일정|약속|스케줄|캘린더|행사)/i.test(prompt);
 
@@ -176,11 +179,8 @@ function parseCalendarAction(prompt) {
 
     if (!isValidCalendarCommand) return null;
 
-    // 알림 설정 파싱 (exact, 5m, 10m, 15m, 30m, 1h, 2h, 3h, 1d, 2d, custom, allday)
-    const notifyTiming = parseNotifyTimingFromPrompt(prompt, dt.isAllDay);
-
-    // 제목 정제
-    const cleanTitle = cleanCalendarTitle(prompt);
+    // 알림 설정, 장소/메모 및 제목 분리 파싱
+    const calDetails = parseCalendarDetails(prompt, dt.isAllDay);
 
     // 카테고리 및 가족 공유 여부 판정
     let category = '개인';
@@ -196,13 +196,14 @@ function parseCalendarAction(prompt) {
 
     return {
         type: 'CALENDAR',
-        title: cleanTitle,
+        title: calDetails.title,
+        memo: calDetails.memo,
         eventDate: dt.dateStr,
         eventTime: dt.eventTime,
         isAllDay: dt.isAllDay,
         category,
         isFamily,
-        notifyTiming
+        notifyTiming: calDetails.notifyTiming
     };
 }
 
@@ -322,12 +323,13 @@ async function executeAction({ action, user, userName }) {
     // 1. 📅 캘린더 일정 등록
     if (action.type === 'CALENDAR') {
         const encryptedTitle = encryptCalendarText(action.title, userId, action.isFamily);
+        const encryptedMemo = encryptCalendarText((action.memo || '').trim(), userId, action.isFamily);
         const isAllDayVal = action.isAllDay ? 1 : 0;
         const color = action.category === '가족' ? '#ec4899' : (action.category === '업무' ? '#6366f1' : (action.category === '중요' ? '#ef4444' : '#10b981'));
         const notifyTiming = action.notifyTiming || 'exact';
 
         return new Promise((resolve) => {
-            const query = `INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, is_family, notify_timing, notify_repeat) VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, 1)`;
+            const query = `INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, is_family, notify_timing, notify_repeat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`;
             portalDb.run(query, [
                 userId,
                 encryptedTitle,
@@ -335,6 +337,7 @@ async function executeAction({ action, user, userName }) {
                 action.eventTime || '',
                 action.category,
                 color,
+                encryptedMemo,
                 isAllDayVal,
                 action.isFamily,
                 notifyTiming
@@ -350,10 +353,12 @@ async function executeAction({ action, user, userName }) {
                 const timeDesc = action.isAllDay ? '종일 일정 ☀️' : formatKoreanTime(action.eventTime);
                 const notifyDesc = getNotifyTimingDisplay(notifyTiming);
                 const familyBadge = action.isFamily ? ' (가족 공유 👨‍👩‍👧‍👦)' : '';
+                const memoLine = action.memo ? `- **장소/메모**: ${action.memo.replace(/\n/g, ', ')}\n` : '';
                 const card = `새로운 일정을 **캘린더**에 성공적으로 등록했습니다! 📅\n\n` +
                     `- **일정 내용**: **${action.title}**${familyBadge}\n` +
                     `- **일정 날짜**: ${action.eventDate}\n` +
                     `- **일정 시간**: ${timeDesc}\n` +
+                    (memoLine ? memoLine : '') +
                     `- **알림 설정**: ${notifyDesc}\n` +
                     `- **분류**: ${action.category}\n\n` +
                     `👉 [**캘린더 바로가기**](/calendar)`;
@@ -363,7 +368,7 @@ async function executeAction({ action, user, userName }) {
                     actionType: 'CALENDAR',
                     id: this.lastID,
                     message: card,
-                    meta: { id: this.lastID, title: action.title, date: action.eventDate, time: action.eventTime, notifyTiming }
+                    meta: { id: this.lastID, title: action.title, date: action.eventDate, time: action.eventTime, notifyTiming, memo: action.memo }
                 });
             });
         });
