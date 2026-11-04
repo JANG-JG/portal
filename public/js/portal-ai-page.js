@@ -14,9 +14,7 @@
     // DOM 참조 캐싱
     let sidebarEl, backdropEl, messageScrollEl, messageContainerEl, promptInputEl, submitBtnEl, mobileTitleEl, historyListEl, historyCountEl;
 
-    /**
-     * 서버 런타임 설정 비동기 로드
-     */
+    /** 서버 런타임 설정 비동기 로드 */
     async function loadAiRuntimeConfig() {
         try {
             const res = await fetch('/api/ai/config', { headers: { 'Accept': 'application/json' } });
@@ -24,27 +22,19 @@
             const data = await res.json();
             if (data.success && data.config) {
                 currentAiConfig = data.config;
-
                 // 1. 최대 글자 수 한도 적용
                 if (data.config.maxPromptLength && Number.isInteger(data.config.maxPromptLength)) {
                     currentMaxPromptLength = data.config.maxPromptLength;
-                    if (promptInputEl) {
-                        promptInputEl.maxLength = currentMaxPromptLength;
-                    }
+                    if (promptInputEl) promptInputEl.maxLength = currentMaxPromptLength;
                     const charCounterEl = document.getElementById('aiCharCount');
                     if (charCounterEl && (!promptInputEl || !promptInputEl.value.length)) {
                         charCounterEl.textContent = `0/${currentMaxPromptLength}`;
                         charCounterEl.title = `현재 글자 수 / 최대 ${currentMaxPromptLength.toLocaleString()}자`;
                     }
-                    if (submitBtnEl) {
-                        submitBtnEl.title = `메시지 전송 (최대 ${currentMaxPromptLength.toLocaleString()}자)`;
-                    }
+                    if (submitBtnEl) submitBtnEl.title = `메시지 전송 (최대 ${currentMaxPromptLength.toLocaleString()}자)`;
                     const disclaimerEl = document.querySelector('.ai-disclaimer span');
-                    if (disclaimerEl) {
-                        disclaimerEl.textContent = `🛡️ 가족 데이터 전용 로컬 AI (LG EXAONE 4.0) • 1회 질문당 최대 ${currentMaxPromptLength.toLocaleString()}자`;
-                    }
+                    if (disclaimerEl) disclaimerEl.textContent = `🛡️ 가족 데이터 전용 로컬 AI (LG EXAONE 4.0) • 1회 질문당 최대 ${currentMaxPromptLength.toLocaleString()}자`;
                 }
-
                 // 2. 첫 환영 인사말 적용
                 if (data.config.welcomeMessage && window.JgAiHistory && typeof window.JgAiHistory.setCustomWelcomeMessage === 'function') {
                     window.JgAiHistory.setCustomWelcomeMessage(data.config.welcomeMessage);
@@ -54,7 +44,6 @@
                         firstBubble.innerHTML = window.JgAiRender ? window.JgAiRender.renderMarkdown(window.JgAiHistory.getCustomWelcomeMessage()) : window.JgAiHistory.getCustomWelcomeMessage();
                     }
                 }
-
                 // 3. 현재 화면에 표시된 히어로 카드 즉시 갱신
                 const existingHero = messageContainerEl ? messageContainerEl.querySelector('.ai-hero-card') : null;
                 if (existingHero) {
@@ -63,9 +52,7 @@
                     const descEl = existingHero.querySelector('.ai-hero-desc');
                     if (iconEl && data.config.heroIcon) iconEl.textContent = data.config.heroIcon;
                     if (titleEl && data.config.heroTitle) titleEl.textContent = data.config.heroTitle;
-                    if (descEl && data.config.heroDescription) {
-                        descEl.innerHTML = data.config.heroDescription.replace(/\n/g, '<br>');
-                    }
+                    if (descEl && data.config.heroDescription) descEl.innerHTML = data.config.heroDescription.replace(/\n/g, '<br>');
                 }
             }
         } catch (e) {
@@ -87,33 +74,22 @@
         mobileTitleEl = document.getElementById('aiMobileSessionTitle'); historyListEl = document.getElementById('aiSidebarHistoryList');
         historyCountEl = document.getElementById('aiHistoryCount');
 
-        // 음성 입력(STT) 마이크 버튼 연동
         const voiceBtnEl = document.getElementById('aiVoiceBtn');
-        if (voiceBtnEl && window.JgAiVoice) {
-            window.JgAiVoice.initVoiceButton(voiceBtnEl, promptInputEl);
-        }
+        if (voiceBtnEl && window.JgAiVoice) window.JgAiVoice.initVoiceButton(voiceBtnEl, promptInputEl);
 
-        // 사이드바 대화 실시간 키워드 검색 이벤트 연동
         const searchInputEl = document.getElementById('aiHistorySearchInput');
         if (searchInputEl) {
             let searchDebounceTimer = null;
             searchInputEl.addEventListener('input', (e) => {
                 clearTimeout(searchDebounceTimer);
-                searchDebounceTimer = setTimeout(() => {
-                    renderHistorySidebar(e.target.value);
-                }, 120);
+                searchDebounceTimer = setTimeout(() => renderHistorySidebar(e.target.value), 120);
             });
         }
 
-        // 위키 등록 성공 시 콜백 등록
         window.JgAiRenderEvents = {
             onWikiSuccess: function(successMsg) {
-                if (window.JgAiRender) {
-                    window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', successMsg, Date.now());
-                }
-                if (window.JgAiHistory) {
-                    window.JgAiHistory.addMessageToActiveSession('assistant', successMsg, Date.now());
-                }
+                if (window.JgAiRender) window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', successMsg, Date.now());
+                if (window.JgAiHistory) window.JgAiHistory.addMessageToActiveSession('assistant', successMsg, Date.now());
                 scrollToBottom();
             }
         };
@@ -122,6 +98,22 @@
         if (window.JgAiViewport && typeof window.JgAiViewport.init === 'function') {
             window.JgAiViewport.init(promptInputEl, scrollToBottom);
         }
+
+        // 🌐 URL 기반 세션 격리 라우팅 (Gemini/ChatGPT 표준)
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const querySessionId = urlParams.get('session');
+            const queryQ = urlParams.get('q');
+            if (querySessionId && window.JgAiHistory) {
+                window.JgAiHistory.setActiveSessionId(querySessionId);
+            } else if (!queryQ && window.JgAiHistory) {
+                // 파라미터 없는 /ai 진입 시: 이전 세션 자동 복원 금지, 항상 새 대화 시작
+                window.JgAiHistory.setActiveSessionId(null);
+                window.JgAiHistory.createNewSession();
+                currentChatHistory = [];
+            }
+        } catch (e) {}
+
         renderHistorySidebar();
         restoreActiveSession();
         checkUrlQueryParam();
@@ -132,6 +124,24 @@
             renderHistorySidebar();
             const curActive = window.JgAiHistory?.getActiveSession();
             if (curActive?.title && mobileTitleEl) mobileTitleEl.textContent = curActive.title;
+        });
+
+        // 🔄 브라우저 뒤로가기/앞으로가기 세션 동기화
+        window.addEventListener('popstate', async () => {
+            try {
+                const sId = new URLSearchParams(window.location.search).get('session');
+                if (sId && window.JgAiHistory) {
+                    window.JgAiHistory.setActiveSessionId(sId);
+                    const cur = window.JgAiHistory.getActiveSession();
+                    if (!cur?.messages?.length && window.JgAiHistory.fetchSessionDetailAsync) await window.JgAiHistory.fetchSessionDetailAsync(sId);
+                } else if (!sId && window.JgAiHistory) {
+                    window.JgAiHistory.setActiveSessionId(null);
+                    window.JgAiHistory.createNewSession();
+                    currentChatHistory = [];
+                }
+                restoreActiveSession();
+                renderHistorySidebar();
+            } catch (err) {}
         });
     }
 
@@ -144,6 +154,7 @@
             const query = urlParams.get('q');
             if (query && query.trim()) {
                 if (window.JgAiHistory) {
+                    window.JgAiHistory.setActiveSessionId(null);
                     window.JgAiHistory.createNewSession();
                     currentChatHistory = [];
                     restoreActiveSession();
@@ -153,8 +164,6 @@
                     sendAiMessage(query.trim());
                     window.history.replaceState({}, document.title, window.location.pathname);
                 }, 300);
-            } else if (window.location.search) {
-                window.history.replaceState({}, document.title, window.location.pathname);
             }
         } catch (e) {
             console.warn('[AI Page] URL 쿼리 처리 건너뜀:', e);
@@ -178,12 +187,17 @@
      */
     window.handleNewChatClick = function() {
         if (window.JgAiHistory) {
+            window.JgAiHistory.setActiveSessionId(null);
             window.JgAiHistory.createNewSession();
             currentChatHistory = [];
             restoreActiveSession();
             renderHistorySidebar();
             window.toggleSidebar(false);
-            try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
+            try {
+                if (window.location.search.includes('session=')) {
+                    window.history.pushState({ sessionId: null }, document.title, window.location.pathname);
+                }
+            } catch (e) {}
             if (promptInputEl) {
                 promptInputEl.value = '';
                 promptInputEl.style.height = '24px';
@@ -242,9 +256,10 @@
             item.addEventListener('click', async (e) => {
                 if (e.target.closest('.ai-history-item-actions')) return;
                 window.JgAiHistory.setActiveSessionId(sess.id);
-                if (window.location.search && !window.location.search.includes('q=')) {
-                    try { window.history.replaceState({}, document.title, window.location.pathname); } catch (err) {}
-                }
+                try {
+                    const newUrl = window.location.pathname + '?session=' + encodeURIComponent(sess.id);
+                    window.history.pushState({ sessionId: sess.id }, document.title, newUrl);
+                } catch (err) {}
                 if (!sess.messages || !sess.messages.length) {
                     if (window.JgAiHistory.fetchSessionDetailAsync) await window.JgAiHistory.fetchSessionDetailAsync(sess.id);
                 }
@@ -260,7 +275,11 @@
             if (delBtn) {
                 delBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    const wasActive = (window.JgAiHistory.getActiveSessionId() === sess.id);
                     if (window.JgAiHistory.deleteSession(sess.id)) {
+                        if (wasActive) {
+                            try { window.history.replaceState({ sessionId: null }, document.title, window.location.pathname); } catch (e) {}
+                        }
                         renderHistorySidebar();
                         restoreActiveSession();
                     }
@@ -299,19 +318,12 @@
         scrollToBottom();
     }
 
-    /**
-     * 빠른 추천 질문 클릭 핸들러
-     */
+    /** 빠른 추천 질문 클릭 핸들러 */
     window.sendQuickPrompt = function(promptText) {
-        if (promptInputEl) {
-            promptInputEl.value = promptText;
-            handleComposerSubmit();
-        }
+        if (promptInputEl) { promptInputEl.value = promptText; handleComposerSubmit(); }
     };
 
-    /**
-     * 전송 및 생성 중단 버튼 UI 상태 동기화
-     */
+    /** 전송 및 생성 중단 버튼 UI 상태 동기화 */
     function updateSubmitButtonState(isBusy) {
         if (!submitBtnEl) return;
         if (isBusy) {
@@ -327,24 +339,17 @@
         }
     }
 
-    /**
-     * 입력 폼 제출 핸들러 (생성 중 클릭 시 즉시 중단)
-     */
+    /** 입력 폼 제출 핸들러 (생성 중 클릭 시 즉시 중단) */
     window.handleComposerSubmit = function(e) {
         if (e) e.preventDefault();
-
         // 🛑 이미 생성 중일 때 버튼 누르면 즉시 중단 (Stop Generating)
         if (isSending) {
-            if (window.JgAiStream) {
-                window.JgAiStream.abortStream();
-            }
+            if (window.JgAiStream) window.JgAiStream.abortStream();
             return;
         }
-
         if (!promptInputEl) return;
         const text = promptInputEl.value.trim();
         if (!text) return;
-
         sendAiMessage(text);
         promptInputEl.value = '';
         promptInputEl.style.height = '24px';
@@ -374,6 +379,12 @@
             const updated = window.JgAiHistory.addMessageToActiveSession('user', userText, userTimestamp);
             if (updated && mobileTitleEl) mobileTitleEl.textContent = updated.title;
             renderHistorySidebar();
+            try {
+                if (updated?.id && !window.location.search.includes('session=')) {
+                    const newUrl = window.location.pathname + '?session=' + encodeURIComponent(updated.id);
+                    window.history.replaceState({ sessionId: updated.id }, document.title, newUrl);
+                }
+            } catch (e) {}
         }
 
         isSending = true;
@@ -447,17 +458,12 @@
     }
 
     function scrollToBottom() {
-        if (messageScrollEl) {
-            messageScrollEl.scrollTop = messageScrollEl.scrollHeight;
-        }
+        if (messageScrollEl) messageScrollEl.scrollTop = messageScrollEl.scrollHeight;
     }
 
-    /**
-     * textarea 자동 높이 조절 및 키보드 엔터 핸들링
-     */
+    /** textarea 자동 높이 조절 및 키보드 엔터 핸들링 */
     function initInputAutoResize() {
         if (!promptInputEl) return;
-
         const charCounterEl = document.getElementById('aiCharCount');
         function updateCharCount(len) {
             if (!charCounterEl) return;
@@ -466,34 +472,21 @@
             charCounterEl.classList.toggle('warning', len >= warnThreshold && len < currentMaxPromptLength);
             charCounterEl.classList.toggle('limit', len >= currentMaxPromptLength);
         }
-
         function resizeInput() {
             promptInputEl.style.height = 'auto';
             const scrollH = promptInputEl.scrollHeight;
-            const targetH = Math.max(24, Math.min(scrollH, 120));
-            promptInputEl.style.height = targetH + 'px';
+            promptInputEl.style.height = Math.max(24, Math.min(scrollH, 120)) + 'px';
             promptInputEl.style.overflowY = (scrollH > 120) ? 'auto' : 'hidden';
         }
-
-        promptInputEl.addEventListener('input', function() {
-            resizeInput();
-            updateCharCount(this.value.length);
-        });
-
+        promptInputEl.addEventListener('input', function() { resizeInput(); updateCharCount(this.value.length); });
         promptInputEl.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                if (window.innerWidth > 768) {
-                    e.preventDefault();
-                    handleComposerSubmit();
-                }
+            if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) {
+                e.preventDefault();
+                handleComposerSubmit();
             }
         });
     }
 
-    // 초기 마운트
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initPage);
-    } else {
-        initPage();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initPage);
+    else initPage();
 })();
