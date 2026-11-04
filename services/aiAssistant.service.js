@@ -1,6 +1,6 @@
 /**
  * 🤖 JG 포털 LG EXAONE 4.0 로컬 AI 비서 서비스 (aiAssistant.service.js)
- * - 로컬 워크스테이션 PC (192.168.50.164:11434) Ollama API 내부망 연동
+ * - 로컬 워크스테이션 PC (.env OLLAMA_HOST) Ollama API 내부망 연동
  * - 모델: exaone4:opt (LG AI연구원 국산 초경량 LLM EXAONE 4.0 1.2B)
  * - 건강 데이터 기반 스마트 데일리 브리핑 및 가족 대화형 챗봇
  * - 무장애 설계: PC 오프라인/지연 시 0.1초 만에 기본 규칙 브리핑으로 자동 폴백
@@ -15,8 +15,8 @@ const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { buildAiChatPrompt } = require('./aiContextRouter.service');
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
+const { OLLAMA_HOST, CHAT_MODEL, selectChatModel } = require('./aiModelRouter.service');
+const OLLAMA_MODEL = CHAT_MODEL; // 브리핑·상태 점검·위키 처리는 평상시 대화 모델 사용
 
 // 브리핑 캐시 (1시간 유효, 데이터 변경 시 자동 갱신)
 let cachedAiBriefing = null;
@@ -444,24 +444,28 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         user
     });
 
+    // 🔀 질문 내용에 따라 대화 모델(평상시) / 추론 모델(분석·계산 등) 자동 선택
+    const picked = selectChatModel(cleanPrompt);
+
     const result = await sendOllamaRequest('/api/generate', {
-        model: OLLAMA_MODEL,
+        model: picked.model,
         prompt: fullPrompt,
         stream: false,
-        keep_alive: '24h',
+        keep_alive: picked.keepAlive,
         options: {
             temperature: 0.5,
             top_p: 0.9,
             num_predict: 2048
         }
-    }, 120000);
+    }, picked.timeoutMs);
 
     const rawAnswer = result.response ? result.response.trim() : '답변을 생성하지 못했습니다.';
 
     return {
         success: true,
         answer: koreanizeWeatherWords(rawAnswer),
-        model: OLLAMA_MODEL
+        model: picked.model,
+        modelMode: picked.mode
     };
 }
 

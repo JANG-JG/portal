@@ -1,14 +1,13 @@
 /**
  * 🤖 JG 포털 지식 관리 및 위키/루틴 AI 서비스 (aiKnowledge.service.js)
- * - 로컬 워크스테이션 PC (192.168.50.164:11434) Ollama LG EXAONE 4.0 모델 연동
+ * - 로컬 워크스테이션 PC (.env OLLAMA_HOST) Ollama LG EXAONE 4.0 모델 연동
  * - 메모 ➔ 위키 정돈, 루틴/일정 자동 감지, 3줄 요약, 위키 초안 자동 작성
  * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화
  */
 
 const http = require('http');
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
+const { OLLAMA_HOST, CHAT_MODEL: OLLAMA_MODEL } = require('./aiModelRouter.service'); // 위키 초안/요약은 평상시 대화 모델 사용
 
 /**
  * EXAONE 4.0 추론 모드 대비: <think>...</think> 사고 과정 텍스트 제거 (미종결 태그 포함)
@@ -106,7 +105,7 @@ async function refineMemoToWiki({ title = '', content = '', userName = '가족' 
         throw new Error('정리할 메모 내용이 없습니다.');
     }
 
-    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 지식 정리 AI(LG EXAONE)입니다.
+    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 지식 정리 AI입니다.
 사용자의 날것의 메모를 체계적이고 가독성 높은 가족 위키(Family Wiki) 마크다운 문서로 변환하세요.
 출력은 반드시 다른 설명 없이 순수한 JSON 형식으로만 작성하세요.
 JSON 필드:
@@ -167,7 +166,7 @@ async function extractRoutineAndTodos({ title = '', content = '' }) {
     }
 
     const todayStr = new Date().toISOString().slice(0, 10);
-    const systemPrompt = `당신은 일정 및 생활 루틴 분석 AI(LG EXAONE)입니다.
+    const systemPrompt = `당신은 일정 및 생활 루틴 분석 AI입니다.
 메모 본문에서 정기적인 반복 루틴(주기 포함)이나 향후 수행해야 할 특정 일정/할 일을 찾아내세요.
 오늘 날짜는 ${todayStr}입니다.
 출력은 반드시 다른 설명 없이 순수한 JSON 형식으로만 작성하세요.
@@ -224,7 +223,7 @@ async function summarizeText({ text = '', maxLines = 3 }) {
         throw new Error('요약할 텍스트가 너무 짧습니다.');
     }
 
-    const systemPrompt = `당신은 문서 핵심 요약 AI(LG EXAONE)입니다.
+    const systemPrompt = `당신은 문서 핵심 요약 AI입니다.
 주어진 글을 읽고 가장 핵심적인 지침이나 내용을 ${maxLines}개의 불릿 포인트(- )로 간결하게 요약하세요.
 인사말이나 서론 없이 불릿 포인트 요약문만 출력하세요.`;
 
@@ -255,7 +254,7 @@ async function generateWikiDraft({ prompt = '', category = '생활' }) {
         throw new Error('작성할 주제를 입력해 주세요.');
     }
 
-    const systemPrompt = `당신은 가족 위키 문서 작성 전문 AI(LG EXAONE)입니다.
+    const systemPrompt = `당신은 가족 위키 문서 작성 전문 AI입니다.
 주어진 주제에 대해 가족들이 실생활에서 바로 유용하게 참고할 수 있는 체계적인 마크다운 위키 초안을 작성하세요.
 반드시 아래 JSON 형식으로만 응답하세요:
 {
@@ -314,7 +313,7 @@ async function smartMergeOrDraftWiki({ newContent = '', newTitle = '', candidate
     }
 
     const todayStr = new Date().toISOString().slice(0, 10);
-    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 지식 통합 AI(LG EXAONE)입니다.
+    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 지식 통합 AI입니다.
 새로운 내용이 [기존 위키 후보 문서]와 직접적으로 관련된 내용(추가 꿀팁, 교체/점검 이력, 절차 보강, 새로운 정보 등)인지 판별하세요.
 - 관련이 있다면: "action": "merge"로 설정하고, 기존 문서의 유용한 서식과 내용을 100% 보존하면서 새 내용을 알맞은 섹션(또는 날짜별 이력 섹션)에 자연스럽게 누적 보강한 마크다운을 작성하세요.
 - 관련이 없는 완전히 새로운 주제라면: "action": "create"로 설정하고 신규 위키 문서 마크다운을 작성하세요.

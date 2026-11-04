@@ -13,8 +13,8 @@ const { smartMergeOrDraftWiki, stripThinkTags } = require('./aiKnowledge.service
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { koreanizeWeatherWords } = require('./weatherKo.util');
 
-const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
+const { OLLAMA_HOST, CHAT_MODEL, selectChatModel } = require('./aiModelRouter.service');
+const OLLAMA_MODEL = CHAT_MODEL; // 위키 안내 등 기본 응답 표기용 (대화는 selectChatModel로 자동 선택)
 
 /**
  * 스트리밍 원문을 생각 과정(thinking)과 답변 본문(answer)으로 분리
@@ -256,14 +256,15 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
         }
     });
 
-    // 5. Ollama 실시간 스트리밍 HTTP 요청 발송
+    // 5. Ollama 실시간 스트리밍 HTTP 요청 발송 (🔀 질문 내용 기반 대화/추론 모델 자동 선택)
+    const picked = selectChatModel(prompt);
     try {
         const urlObj = new URL('/api/generate', OLLAMA_HOST);
         const bodyStr = JSON.stringify({
-            model: OLLAMA_MODEL,
+            model: picked.model,
             prompt: fullPrompt,
             stream: true,
-            keep_alive: '24h',
+            keep_alive: picked.keepAlive,
             options: {
                 temperature: 0.5,
                 top_p: 0.9,
@@ -277,7 +278,7 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                 'Content-Type': 'application/json',
                 'Content-Length': Buffer.byteLength(bodyStr)
             },
-            timeout: 120000
+            timeout: picked.timeoutMs
         }, (ollamaRes) => {
             if (ollamaRes.statusCode < 200 || ollamaRes.statusCode >= 300) {
                 sendSseEvent(res, 'error', { message: `로컬 AI 엔진 오류 (상태 코드: ${ollamaRes.statusCode})` });
@@ -329,7 +330,8 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                             sendSseEvent(res, 'done', {
                                 fullText: fullAnswer.trim(),
                                 thinkingText: (nativeThinking + finalPart.thinking).trim(),
-                                model: OLLAMA_MODEL
+                                model: picked.model,
+                                modelMode: picked.mode
                             });
                             res.end();
                             return;
@@ -356,7 +358,8 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                     sendSseEvent(res, 'done', {
                         fullText: fullAnswer.trim() || '답변을 생성하지 못했습니다.',
                         thinkingText: (nativeThinking + finalPart.thinking).trim(),
-                        model: OLLAMA_MODEL
+                        model: picked.model,
+                        modelMode: picked.mode
                     });
                     res.end();
                 }
