@@ -78,14 +78,15 @@ function splitThinkStream(raw, final = false) {
         return { thinking: '', answer: (stripThinkTags(text) || '').trim(), closed: false };
     }
 
-    // 극초반: <think> 태그 조각인지 확인 (최대 7자)
-    const trimmed = text.replace(/^\s+/, '');
-    if (trimmed.length < 7 && '<think>'.startsWith(trimmed.toLowerCase())) {
-        return { thinking: '', answer: '', closed: false };
+    // EXAONE 4.0 템플릿은 프롬프트 끝에 <think>를 선주입 → </think> 전까지는 생각 과정으로 스트리밍
+    // (종료 시까지 </think>가 없으면 위 final 분기에서 전체를 답변으로 처리, 생각 패널은 자동 제거)
+    let holdTail = 0;
+    for (const tag of ['</think>', '<think>']) {
+        for (let k = tag.length - 1; k > 0; k--) {
+            if (text.toLowerCase().endsWith(tag.slice(0, k))) { holdTail = Math.max(holdTail, k); break; }
+        }
     }
-
-    // 태그가 없는 순수 답변 본문
-    return { thinking: '', answer: text.replace(/^\s+/, ''), closed: false };
+    return { thinking: text.slice(0, text.length - holdTail).replace(/^\s+/, ''), answer: '', closed: false };
 }
 
 /**
