@@ -413,12 +413,11 @@
 
         const contentEl = row.querySelector('.ai-bubble-content');
         const actionsEl = row.querySelector('.ai-bubble-actions');
-        let accumulatedText = '';
-        let isDone = false;
+        let accumulatedText = '', isDone = false, isThinkingClosed = false;
         let thinkingText = '', thinkingEl = null;
         // 💭 생각하는 과정 패널 (portal-ai-thinking.js 위임: 생각 중 펼침 → 답변 시작 시 자동 접힘)
         const renderThinking = (open) => {
-            if (window.JgAiThinking) thinkingEl = window.JgAiThinking.render(thinkingEl, contentEl, thinkingText, { open, live: !isDone && !accumulatedText });
+            if (window.JgAiThinking) thinkingEl = window.JgAiThinking.render(thinkingEl, contentEl, thinkingText, { open, live: !isDone && !isThinkingClosed });
         };
 
         function refreshActions() {
@@ -441,14 +440,14 @@
         return {
             element: row,
             appendThinking(token) {
-                if (isDone || !token || accumulatedText) return;
+                if (isDone || !token || isThinkingClosed) return;
                 thinkingText += token;
                 renderThinking(thinkingEl ? undefined : true);
             },
             appendToken(token) {
                 if (isDone || !token) return;
+                if (!isThinkingClosed) { isThinkingClosed = true; renderThinking(false); }
                 accumulatedText += token;
-                if (accumulatedText === token) renderThinking(false);
                 row.dataset.rawText = accumulatedText;
                 if (contentEl) {
                     contentEl.innerHTML = renderAiMarkdown(accumulatedText) + '<span class="ai-typing-cursor"></span>';
@@ -456,7 +455,7 @@
             },
             complete(fullText, finalThinking) {
                 if (isDone) return;
-                isDone = true;
+                isDone = true; isThinkingClosed = true;
                 if (typeof fullText === 'string') accumulatedText = fullText;
                 if (typeof finalThinking === 'string') thinkingText = finalThinking;
                 renderThinking(false);
@@ -468,7 +467,7 @@
             },
             abort(msg = '생성이 중단되었습니다.') {
                 if (isDone) return;
-                isDone = true;
+                isDone = true; isThinkingClosed = true;
                 renderThinking(false);
                 row.dataset.rawText = accumulatedText;
                 if (contentEl) {

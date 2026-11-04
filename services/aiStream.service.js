@@ -17,26 +17,75 @@ const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://192.168.50.164:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'exaone4:opt';
 
 /**
- * 스트리밍 원문을 생각 과정/답변으로 분리
- * - EXAONE 4.0 템플릿은 프롬프트 끝에 <think>를 미리 넣으므로 여는 태그 없이 '생각 + </think> + 답변' 형태로 올 수 있음
- * - </think> 전까지는 생각 과정으로 간주, final(종료 시점)까지 </think>가 없으면 전체를 답변으로 처리
- * - 끝부분의 미완성 태그 조각('</thi' 등)은 다음 토큰까지 보류
+ * 스트리밍 원문을 생각 과정(thinking)과 답변 본문(answer)으로 분리
+ * - <think> 태그가 명시적으로 존재하는 경우만 생각 과정으로 분류
+ * - 템플릿 선주입으로 </think>만 있는 경우에도 분리
+ * - <think> 태그가 없는 일반 응답은 답변 본문(answer)으로 즉시 전달 (생각 과정으로 오인 방지)
  */
 function splitThinkStream(raw, final = false) {
-    const s = (raw || '').replace(/^\s*<think>/i, '');
-    const closeIdx = s.search(/<\/think>/i);
-    if (closeIdx >= 0) {
-        const answer = stripThinkTags(s.slice(closeIdx + 8)) || '';
-        return { thinking: s.slice(0, closeIdx), answer: answer.replace(/^\s+/, ''), closed: true };
-    }
-    if (final) return { thinking: '', answer: (stripThinkTags(s) || '').trim(), closed: false };
-    let hold = 0;
-    for (const tag of ['</think>', '<think>']) {
-        for (let k = tag.length - 1; k > 0; k--) {
-            if (s.toLowerCase().endsWith(tag.slice(0, k))) { hold = Math.max(hold, k); break; }
+    const text = raw || '';
+    if (!text) return { thinking: '', answer: '', closed: false };
+
+    const thinkTagRegex = /<think>/i;
+    const thinkCloseRegex = /<\/think>/i;
+    const hasOpen = thinkTagRegex.test(text);
+    const hasClose = thinkCloseRegex.test(text);
+
+    // 1) <think> 여는 태그가 있는 경우
+    if (hasOpen) {
+        const openMatch = text.match(thinkTagRegex);
+        const openIdx = openMatch.index;
+        const afterOpen = text.slice(openIdx + openMatch[0].length);
+        const closeMatch = afterOpen.match(thinkCloseRegex);
+
+        if (closeMatch) {
+            const closeIdx = closeMatch.index;
+            const thinking = afterOpen.slice(0, closeIdx).trim();
+            const answer = (stripThinkTags(afterOpen.slice(closeIdx + closeMatch[0].length)) || '').replace(/^\s+/, '');
+            return { thinking, answer, closed: true };
         }
+
+        if (final) {
+            return { thinking: afterOpen.trim(), answer: '', closed: false };
+        }
+
+        let hold = 0;
+        const closeTag = '</think>';
+        for (let k = closeTag.length - 1; k > 0; k--) {
+            if (afterOpen.toLowerCase().endsWith(closeTag.slice(0, k))) {
+                hold = k;
+                break;
+            }
+        }
+        return {
+            thinking: afterOpen.slice(0, afterOpen.length - hold).replace(/^\s+/, ''),
+            answer: '',
+            closed: false
+        };
     }
-    return { thinking: s.slice(0, s.length - hold).replace(/^\s+/, ''), answer: '', closed: false };
+
+    // 2) 여는 태그 없이 닫는 태그 </think>만 있는 경우 (템플릿 선주입 대응)
+    if (hasClose) {
+        const closeMatch = text.match(thinkCloseRegex);
+        const closeIdx = closeMatch.index;
+        const thinking = text.slice(0, closeIdx).trim();
+        const answer = (stripThinkTags(text.slice(closeIdx + closeMatch[0].length)) || '').replace(/^\s+/, '');
+        return { thinking, answer, closed: true };
+    }
+
+    // 3) <think> 태그가 전혀 없는 경우
+    if (final) {
+        return { thinking: '', answer: (stripThinkTags(text) || '').trim(), closed: false };
+    }
+
+    // 극초반: <think> 태그 조각인지 확인 (최대 7자)
+    const trimmed = text.replace(/^\s+/, '');
+    if (trimmed.length < 7 && '<think>'.startsWith(trimmed.toLowerCase())) {
+        return { thinking: '', answer: '', closed: false };
+    }
+
+    // 태그가 없는 순수 답변 본문
+    return { thinking: '', answer: text.replace(/^\s+/, ''), closed: false };
 }
 
 /**
@@ -298,6 +347,7 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                         try {
                             const parsed = JSON.parse(buffer.trim());
                             if (parsed.response) rawAnswer += parsed.response;
+                            if (parsed.thinking) nativeThinking += parsed.thinking;
                         } catch (e) {}
                     }
                     const finalPart = splitThinkStream(rawAnswer, true);

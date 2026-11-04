@@ -47,6 +47,7 @@
             let isStreamDone = false;
             let fullText = '';
 
+            let currentEventType = 'message';
             while (!isStreamDone) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -55,10 +56,12 @@
                 const lines = buffer.split('\n');
                 buffer = lines.pop();
 
-                let currentEventType = 'message';
                 for (const line of lines) {
                     const trimmed = line.trim();
-                    if (!trimmed) continue;
+                    if (!trimmed) {
+                        currentEventType = 'message';
+                        continue;
+                    }
 
                     if (trimmed.startsWith('event:')) {
                         currentEventType = trimmed.slice(6).trim();
@@ -71,7 +74,7 @@
                             const data = JSON.parse(dataStr);
                             if (currentEventType === 'thinking') {
                                 if (typeof onThinking === 'function') onThinking(data.token || '');
-                            } else if (currentEventType === 'token' || data.token) {
+                            } else if (currentEventType === 'token') {
                                 const t = data.token || '';
                                 fullText += t;
                                 if (typeof onToken === 'function') onToken(t);
@@ -82,6 +85,10 @@
                             } else if (currentEventType === 'error') {
                                 isStreamDone = true;
                                 if (typeof onError === 'function') onError(data.message || '오류가 발생했습니다.');
+                            } else if (data.token) {
+                                const t = data.token || '';
+                                fullText += t;
+                                if (typeof onToken === 'function') onToken(t);
                             }
                         } catch (e) {
                             // JSON 파싱 실패 무시
