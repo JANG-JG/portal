@@ -6,15 +6,24 @@
  * - [규칙 3] 500줄 이하 모듈화
  */
 
-const { searchNewsByKeyword } = require('./newsHeadline.service');
+const { searchNewsByKeyword, getLatestByCategories } = require('./newsHeadline.service');
 const { searchWikiContent } = require('./wikiSummary.service');
 
 // 인사·맞장구 등 짧은 잡담은 DB 검색 생략 (불필요한 지연·토큰 방지)
 const SMALLTALK_RE = /^(안녕|하이|ㅎㅇ|반가|고마|감사|ㅋ+|ㅎ+|좋아|응|네|넵|아니|그래|잘\s*자|굿모닝|수고)/;
 
+// 전망·예측·추론 질문 (최신 기사 다건을 근거로 주입해 학습 시점(과거) 기준 추론 방지)
+const FORECAST_RE = /(앞으로|향후|전망|예측|예상|추론|추측|어떻게\s*될|될\s*것\s*같|발생할|일어날|미래|시나리오|흐름)/;
+const WORLD_RE = /(세계|국제|해외|글로벌|외신|미국|중국|일본|러시아|유럽|중동)/;
+const WORLD_CATS = ['국제/세계', '국제·세계'];
+
 function isSmalltalk(prompt) {
     const t = String(prompt || '').trim();
     return t.length < 10 && SMALLTALK_RE.test(t);
+}
+
+function isForecastQuery(prompt) {
+    return FORECAST_RE.test(String(prompt || ''));
 }
 
 function fmtArticle(a) {
@@ -69,10 +78,24 @@ async function buildExtractedContext({ prompt, intents, summaryContext = null })
         if (lines.length) tasks.push(Promise.resolve(`[오늘의 세상 소식 (${todayKst} 기준 배경 정보)]\n${lines.join('\n')}`));
     }
 
+    // 4) 전망·예측·세계 정세 질문 → 국제·경제·정치 분야 최신 기사 다건 (키워드 매칭 실패 대비, 날짜 포함)
+    const forecast = isForecastQuery(text);
+    if (!skipSearch && (forecast || (WORLD_RE.test(text) && intents.has('NEWS')))) {
+        const groups = [[WORLD_CATS, '국제·세계', WORLD_RE.test(text) ? 6 : 4]];
+        if (forecast) groups.push([['경제'], '경제', 3], [['정치'], '정치', 3]);
+        tasks.push(
+            Promise.all(groups.map(([cats, , n]) => getLatestByCategories(cats, n).catch(() => []))).then(lists => {
+                const lines = lists.flat().filter(a => a && a.title).map(fmtArticle);
+                if (!lines.length) return '';
+                return `[전망·추론용 최신 기사 (${todayKst} 기준, 이 기사들을 근거로 앞으로의 흐름을 추론하세요)]\n${lines.join('\n')}`;
+            }).catch(() => '')
+        );
+    }
+
     if (!tasks.length) return '';
     const results = await Promise.all(tasks);
     const merged = results.filter(Boolean).join('\n\n');
     return merged ? `\n\n${merged}` : '';
 }
 
-module.exports = { buildExtractedContext, isSmalltalk };
+module.exports = { buildExtractedContext, isSmalltalk, isForecastQuery };

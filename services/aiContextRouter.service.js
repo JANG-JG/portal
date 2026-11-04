@@ -9,7 +9,7 @@ const { searchWikiContent } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
 const { searchNewsByKeyword, getRecentBreaking, getLatestByCategories, getDailyWeatherSummary } = require('./newsHeadline.service');
 const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
-const { buildExtractedContext } = require('./aiDataExtractor.service');
+const { buildExtractedContext, isForecastQuery } = require('./aiDataExtractor.service');
 const { ADMIN_USERS } = require('../config/constants');
 
 /**
@@ -297,7 +297,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
             if (merged.length > 0) {
                 matchedNewsGuide = header +
                     merged.map(a => `■ [${a.category_name || '기타'}] ${a.title} (${a.media_name || '언론사 미상'}, ${fmtTime(a)})${a.summary ? `\n- 요약: ${String(a.summary).slice(0, 100)}` : ''}`).join('\n');
-            } else if (keywords.length > 0) {
+            } else if (keywords.length > 0 && !isForecastQuery(cleanPrompt)) {
                 matchedNewsGuide = header + '- 뉴스룸에서 해당 기사를 찾지 못했습니다. 지어내지 말고 찾지 못했다고 솔직히 안내하세요.';
             }
         } catch (e) {
@@ -359,7 +359,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
         adminGuardNote = '\n- [보안 가드] 사용자가 관리자 전용 페이지(/admin), 시스템 제어, DB 원시 데이터 등을 요구했습니다. 보안상 AI를 통한 접근이나 변경이 불가능함을 정중하고 명확하게 안내하세요.';
     }
 
-    const newsNote = matchedNewsGuide ? '\n- 뉴스 질문에는 [질문 연관 뉴스 검색 결과]의 기사 제목·언론사·요약만 근거로 핵심을 정리해 답하세요.' : '';
+    const newsNote = matchedNewsGuide ? '\n- 뉴스 질문에는 [질문 연관 뉴스 검색 결과]·[전망·추론용 최신 기사]의 기사 제목·언론사·요약만 근거로 핵심을 정리해 답하세요.' : '';
     const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 전용 AI 비서입니다. 자신을 소개할 때는 "JG 포털 AI 비서"라고 하세요.
 - 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
 - 질문자가 가족 구성원이므로, 든든하고 똑똑한 가족 비서처럼 따뜻하고 명확하게 답변해 주세요.
@@ -368,7 +368,8 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
 - 사실이 아니거나 확실하지 않은 정보는 지어내지(환각) 말고 솔직하게 답변하세요.${newsNote}
 - 포털의 관리자 페이지(/admin), 시스템 내부 설정, DB 직접 조작은 보안 규정상 AI를 통한 열람 및 제어가 엄격히 차단되어 있습니다.
 - 현재 일시: ${currentDateTimeStr} (한국 시간). "오늘·올해·최근·요즘"은 반드시 이 날짜(${kst.getFullYear()}년) 기준으로 판단하세요.
-- 당신의 학습 지식은 과거 시점에 멈춰 있어 오래된 정보일 수 있습니다. 최신 소식·시세·날씨는 아래 [우리 집 참고 정보]를 최우선 근거로 삼고, 참고 정보에 없는 최신 사실은 학습 시점 정보임을 밝히거나 모른다고 답하세요.
+- 당신의 학습 지식은 과거 시점에 멈춰 있어 오래된 정보일 수 있습니다. 최신 소식·시세·날씨는 아래 [우리 집 참고 정보]를 최우선 근거로 삼고, 참고 정보에 없는 최신 사실은 지어내지 말고 모른다고 답하세요.
+- "2024년 기준", "학습 데이터 기준", "제 지식은 ~까지" 같은 학습 시점 언급이나 과거 연도 기준 서술은 절대 하지 마세요. 전망·예측·추론 질문은 반드시 현재(${kst.getFullYear()}년 ${kst.getMonth() + 1}월) 시점에서 참고 정보 속 최신 기사를 근거로 삼아 앞으로의 흐름을 논리적으로 추론하세요.
 - 대화 답변은 길이 제한 없이 충분히 자세하고 풍부하게 설명하되, 참고 정보 속 기사·수치를 자연스럽게 인용해 근거를 보여주세요.${adminGuardNote}${contextParts ? `\n\n[우리 집 참고 정보]\n${contextParts}` : ''}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
@@ -394,7 +395,11 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     }
 
     fullPrompt += `<|user|>\n${cleanPrompt}\n<|assistant|>\n`;
-    messages.push({ role: 'user', content: cleanPrompt });
+    // 전망·추론 질문은 사용자 메시지 끝에 기준일 앵커 추가 (추론 모델이 학습 시점 연도를 기준으로 삼지 않도록)
+    const dateAnchor = isForecastQuery(cleanPrompt)
+        ? `\n\n(기준일: ${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일. 학습 시점 언급 없이 위 참고 정보의 최신 기사를 근거로 추론해 주세요.)`
+        : '';
+    messages.push({ role: 'user', content: cleanPrompt + dateAnchor });
 
     return {
         cleanPrompt,

@@ -42,17 +42,23 @@ function isDualMode() {
 }
 
 /**
- * 질문 내용에 따라 사용할 모델 선택
+ * 질문 내용(또는 사용자 선택)에 따라 사용할 모델 선택
+ * @param {string} prompt
+ * @param {'auto'|'chat'|'reasoning'} preference 사용자 선택 (auto: 질문 내용 기반 자동 분기)
  * @returns {{ model: string, mode: 'chat'|'reasoning', keepAlive: string, timeoutMs: number }}
  */
-function selectChatModel(prompt = '') {
+function selectChatModel(prompt = '', preference = 'auto') {
     const text = String(prompt || '').trim();
     const chat = { model: CHAT_MODEL, mode: 'chat', keepAlive: CHAT_KEEP_ALIVE, timeoutMs: 300000 };
-    if (!isDualMode() || !text || SMALLTALK_REGEX.test(text)) return chat;
+    // 모델 교체(로딩) 시간을 고려해 타임아웃 여유 확보
+    const reasoning = { model: REASONING_MODEL, mode: 'reasoning', keepAlive: REASONING_KEEP_ALIVE, timeoutMs: 420000 };
+    if (!isDualMode()) return chat;
+    if (preference === 'chat') return chat;
+    if (preference === 'reasoning') return reasoning;
+    if (!text || SMALLTALK_REGEX.test(text)) return chat;
 
     if (REASONING_REGEX.test(text) || text.length >= LONG_PROMPT_THRESHOLD) {
-        // 모델 교체(로딩) 시간을 고려해 타임아웃 여유 확보
-        return { model: REASONING_MODEL, mode: 'reasoning', keepAlive: REASONING_KEEP_ALIVE, timeoutMs: 420000 };
+        return reasoning;
     }
     return chat;
 }

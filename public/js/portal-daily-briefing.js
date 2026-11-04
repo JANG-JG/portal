@@ -300,7 +300,7 @@
                 }, 300);
 
                 if (aiBadge) {
-                    aiBadge.textContent = 'LG 엑사원 AI 🟢';
+                    aiBadge.textContent = 'AI 비서 🟢';
                     aiBadge.style.background = '#dbeafe';
                     aiBadge.style.color = '#1d4ed8';
                     aiBadge.style.cursor = 'pointer';

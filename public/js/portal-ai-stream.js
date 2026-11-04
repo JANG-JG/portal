@@ -8,6 +8,22 @@
 
     let activeAbortController = null;
 
+    // 🔀 AI 모델 선택 (auto: 질문 내용 기반 자동 / chat: 빠른 대화 / reasoning: 깊게 생각) - 선택값 기억
+    const MODEL_PREF_KEY = 'jgAiModelPref';
+    const MODEL_PREFS = ['auto', 'chat', 'reasoning'];
+    function getModelPref() {
+        const el = document.getElementById('aiModelSelect');
+        const v = el ? el.value : (localStorage.getItem(MODEL_PREF_KEY) || 'auto');
+        return MODEL_PREFS.includes(v) ? v : 'auto';
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        const el = document.getElementById('aiModelSelect');
+        if (!el) return;
+        const saved = localStorage.getItem(MODEL_PREF_KEY);
+        if (MODEL_PREFS.includes(saved)) el.value = saved;
+        el.addEventListener('change', () => localStorage.setItem(MODEL_PREF_KEY, el.value));
+    });
+
     /**
      * SSE 실시간 대화 스트리밍 요청
      */
@@ -29,7 +45,8 @@
                 body: JSON.stringify({
                     message,
                     history,
-                    stream: true
+                    stream: true,
+                    modelPref: getModelPref()
                 }),
                 signal: activeAbortController.signal
             });

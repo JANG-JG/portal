@@ -31,7 +31,7 @@
                     <span class="ai-sidebar-avatar">🤖</span>
                     <div class="ai-sidebar-title-wrap">
                         <div class="ai-sidebar-title">AI 비서</div>
-                        <div class="ai-sidebar-badge" id="aiSidebarModelBadge">LG 엑사원 4.0 🟢</div>
+                        <div class="ai-sidebar-badge" id="aiSidebarModelBadge">AI 비서 🟢</div>
                     </div>
                 </div>
                 <button type="button" class="ai-sidebar-close-btn" id="aiSidebarCloseBtn" onclick="toggleSidebar(false)" aria-label="사이드바 닫기">✕</button>
@@ -131,6 +131,11 @@
                             maxlength="1000"></textarea>
                         <div class="ai-input-bottom-bar">
                             <div class="ai-input-bottom-left">
+                                <select id="aiModelSelect" class="ai-model-select" aria-label="AI 모델 선택" title="답변할 AI 모델 선택">
+                                    <option value="auto">🔀 자동 선택</option>
+                                    <option value="chat">⚡ Gemma2.0 (빠른 대화)</option>
+                                    <option value="reasoning">🧠 EXAONE4.0 (깊은 생각)</option>
+                                </select>
                                 <span id="aiCharCount" class="ai-char-counter" title="현재 글자 수 / 최대 1,000자">0/1000</span>
                             </div>
                             <div class="ai-input-bottom-right">
@@ -154,7 +159,7 @@
                 </form>
 
                 <div class="ai-disclaimer">
-                    <span>🛡️ 가족 데이터 전용 로컬 AI (LG EXAONE 4.0) • 1회 질문당 최대 1,000자</span>
+                    <span>🛡️ 가족 데이터 전용 로컬 AI 비서 • 1회 질문당 최대 1,000자</span>
                 </div>
             </div>
         </main>

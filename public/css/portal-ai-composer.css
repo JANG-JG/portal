@@ -175,6 +175,28 @@
     }
 }
 
+/* AI 모델 선택 드롭다운 (360px 무넘침: 폭 제한 + 말줄임) */
+.ai-input-bottom-left { gap: 8px; }
+.ai-model-select {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 150px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #E5E1D8;
+    border-radius: 8px;
+    background: #FAF9F5;
+    color: #57534E;
+    font-family: inherit;
+    font-size: 0.85rem;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+.ai-model-select:focus { outline: none; border-color: #C96442; }
+@media (max-width: 400px) {
+    .ai-model-select { max-width: 118px; font-size: 0.8rem; }
+}
+
 /* 글자 수 카운터 (Claude 스타일 정돈된 폰트) */
 .ai-char-counter {
     font-size: 0.9rem;

@@ -199,7 +199,7 @@ async function handleWikiIntent({ prompt, history, userName, res }) {
 /**
  * ⚡ Express SSE 기반 실시간 AI 대화 스트리밍 처리기
  */
-async function handleSseChatStream({ req, res, prompt, history = [], summaryContext = null, userName = '가족', user = null }) {
+async function handleSseChatStream({ req, res, prompt, history = [], summaryContext = null, userName = '가족', user = null, modelPref = 'auto' }) {
     // 1. SSE 응답 헤더 설정
     res.writeHead(200, {
         'Content-Type': 'text/event-stream; charset=utf-8',
@@ -257,7 +257,13 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
     });
 
     // 5. Ollama 실시간 스트리밍 HTTP 요청 발송 (🔀 질문 내용 기반 대화/추론 모델 자동 선택)
-    const picked = selectChatModel(prompt);
+    const picked = selectChatModel(prompt, modelPref);
+    // 깊은 생각(추론) 모델은 학습 시점 연도로 추론하는 경향이 있어 기준일 앵커를 보강 (전망 질문은 라우터에서 이미 추가됨)
+    const lastMsg = messages[messages.length - 1];
+    if (picked.mode === 'reasoning' && lastMsg && lastMsg.role === 'user' && !lastMsg.content.includes('(기준일:')) {
+        const today = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' });
+        lastMsg.content += `\n\n(기준일: ${today}. 학습 시점 언급 없이 위 참고 정보의 최신 자료를 근거로 답해 주세요.)`;
+    }
     try {
         const urlObj = new URL('/api/chat', OLLAMA_HOST);
         const bodyStr = JSON.stringify({
