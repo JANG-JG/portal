@@ -230,7 +230,7 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
     if (handledWiki) return;
 
     // 4. 질문 의도 분석 및 최적화된 프롬프트 빌드
-    const { fullPrompt } = await buildAiChatPrompt({
+    const { messages } = await buildAiChatPrompt({
         prompt,
         history,
         summaryContext,
@@ -259,10 +259,10 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
     // 5. Ollama 실시간 스트리밍 HTTP 요청 발송 (🔀 질문 내용 기반 대화/추론 모델 자동 선택)
     const picked = selectChatModel(prompt);
     try {
-        const urlObj = new URL('/api/generate', OLLAMA_HOST);
+        const urlObj = new URL('/api/chat', OLLAMA_HOST);
         const bodyStr = JSON.stringify({
             model: picked.model,
-            prompt: fullPrompt,
+            messages,
             stream: true,
             keep_alive: picked.keepAlive,
             options: {
@@ -303,6 +303,11 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                     if (!trimmed) continue;
                     try {
                         const parsed = JSON.parse(trimmed);
+                        // /api/chat 응답 형식(message.content / message.thinking)을 기존 필드로 정규화
+                        if (parsed.message) {
+                            if (!parsed.response && parsed.message.content) parsed.response = parsed.message.content;
+                            if (!parsed.thinking && parsed.message.thinking) parsed.thinking = parsed.message.thinking;
+                        }
                         if (parsed.thinking) {
                             // Ollama think 모드: 생각 과정이 별도 필드로 오는 경우
                             nativeThinking += parsed.thinking;
@@ -351,6 +356,8 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                             const parsed = JSON.parse(buffer.trim());
                             if (parsed.response) rawAnswer += parsed.response;
                             if (parsed.thinking) nativeThinking += parsed.thinking;
+                            if (parsed.message && parsed.message.content) rawAnswer += parsed.message.content;
+                            if (parsed.message && parsed.message.thinking) nativeThinking += parsed.message.thinking;
                         } catch (e) {}
                     }
                     const finalPart = splitThinkStream(rawAnswer, true);

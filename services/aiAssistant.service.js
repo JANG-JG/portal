@@ -437,7 +437,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
     }
 
     // 질문 의도 기반 최적화 프롬프트 및 타깃 RAG 빌드
-    const { fullPrompt } = await buildAiChatPrompt({
+    const { messages } = await buildAiChatPrompt({
         prompt: cleanPrompt,
         history,
         summaryContext,
@@ -448,9 +448,9 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
     // 🔀 질문 내용에 따라 대화 모델(평상시) / 추론 모델(분석·계산 등) 자동 선택
     const picked = selectChatModel(cleanPrompt);
 
-    const result = await sendOllamaRequest('/api/generate', {
+    const result = await sendOllamaRequest('/api/chat', {
         model: picked.model,
-        prompt: fullPrompt,
+        messages,
         stream: false,
         keep_alive: picked.keepAlive,
         options: {
@@ -460,7 +460,8 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         }
     }, picked.timeoutMs);
 
-    const rawAnswer = result.response ? result.response.trim() : '답변을 생성하지 못했습니다.';
+    const replyText = (result.message && result.message.content) || result.response;
+    const rawAnswer = replyText ? replyText.trim() : '답변을 생성하지 못했습니다.';
 
     return {
         success: true,

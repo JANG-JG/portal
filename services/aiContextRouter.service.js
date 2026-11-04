@@ -9,6 +9,7 @@ const { searchWikiContent } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
 const { searchNewsByKeyword, getRecentBreaking, getLatestByCategories, getDailyWeatherSummary } = require('./newsHeadline.service');
 const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
+const { buildExtractedContext } = require('./aiDataExtractor.service');
 const { ADMIN_USERS } = require('../config/constants');
 
 /**
@@ -332,6 +333,14 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
         }
     }
 
+    // 의도 정규식과 무관하게 발화 키워드로 뉴스룸·위키 DB 검색 + 최신 세상 소식 배경 주입
+    let extractedGuide = '';
+    try {
+        extractedGuide = await buildExtractedContext({ prompt: cleanPrompt, intents, summaryContext });
+    } catch (e) {
+        // 추출 실패 시 무중단 진행
+    }
+
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const kst = new Date(utc + (9 * 60 * 60000));
@@ -342,7 +351,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
     const currentTimeKo = `${ampm} ${hour12}시 ${kstMin}분`;
     const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo}`;
-    const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide, matchedNewsGuide, matchedMarketGuide, dailyWeatherGuide].filter(Boolean).join('\n').trim();
+    const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide, matchedNewsGuide, matchedMarketGuide, dailyWeatherGuide, extractedGuide].filter(Boolean).join('\n').trim();
 
     // 초기 도입 당시의 자연스럽고 다정한 프롬프트 스타일로 복원 (LG EXAONE 4.0 기준)
     let adminGuardNote = '';
@@ -358,9 +367,13 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
 - 건강, 일정, 생활, 날씨, 지식에 관련된 질문에 친절하고 자연스럽게 답하세요.
 - 사실이 아니거나 확실하지 않은 정보는 지어내지(환각) 말고 솔직하게 답변하세요.${newsNote}
 - 포털의 관리자 페이지(/admin), 시스템 내부 설정, DB 직접 조작은 보안 규정상 AI를 통한 열람 및 제어가 엄격히 차단되어 있습니다.
-- 현재 일시: ${currentDateTimeStr}${adminGuardNote}${contextParts ? `\n\n[우리 집 참고 정보]\n${contextParts}` : ''}`;
+- 현재 일시: ${currentDateTimeStr} (한국 시간). "오늘·올해·최근·요즘"은 반드시 이 날짜(${kst.getFullYear()}년) 기준으로 판단하세요.
+- 당신의 학습 지식은 과거 시점에 멈춰 있어 오래된 정보일 수 있습니다. 최신 소식·시세·날씨는 아래 [우리 집 참고 정보]를 최우선 근거로 삼고, 참고 정보에 없는 최신 사실은 학습 시점 정보임을 밝히거나 모른다고 답하세요.
+- 대화 답변은 길이 제한 없이 충분히 자세하고 풍부하게 설명하되, 참고 정보 속 기사·수치를 자연스럽게 인용해 근거를 보여주세요.${adminGuardNote}${contextParts ? `\n\n[우리 집 참고 정보]\n${contextParts}` : ''}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
+    // /api/chat용 메시지 배열 (모델별 고유 채팅 템플릿을 Ollama가 자동 적용 → Gemma에서도 시스템 지시·날짜가 정확히 반영)
+    const messages = [{ role: 'system', content: systemPrompt }];
 
     // 최근 대화 히스토리 (최대 4턴, 특수 토큰 정제 및 현재 질문과 중복 방지)
     if (Array.isArray(history)) {
@@ -375,16 +388,19 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
             const safeContent = sanitizeInputText(h ? h.content : '', 500);
             if (safeContent) {
                 fullPrompt += `<|${safeRole}|>\n${safeContent}\n`;
+                messages.push({ role: safeRole, content: safeContent });
             }
         });
     }
 
     fullPrompt += `<|user|>\n${cleanPrompt}\n<|assistant|>\n`;
+    messages.push({ role: 'user', content: cleanPrompt });
 
     return {
         cleanPrompt,
         intents,
         fullPrompt,
+        messages,
         isAdminPageAttempt
     };
 }
