@@ -99,18 +99,28 @@
             window.JgAiViewport.init(promptInputEl, scrollToBottom);
         }
 
-        // 🌐 URL 기반 세션 격리 라우팅 (Gemini/ChatGPT 표준)
+        // 🌐 클린 URL 유지 및 브라우저 세션 은닉 라우팅 (주소창 ?session= 숨김)
         try {
             const urlParams = new URLSearchParams(window.location.search);
             const querySessionId = urlParams.get('session');
             const queryQ = urlParams.get('q');
+            const navEntry = window.performance?.getEntriesByType?.('navigation')?.[0];
+            const isReload = (navEntry && navEntry.type === 'reload') || (window.performance?.navigation?.type === 1);
+            const stateSessionId = window.history.state?.sessionId;
+
             if (querySessionId && window.JgAiHistory) {
+                // 레거시 URL 파라미터로 진입 시 세션 로드 후 URL 파라미터 즉시 은닉(제거)
                 window.JgAiHistory.setActiveSessionId(querySessionId);
+                window.history.replaceState({ sessionId: querySessionId }, document.title, window.location.pathname);
+            } else if (isReload && stateSessionId && window.JgAiHistory) {
+                // 새로고침 시 보고 있던 세션 복원
+                window.JgAiHistory.setActiveSessionId(stateSessionId);
             } else if (!queryQ && window.JgAiHistory) {
-                // 파라미터 없는 /ai 진입 시: 이전 세션 자동 복원 금지, 항상 새 대화 시작
+                // 신규 진입 시: 이전 세션 자동 복원 금지, 항상 새 대화 시작 & Clean URL 보장
                 window.JgAiHistory.setActiveSessionId(null);
                 window.JgAiHistory.createNewSession();
                 currentChatHistory = [];
+                window.history.replaceState({ sessionId: null }, document.title, window.location.pathname);
             }
         } catch (e) {}
 
@@ -126,15 +136,15 @@
             if (curActive?.title && mobileTitleEl) mobileTitleEl.textContent = curActive.title;
         });
 
-        // 🔄 브라우저 뒤로가기/앞으로가기 세션 동기화
-        window.addEventListener('popstate', async () => {
+        // 🔄 브라우저 뒤로가기/앞으로가기 세션 동기화 (Clean URL 유지)
+        window.addEventListener('popstate', async (e) => {
             try {
-                const sId = new URLSearchParams(window.location.search).get('session');
+                const sId = e.state?.sessionId || null;
                 if (sId && window.JgAiHistory) {
                     window.JgAiHistory.setActiveSessionId(sId);
                     const cur = window.JgAiHistory.getActiveSession();
                     if (!cur?.messages?.length && window.JgAiHistory.fetchSessionDetailAsync) await window.JgAiHistory.fetchSessionDetailAsync(sId);
-                } else if (!sId && window.JgAiHistory) {
+                } else if (window.JgAiHistory) {
                     window.JgAiHistory.setActiveSessionId(null);
                     window.JgAiHistory.createNewSession();
                     currentChatHistory = [];
@@ -193,11 +203,7 @@
             restoreActiveSession();
             renderHistorySidebar();
             window.toggleSidebar(false);
-            try {
-                if (window.location.search.includes('session=')) {
-                    window.history.pushState({ sessionId: null }, document.title, window.location.pathname);
-                }
-            } catch (e) {}
+            try { window.history.pushState({ sessionId: null }, document.title, window.location.pathname); } catch (e) {}
             if (promptInputEl) {
                 promptInputEl.value = '';
                 promptInputEl.style.height = '24px';
@@ -256,10 +262,7 @@
             item.addEventListener('click', async (e) => {
                 if (e.target.closest('.ai-history-item-actions')) return;
                 window.JgAiHistory.setActiveSessionId(sess.id);
-                try {
-                    const newUrl = window.location.pathname + '?session=' + encodeURIComponent(sess.id);
-                    window.history.pushState({ sessionId: sess.id }, document.title, newUrl);
-                } catch (err) {}
+                try { window.history.pushState({ sessionId: sess.id }, document.title, window.location.pathname); } catch (err) {}
                 if (!sess.messages || !sess.messages.length) {
                     if (window.JgAiHistory.fetchSessionDetailAsync) await window.JgAiHistory.fetchSessionDetailAsync(sess.id);
                 }
@@ -380,10 +383,7 @@
             if (updated && mobileTitleEl) mobileTitleEl.textContent = updated.title;
             renderHistorySidebar();
             try {
-                if (updated?.id && !window.location.search.includes('session=')) {
-                    const newUrl = window.location.pathname + '?session=' + encodeURIComponent(updated.id);
-                    window.history.replaceState({ sessionId: updated.id }, document.title, newUrl);
-                }
+                if (updated?.id) window.history.replaceState({ sessionId: updated.id }, document.title, window.location.pathname);
             } catch (e) {}
         }
 
