@@ -7,6 +7,7 @@
 
 const { searchWikiContent } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
+const { searchNewsByKeyword } = require('./newsHeadline.service');
 const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 const { ADMIN_USERS } = require('../config/constants');
 
@@ -270,6 +271,23 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
         }
     }
 
+    // 뉴스 의도 + 구체 키워드가 있으면 뉴스 DB 키워드 검색 (최근 7일)
+    let matchedNewsGuide = '';
+    if (intents.has('NEWS')) {
+        try {
+            const todayKst = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+            const { keywords, items } = await searchNewsByKeyword(cleanPrompt, todayKst, 5);
+            if (keywords.length > 0) {
+                matchedNewsGuide = items.length > 0
+                    ? `\n\n[질문 연관 뉴스 검색 결과 (키워드: ${keywords.join(', ')})]\n` +
+                      items.map(a => `■ [${a.category_name || '기타'}] ${a.title} (${a.media_name || '언론사 미상'}, ${a.date})${a.summary ? `\n- 요약: ${String(a.summary).slice(0, 160)}` : ''}`).join('\n')
+                    : `\n\n[질문 연관 뉴스 검색 결과 (키워드: ${keywords.join(', ')})]\n- 최근 7일 뉴스룸에 해당 키워드 기사가 없습니다. 지어내지 말고 찾지 못했다고 솔직히 안내하세요.`;
+            }
+        } catch (e) {
+            // 뉴스 검색 실패 시 무중단 진행
+        }
+    }
+
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const kst = new Date(utc + (9 * 60 * 60000));
@@ -280,7 +298,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
     const currentTimeKo = `${ampm} ${hour12}시 ${kstMin}분`;
     const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo}`;
-    const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide].filter(Boolean).join('\n').trim();
+    const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide, matchedNewsGuide].filter(Boolean).join('\n').trim();
 
     // 초기 도입 당시의 자연스럽고 다정한 프롬프트 스타일로 복원 (LG EXAONE 4.0 기준)
     let adminGuardNote = '';
@@ -288,12 +306,13 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
         adminGuardNote = '\n- [보안 가드] 사용자가 관리자 전용 페이지(/admin), 시스템 제어, DB 원시 데이터 등을 요구했습니다. 보안상 AI를 통한 접근이나 변경이 불가능함을 정중하고 명확하게 안내하세요.';
     }
 
-    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 전용 AI 비서(LG EXAONE 4.0)입니다.
+    const newsNote = matchedNewsGuide ? '\n- 뉴스 질문에는 [질문 연관 뉴스 검색 결과]의 기사 제목·언론사·요약만 근거로 핵심을 정리해 답하세요.' : '';
+    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 전용 AI 비서입니다. 자신을 소개할 때는 "JG 포털 AI 비서"라고 하세요.
 - 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
 - 질문자가 가족 구성원이므로, 든든하고 똑똑한 가족 비서처럼 따뜻하고 명확하게 답변해 주세요.
 - 대화 상대방의 호칭은 "${userName}님"입니다.
 - 건강, 일정, 생활, 날씨, 지식에 관련된 질문에 친절하고 자연스럽게 답하세요.
-- 사실이 아니거나 확실하지 않은 정보는 지어내지(환각) 말고 솔직하게 답변하세요.
+- 사실이 아니거나 확실하지 않은 정보는 지어내지(환각) 말고 솔직하게 답변하세요.${newsNote}
 - 포털의 관리자 페이지(/admin), 시스템 내부 설정, DB 직접 조작은 보안 규정상 AI를 통한 열람 및 제어가 엄격히 차단되어 있습니다.
 - 현재 일시: ${currentDateTimeStr}${adminGuardNote}${contextParts ? `\n\n[우리 집 참고 정보]\n${contextParts}` : ''}`;
 

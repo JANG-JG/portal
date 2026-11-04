@@ -122,4 +122,61 @@ function getTopNewsIssues(todayKst, limit = 5) {
     });
 }
 
-module.exports = { getTopNewsIssues };
+// 질문에서 검색 키워드 추출 시 제외할 일상어/요청어
+const QUERY_STOPWORDS = new Set([
+    '뉴스', '기사', '소식', '속보', '헤드라인', '이슈', '시사', '동향', '주요', '최근', '요즘', '오늘', '어제',
+    '관련', '내용', '확인', '알려', '알려줘', '알려주세요', '찾아', '찾아줘', '검색', '해줘', '해주세요', '정리',
+    '요약', '있어', '있나', '있는지', '어떤', '무슨', '어때', '대해', '대해서', '대한', '좀', '나온', '나왔어'
+]);
+const PARTICLE_RE = /(에\s*대한|에\s*대해서?|에서는?|으로|이랑|하고|까지|부터|관련|은|는|이|가|을|를|에|의|로|도|만|와|과)$/;
+
+function extractQueryKeywords(prompt) {
+    const words = String(prompt || '').replace(/['"‘’“”·…!?,.~]/g, ' ').match(/[가-힣a-zA-Z0-9]{2,}/g) || [];
+    const out = [];
+    words.forEach(w => {
+        let k = w.length > 2 ? w.replace(PARTICLE_RE, '') : w;
+        if (k.length < 2 || QUERY_STOPWORDS.has(k) || QUERY_STOPWORDS.has(w) || /^\d+$/.test(k)) return;
+        if (/(줘|줄래|주세요|해요|할까|인가|있어|었어|았어|니|나요|까요?|습니까|어요)$/.test(w)) return;
+        if (!out.includes(k)) out.push(k);
+    });
+    return out.slice(0, 4);
+}
+
+/**
+ * 질문 키워드로 최근 7일 뉴스 검색 (제목 일치 우선, 중복 제목 제거)
+ * @returns {Promise<{keywords: string[], items: object[]}>}
+ */
+function searchNewsByKeyword(prompt, todayKst, limit = 5) {
+    const keywords = extractQueryKeywords(prompt);
+    if (!keywords.length || !newsDb) return Promise.resolve({ keywords, items: [] });
+    const from = new Date(new Date(todayKst + 'T00:00:00+09:00').getTime() - 7 * 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+    const cond = keywords.map(() => '(title LIKE ? OR summary LIKE ?)').join(' OR ');
+    const params = [from];
+    keywords.forEach(k => params.push(`%${k}%`, `%${k}%`));
+    return new Promise(resolve => {
+        newsDb.all(
+            `SELECT id, date, category_name, title, media_name, summary FROM news_articles
+             WHERE date >= ? AND (${cond}) ORDER BY id DESC LIMIT 200`,
+            params,
+            (err, rows) => {
+                if (err || !rows) return resolve({ keywords, items: [] });
+                const seen = new Set();
+                const scored = rows.filter(r => {
+                    if (!r.title || seen.has(r.title)) return false;
+                    seen.add(r.title);
+                    return true;
+                }).map(r => {
+                    let score = 0;
+                    keywords.forEach(k => {
+                        if (r.title.includes(k)) score += 3;
+                        else if ((r.summary || '').includes(k)) score += 1;
+                    });
+                    return { r, score };
+                }).sort((a, b) => (b.score - a.score) || ((b.r.id || 0) - (a.r.id || 0)));
+                resolve({ keywords, items: scored.slice(0, limit).map(s => s.r) });
+            }
+        );
+    });
+}
+
+module.exports = { getTopNewsIssues, searchNewsByKeyword };

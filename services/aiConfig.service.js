@@ -12,11 +12,11 @@ const CONFIG_PATH = path.join(__dirname, '..', 'config', 'ai-config.json');
 const BACKUP_PATH = path.join(__dirname, '..', 'config', 'ai-config.json.bak');
 
 const DEFAULT_AI_CONFIG = {
-    welcomeMessage: '안녕하세요! JG 포털 AI 비서(LG EXAONE 4.0)입니다. 🇰🇷\n궁금한 점이 있으시면 무엇이든 편하게 물어보세요! 😊',
+    welcomeMessage: '안녕하세요! JG 포털 AI 비서입니다. 🇰🇷\n궁금한 점이 있으시면 무엇이든 편하게 물어보세요! 😊',
     maxPromptLength: 1000,
     heroIcon: '🤖',
     heroTitle: 'AI 비서에게 무엇이든 물어보세요',
-    heroDescription: 'LG EXAONE 4.0 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.'
+    heroDescription: 'JG 포털 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.'
 };
 
 let cachedConfig = { ...DEFAULT_AI_CONFIG };
@@ -83,6 +83,10 @@ function initAiConfigDb() {
                 if (dbMap.heroIcon) merged.heroIcon = dbMap.heroIcon;
                 if (dbMap.heroTitle) merged.heroTitle = dbMap.heroTitle;
                 if (dbMap.heroDescription) merged.heroDescription = dbMap.heroDescription;
+
+                // 옛 기본 문구의 모델명 브랜딩 → JG 포털로 치환 (나머지 사용자 문구는 보존)
+                if (merged.welcomeMessage) merged.welcomeMessage = String(merged.welcomeMessage).replace(/\s*\(LG EXAONE 4\.0\)/g, '');
+                if (merged.heroDescription) merged.heroDescription = String(merged.heroDescription).replace(/LG EXAONE 4\.0 기반 로컬 AI/g, 'JG 포털 로컬 AI');
 
                 cachedConfig = sanitizeConfig(merged);
 

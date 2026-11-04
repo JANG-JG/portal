@@ -33,7 +33,7 @@
                     }
                     if (submitBtnEl) submitBtnEl.title = `메시지 전송 (최대 ${currentMaxPromptLength.toLocaleString()}자)`;
                     const disclaimerEl = document.querySelector('.ai-disclaimer span');
-                    if (disclaimerEl) disclaimerEl.textContent = `🛡️ 가족 데이터 전용 로컬 AI (LG EXAONE 4.0) • 1회 질문당 최대 ${currentMaxPromptLength.toLocaleString()}자`;
+                    if (disclaimerEl) disclaimerEl.textContent = `🛡️ 가족 데이터 전용 JG 포털 로컬 AI • 1회 질문당 최대 ${currentMaxPromptLength.toLocaleString()}자`;
                 }
                 // 2. 첫 환영 인사말 적용
                 if (data.config.welcomeMessage && window.JgAiHistory && typeof window.JgAiHistory.setCustomWelcomeMessage === 'function') {

@@ -153,7 +153,7 @@
         const title = (config && config.heroTitle && config.heroTitle.trim()) ? escapeHtml(config.heroTitle.trim()) : 'AI 비서에게 무엇이든 물어보세요';
         const desc = (config && config.heroDescription && config.heroDescription.trim())
             ? escapeHtml(config.heroDescription.trim()).replace(/\n/g, '<br>')
-            : 'LG EXAONE 4.0 기반 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
+            : 'JG 포털 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.';
 
         const hero = document.createElement('div');
         hero.className = 'ai-hero-card';
