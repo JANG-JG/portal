@@ -260,8 +260,33 @@
                 // 알림 태그
                 let notifyBadge = '';
                 if (isPersonal && ev.notifyTiming && ev.notifyTiming !== 'none') {
-                    const timingMap = { 'exact': ev.isAllDay ? '오전9시' : '정시', '10m': '10분전', '30m': '30분전', '1h': '1시간전', '1d': '1일전' };
-                    const tText = timingMap[ev.notifyTiming] || ev.notifyTiming;
+                    const timingMap = {
+                        'exact': ev.isAllDay ? '오전9시' : '정시',
+                        '5m': '5분전',
+                        '10m': '10분전',
+                        '15m': '15분전',
+                        '30m': '30분전',
+                        '1h': '1시간전',
+                        '2h': '2시간전',
+                        '3h': '3시간전',
+                        '1d': '1일전',
+                        '2d': '2일전'
+                    };
+                    let tText = timingMap[ev.notifyTiming];
+                    if (!tText) {
+                        const mCustom = String(ev.notifyTiming).match(/^custom_([mhd]):(\d+)$/);
+                        if (mCustom) {
+                            const unitMap = { m: '분전', h: '시간전', d: '일전' };
+                            tText = `${mCustom[2]}${unitMap[mCustom[1]] || '분전'}`;
+                        } else if (String(ev.notifyTiming).startsWith('allday:')) {
+                            const parts = ev.notifyTiming.split(':');
+                            const dayPrefix = parts[1] === '0d' ? '당일' : `${parts[1].replace('d', '')}일전`;
+                            const timeStr = parts.length >= 3 ? `${parts[2]}:${parts[3] || '00'}` : '09:00';
+                            tText = `${dayPrefix} ${timeStr}`;
+                        } else {
+                            tText = ev.notifyTiming;
+                        }
+                    }
                     notifyBadge = `<span style="font-size:0.68rem; color:#64748b; background:#f1f5f9; padding:1px 5px; border-radius:3px; margin-left:0.25rem;">🔔 ${tText} (${ev.notifyRepeat || 1}회)</span>`;
                 }
                 const memoStr = ev.memo ? `<div style="font-size:0.75rem; color:#64748b; margin-top:3px;">${escapeHtml(ev.memo)}</div>` : '';

@@ -1,8 +1,57 @@
 const { decryptCalendarText } = require('../crypto.service');
 
+// 알림 시점(timing)을 분 단위 오프셋으로 변환
+function parseOffsetMinutes(timing) {
+    if (!timing || timing === 'exact' || timing === 'none') return 0;
+    if (timing === '5m') return 5;
+    if (timing === '10m') return 10;
+    if (timing === '15m') return 15;
+    if (timing === '30m') return 30;
+    if (timing === '1h') return 60;
+    if (timing === '2h') return 120;
+    if (timing === '3h') return 180;
+    if (timing === '1d') return 1440;
+    if (timing === '2d') return 2880;
+
+    // 직접 입력 패턴: custom_m:N, custom_h:N, custom_d:N
+    const match = String(timing).match(/^custom_([mhd]):(\d+)$/);
+    if (match) {
+        const unit = match[1];
+        const val = parseInt(match[2], 10) || 0;
+        if (unit === 'm') return val;
+        if (unit === 'h') return val * 60;
+        if (unit === 'd') return val * 1440;
+    }
+    return 0;
+}
+
+// 사용자 친화적 알림 시점 한국어 라벨 생성
+function getTimingLabel(timing) {
+    if (!timing || timing === 'exact') return '시작';
+    if (timing === '5m') return '5분 전';
+    if (timing === '10m') return '10분 전';
+    if (timing === '15m') return '15분 전';
+    if (timing === '30m') return '30분 전';
+    if (timing === '1h') return '1시간 전';
+    if (timing === '2h') return '2시간 전';
+    if (timing === '3h') return '3시간 전';
+    if (timing === '1d') return '1일 전';
+    if (timing === '2d') return '2일 전';
+
+    const match = String(timing).match(/^custom_([mhd]):(\d+)$/);
+    if (match) {
+        const unit = match[1];
+        const val = match[2];
+        if (unit === 'm') return `${val}분 전`;
+        if (unit === 'h') return `${val}시간 전`;
+        if (unit === 'd') return `${val}일 전`;
+    }
+    return timing;
+}
+
 // 📅 개인 일정 푸시 알림 조건 검사 및 발송 (종일/시간지정, 사전/정시, 다회 알림)
 function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush, sentHistoryCache) {
-    // 오늘 및 내일 일정 검색 (본인 일정 또는 가족 공유 일정)
+    // 오늘 및 향후 7일 이내 일정 검색 (사전 알림 고려, 본인 일정 또는 가족 공유 일정)
     const query = `
         SELECT id, user_id, title, event_date, event_time, memo, is_all_day, is_family, notify_timing, notify_repeat, notify_sent_count
         FROM calendar_events
@@ -10,7 +59,7 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
           AND is_completed = 0
           AND notify_timing != 'none'
           AND event_date >= date(?, '-1 day')
-          AND event_date <= date(?, '+1 day')
+          AND event_date <= date(?, '+7 day')
     `;
 
     db.all(query, [userId, kstDateStr, kstDateStr], (err, rows) => {
@@ -22,7 +71,7 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
             ev.memo = decryptCalendarText(ev.memo, ev.user_id || userId, isFam);
 
             const isAllDay = !!ev.is_all_day;
-            const timing = ev.notify_timing || 'exact'; // 'exact', '10m', '30m', '1h', '1d'
+            const timing = ev.notify_timing || 'exact';
             const maxRepeat = ev.notify_repeat || 1;
             const sentCount = ev.notify_sent_count || 0;
 
@@ -37,29 +86,46 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
                 return `${memoText}${pointLabel} - ${timeLabel}`;
             }
 
-            // 1. 종일 일정 처리 (기본 오전 09:00 발송)
+            // 1. 종일 일정 처리 (당일/1일 전/2일 전 및 사용자 지정 시각)
             if (isAllDay) {
-                if (kstTimeStr !== '09:00') return;
+                let targetDiffDays = 0;
+                let targetTime = '09:00';
 
-                // 1일 전 알림
-                if (timing === '1d') {
-                    // 내일 일정인 경우 (1일 전 오전 9시 알림)
-                    const tomorrow = new Date(Date.now() + 86400000 + 32400000).toISOString().slice(0, 10);
-                    if (ev.event_date === tomorrow && sentCount === 0) {
-                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('1일 전', '종일'), 1);
-                        return;
+                if (timing === 'exact') {
+                    targetDiffDays = 0;
+                    targetTime = '09:00';
+                } else if (timing === '1d') {
+                    targetDiffDays = 1;
+                    targetTime = '09:00';
+                } else if (timing === '2d') {
+                    targetDiffDays = 2;
+                    targetTime = '09:00';
+                } else if (timing.startsWith('allday:')) {
+                    // 포맷: allday:{0|1|2}d:{HH:mm}
+                    const parts = timing.split(':');
+                    if (parts.length >= 3) {
+                        targetDiffDays = parseInt(parts[1], 10) || 0;
+                        targetTime = `${parts[2]}:${parts[3] || '00'}`;
                     }
-                    // 당일 오전 9시 알림 (2회 발송 설정 시)
-                    if (ev.event_date === kstDateStr && maxRepeat >= 2 && sentCount < 2) {
-                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('오늘', '종일'), 2);
-                        return;
-                    }
-                } else {
-                    // 당일 알림 (timing === 'exact' 등)
-                    if (ev.event_date === kstDateStr && sentCount === 0) {
-                        dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('오늘', '종일'), 1);
-                        return;
-                    }
+                }
+
+                const [ey, em, ed] = ev.event_date.split('-').map(Number);
+                const [cy, cm, cd] = kstDateStr.split('-').map(Number);
+                const eventDayMs = Date.UTC(ey, em - 1, ed);
+                const currentDayMs = Date.UTC(cy, cm - 1, cd);
+                const diffDays = Math.round((eventDayMs - currentDayMs) / 86400000);
+
+                // A. 1회차 사전 또는 당일 알림
+                if (diffDays === targetDiffDays && kstTimeStr === targetTime && sentCount === 0) {
+                    const dayLabel = targetDiffDays === 0 ? '오늘' : `${targetDiffDays}일 전`;
+                    dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody(dayLabel, `종일 (${targetTime})`), 1);
+                    return;
+                }
+
+                // B. 2회차 당일 오전 9시 알림 (사전 알림 후 2회 발송 설정 시)
+                if (targetDiffDays > 0 && diffDays === 0 && kstTimeStr === '09:00' && maxRepeat >= 2 && sentCount === 1) {
+                    dispatchCalPush(db, ev, userId, ev.title, buildCalPushBody('오늘', '종일 (09:00)'), 2);
+                    return;
                 }
                 return;
             }
@@ -67,12 +133,7 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
             // 2. 시간 지정 일정 처리
             if (!ev.event_time || ev.event_time.length < 4) return;
 
-            // 밀리초 기준 시각 계산 (오프셋)
-            let offsetMinutes = 0;
-            if (timing === '10m') offsetMinutes = 10;
-            else if (timing === '30m') offsetMinutes = 30;
-            else if (timing === '1h') offsetMinutes = 60;
-            else if (timing === '1d') offsetMinutes = 1440;
+            const offsetMinutes = parseOffsetMinutes(timing);
 
             try {
                 // KST 기준 Date 객체 생성
@@ -88,7 +149,7 @@ function checkAndDispatchCalendarEvents(db, userId, kstDateStr, kstTimeStr, curr
 
                 // A. 1회차 사전 알림 (timing이 'exact'가 아닐 때 offsetMinutes 시점에 발송)
                 if (offsetMinutes > 0 && diffMinutes === offsetMinutes && sentCount === 0) {
-                    const label = timing === '10m' ? '10분 전' : (timing === '30m' ? '30분 전' : (timing === '1h' ? '1시간 전' : '1일 전'));
+                    const label = getTimingLabel(timing);
                     dispatchCalPush(
                         db,
                         ev,

@@ -173,12 +173,18 @@
                             <div style="display: grid; grid-template-columns: 1.3fr 1fr; gap: 0.45rem;">
                                 <div>
                                     <label style="display: block; font-size: 0.72rem; color: #64748b; font-weight: 700; margin-bottom: 2px;">🔔 알림 시점</label>
-                                    <select id="inputEventNotifyTiming" style="width: 100%; padding: 0.45rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; font-size: 0.8rem; background: #ffffff;">
+                                    <select id="inputEventNotifyTiming" onchange="onNotifyTimingChange()" style="width: 100%; padding: 0.45rem 0.4rem; border: 1px solid #cbd5e1; border-radius: 0.45rem; font-size: 0.8rem; background: #ffffff;">
                                         <option value="exact">정시 (시작 시각)</option>
+                                        <option value="5m">5분 전</option>
                                         <option value="10m">10분 전</option>
+                                        <option value="15m">15분 전</option>
                                         <option value="30m">30분 전</option>
                                         <option value="1h">1시간 전</option>
+                                        <option value="2h">2시간 전</option>
+                                        <option value="3h">3시간 전</option>
                                         <option value="1d">1일 전</option>
+                                        <option value="2d">2일 전</option>
+                                        <option value="custom">✏️ 직접 입력...</option>
                                         <option value="none">🔕 알림 안 받음</option>
                                     </select>
                                 </div>
@@ -188,6 +194,30 @@
                                         <option value="1">1회 발송</option>
                                         <option value="2">2회 (사전 + 정시)</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            <!-- 🛠️ 알림 시점 직접 입력 영역 (선택 시에만 확장 표시) -->
+                            <div id="customNotifyContainer" style="display: none; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 0.45rem; padding: 0.5rem 0.6rem; margin-top: 0.2rem; box-sizing: border-box; max-width: 100%;">
+                                <!-- 시간 지정 일정: N분/시간/일 전 직접 입력 -->
+                                <div id="customTimingTimeWrapper" style="display: none; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                                    <span style="font-size: 0.75rem; color: #475569; font-weight: 700;">시작 기준:</span>
+                                    <input type="number" id="inputCustomNotifyValue" min="1" max="999" value="15" style="width: 60px; padding: 0.35rem 0.45rem; border: 1px solid #cbd5e1; border-radius: 0.35rem; font-size: 0.8rem; text-align: center;">
+                                    <select id="inputCustomNotifyUnit" style="padding: 0.35rem 0.45rem; border: 1px solid #cbd5e1; border-radius: 0.35rem; font-size: 0.8rem; background: #ffffff;">
+                                        <option value="m">분 전</option>
+                                        <option value="h">시간 전</option>
+                                        <option value="d">일 전</option>
+                                    </select>
+                                </div>
+                                <!-- 종일 일정: 당일/1일전/2일전 + 희망 시각 직접 입력 -->
+                                <div id="customTimingAllDayWrapper" style="display: none; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                                    <select id="inputCustomAllDayDays" style="padding: 0.35rem 0.45rem; border: 1px solid #cbd5e1; border-radius: 0.35rem; font-size: 0.8rem; background: #ffffff;">
+                                        <option value="0">당일</option>
+                                        <option value="1">1일 전</option>
+                                        <option value="2">2일 전</option>
+                                    </select>
+                                    <input type="time" id="inputCustomAllDayTime" value="09:00" style="padding: 0.3rem 0.45rem; border: 1px solid #cbd5e1; border-radius: 0.35rem; font-size: 0.8rem;">
+                                    <span style="font-size: 0.75rem; color: #475569; font-weight: 600;">알림</span>
                                 </div>
                             </div>
 

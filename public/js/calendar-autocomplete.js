@@ -233,7 +233,37 @@
             }
 
             if (template.notifyTiming && notifyTimingSelect) {
-                notifyTimingSelect.value = template.notifyTiming;
+                const tVal = template.notifyTiming;
+                let exists = false;
+                for (let i = 0; i < notifyTimingSelect.options.length; i++) {
+                    if (notifyTimingSelect.options[i].value === tVal) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (exists) {
+                    notifyTimingSelect.value = tVal;
+                } else {
+                    notifyTimingSelect.value = 'custom';
+                    if (template.isAllDay && tVal.startsWith('allday:')) {
+                        const parts = tVal.split(':');
+                        const dayVal = parts[1] ? parts[1].replace('d', '') : '0';
+                        const timeVal = parts.length >= 3 ? `${parts[2]}:${parts[3] || '00'}` : '09:00';
+                        const daysEl = document.getElementById('inputCustomAllDayDays');
+                        const timeEl = document.getElementById('inputCustomAllDayTime');
+                        if (daysEl) daysEl.value = dayVal;
+                        if (timeEl) timeEl.value = timeVal;
+                    } else if (!template.isAllDay && tVal.startsWith('custom_')) {
+                        const match = tVal.match(/^custom_([mhd]):(\d+)$/);
+                        if (match) {
+                            const unitEl = document.getElementById('inputCustomNotifyUnit');
+                            const valEl = document.getElementById('inputCustomNotifyValue');
+                            if (unitEl) unitEl.value = match[1];
+                            if (valEl) valEl.value = match[2];
+                        }
+                    }
+                }
+                if (typeof onNotifyTimingChange === 'function') onNotifyTimingChange();
             }
             if (template.notifyRepeat && notifyRepeatSelect) {
                 notifyRepeatSelect.value = String(template.notifyRepeat);

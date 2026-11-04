@@ -15,20 +15,58 @@ function toggleAllDayMode() {
     if (isAllDay) {
         timeWrapper.style.display = 'none';
         timingSelect.innerHTML = `
-            <option value="exact">당일 오전 09:00</option>
+            <option value="exact">당일 오전 09:00 (기본)</option>
+            <option value="allday:0d:08:00">당일 오전 08:00</option>
             <option value="1d">1일 전 오전 09:00</option>
+            <option value="allday:1d:20:00">1일 전 저녁 20:00</option>
+            <option value="allday:1d:21:00">1일 전 저녁 21:00</option>
+            <option value="2d">2일 전 오전 09:00</option>
+            <option value="custom">✏️ 원하는 시각 직접 지정...</option>
             <option value="none">🔕 알림 안 받음</option>
         `;
     } else {
         timeWrapper.style.display = 'flex';
         timingSelect.innerHTML = `
             <option value="exact">정시 (시작 시각)</option>
+            <option value="5m">5분 전</option>
             <option value="10m">10분 전</option>
+            <option value="15m">15분 전</option>
             <option value="30m">30분 전</option>
             <option value="1h">1시간 전</option>
+            <option value="2h">2시간 전</option>
+            <option value="3h">3시간 전</option>
             <option value="1d">1일 전</option>
+            <option value="2d">2일 전</option>
+            <option value="custom">✏️ 원하는 시점 직접 입력...</option>
             <option value="none">🔕 알림 안 받음</option>
         `;
+    }
+    onNotifyTimingChange();
+}
+
+// 1-1. 알림 시점 직접 입력창 토글 제어
+function onNotifyTimingChange() {
+    const timingSelect = document.getElementById('inputEventNotifyTiming');
+    const customContainer = document.getElementById('customNotifyContainer');
+    const customTimeWrap = document.getElementById('customTimingTimeWrapper');
+    const customAllDayWrap = document.getElementById('customTimingAllDayWrapper');
+    const isAllDay = document.getElementById('inputEventAllDay')?.checked;
+
+    if (!timingSelect || !customContainer || !customTimeWrap || !customAllDayWrap) return;
+
+    if (timingSelect.value === 'custom') {
+        customContainer.style.display = 'block';
+        if (isAllDay) {
+            customTimeWrap.style.display = 'none';
+            customAllDayWrap.style.display = 'flex';
+        } else {
+            customTimeWrap.style.display = 'flex';
+            customAllDayWrap.style.display = 'none';
+        }
+    } else {
+        customContainer.style.display = 'none';
+        customTimeWrap.style.display = 'none';
+        customAllDayWrap.style.display = 'none';
     }
 }
 
@@ -59,6 +97,18 @@ function resetEventForm() {
     if (notifyTiming) notifyTiming.value = 'exact';
     const notifyRepeat = document.getElementById('inputEventNotifyRepeat');
     if (notifyRepeat) notifyRepeat.value = '1';
+    
+    // 직접 입력 기본값 리셋
+    const customVal = document.getElementById('inputCustomNotifyValue');
+    if (customVal) customVal.value = '15';
+    const customUnit = document.getElementById('inputCustomNotifyUnit');
+    if (customUnit) customUnit.value = 'm';
+    const customDays = document.getElementById('inputCustomAllDayDays');
+    if (customDays) customDays.value = '0';
+    const customTime = document.getElementById('inputCustomAllDayTime');
+    if (customTime) customTime.value = '09:00';
+    onNotifyTimingChange();
+
     if (typeof hideTitleAutocomplete === 'function') {
         hideTitleAutocomplete();
     }
@@ -148,7 +198,37 @@ function openEditEvent(dbId) {
 
     const timingSelect = document.getElementById('inputEventNotifyTiming');
     if (timingSelect) {
-        timingSelect.value = ev.notifyTiming || 'exact';
+        const tVal = ev.notifyTiming || 'exact';
+        let exists = false;
+        for (let i = 0; i < timingSelect.options.length; i++) {
+            if (timingSelect.options[i].value === tVal) {
+                exists = true;
+                break;
+            }
+        }
+        if (exists) {
+            timingSelect.value = tVal;
+        } else {
+            timingSelect.value = 'custom';
+            if (ev.isAllDay && tVal.startsWith('allday:')) {
+                const parts = tVal.split(':');
+                const dayVal = parts[1] ? parts[1].replace('d', '') : '0';
+                const timeVal = parts.length >= 3 ? `${parts[2]}:${parts[3] || '00'}` : '09:00';
+                const daysEl = document.getElementById('inputCustomAllDayDays');
+                const timeEl = document.getElementById('inputCustomAllDayTime');
+                if (daysEl) daysEl.value = dayVal;
+                if (timeEl) timeEl.value = timeVal;
+            } else if (!ev.isAllDay && tVal.startsWith('custom_')) {
+                const match = tVal.match(/^custom_([mhd]):(\d+)$/);
+                if (match) {
+                    const unitEl = document.getElementById('inputCustomNotifyUnit');
+                    const valEl = document.getElementById('inputCustomNotifyValue');
+                    if (unitEl) unitEl.value = match[1];
+                    if (valEl) valEl.value = match[2];
+                }
+            }
+        }
+        onNotifyTimingChange();
     }
 
     const repeatSelect = document.getElementById('inputEventNotifyRepeat');
@@ -198,6 +278,23 @@ async function submitEventForm() {
     const categoryName = selectedOpt ? selectedOpt.value : '일반';
     const categoryColor = selectedOpt ? selectedOpt.getAttribute('data-color') : '#6366f1';
 
+    let finalNotifyTiming = notifyTimingSelect ? notifyTimingSelect.value : 'exact';
+    if (finalNotifyTiming === 'custom') {
+        if (isAllDay) {
+            const daysEl = document.getElementById('inputCustomAllDayDays');
+            const timeEl = document.getElementById('inputCustomAllDayTime');
+            const days = daysEl ? daysEl.value : '0';
+            const time = (timeEl && timeEl.value) ? timeEl.value : '09:00';
+            finalNotifyTiming = `allday:${days}d:${time}`;
+        } else {
+            const valEl = document.getElementById('inputCustomNotifyValue');
+            const unitEl = document.getElementById('inputCustomNotifyUnit');
+            const val = parseInt(valEl ? valEl.value : '15', 10) || 15;
+            const unit = unitEl ? unitEl.value : 'm';
+            finalNotifyTiming = `custom_${unit}:${val}`;
+        }
+    }
+
     const payload = {
         title,
         event_date: eventDate,
@@ -207,7 +304,7 @@ async function submitEventForm() {
         memo: memoInput ? memoInput.value : '',
         is_all_day: isAllDay ? 1 : 0,
         is_family: isFamily,
-        notify_timing: notifyTimingSelect ? notifyTimingSelect.value : 'exact',
+        notify_timing: finalNotifyTiming,
         notify_repeat: parseInt(notifyRepeatSelect ? notifyRepeatSelect.value : '1', 10) || 1
     };
 
