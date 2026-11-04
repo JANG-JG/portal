@@ -90,6 +90,41 @@ function splitThinkStream(raw, final = false) {
 }
 
 /**
+ * 🧠 추론 모델이 생각(<think>)만 출력하고 답변 없이 종료된 경우 → 생각 내용을 근거로 최종 답변만 재요청 (think:false, 비스트리밍)
+ */
+function requestAnswerFromThinking(messages, thinkingText, picked) {
+    return new Promise((resolve) => {
+        const followUp = messages.concat([{
+            role: 'user',
+            content: `아래는 방금 정리한 생각 과정입니다.\n${thinkingText.slice(-4000)}\n\n다시 생각하지 말고, 이 내용을 바탕으로 위 질문에 대한 최종 답변만 한국어로 작성해 주세요.`
+        }]);
+        const bodyStr = JSON.stringify({
+            model: picked.model, messages: followUp, stream: false, think: false,
+            keep_alive: picked.keepAlive, options: { temperature: 0.5, top_p: 0.9, num_predict: 2048 }
+        });
+        const r = http.request(new URL('/api/chat', OLLAMA_HOST), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr) },
+            timeout: 180000
+        }, (resp) => {
+            let data = '';
+            resp.setEncoding('utf8');
+            resp.on('data', (c) => { data += c; });
+            resp.on('end', () => {
+                try {
+                    const content = ((JSON.parse(data).message || {}).content) || '';
+                    resolve(splitThinkStream(content, true).answer.trim());
+                } catch (e) { resolve(''); }
+            });
+        });
+        r.on('timeout', () => { r.destroy(); resolve(''); });
+        r.on('error', () => resolve(''));
+        r.write(bodyStr);
+        r.end();
+    });
+}
+
+/**
  * SSE 포맷 이벤트 전송 헬퍼
  */
 function sendSseEvent(res, eventType, data) {
@@ -264,6 +299,27 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
         const today = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'long', day: 'numeric' });
         lastMsg.content += `\n\n(기준일: ${today}. 학습 시점 언급 없이 위 참고 정보의 최신 자료를 근거로 답해 주세요.)`;
     }
+    // 스트림 종료 공통 처리: 답변 없이 생각만 끝난 경우(</think> 미출력 / message.thinking만 수신) 최종 답변 재요청
+    const finalizeAnswer = async (finalPart, emptyFallback) => {
+        let answer = finalPart.answer.trim();
+        const thinkingText = (nativeThinking + finalPart.thinking).trim();
+        if (!answer && thinkingText && !res.writableEnded) {
+            sendSseEvent(res, 'thinking', { token: '\n\n✍️ 생각을 마쳤어요. 최종 답변을 정리하는 중…' });
+            answer = await requestAnswerFromThinking(messages, thinkingText, picked);
+            if (!answer) answer = thinkingText; // 재요청도 실패하면 생각 내용을 답변으로 노출
+            answer = koreanizeWeatherWords(answer);
+            if (!res.writableEnded) sendSseEvent(res, 'token', { token: answer });
+        }
+        if (res.writableEnded) return;
+        fullAnswer = koreanizeWeatherWords(answer);
+        sendSseEvent(res, 'done', {
+            fullText: fullAnswer.trim() || emptyFallback,
+            thinkingText,
+            model: picked.model,
+            modelMode: picked.mode
+        });
+        res.end();
+    };
     try {
         const urlObj = new URL('/api/chat', OLLAMA_HOST);
         const bodyStr = JSON.stringify({
@@ -336,15 +392,7 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                         }
                         if (parsed.done) {
                             isFinished = true;
-                            const finalPart = splitThinkStream(rawAnswer, true);
-                            fullAnswer = koreanizeWeatherWords(finalPart.answer.trim());
-                            sendSseEvent(res, 'done', {
-                                fullText: fullAnswer.trim(),
-                                thinkingText: (nativeThinking + finalPart.thinking).trim(),
-                                model: picked.model,
-                                modelMode: picked.mode
-                            });
-                            res.end();
+                            finalizeAnswer(splitThinkStream(rawAnswer, true), '');
                             return;
                         }
                     } catch (jsonErr) {
@@ -366,15 +414,7 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
                             if (parsed.message && parsed.message.thinking) nativeThinking += parsed.message.thinking;
                         } catch (e) {}
                     }
-                    const finalPart = splitThinkStream(rawAnswer, true);
-                    fullAnswer = koreanizeWeatherWords(finalPart.answer.trim());
-                    sendSseEvent(res, 'done', {
-                        fullText: fullAnswer.trim() || '답변을 생성하지 못했습니다.',
-                        thinkingText: (nativeThinking + finalPart.thinking).trim(),
-                        model: picked.model,
-                        modelMode: picked.mode
-                    });
-                    res.end();
+                    finalizeAnswer(splitThinkStream(rawAnswer, true), '답변을 생성하지 못했습니다.');
                 }
             });
         });

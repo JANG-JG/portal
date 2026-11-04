@@ -180,7 +180,7 @@
 .ai-model-select {
     box-sizing: border-box;
     min-width: 0;
-    max-width: 150px;
+    max-width: 210px;
     height: 32px;
     padding: 0 8px;
     border: 1px solid #E5E1D8;
@@ -194,7 +194,9 @@
 }
 .ai-model-select:focus { outline: none; border-color: #C96442; }
 @media (max-width: 400px) {
-    .ai-model-select { max-width: 118px; font-size: 0.8rem; }
+    .ai-input-bottom-left { gap: 6px; }
+    .ai-model-select { max-width: 172px; padding: 0 4px; font-size: 0.72rem; letter-spacing: -0.3px; }
+    .ai-char-counter { font-size: 0.75rem !important; }
 }
 
 /* 글자 수 카운터 (Claude 스타일 정돈된 폰트) */
