@@ -81,14 +81,10 @@
         const purgeNav = () => document.querySelectorAll('#unified-nav-root, #unavRoot, .unav-header, #unavDrawer, header#jg-unified-nav, #jg-global-ticker-bar, #jg-global-breaking-bar, #jg-ticker-container').forEach(el => el.remove());
         purgeNav(); setTimeout(purgeNav, 100); setTimeout(purgeNav, 500);
 
-        sidebarEl = document.getElementById('aiSidebar');
-        backdropEl = document.getElementById('aiSidebarBackdrop');
-        messageScrollEl = document.getElementById('aiMessagesScroll');
-        messageContainerEl = document.getElementById('aiMessagesContainer');
-        promptInputEl = document.getElementById('aiPromptInput');
-        submitBtnEl = document.getElementById('aiSubmitBtn');
-        mobileTitleEl = document.getElementById('aiMobileSessionTitle');
-        historyListEl = document.getElementById('aiSidebarHistoryList');
+        sidebarEl = document.getElementById('aiSidebar'); backdropEl = document.getElementById('aiSidebarBackdrop');
+        messageScrollEl = document.getElementById('aiMessagesScroll'); messageContainerEl = document.getElementById('aiMessagesContainer');
+        promptInputEl = document.getElementById('aiPromptInput'); submitBtnEl = document.getElementById('aiSubmitBtn');
+        mobileTitleEl = document.getElementById('aiMobileSessionTitle'); historyListEl = document.getElementById('aiSidebarHistoryList');
         historyCountEl = document.getElementById('aiHistoryCount');
 
         // 음성 입력(STT) 마이크 버튼 연동
@@ -237,11 +233,14 @@
                     <div class="ai-history-item-title" title="${escapeFn(sess.title)}">${escapeFn(sess.title)}</div>
                     <div class="ai-history-item-meta">${timeStr} • 대화 ${userMsgCount}개</div>
                 </div>
-                <button type="button" class="ai-history-del-btn" title="대화 삭제" data-del-id="${sess.id}">🗑️</button>
+                <div class="ai-history-item-actions">
+                    <button type="button" class="ai-history-action-btn ai-history-edit-btn" title="대화명 변경" data-edit-id="${sess.id}">✏️</button>
+                    <button type="button" class="ai-history-action-btn ai-history-del-btn" title="대화 삭제" data-del-id="${sess.id}">🗑️</button>
+                </div>
             `;
 
             item.addEventListener('click', async (e) => {
-                if (e.target.closest('.ai-history-del-btn')) return;
+                if (e.target.closest('.ai-history-item-actions')) return;
                 window.JgAiHistory.setActiveSessionId(sess.id);
                 if (window.location.search && !window.location.search.includes('q=')) {
                     try { window.history.replaceState({}, document.title, window.location.pathname); } catch (err) {}
@@ -253,6 +252,9 @@
                 renderHistorySidebar();
                 window.toggleSidebar(false);
             });
+
+            const editBtn = item.querySelector('.ai-history-edit-btn');
+            if (editBtn) editBtn.addEventListener('click', (e) => { e.stopPropagation(); if (window.openRenameModal) window.openRenameModal(sess.id); });
 
             const delBtn = item.querySelector('.ai-history-del-btn');
             if (delBtn) {

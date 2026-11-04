@@ -190,6 +190,33 @@
         return true;
     }
 
+    async function updateSessionTitle(sessionId, newTitle) {
+        if (!sessionId || !newTitle || typeof newTitle !== 'string') return false;
+        const cleanTitle = newTitle.trim().substring(0, 50);
+        if (!cleanTitle) return false;
+
+        const sessions = loadAllSessions();
+        const target = sessions.find(s => s.id === sessionId);
+        if (!target) return false;
+
+        target.title = cleanTitle;
+        target.updatedAt = Date.now();
+        saveAllSessions(sessions);
+        notifyChange();
+
+        try {
+            const res = await fetch(`/api/ai/history/sessions/${encodeURIComponent(sessionId)}/title`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ title: cleanTitle })
+            });
+            return res.ok;
+        } catch (err) {
+            console.warn('[AI History] 서버 대화명 변경 비동기 알림 실패:', err);
+            return false;
+        }
+    }
+
     async function fetchSessionDetailAsync(sessionId) {
         if (!sessionId) return null;
         try {
@@ -363,6 +390,7 @@
         createNewSession,
         addMessageToActiveSession,
         deleteSession,
+        updateSessionTitle,
         fetchSessionDetailAsync,
         syncInitialServerData,
         onHistoryChange,

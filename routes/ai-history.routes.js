@@ -14,7 +14,8 @@ const {
     addMessage,
     deleteSession,
     deleteAllSessions,
-    syncSessionsFromClient
+    syncSessionsFromClient,
+    updateSessionTitle
 } = require('../services/aiHistory.service');
 
 // 1. 현재 사용자의 대화 세션 목록 조회
@@ -142,6 +143,32 @@ router.post('/api/ai/history/sync', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error('[API POST /api/ai/history/sync] 동기화 오류:', err);
         res.status(500).json({ success: false, message: '대화 세션 동기화에 실패했습니다.', error: err.message });
+    }
+});
+
+// 8. 특정 대화 세션의 제목(대화명) 수정
+router.patch('/api/ai/history/sessions/:sessionId/title', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user?.username;
+        const { sessionId } = req.params;
+        const { title } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+        }
+        if (!title || typeof title !== 'string' || !title.trim()) {
+            return res.status(400).json({ success: false, message: '유효한 대화명을 입력해주세요.' });
+        }
+
+        const cleanTitle = title.trim().substring(0, 50);
+        const success = await updateSessionTitle(userId, sessionId, cleanTitle);
+        if (!success) {
+            return res.status(404).json({ success: false, message: '대화 세션을 찾을 수 없거나 수정 권한이 없습니다.' });
+        }
+        res.json({ success: true, title: cleanTitle, message: '대화명이 성공적으로 변경되었습니다.' });
+    } catch (err) {
+        console.error('[API PATCH /api/ai/history/sessions/:sessionId/title] 대화명 변경 오류:', err);
+        res.status(500).json({ success: false, message: '대화명을 수정하지 못했습니다.', error: err.message });
     }
 });
 

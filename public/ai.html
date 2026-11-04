@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="/css/portal-ai-base.css">
     <link rel="stylesheet" href="/css/portal-ai-messages.css">
     <link rel="stylesheet" href="/css/portal-ai-composer.css">
+    <link rel="stylesheet" href="/css/portal-ai-modal.css">
 </head>
 <body>
     <div class="ai-app-wrapper">
@@ -76,17 +77,28 @@
 
         <!-- 2. 중앙 챗 캔버스 (대화 영역) -->
         <main class="ai-main-canvas">
-            <!-- 모바일 슬림 헤더 -->
+            <!-- 상단 슬림 헤더 (포털 홈, 대화명 변경, 새로고침, 새 대화) -->
             <header class="ai-mobile-header">
-                <button type="button" class="ai-mobile-menu-btn" onclick="toggleSidebar(true)" aria-label="대화 목록 열기">
-                    <span class="ai-menu-icon">☰</span>
-                </button>
-                <div class="ai-mobile-title-wrap">
-                    <span class="ai-mobile-title" id="aiMobileSessionTitle">AI 비서</span>
+                <div class="ai-header-left">
+                    <button type="button" class="ai-mobile-menu-btn" onclick="toggleSidebar(true)" aria-label="대화 목록 열기" title="대화 목록">
+                        <span class="ai-menu-icon">☰</span>
+                    </button>
+                    <a href="/" class="ai-header-home-btn" aria-label="포털 홈으로 이동" title="포털 홈">
+                        <span class="ai-home-icon">🏠</span>
+                    </a>
                 </div>
-                <button type="button" class="ai-mobile-action-btn" onclick="handleNewChatClick()" title="새 대화">
-                    <span>➕</span>
-                </button>
+                <div class="ai-mobile-title-wrap" id="aiMobileTitleWrap" onclick="openRenameModal()" title="대화명 변경 (클릭하여 수정)" role="button" tabindex="0">
+                    <span class="ai-mobile-title" id="aiMobileSessionTitle">AI 비서</span>
+                    <span class="ai-title-edit-icon" aria-hidden="true" title="대화명 변경">✏️</span>
+                </div>
+                <div class="ai-header-right">
+                    <button type="button" class="ai-header-refresh-btn" id="aiHeaderRefreshBtn" onclick="handleHeaderRefresh()" aria-label="새로고침" title="대화 새로고침">
+                        <span class="ai-refresh-icon">🔄</span>
+                    </button>
+                    <button type="button" class="ai-mobile-action-btn" onclick="handleNewChatClick()" aria-label="새 대화 시작" title="새 대화 시작">
+                        <span>➕</span>
+                    </button>
+                </div>
             </header>
 
             <!-- 메시지 스크롤 컨테이너 -->
@@ -148,6 +160,29 @@
         </main>
     </div>
 
+    <!-- 3. 대화명 변경 모달 -->
+    <div class="ai-modal-backdrop" id="aiRenameModalBackdrop" onclick="closeRenameModal(event)">
+        <div class="ai-modal-box" onclick="event.stopPropagation()">
+            <div class="ai-modal-header">
+                <div class="ai-modal-title-wrap">
+                    <span class="ai-modal-icon">✏️</span>
+                    <h3 class="ai-modal-title">대화명 변경</h3>
+                </div>
+                <button type="button" class="ai-modal-close-btn" onclick="closeRenameModal()" aria-label="닫기">✕</button>
+            </div>
+            <form class="ai-modal-form" id="aiRenameForm" onsubmit="handleRenameSubmit(event)">
+                <div class="ai-modal-body">
+                    <label for="aiRenameInput" class="ai-modal-label">새로운 대화명을 입력하세요:</label>
+                    <input type="text" id="aiRenameInput" class="ai-modal-input" maxlength="50" placeholder="예: 제주도 여행 일정 계획" autocomplete="off" required>
+                </div>
+                <div class="ai-modal-footer">
+                    <button type="button" class="ai-modal-btn cancel" onclick="closeRenameModal()">취소</button>
+                    <button type="submit" class="ai-modal-btn submit">변경 완료</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- 스크립트 (캐시 제어는 deploy.sh 및 server.js가 자동 처리) -->
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
     <script src="/js/portal-ai-voice.js"></script>
@@ -156,6 +191,7 @@
     <script src="/js/portal-ai-render.js"></script>
     <script src="/js/portal-ai-viewport.js"></script>
     <script src="/js/portal-ai-stream.js"></script>
+    <script src="/js/portal-ai-nav.js"></script>
     <script src="/js/portal-ai-page.js"></script>
 </body>
 </html>

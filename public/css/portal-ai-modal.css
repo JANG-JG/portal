@@ -1,0 +1,179 @@
+/**
+ * 🤖 JG 포털 AI 비서 대화명 변경 모달 및 히스토리 액션 스타일시트 (portal-ai-modal.css)
+ * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 완벽 호환
+ */
+
+/* 1. 대화명 변경 모달 백드롭 */
+.ai-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(31, 30, 29, 0.45);
+    backdrop-filter: blur(3px);
+    z-index: 999999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.ai-modal-backdrop.active {
+    display: flex;
+    opacity: 1;
+}
+
+/* 2. 모달 카드 박스 (Claude 웜 크림 에디토리얼 테마 일치) */
+.ai-modal-box {
+    background-color: var(--ai-bg-main);
+    border: 1px solid var(--ai-border);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+    overflow: hidden;
+    transform: translateY(12px) scale(0.97);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ai-modal-backdrop.active .ai-modal-box {
+    transform: translateY(0) scale(1);
+}
+
+.ai-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--ai-border);
+}
+
+.ai-modal-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ai-modal-icon {
+    font-size: 1rem;
+}
+
+.ai-modal-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--ai-text-primary);
+    margin: 0;
+}
+
+.ai-modal-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.1rem;
+    color: var(--ai-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    line-height: 1;
+    transition: all 0.12s ease;
+}
+
+.ai-modal-close-btn:hover {
+    background: var(--ai-border);
+    color: var(--ai-text-primary);
+}
+
+.ai-modal-body {
+    padding: 1rem;
+}
+
+.ai-modal-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ai-text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.ai-modal-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.65rem 0.85rem;
+    border: 1.5px solid var(--ai-border);
+    border-radius: 8px;
+    font-size: 0.92rem;
+    background-color: var(--ai-bg-card);
+    color: var(--ai-text-primary);
+    outline: none;
+    transition: border-color 0.15s ease;
+    font-family: inherit;
+}
+
+.ai-modal-input:focus {
+    border-color: var(--ai-accent);
+}
+
+.ai-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--ai-border);
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.ai-modal-btn {
+    padding: 0.5rem 0.95rem;
+    border-radius: 8px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s ease;
+    font-family: inherit;
+}
+
+.ai-modal-btn.cancel {
+    background: transparent;
+    border-color: var(--ai-border);
+    color: var(--ai-text-muted);
+}
+
+.ai-modal-btn.cancel:hover {
+    background: var(--ai-border);
+    color: var(--ai-text-primary);
+}
+
+.ai-modal-btn.submit {
+    background-color: var(--ai-accent);
+    color: #ffffff;
+}
+
+.ai-modal-btn.submit:hover {
+    background-color: var(--ai-accent-hover);
+}
+
+/* 3. 사이드바 대화 아이템 버튼 그룹 (수정 ✏️, 삭제 🗑️) */
+.ai-history-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.ai-history-action-btn {
+    background: transparent;
+    border: none;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 4px 5px;
+    border-radius: 6px;
+    line-height: 1;
+    opacity: 0.65;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.ai-history-action-btn:hover {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.06);
+}

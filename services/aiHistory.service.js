@@ -283,13 +283,34 @@ async function syncSessionsFromClient(userId, sessions) {
     return importedCount;
 }
 
+/**
+ * 특정 세션의 제목(대화명) 수정
+ */
+async function updateSessionTitle(userId, sessionId, title) {
+    if (!userId || !sessionId) return false;
+    const cleanTitle = (title && typeof title === 'string') ? title.trim().substring(0, 50) : '';
+    if (!cleanTitle) return false;
+
+    // 소유권 확인
+    const session = await dbGet(`SELECT id FROM ai_chat_sessions WHERE id = ? AND user_id = ?`, [sessionId, userId]);
+    if (!session) return false;
+
+    await dbRun(
+        `UPDATE ai_chat_sessions SET title = ?, updated_at = datetime('now', 'localtime') WHERE id = ? AND user_id = ?`,
+        [cleanTitle, sessionId, userId]
+    );
+    return true;
+}
+
 module.exports = {
     initAiHistoryTables,
     getUserSessions,
     getSessionDetail,
     createSession,
     addMessage,
+    updateSessionTitle,
     deleteSession,
     deleteAllSessions,
     syncSessionsFromClient
 };
+
