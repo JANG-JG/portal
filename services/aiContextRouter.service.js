@@ -195,7 +195,10 @@ function buildSelectiveContext(summaryContext, intents, user = null) {
     if (isOverview || intents.has('NEWS') || (isAdmin && intents.has('ASSET'))) {
         if (news) {
             const m = (isAdmin && news.market) ? `코스피 ${news.market.kospi || '-'}, 코스닥 ${news.market.kosdaq || '-'}, 환율 ${news.market.usdkrw || '-'}원` : '';
-            const topNews = Array.isArray(news.recommendedArticles) ? news.recommendedArticles.slice(0, 2).map(a => a.title).join(' / ') : '';
+            // 뉴스룸과 동일 기준(여러 언론사가 다룬 오늘의 이슈) 우선, 없으면 분야별 최신 기사로 대체
+            const issueCount = intents.has('NEWS') ? 5 : 3;
+            const issues = (Array.isArray(news.topIssues) && news.topIssues.length > 0) ? news.topIssues : (Array.isArray(news.recommendedArticles) ? news.recommendedArticles : []);
+            const topNews = issues.slice(0, issueCount).map(a => `[${a.category_name || '기타'}] ${a.title}${a.report_count > 1 ? ` (${a.report_count}건 보도)` : ''}`).join(' / ');
             const breaking = Array.isArray(news.breakingArticles) && news.breakingArticles.length > 0 ? `🚨 속보: ${news.breakingArticles[0].title}` : '';
             const newsLine = [m, breaking, topNews ? `주요 뉴스: ${topNews}` : ''].filter(Boolean).join(' | ');
             if (newsLine) parts.push(`- 📰 소식/뉴스: ${newsLine}`);

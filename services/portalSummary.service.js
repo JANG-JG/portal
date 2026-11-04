@@ -7,6 +7,7 @@ const { calculateReservationOpenDate, classifyBloodPressure } = require('./blood
 const { generateDailyBriefing } = require('./dailyBriefing.service');
 const { getWikiSummary, fetchProactiveWikiTip } = require('./wikiSummary.service');
 const { getAlbumSummary } = require('./albumSummary.service');
+const { getTopNewsIssues } = require('./newsHeadline.service');
 
 // KST (Asia/Seoul) 기준 현재 또는 오프셋 시각 문자열 생성 헬퍼 (YYYY-MM-DD HH:mm:ss)
 function getKstDateTimeString(offsetMinutes = 0) {
@@ -228,7 +229,7 @@ async function buildSummaryData() {
         );
     });
 
-    const [blood, medication, hospital, memoData, assetQuoteResult, weather, newsRecommendation, breakingArticles, marketData, todayEvents, wikiData, albumData] = await Promise.all([
+    const [blood, medication, hospital, memoData, assetQuoteResult, weather, newsRecommendation, breakingArticles, marketData, todayEvents, wikiData, albumData, topIssues] = await Promise.all([
         bloodPromise,
         medicationPromise,
         hospitalPromise,
@@ -240,7 +241,8 @@ async function buildSummaryData() {
         marketPromise,
         calendarPromise,
         getWikiSummary(),
-        getAlbumSummary()
+        getAlbumSummary(),
+        getTopNewsIssues(todayKst, 5).catch(() => [])
     ]);
 
     const enrichedAssets = (assetQuoteResult && assetQuoteResult.enrichedAssets) ? assetQuoteResult.enrichedAssets : [];
@@ -368,6 +370,7 @@ async function buildSummaryData() {
         news: {
             market: marketData,
             recommendedArticles: newsRecommendation,
+            topIssues: topIssues || [],
             breakingArticles: breakingArticles || []
         },
         system: {
