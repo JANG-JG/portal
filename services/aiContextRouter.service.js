@@ -7,7 +7,7 @@
 
 const { searchWikiContent } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
-const { searchNewsByKeyword, getRecentBreaking } = require('./newsHeadline.service');
+const { searchNewsByKeyword, getRecentBreaking, getLatestByCategories, getDailyWeatherSummary } = require('./newsHeadline.service');
 const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 const { ADMIN_USERS } = require('../config/constants');
 
@@ -81,12 +81,12 @@ function detectIntents(prompt) {
     }
 
     // 3. 날씨 / 외출
-    if (/(날씨|비\s*와|기온|온도|우산|미세먼지|외출|옷차림|추워|더워|바람|습도)/.test(p)) {
+    if (/(날씨|비\s*와|기온|온도|우산|미세먼지|외출|옷차림|추워|더워|바람|습도|예보|강수|눈\s*와|자외선)/.test(p)) {
         intents.add('WEATHER');
     }
 
     // 4. 자산 / 시황 / 주식 / 경제
-    if (/(자산|돈|통장|투자|주식|코스피|코스닥|환율|달러|평가액|계좌|증시|경제|금리|금융|시장)/.test(p)) {
+    if (/(자산|돈|통장|투자|주식|코스피|코스닥|환율|달러|평가액|계좌|증시|경제|금리|금융|시장|가상자산|코인|비트코인|엔화|유로)/.test(p)) {
         intents.add('ASSET');
     }
 
@@ -182,6 +182,10 @@ function buildSelectiveContext(summaryContext, intents, user = null) {
             ? `${weatherCityKo} ${weather.temp || ''} (${weatherCondKo}), 습도 ${weather.humidity || '-'}${feelKo ? `, 체감 ${weather.feels_like || weather.temp} (${feelKo})` : ''}` 
             : '날씨 정보 없음';
         parts.push(`- 🌤️ 날씨: ${weatherInfo}`);
+        if (weather && Array.isArray(weather.forecast) && weather.forecast.length > 0) {
+            const fc = weather.forecast.map(f => `${f.label} ${koreanizeWeatherWords(f.condition)} ${f.min}~${f.max} (강수확률 ${f.rain})`).join(' / ');
+            parts.push(`- 📆 날씨 예보: ${fc}`);
+        }
     }
 
     // 4. 자산 관리 (관리자 전용 데이터 - 일반 가족은 주입 원천 차단)
@@ -192,10 +196,11 @@ function buildSelectiveContext(summaryContext, intents, user = null) {
         }
     }
 
-    // 5. 시황 & 뉴스 (증시 지표는 관리자만, 일반 뉴스는 가족 전체)
-    if (isOverview || intents.has('NEWS') || (isAdmin && intents.has('ASSET'))) {
+    // 5. 시황 & 뉴스 (공개 증시 지표·뉴스룸 기사는 가족 전체 공개 / 개인 자산 앱 정보는 위 4번에서만 관리자 한정)
+    if (isOverview || intents.has('NEWS') || intents.has('ASSET')) {
         if (news) {
-            const m = (isAdmin && news.market) ? `코스피 ${news.market.kospi || '-'}, 코스닥 ${news.market.kosdaq || '-'}, 환율 ${news.market.usdkrw || '-'}원` : '';
+            const q = v => (v && typeof v === 'object') ? (v.price && v.price !== '-' ? `${v.price}${v.ratio && v.ratio !== '-' ? `(${v.ratio})` : ''}` : '-') : (v || '-');
+            const m = news.market ? `코스피 ${q(news.market.kospi)}, 코스닥 ${q(news.market.kosdaq)}, 원/달러 ${q(news.market.usd_krw)}, 원/100엔 ${q(news.market.jpy_krw)}, 원/유로 ${q(news.market.eur_krw)}` : '';
             // 뉴스룸과 동일 기준(여러 언론사가 다룬 오늘의 이슈) 우선, 없으면 분야별 최신 기사로 대체
             const issueCount = intents.has('NEWS') ? 5 : 3;
             const issues = (Array.isArray(news.topIssues) && news.topIssues.length > 0) ? news.topIssues : (Array.isArray(news.recommendedArticles) ? news.recommendedArticles : []);
@@ -299,6 +304,34 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
         }
     }
 
+    // 시황 의도 → 뉴스룸 증시/가상자산·경제 분야 최신 기사 주입 (공개 정보, 자산 앱 DB는 미사용)
+    let matchedMarketGuide = '';
+    if (intents.has('ASSET')) {
+        try {
+            const marketNews = await getLatestByCategories(['증시/가상자산', '경제'], 6);
+            if (marketNews.length > 0) {
+                matchedMarketGuide = '\n\n[뉴스룸 증시·경제 최신 기사]\n' +
+                    marketNews.map(a => `■ [${a.category_name}] ${a.title} (${a.media_name || '언론사 미상'}, ${a.published_at ? String(a.published_at).slice(5, 16) : (a.date || '')})${a.summary ? `\n- 요약: ${String(a.summary).slice(0, 100)}` : ''}`).join('\n');
+            }
+        } catch (e) {
+            // 조회 실패 시 무중단 진행
+        }
+    }
+
+    // 날씨 의도 → 뉴스룸 일일 날씨 요약(최저/최고·바람·자외선·체감) 보조 주입
+    let dailyWeatherGuide = '';
+    if (intents.has('WEATHER')) {
+        try {
+            const todayKst = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+            const dw = await getDailyWeatherSummary(todayKst);
+            if (dw && dw.date === todayKst && dw.weather_info) {
+                dailyWeatherGuide = `\n\n[뉴스룸 오늘 날씨 요약 (뉴스룸 기준 지역)]\n- ${dw.weather_info}`;
+            }
+        } catch (e) {
+            // 조회 실패 시 무중단 진행
+        }
+    }
+
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const kst = new Date(utc + (9 * 60 * 60000));
@@ -309,7 +342,7 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
     const currentTimeKo = `${ampm} ${hour12}시 ${kstMin}분`;
     const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo}`;
-    const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide, matchedNewsGuide].filter(Boolean).join('\n').trim();
+    const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide, matchedNewsGuide, matchedMarketGuide, dailyWeatherGuide].filter(Boolean).join('\n').trim();
 
     // 초기 도입 당시의 자연스럽고 다정한 프롬프트 스타일로 복원 (LG EXAONE 4.0 기준)
     let adminGuardNote = '';

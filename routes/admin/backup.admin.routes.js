@@ -105,7 +105,7 @@ router.get('/status', async (req, res) => {
         }
 
         // 보조 스토리지(HP 노트북) 온라인 상태
-        let secondaryStatus = { online: false, host: '192.168.50.75' };
+        let secondaryStatus = { online: false, host: process.env.SECONDARY_HOST || '192.168.50.75' };
         try {
             secondaryStatus = await getSecondaryServerStatus();
         } catch (e) {}
@@ -116,7 +116,7 @@ router.get('/status', async (req, res) => {
             running_since: backupProcessStartTime,
             status: statusData,
             secondary_server: {
-                host: statusData?.secondary_host || '192.168.50.75',
+                host: statusData?.secondary_host || process.env.SECONDARY_HOST || '192.168.50.75',
                 port: statusData?.secondary_port || 22,
                 online: !!secondaryStatus.online,
                 external_ssd: secondaryStatus.externalSsd || null

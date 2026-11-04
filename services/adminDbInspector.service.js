@@ -169,7 +169,7 @@ function getDynamicDbMap() {
                     isPrimaryForPath: true,
                     isRemote: isSecondaryFile,
                     serverName: isSecondaryFile ? '💻 HP 보조 서버 (192.168.50.75)' : '📱 메인 서버 (로컬 자동 감지)',
-                    remoteHost: isSecondaryFile ? '192.168.50.75' : null,
+                    remoteHost: isSecondaryFile ? (process.env.SECONDARY_HOST || '192.168.50.75') : null,
                     isAutoDiscovered: true
                 };
             }

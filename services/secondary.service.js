@@ -3,12 +3,12 @@ const path = require('path');
 const os = require('os');
 const net = require('net');
 const { exec } = require('child_process');
-const { WORKSPACE_ROOT } = require('../config/constants');
+const { WORKSPACE_ROOT, SECONDARY_HOST } = require('../config/constants');
 const { formatUptime, parseUptimeString } = require('./format.util');
 
 // 보조 서버 (HP 노트북: 192.168.50.75) 실시간 소켓 & SSH 리소스 헬스체크
 let secondaryServerCache = {
-    ip: '192.168.50.75:22',
+    ip: `${SECONDARY_HOST}:22`,
     name: 'HP 노트북 15-g008au (보조 백업 스토리지)',
     role: '500GB 보조 HDD 백업 저장소 (새벽 4시 rsync)',
     online: false,
@@ -105,7 +105,7 @@ async function performSecondaryServerCheck() {
     return new Promise((resolve) => {
         const startTime = Date.now();
         let settled = false;
-        const socket = net.createConnection({ host: '192.168.50.75', port: 22, timeout: 1000 }, () => {
+        const socket = net.createConnection({ host: SECONDARY_HOST, port: 22, timeout: 1000 }, () => {
             if (settled) return;
             settled = true;
             const latency = Date.now() - startTime;
@@ -123,7 +123,7 @@ async function performSecondaryServerCheck() {
             ].join(' && ');
 
             const sshUser = process.env.SECONDARY_USER || os.userInfo().username;
-            const sshCmd = `ssh -p 22 -o ConnectTimeout=2 -o BatchMode=yes -o StrictHostKeyChecking=accept-new ${sshUser}@192.168.50.75 "${remoteScript}"`;
+            const sshCmd = `ssh -p 22 -o ConnectTimeout=2 -o BatchMode=yes -o StrictHostKeyChecking=accept-new ${sshUser}@${SECONDARY_HOST} "${remoteScript}"`;
 
             exec(sshCmd, { timeout: 4000 }, (sshErr, stdout) => {
                 isUpdatingSecondary = false;

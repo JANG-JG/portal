@@ -207,4 +207,40 @@ function getRecentBreaking(hours = 2, limit = 3) {
     });
 }
 
-module.exports = { getTopNewsIssues, searchNewsByKeyword, getRecentBreaking };
+/**
+ * 지정 분야(카테고리)의 최근 기사 (최신순, 중복 제목 제거) - 예: 증시/가상자산, 경제
+ * @returns {Promise<object[]>}
+ */
+function getLatestByCategories(categories = [], limit = 5) {
+    if (!newsDb || !categories.length) return Promise.resolve([]);
+    const ph = categories.map(() => '?').join(',');
+    return new Promise(resolve => {
+        newsDb.all(
+            `SELECT id, date, category_name, title, media_name, summary, published_at FROM news_articles
+             WHERE category_name IN (${ph}) ORDER BY id DESC LIMIT 60`,
+            categories,
+            (err, rows) => {
+                if (err || !rows) return resolve([]);
+                const seen = new Set();
+                resolve(rows.filter(r => r.title && !seen.has(r.title) && seen.add(r.title)).slice(0, limit));
+            }
+        );
+    });
+}
+
+/**
+ * 뉴스룸 일일 날씨 요약 (daily_weather: 최저/최고, 바람, 자외선 등) - 오늘 없으면 최신 1건
+ * @returns {Promise<{date: string, weather_info: string}|null>}
+ */
+function getDailyWeatherSummary(todayKst) {
+    if (!newsDb) return Promise.resolve(null);
+    return new Promise(resolve => {
+        newsDb.get(
+            'SELECT date, weather_info FROM daily_weather WHERE date <= ? ORDER BY date DESC LIMIT 1',
+            [todayKst],
+            (err, row) => resolve(err || !row ? null : row)
+        );
+    });
+}
+
+module.exports = { getTopNewsIssues, searchNewsByKeyword, getRecentBreaking, getLatestByCategories, getDailyWeatherSummary };

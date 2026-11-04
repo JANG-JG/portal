@@ -60,7 +60,8 @@ function isOriginAllowed(origin) {
     }
 }
 
-const WIKI_HOST = process.env.WIKI_HOST || '192.168.50.75';
+const SECONDARY_HOST = process.env.SECONDARY_HOST || '192.168.50.75';
+const WIKI_HOST = process.env.WIKI_HOST || SECONDARY_HOST;
 const WIKI_PORT = parseInt(process.env.WIKI_PORT, 10) || 5060;
 const WIKI_BASE_URL = process.env.WIKI_BASE_URL || `http://${WIKI_HOST}:${WIKI_PORT}`;
 
@@ -81,6 +82,7 @@ module.exports = {
     ALBUM_DB_PATH,
     WIKI_DB_PATH,
     PORTAL_DB_PATH,
+    SECONDARY_HOST,
     WIKI_HOST,
     WIKI_PORT,
     WIKI_BASE_URL,

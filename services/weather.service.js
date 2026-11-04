@@ -92,6 +92,20 @@ const weatherCacheMap = new Map();
 const inFlightWeatherFetches = new Map();
 const WEATHER_CACHE_TTL_MS = 10 * 60 * 1000;
 
+// Open-Meteo daily 응답 → [{ date, label, condition, min, max, rain }] (오늘/내일/모레 예보)
+function buildDailyForecast(daily) {
+    if (!daily || !Array.isArray(daily.time)) return [];
+    const labels = ['오늘', '내일', '모레'];
+    return daily.time.slice(0, 3).map((date, i) => ({
+        date,
+        label: labels[i] || date,
+        condition: WMO_CODE_KO[daily.weather_code?.[i]] || '-',
+        min: typeof daily.temperature_2m_min?.[i] === 'number' ? `${daily.temperature_2m_min[i].toFixed(0)}°C` : '-',
+        max: typeof daily.temperature_2m_max?.[i] === 'number' ? `${daily.temperature_2m_max[i].toFixed(0)}°C` : '-',
+        rain: typeof daily.precipitation_probability_max?.[i] === 'number' ? `${daily.precipitation_probability_max[i]}%` : '-'
+    }));
+}
+
 // 서울 초기 기본 날씨 데이터 (0ms 즉시 응답용 안전 폴백)
 const DEFAULT_SEOUL_FALLBACK = {
     city: '서울',
@@ -153,7 +167,7 @@ async function refreshWeatherInBackground(rawCity, korCityName) {
     const fetchPromise = (async () => {
         try {
             const coords = CITY_COORDS[cityKey] || CITY_COORDS['Seoul'];
-            const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,cloud_cover,wind_speed_10m&timezone=Asia%2FTokyo`;
+            const openMeteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,cloud_cover,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=3&timezone=Asia%2FTokyo`;
 
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 4000);
@@ -188,7 +202,8 @@ async function refreshWeatherInBackground(rawCity, korCityName) {
                         is_day: isDay,
                         feels_like: `${feelsVal.toFixed(1)}°C`,
                         humidity: `${curr.relative_humidity_2m || 0}%`,
-                        wind_speed: `${curr.wind_speed_10m || 0}km/h`
+                        wind_speed: `${curr.wind_speed_10m || 0}km/h`,
+                        forecast: buildDailyForecast(data.daily)
                     };
 
                     weatherCacheMap.set(cityKey, {

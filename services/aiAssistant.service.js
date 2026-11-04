@@ -173,8 +173,9 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
 
     // 2) 오늘 날씨 & 외출 주의사항
     const feelKo = weather ? describeFeelKo(weather.feels_like || weather.temp) : '';
+    const todayFc = (weather && Array.isArray(weather.forecast)) ? weather.forecast[0] : null;
     const weatherText = weather 
-        ? `${weather.city || '계룡'} ${weather.temp || ''}, ${weather.condition || '맑음'}${feelKo ? `, 체감 ${feelKo}` : ''}` 
+        ? `${weather.city || '계룡'} ${weather.temp || ''}, ${weather.condition || '맑음'}${feelKo ? `, 체감 ${feelKo}` : ''}${todayFc ? `, 최저 ${todayFc.min}/최고 ${todayFc.max}, 강수확률 ${todayFc.rain}` : ''}` 
         : '';
 
     // 3) 오늘 당일 캘린더 일정 (오늘 일정이 있는 경우만)
