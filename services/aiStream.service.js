@@ -13,7 +13,7 @@ const { smartMergeOrDraftWiki, stripThinkTags } = require('./aiKnowledge.service
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { koreanizeWeatherWords } = require('./weatherKo.util');
 
-const { OLLAMA_HOST, getChatModel, selectChatModel } = require('./aiModelRouter.service');
+const { OLLAMA_HOST, getChatModel, selectChatModel, ensureModelSlot } = require('./aiModelRouter.service');
 // 위키 안내 등 기본 응답 표기용 (대화는 selectChatModel로 자동 선택) (getChatModel: 관리자 설정 즉시 반영)
 
 /**
@@ -321,6 +321,8 @@ async function handleSseChatStream({ req, res, prompt, history = [], summaryCont
         });
         res.end();
     };
+    // 모델 교체 시 상주 중인 다른 모델 언로드 (VRAM 부족으로 로딩이 무한 대기하는 문제 방지)
+    await ensureModelSlot(picked.model);
     try {
         const urlObj = new URL('/api/chat', OLLAMA_HOST);
         const bodyStr = JSON.stringify({

@@ -58,6 +58,28 @@ function isDualMode() {
 }
 
 /**
+ * 모델 교체 전 자리 확보: 대상 외 상주 모델을 keep_alive 0으로 언로드
+ * (보조서버 VRAM 부족 시 대화 모델(24h 상주)이 내려가지 않아 추론 모델 로딩이 무한 대기하는 문제 방지)
+ * 실패해도 본 요청은 그대로 진행 (best-effort)
+ */
+async function ensureModelSlot(targetModel) {
+    if (!targetModel || typeof fetch !== 'function') return;
+    try {
+        const psRes = await fetch(new URL('/api/ps', OLLAMA_HOST), { signal: AbortSignal.timeout(5000) });
+        const loaded = ((await psRes.json()).models || []).map(m => m.name || m.model).filter(Boolean);
+        const others = loaded.filter(name => name !== targetModel);
+        await Promise.all(others.map(name => fetch(new URL('/api/generate', OLLAMA_HOST), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: name, keep_alive: 0 }),
+            signal: AbortSignal.timeout(30000)
+        }).catch(() => null)));
+    } catch (e) {
+        console.warn('[AI 라우터] 모델 자리 확보 실패(무시):', e.message);
+    }
+}
+
+/**
  * 질문 내용(또는 사용자 선택)에 따라 사용할 모델 선택
  * @param {string} prompt
  * @param {'auto'|'chat'|'reasoning'} preference 사용자 선택 (auto: 질문 내용 기반 자동 분기)
@@ -88,5 +110,6 @@ module.exports = {
     isDualMode,
     selectChatModel,
     getChatModel,
-    getReasoningModel
+    getReasoningModel,
+    ensureModelSlot
 };

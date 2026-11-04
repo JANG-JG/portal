@@ -15,7 +15,7 @@ const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { buildAiChatPrompt } = require('./aiContextRouter.service');
 
-const { OLLAMA_HOST, getChatModel, selectChatModel } = require('./aiModelRouter.service');
+const { OLLAMA_HOST, getChatModel, selectChatModel, ensureModelSlot } = require('./aiModelRouter.service');
 // 브리핑·상태 점검·위키 처리는 평상시 대화 모델 사용 (getChatModel: 관리자 설정 즉시 반영)
 
 // 브리핑 캐시 (1시간 유효, 데이터 변경 시 자동 갱신)
@@ -26,7 +26,8 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1시간
 /**
  * Ollama 서버에 HTTP POST 요청을 보내는 경량 헬퍼 (의존성 제로)
  */
-function sendOllamaRequest(endpoint, payload, timeoutMs = 45000) {
+async function sendOllamaRequest(endpoint, payload, timeoutMs = 45000) {
+    if (payload && payload.model) await ensureModelSlot(payload.model); // 모델 교체 시 상주 모델 언로드 (로딩 무한 대기 방지)
     return new Promise((resolve, reject) => {
         try {
             const urlObj = new URL(endpoint, OLLAMA_HOST);

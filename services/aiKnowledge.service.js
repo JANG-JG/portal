@@ -7,7 +7,7 @@
 
 const http = require('http');
 
-const { OLLAMA_HOST, getChatModel } = require('./aiModelRouter.service'); // 위키 초안/요약은 평상시 대화 모델 사용
+const { OLLAMA_HOST, getChatModel, ensureModelSlot } = require('./aiModelRouter.service'); // 위키 초안/요약은 평상시 대화 모델 사용
 
 /**
  * EXAONE 4.0 추론 모드 대비: <think>...</think> 사고 과정 텍스트 제거 (미종결 태그 포함)
@@ -20,7 +20,8 @@ function stripThinkTags(text) {
 /**
  * Ollama 서버에 HTTP POST 요청을 보내는 경량 헬퍼
  */
-function sendOllamaRequest(endpoint, payload, timeoutMs = 60000) {
+async function sendOllamaRequest(endpoint, payload, timeoutMs = 60000) {
+    if (payload && payload.model) await ensureModelSlot(payload.model); // 모델 교체 시 상주 모델 언로드 (로딩 무한 대기 방지)
     return new Promise((resolve, reject) => {
         try {
             const urlObj = new URL(endpoint, OLLAMA_HOST);
