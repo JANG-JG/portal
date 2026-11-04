@@ -8,6 +8,10 @@
 const { db, portalDb } = require('./db');
 const { encryptCalendarText, encryptMemoText } = require('./crypto.service');
 const { classifyBloodPressure } = require('./bloodClassifier.util');
+const { ADMIN_USERS } = require('../config/constants');
+
+const isAdminUser = (u) => !!(u && (u.role === 'admin' || (u.username && ADMIN_USERS && (ADMIN_USERS.has ? ADMIN_USERS.has(u.username) : ADMIN_USERS.includes(u.username)))));
+const isAdminPageQuery = (p) => typeof p === 'string' && /(관리자\s*(페이지|화면|메뉴|설정|계정|비번|비밀번호)|admin\s*(page|view)?|마스터\s*비번|db\s*(인스펙터|관리|원시)|서버\s*설정\s*(변경|수정))/i.test(p);
 
 /**
  * 🕒 한국 표준시(KST) 기준 날짜 및 시간 헬퍼
@@ -139,35 +143,26 @@ function parseKoreanDateTime(text) {
 function parseCalendarAction(prompt) {
     if (!prompt || typeof prompt !== 'string') return null;
 
-    // 1. 기능 지원 여부 및 사용 방법 문의 가드 (액션 실행하지 않고 LLM 안내로 유도)
-    const isCapabilityQuery = /(지원\s*(돼|되나|하나|해요|됩니까)|가능\s*(해|한가|해요|합니까)|할\s*수\s*(있어|있나|있나요|있습니까)|어떻게\s*(해|하나요|등록해|잡아|써)|기능\s*(있어|있나요)|방법)/i.test(prompt);
-    if (isCapabilityQuery) return null;
+    // 1. 기능 지원 여부 및 사용 방법 문의 가드
+    if (/(지원\s*(돼|되나|하나|해요|됩니까)|가능\s*(해|한가|해요|합니까)|할\s*수\s*(있어|있나|있나요|있습니까)|어떻게\s*(해|하나요|등록해|잡아|써)|기능\s*(있어|있나요)|방법)/i.test(prompt)) return null;
 
-    // 2. 위키 지식 / 생활 팁 / 레시피 / 매뉴얼 관련 질문 및 추천 가드
-    // "위키에 저장된 생활 팁 추천해줘" 등이 캘린더 등록으로 오작동하는 것을 원천 차단
-    const hasWikiContext = /(위키|wiki|생활\s*팁|꿀팁|레시피|매뉴얼|노하우|살림)/i.test(prompt);
-    const hasExplicitCalendarCommand = /(캘린더|일정|스케줄|약속)\s*(?:에|으로)?\s*(?:등록|추가|잡아|기록|저장|예약)\s*(?:해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)?/i.test(prompt);
-    if (hasWikiContext && !hasExplicitCalendarCommand) return null;
-
-    // 3. 조회 / 추천 / 검색 / 질문 의도 배제
-    // "추천해줘", "알려줘", "보여줘", "뭐 있어" 등의 질의가 포함되어 있고 명시적 일정 등록 명령이 아니면 캘린더 등록 액션 배제
-    const isQueryOrRecommend = /(추천|알려\s*줘|보여\s*줘|뭐\s*있어|뭐야|어때|있니|있나요|있어\?|조회|검색|찾아|골라)/i.test(prompt);
+    // 2. 조회 / 추천 / 정리 / 검색 / 질문 의도 배제
+    const isQueryOrRecommend = /(추천|알려\s*(줘|달라|주세요|줄래|주라)|보여\s*(줘|달라|주세요|줄래)|정리\s*(해|해줘|해달라|해주세요)|요약|뭐\s*있|무엇이|어떤|어때|있니|있나요|있어\?|조회|검색|찾아|골라|안\s*될까|왜\s*안)/i.test(prompt);
+    const hasExplicitCalendarCommand = /(?:캘린더|스케줄|일정|약속)\s*(?:에|으로)?\s*(?:등록|추가|잡아|예약)\s*(?:해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)/i.test(prompt);
     if (isQueryOrRecommend && !hasExplicitCalendarCommand) return null;
 
-    // 4. "저장된", "등록된", "추가된", "기록된", "예약된" 같은 과거분사/수식어는 등록 명령어가 아님
-    const promptWithoutAdjectives = prompt.replace(/(?:저장|등록|추가|기록|예약)된/g, '');
+    // 3. 위키 지식 / 생활 팁 / 레시피 관련 질문 가드
+    const hasWikiContext = /(위키|wiki|생활\s*팁|꿀팁|레시피|매뉴얼|노하우|살림)/i.test(prompt);
+    if (hasWikiContext && !hasExplicitCalendarCommand) return null;
 
-    // 5. 날짜 및 시간 파싱
+    // 4. "저장된", "등록된", "추가된" 등 과거분사/수식어 제거 후 판별
+    const promptWithoutAdjectives = prompt.replace(/(?:저장|등록|추가|기록|예약)된/g, '');
     const dt = parseKoreanDateTime(prompt);
 
-    // 6. 명확한 등록 동사 판별
-    // 단순 '저장'이라는 단어 단독으로는 캘린더에 등록하지 않음 (반드시 등록/추가/잡아/예약 등의 명확한 동사 필요)
+    // 5. 명확한 등록 동사 판별
     const hasRegisterVerb = /(등록|추가|잡아|넣어|예약)\s*(해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)|(?:일정|스케줄|약속|캘린더)\s*(?:저장|기록)\s*(?:해줘|해\s*주세요|해주세요|해|줘|줄래|바래|부탁|할래)/i.test(promptWithoutAdjectives);
     const hasCalendarKeyword = /(일정|약속|스케줄|캘린더|행사)/i.test(prompt);
 
-    // 7. 필수 조건 검증:
-    // - 캘린더 관련 명사(일정/약속/스케줄/캘린더)가 있으면서 등록 동사가 있거나,
-    // - 또는 구체적인 날짜/시간(dt.dateFound 또는 dt.eventTime)이 명시되어 있으면서 등록 동사가 있는 경우에만 유효한 일정 등록으로 판정
     const isValidCalendarCommand = (hasCalendarKeyword && hasRegisterVerb) ||
                                   (dt.dateFound && (hasCalendarKeyword || hasRegisterVerb)) ||
                                   (dt.eventTime && hasRegisterVerb);
@@ -468,15 +463,17 @@ async function executeAction({ action, user, userName }) {
 }
 
 /**
- * 🎯 사용자 입력에서 액션 의도 감지 및 즉시 실행
- * @returns {Promise<{ handled: boolean, message?: string, meta?: any }>}
+ * 🎯 사용자 입력에서 액션 의도 감지 및 즉시 실행 (보안 가드 및 권한 분기)
  */
 async function handleActionIntent({ prompt, user, userName }) {
     if (!prompt || typeof prompt !== 'string') return { handled: false };
+    if (isAdminPageQuery(prompt)) return { handled: false };
 
-    // 1. 혈압 등록 액션 감지
-    const bloodAction = parseBloodAction(prompt);
-    if (bloodAction) return { handled: true, ...(await executeAction({ action: bloodAction, user, userName })) };
+    // 1. 혈압 등록 액션 감지 (관리자 전용 기능)
+    if (isAdminUser(user)) {
+        const bloodAction = parseBloodAction(prompt);
+        if (bloodAction) return { handled: true, ...(await executeAction({ action: bloodAction, user, userName })) };
+    }
 
     // 2. 일정 등록 액션 감지
     const calendarAction = parseCalendarAction(prompt);

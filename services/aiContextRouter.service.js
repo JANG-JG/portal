@@ -8,6 +8,25 @@
 const { searchWikiContent } = require('./wikiSummary.service');
 const { searchAlbumPhotos } = require('./albumSummary.service');
 const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
+const { ADMIN_USERS } = require('../config/constants');
+
+/**
+ * 🛡️ 관리자 권한 여부 확인 (admin role 또는 ADMIN_USERS 목록)
+ */
+function isAdminUser(user) {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (user.username && ADMIN_USERS && (ADMIN_USERS.has ? ADMIN_USERS.has(user.username) : ADMIN_USERS.includes(user.username))) return true;
+    return false;
+}
+
+/**
+ * 🛡️ 관리자 전용 페이지 및 시스템 관리 기능 접근 시도 감지
+ */
+function isAdminPageQuery(prompt) {
+    if (!prompt || typeof prompt !== 'string') return false;
+    return /(관리자\s*(페이지|화면|메뉴|설정|계정|비번|비밀번호)|admin\s*(page|view)?|마스터\s*비번|db\s*(인스펙터|관리|원시)|서버\s*설정\s*(변경|수정))/i.test(prompt);
+}
 
 /**
  * 🛡️ 프롬프트 템플릿 탈취 및 제어 문자 인젝션 방어 유틸리티
@@ -99,31 +118,32 @@ function detectIntents(prompt) {
 }
 
 /**
- * 의도에 따른 타깃 컨텍스트 빌더 (토큰 다이어트)
+ * 의도 및 사용자 권한에 따른 타깃 컨텍스트 빌더 (토큰 다이어트 & 보안 RBAC)
  */
-function buildSelectiveContext(summaryContext, intents) {
+function buildSelectiveContext(summaryContext, intents, user = null) {
     if (!summaryContext) return '';
 
+    const isAdmin = isAdminUser(user);
     const { blood, medication, hospital, memo, asset, news, system, weather, todayEvents, wiki, album } = summaryContext;
     const isOverview = intents.has('GENERAL_OVERVIEW');
     const parts = [];
 
-    // 1. 건강 & 복약 & 진료
-    if (isOverview || intents.has('HEALTH')) {
+    // 1. 건강 & 복약 & 진료 (관리자 전용 데이터 - 일반 가족은 주입 원천 차단)
+    if (isAdmin && (isOverview || intents.has('HEALTH'))) {
         const bloodInfo = blood 
             ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'}) - ${blood.is_today_measured ? '오늘 측정 완료 ✅' : '오늘 미측정 ⚠️'}` 
-            : '건강 기록 비공개 (관리자 전용)';
-        const medInfo = medication && medication.is_today_taken ? '오늘 복약 완료 ✅' : (medication ? '오늘 혈압약 아직 미복용 ⚠️' : '복약 정보 없음');
-        let hospInfo = '예정된 진료 없음';
+            : null;
+        const medInfo = medication && medication.is_today_taken ? '오늘 복약 완료 ✅' : (medication ? '오늘 혈압약 아직 미복용 ⚠️' : null);
+        let hospInfo = null;
         if (hospital) {
             hospInfo = `다음 진료: ${hospital.displayNextVisit || '미정'} (${hospital.nextVisitDDay || '디데이 미정'}), 잔여 처방약: ${hospital.remainingPills || 0}일분`;
         }
-        parts.push(`- 🩺 혈압 건강: ${bloodInfo}`);
-        parts.push(`- 💊 오늘 복약: ${medInfo}`);
-        parts.push(`- 🏥 병원/처방약: ${hospInfo}`);
+        if (bloodInfo) parts.push(`- 🩺 혈압 건강: ${bloodInfo}`);
+        if (medInfo) parts.push(`- 💊 오늘 복약: ${medInfo}`);
+        if (hospInfo) parts.push(`- 🏥 병원/처방약: ${hospInfo}`);
     }
 
-    // 2. 일정 & 메모 & 루틴
+    // 2. 일정 & 메모 & 루틴 (가족 전체 공유 및 개인 관리)
     if (isOverview || intents.has('SCHEDULE')) {
         const eventsInfo = Array.isArray(todayEvents) && todayEvents.length > 0 
             ? todayEvents.map(e => `${e.event_time ? e.event_time.slice(0, 5) + ' ' : ''}${e.title}`).join(', ') 
@@ -136,7 +156,6 @@ function buildSelectiveContext(summaryContext, intents) {
         }
 
         if (wiki && Array.isArray(wiki.ddays) && wiki.ddays.length > 0) {
-            // 의도가 명시적 일정(SCHEDULE)이면 14일 이내, 일반 요약이면 3일 이내 초임박 일정만 포함
             const maxDays = intents.has('SCHEDULE') ? 14 : 3;
             const urgentDdays = wiki.ddays.filter(d => {
                 const diff = parseDDayDiff(d);
@@ -153,7 +172,7 @@ function buildSelectiveContext(summaryContext, intents) {
         }
     }
 
-    // 3. 날씨 & 옷차림
+    // 3. 날씨 & 옷차림 (가족 전체)
     if (isOverview || intents.has('WEATHER')) {
         const feelKo = weather ? describeFeelKo(weather.feels_like || weather.temp) : '';
         const weatherCityKo = (weather && weather.city) ? koreanizeWeatherWords(weather.city) : '서울';
@@ -164,30 +183,27 @@ function buildSelectiveContext(summaryContext, intents) {
         parts.push(`- 🌤️ 날씨: ${weatherInfo}`);
     }
 
-    // 4. 자산 관리 (관리자 전용 데이터 보안 유지)
-    if (isOverview || intents.has('ASSET')) {
-        let assetInfo = '자산 정보 비공개 (관리자 전용 권한)';
+    // 4. 자산 관리 (관리자 전용 데이터 - 일반 가족은 주입 원천 차단)
+    if (isAdmin && (isOverview || intents.has('ASSET'))) {
         if (asset && asset.totalKrw) {
             const topItems = Array.isArray(asset.items) ? asset.items.slice(0, 4).map(i => `${i.name}: ${i.formattedTotal} (${i.diffPercent})`).join(', ') : '';
-            assetInfo = `총 자산 평가액 ${asset.totalKrw} (보유 ${asset.count || 0}종목)${topItems ? ` | 주요: ${topItems}` : ''}`;
+            parts.push(`- 💰 자산 현황: 총 자산 평가액 ${asset.totalKrw} (보유 ${asset.count || 0}종목)${topItems ? ` | 주요: ${topItems}` : ''}`);
         }
-        parts.push(`- 💰 자산 현황: ${assetInfo}`);
     }
 
-    // 5. 시황 & 뉴스
-    if (isOverview || intents.has('NEWS') || intents.has('ASSET')) {
+    // 5. 시황 & 뉴스 (증시 지표는 관리자만, 일반 뉴스는 가족 전체)
+    if (isOverview || intents.has('NEWS') || (isAdmin && intents.has('ASSET'))) {
         if (news) {
-            const m = news.market;
-            const marketStr = m ? `코스피 ${m.kospi || '-'}, 코스닥 ${m.kosdaq || '-'}, 환율 ${m.usdkrw || '-'}원` : '';
+            const m = (isAdmin && news.market) ? `코스피 ${news.market.kospi || '-'}, 코스닥 ${news.market.kosdaq || '-'}, 환율 ${news.market.usdkrw || '-'}원` : '';
             const topNews = Array.isArray(news.recommendedArticles) ? news.recommendedArticles.slice(0, 2).map(a => a.title).join(' / ') : '';
             const breaking = Array.isArray(news.breakingArticles) && news.breakingArticles.length > 0 ? `🚨 속보: ${news.breakingArticles[0].title}` : '';
-            const newsLine = [marketStr, breaking, topNews ? `주요 뉴스: ${topNews}` : ''].filter(Boolean).join(' | ');
-            if (newsLine) parts.push(`- 📰 시장/뉴스: ${newsLine}`);
+            const newsLine = [m, breaking, topNews ? `주요 뉴스: ${topNews}` : ''].filter(Boolean).join(' | ');
+            if (newsLine) parts.push(`- 📰 소식/뉴스: ${newsLine}`);
         }
     }
 
-    // 6. 서버 인프라
-    if (isOverview || intents.has('INFRA')) {
+    // 6. 서버 인프라 (관리자 전용 - 일반 가족은 주입 원천 차단)
+    if (isAdmin && (isOverview || intents.has('INFRA'))) {
         if (system) {
             const pri = system.primary ? `주서버(노트9): CPU ${system.primary.cpu}, RAM ${system.primary.ram}` : '';
             const sec = system.secondary ? `보조서버(노트북): ${system.secondary.statusText || '대기'}` : '';
@@ -205,25 +221,27 @@ function buildSelectiveContext(summaryContext, intents) {
     }
 
     if (parts.length === 0) return '';
-    return `\n[우리 집 JG 홈서버 실시간 맞춤 정보]\n${parts.join('\n')}\n`;
+    return `\n[우리 집 실시간 맞춤 정보]\n${parts.join('\n')}\n`;
 }
 
 /**
- * 🚀 질문 및 컨텍스트 기반 최종 프롬프트 생성기 (RAG 결합)
+ * 🚀 질문 및 컨텍스트 기반 최종 프롬프트 생성기 (LG EXAONE 4.0 최적화)
  */
-async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, userName = '가족' }) {
+async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, userName = '가족', user = null }) {
     const cleanPrompt = sanitizeInputText(prompt, 1000);
     if (!cleanPrompt) {
         throw new Error('유효한 질문 내용을 입력해 주세요.');
     }
 
+    const isAdmin = isAdminUser(user);
     const intents = detectIntents(cleanPrompt);
-    const targetedContext = buildSelectiveContext(summaryContext, intents);
+    const targetedContext = buildSelectiveContext(summaryContext, intents, user);
+    const isAdminPageAttempt = isAdminPageQuery(cleanPrompt);
 
     let matchedWikiGuide = '';
     let matchedAlbumGuide = '';
 
-    // 위키 의도가 감지된 경우에만 위키 RAG 검색 실행 (타인 작성자명 및 불필요한 위키 본문 유입 방지)
+    // 위키 의도가 감지된 경우에만 위키 RAG 검색 실행
     if (intents.has('WIKI')) {
         try {
             const matchedPages = await searchWikiContent(cleanPrompt, 5);
@@ -257,33 +275,24 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     const kstMin = String(kst.getMinutes()).padStart(2, '0');
     const ampm = kstHour < 12 ? '오전' : '오후';
     const hour12 = kstHour % 12 === 0 ? 12 : kstHour % 12;
-    const dayPart = kstHour < 6 ? '새벽' : kstHour < 12 ? '아침/오전' : kstHour < 18 ? '낮/오후' : '저녁/밤';
     const currentTimeKo = `${ampm} ${hour12}시 ${kstMin}분`;
-    const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo} (24시간제 ${String(kstHour).padStart(2, '0')}:${kstMin}, ${dayPart}) 한국 표준시`;
+    const currentDateTimeStr = `${kst.getFullYear()}년 ${kst.getMonth() + 1}월 ${kst.getDate()}일 (${days[kst.getDay()]}요일) ${currentTimeKo}`;
     const contextParts = [targetedContext, matchedWikiGuide, matchedAlbumGuide].filter(Boolean).join('\n').trim();
 
-    const systemPrompt = `당신은 JG 홈서버 가족의 하루를 돕는 다정하고 똑똑한 AI 비서입니다.
-현재 대화 중인 가족의 이름은 반드시 "${userName}님"입니다.
+    // 초기 도입 당시의 자연스럽고 다정한 프롬프트 스타일로 복원 (LG EXAONE 4.0 기준)
+    let adminGuardNote = '';
+    if (isAdminPageAttempt) {
+        adminGuardNote = '\n- [보안 가드] 사용자가 관리자 전용 페이지(/admin), 시스템 제어, DB 원시 데이터 등을 요구했습니다. 보안상 AI를 통한 접근이나 변경이 불가능함을 정중하고 명확하게 안내하세요.';
+    }
 
-[대화 규칙]
-1. 상대방을 부를 때는 다른 이름이나 임의의 호칭을 쓰지 말고, 반드시 "${userName}님"으로만 부르세요.
-2. 모든 답변은 가족에게 이야기하듯 따뜻하고 다정한 순우리말 한국어 존댓말('~해요', '~에요', '~습니다')로 친절하게 답하세요.
-3. 브리핑처럼 지나치게 짧게 줄이지 마세요. 날씨, 실시간 뉴스, 경제/증시, 자산, 건강, 일정 등 정보 관련 질문은 [우리 집 참고 정보]를 꼼꼼히 살피고 필요한 맥락과 유용한 조언을 덧붙여 충분히 생각하고 친절하게 설명하세요.
-4. 없는 사실을 지어내거나 추측하는 거짓 답변(환각)은 절대 하지 마세요. 제공된 참고 정보나 실제 사실에 기반하여 정직하게 설명하세요.
-5. 현재 일시: ${currentDateTimeStr} (현재 시각: ${currentTimeKo})
-
-[대화 예시]
-질문: 안녕 반가워
-답변: 안녕하세요, ${userName}님! 오늘 하루 잘 보내고 계신가요? 어떤 도움이 필요하신가요?
-
-질문: 지금 몇 시야?
-답변: ${userName}님, 현재 시각은 ${currentTimeKo}예요.
-
-질문: 오늘 날씨 어때?
-답변: ${userName}님, 오늘 날씨는 현재 맑으나 기온이 낮아 다소 쌀쌀하게 느껴질 수 있습니다. 일교차가 크거나 바람이 불 수 있으니 외출하실 때 보온에 신경 쓰시고 따뜻한 외투를 챙기시는 것을 추천드려요.
-
-질문: 요즘 뉴스나 증시 상황 좀 알려줘
-답변: ${userName}님, 현재 코스피는 2,540선, 코스닥은 740선 부근에서 등락을 보이고 있으며, 주요 소식으로는 글로벌 기술주 동향 및 국내 수출 지표 발표가 주목받고 있습니다. 시장 변동성에 유의하시면서 차분히 지켜보시는 것이 좋겠습니다.${contextParts ? `\n\n[우리 집 참고 정보]\n${contextParts}` : ''}`;
+    const systemPrompt = `당신은 대한민국 홈서버 JG 포털의 전용 AI 비서(LG EXAONE 4.0)입니다.
+- 100% 한국어로 정중하고 다정한 존댓말로 답변하세요.
+- 질문자가 가족 구성원이므로, 든든하고 똑똑한 가족 비서처럼 따뜻하고 명확하게 답변해 주세요.
+- 대화 상대방의 호칭은 "${userName}님"입니다.
+- 건강, 일정, 생활, 날씨, 지식에 관련된 질문에 친절하고 자연스럽게 답하세요.
+- 사실이 아니거나 확실하지 않은 정보는 지어내지(환각) 말고 솔직하게 답변하세요.
+- 포털의 관리자 페이지(/admin), 시스템 내부 설정, DB 직접 조작은 보안 규정상 AI를 통한 열람 및 제어가 엄격히 차단되어 있습니다.
+- 현재 일시: ${currentDateTimeStr}${adminGuardNote}${contextParts ? `\n\n[우리 집 참고 정보]\n${contextParts}` : ''}`;
 
     let fullPrompt = `<|system|>\n${systemPrompt}\n`;
 
@@ -309,13 +318,17 @@ async function buildAiChatPrompt({ prompt, history = [], summaryContext = null, 
     return {
         cleanPrompt,
         intents,
-        fullPrompt
+        fullPrompt,
+        isAdminPageAttempt
     };
 }
 
 module.exports = {
     sanitizeInputText,
     detectIntents,
+    isAdminUser,
+    isAdminPageQuery,
     buildSelectiveContext,
     buildAiChatPrompt
 };
+

@@ -318,9 +318,9 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
 
     // 📚 [위키] 대화/메모 ➔ 원터치 위키 문서화 (조회/요약 질의는 배제하고 명시적 신규 작성/저장만 처리)
     const hasPastParticiple = /(저장된|등록된|작성된|기록된|올려진|남겨진|적혀\s*있는|적힌)/.test(cleanPrompt);
-    const hasQueryOrRead = /(찾아|검색|조회|알려\s*(줘|주세요|줄래|주라)|보여\s*(줘|주세요|줄래)|뭐\s*있|무엇이|어떤|요약|정리\s*(해|해줘|해\s*주세요|부탁)|안\s*될까|왜\s*안|확인|추천)/i.test(cleanPrompt);
+    const hasQueryOrRead = /(찾아|검색|조회|알려\s*(줘|주세요|줄래|주라|달라)|보여\s*(줘|주세요|줄래|달라)|뭐\s*있|무엇이|어떤|요약|정리\s*(해|해줘|해\s*주세요|부탁|해달라|해\s*달라)|안\s*될까|왜\s*안|확인|추천)/i.test(cleanPrompt);
     const isPureWriteCommand = /(위키|wiki).*?(저장|등록|작성|기록|추가|올려|남겨|발행)\s*(해줘|해라|해주세요|부탁|바람|하기)$/i.test(cleanPrompt)
-        && !hasPastParticiple && !/(찾아|검색|조회|요약|정리|안\s*될까|왜\s*안)/.test(cleanPrompt);
+        && !hasPastParticiple && !/(찾아|검색|조회|요약|정리|안\s*될까|왜\s*안|추천|알려)/.test(cleanPrompt);
     const WIKI_INTENT_REGEX = /(위키|wiki)\s*(에|로|에다가)?\s*(저장|등록|작성|기록|추가|올려|남겨|발행)/i;
     const isReferentialWrite = /(이거|이\s*내용|방금\s*내용|위\s*내용|앞의\s*내용).*위키\s*(에|로|에다가)?\s*(저장|등록|작성|기록|추가|올려|남겨|발행)/i.test(cleanPrompt);
 
@@ -440,7 +440,8 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         prompt: cleanPrompt,
         history,
         summaryContext,
-        userName
+        userName,
+        user
     });
 
     const result = await sendOllamaRequest('/api/generate', {
