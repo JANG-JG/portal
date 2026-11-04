@@ -47,12 +47,12 @@ function isDualMode() {
  */
 function selectChatModel(prompt = '') {
     const text = String(prompt || '').trim();
-    const chat = { model: CHAT_MODEL, mode: 'chat', keepAlive: CHAT_KEEP_ALIVE, timeoutMs: 120000 };
+    const chat = { model: CHAT_MODEL, mode: 'chat', keepAlive: CHAT_KEEP_ALIVE, timeoutMs: 300000 };
     if (!isDualMode() || !text || SMALLTALK_REGEX.test(text)) return chat;
 
     if (REASONING_REGEX.test(text) || text.length >= LONG_PROMPT_THRESHOLD) {
         // 모델 교체(로딩) 시간을 고려해 타임아웃 여유 확보
-        return { model: REASONING_MODEL, mode: 'reasoning', keepAlive: REASONING_KEEP_ALIVE, timeoutMs: 180000 };
+        return { model: REASONING_MODEL, mode: 'reasoning', keepAlive: REASONING_KEEP_ALIVE, timeoutMs: 420000 };
     }
     return chat;
 }

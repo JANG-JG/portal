@@ -455,7 +455,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         options: {
             temperature: 0.5,
             top_p: 0.9,
-            num_predict: 2048
+            num_predict: -1 // 대화 모드: 답변이 끝날 때까지 생성 (상한 없음)
         }
     }, picked.timeoutMs);
 
