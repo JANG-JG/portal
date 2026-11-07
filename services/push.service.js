@@ -66,8 +66,11 @@ function sanitizePushText(text) {
 }
 
 // 🌟 [통합 포털 단일 WebPush 발송 엔진]
-function sendUnifiedPushNotification({ title, body, url, type = 'general', subtype = null, tag, userId = null, excludeUserId = null, adminOnly = false, image = null, icon = null, badge = null }) {
+function sendUnifiedPushNotification({ title, body, url, type = 'general', subtype = null, tag, userId = null, excludeUserId = null, adminOnly = false, image = null, icon = null, badge = null, saveHistory = null }) {
     return new Promise((resolve) => {
+        // 🌟 뉴스 속보(breaking)는 알림센터에 누적하지 않고 실시간 웹 푸시만 발송
+        const shouldSaveHistory = (saveHistory !== null) ? Boolean(saveHistory) : (type !== 'breaking');
+
         let cleanTitle = sanitizePushText(title || '알림')
             .replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '')
             .replace(/^\[?JG\s*포털\]?\s*/i, '')
@@ -144,6 +147,9 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                 console.log(`[UnifiedPush] 발송 대상 구독 기기 없음 (type: ${type}, user: ${userId || 'all'})`);
                 // 단일 사용자 대상 알림이고 사용자가 알림을 끄지 않은 경우에만 내역 보존 (꺼둔 사용자에게 내역 적재 원천 차단)
                 if (userId && typeof userId === 'string' && !Array.isArray(userId)) {
+                    if (!shouldSaveHistory) {
+                        return resolve({ success: true, count: 0, targetCount: 0 });
+                    }
                     const checkSql = `
                         SELECT COALESCE(ns.enabled, 1) as enabled,
                                COALESCE(u.role, 'family') as role,
@@ -218,24 +224,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                 return resolve({ success: true, count: 0, targetCount: 0 });
             }
 
-            saveNotificationHistory({
-                userId: recipientUserIds[0],
-                type,
-                title: cleanTitle,
-                body: cleanBody,
-                icon: 'https://j-jg.cc/icon-monochrome.png',
-                url: targetUrl
-            }, (notifId) => {
-                for (let i = 1; i < recipientUserIds.length; i++) {
-                    saveNotificationHistory({
-                        userId: recipientUserIds[i],
-                        type,
-                        title: cleanTitle,
-                        body: cleanBody,
-                        icon: 'https://j-jg.cc/icon-monochrome.png',
-                        url: targetUrl
-                    });
-                }
+            const sendPushMessages = (notifId) => {
                 const sep = targetUrl.includes('?') ? '&' : '?';
                 const linkWithId = notifId ? `${targetUrl}${sep}notif_id=${notifId}` : targetUrl;
 
@@ -311,7 +300,32 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                         notifId
                     });
                 });
-            });
+            };
+
+            if (shouldSaveHistory) {
+                saveNotificationHistory({
+                    userId: recipientUserIds[0],
+                    type,
+                    title: cleanTitle,
+                    body: cleanBody,
+                    icon: 'https://j-jg.cc/icon-monochrome.png',
+                    url: targetUrl
+                }, (notifId) => {
+                    for (let i = 1; i < recipientUserIds.length; i++) {
+                        saveNotificationHistory({
+                            userId: recipientUserIds[i],
+                            type,
+                            title: cleanTitle,
+                            body: cleanBody,
+                            icon: 'https://j-jg.cc/icon-monochrome.png',
+                            url: targetUrl
+                        });
+                    }
+                    sendPushMessages(notifId);
+                });
+            } else {
+                sendPushMessages(null);
+            }
         });
     });
 }

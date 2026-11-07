@@ -17,8 +17,8 @@ router.get('/unread-count', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const query = isAdmin
-        ? "SELECT COUNT(*) as unread FROM notification_history WHERE (user_id = ? OR user_id = 'admin') AND is_read = 0"
-        : "SELECT COUNT(*) as unread FROM notification_history WHERE user_id = ? AND type != 'system' AND is_read = 0";
+        ? "SELECT COUNT(*) as unread FROM notification_history WHERE (user_id = ? OR user_id = 'admin') AND type != 'breaking' AND is_read = 0"
+        : "SELECT COUNT(*) as unread FROM notification_history WHERE user_id = ? AND type != 'system' AND type != 'breaking' AND is_read = 0";
     db.get(query, [userId], (err, row) => {
         if (err) {
             return res.status(500).json({ success: false, unreadCount: 0 });
@@ -342,12 +342,12 @@ router.get('/history', authenticateToken, (req, res) => {
             COUNT(*) as total,
             SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread
         FROM notification_history 
-        WHERE user_id = ? OR user_id = 'admin'`
+        WHERE (user_id = ? OR user_id = 'admin') AND type != 'breaking'`
         : `SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN is_read = 0 THEN 1 ELSE 0 END) as unread
         FROM notification_history 
-        WHERE user_id = ? AND type != 'system'`;
+        WHERE user_id = ? AND type != 'system' AND type != 'breaking'`;
 
     db.get(countQuery, [userId], (cntErr, counts) => {
         if (cntErr) {
@@ -358,12 +358,12 @@ router.get('/history', authenticateToken, (req, res) => {
         const dataQuery = isAdmin
             ? `SELECT id, user_id, type, title, body, icon, url, is_read, created_at 
             FROM notification_history 
-            WHERE user_id = ? OR user_id = 'admin'
+            WHERE (user_id = ? OR user_id = 'admin') AND type != 'breaking'
             ORDER BY id DESC 
             LIMIT ? OFFSET ?`
             : `SELECT id, user_id, type, title, body, icon, url, is_read, created_at 
             FROM notification_history 
-            WHERE user_id = ? AND type != 'system'
+            WHERE user_id = ? AND type != 'system' AND type != 'breaking'
             ORDER BY id DESC 
             LIMIT ? OFFSET ?`;
 

@@ -14,7 +14,6 @@
     const NOTIF_CATEGORIES = [
         { key: 'all', label: '전체', icon: '🔔' },
         { key: 'album', label: '가족앨범', icon: '📸' },
-        { key: 'breaking', label: '속보', icon: '🚨' },
         { key: 'calendar', label: '일정', icon: '📅' },
         { key: 'weather', label: '날씨', icon: '🌤️' },
         { key: 'finance', label: '금융', icon: '💰' },
