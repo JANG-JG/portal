@@ -57,9 +57,13 @@
 
                 // 4. 모델 선택 셀렉트 박스 라벨 적용 (관리자가 지정한 한글 친화적 명칭)
                 const optChat = document.getElementById('optAiChatModel');
+                const optBalanced = document.getElementById('optAiBalancedModel');
                 const optReasoning = document.getElementById('optAiReasoningModel');
                 if (optChat && data.config.chatModelLabel) {
                     optChat.textContent = data.config.chatModelLabel;
+                }
+                if (optBalanced && data.config.balancedModelLabel) {
+                    optBalanced.textContent = data.config.balancedModelLabel;
                 }
                 if (optReasoning && data.config.reasoningModelLabel) {
                     optReasoning.textContent = data.config.reasoningModelLabel;

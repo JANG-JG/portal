@@ -8,9 +8,9 @@
 
     let activeAbortController = null;
 
-    // 🔀 AI 모델 선택 (auto: 질문 내용 기반 자동 / chat: 빠른 대화 / reasoning: 깊게 생각) - 선택값 기억
+    // 🔀 AI 모델 선택 (auto: 질문 내용 기반 자동 / chat: 빠른 대화 / balanced: 균형 대화 / reasoning: 깊은 생각) - 선택값 기억
     const MODEL_PREF_KEY = 'jgAiModelPref';
-    const MODEL_PREFS = ['auto', 'chat', 'reasoning'];
+    const MODEL_PREFS = ['auto', 'chat', 'balanced', 'reasoning'];
     function getModelPref() {
         const el = document.getElementById('aiModelSelect');
         const v = el ? el.value : (localStorage.getItem(MODEL_PREF_KEY) || 'auto');

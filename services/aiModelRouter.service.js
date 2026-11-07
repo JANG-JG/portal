@@ -14,16 +14,19 @@
 const OLLAMA_HOST = (process.env.OLLAMA_HOST || '').trim() || 'http://localhost:11434';
 
 const LEGACY_MODEL = (process.env.OLLAMA_MODEL || '').trim();
-const CHAT_MODEL = (process.env.OLLAMA_CHAT_MODEL || '').trim() || LEGACY_MODEL || 'exaone4:opt';
-const REASONING_MODEL = (process.env.OLLAMA_REASONING_MODEL || '').trim() || CHAT_MODEL;
+const CHAT_MODEL = (process.env.OLLAMA_CHAT_MODEL || '').trim() || 'gemma3:1b';
+const BALANCED_MODEL = (process.env.OLLAMA_BALANCED_MODEL || '').trim() || 'gemma3:4b';
+const REASONING_MODEL = (process.env.OLLAMA_REASONING_MODEL || '').trim() || LEGACY_MODEL || 'exaone4:opt';
 
-// 상주 시간: EXAONE 단일 모델 24시간 VRAM 상주로 모델 교체 딜레이 원천 차단
+// 상주 시간: 24시간 VRAM 상주
 const CHAT_KEEP_ALIVE = '24h';
+const BALANCED_KEEP_ALIVE = '24h';
 const REASONING_KEEP_ALIVE = '24h';
 
-// 컨텍스트 창 기본값: 워크스테이션 VRAM 활용을 극대화하여 32K(32,768)로 확장
-const DEFAULT_NUM_CTX = 32768;
+// 컨텍스트 창 기본값: 4096 (VRAM 최적화 및 쾌속 응답)
+const DEFAULT_NUM_CTX = 4096;
 const CHAT_NUM_CTX = parseInt(process.env.OLLAMA_CHAT_NUM_CTX || '', 10) || DEFAULT_NUM_CTX;
+const BALANCED_NUM_CTX = parseInt(process.env.OLLAMA_BALANCED_NUM_CTX || '', 10) || DEFAULT_NUM_CTX;
 const REASONING_NUM_CTX = parseInt(process.env.OLLAMA_REASONING_NUM_CTX || '', 10) || DEFAULT_NUM_CTX;
 
 // 추론이 필요한 질문 패턴 (원인/분석/비교/계산/계획/판단/영향 등)
@@ -50,6 +53,9 @@ function adminCfg() {
 }
 function getChatModel() {
     return adminCfg().chatModel || CHAT_MODEL;
+}
+function getBalancedModel() {
+    return adminCfg().balancedModel || BALANCED_MODEL;
 }
 function getReasoningModel() {
     return adminCfg().reasoningModel || REASONING_MODEL;
@@ -84,33 +90,40 @@ async function ensureModelSlot(targetModel) {
 /**
  * 질문 내용(또는 사용자 선택)에 따라 사용할 모델 선택
  * @param {string} prompt
- * @param {'auto'|'chat'|'reasoning'} preference 사용자 선택 (auto: 질문 내용 기반 자동 분기)
- * @returns {{ model: string, mode: 'chat'|'reasoning', keepAlive: string, timeoutMs: number }}
+ * @param {'auto'|'chat'|'balanced'|'reasoning'} preference 사용자 선택 (auto: 질문 내용 기반 자동 분기)
+ * @returns {{ model: string, mode: 'chat'|'balanced'|'reasoning', keepAlive: string, timeoutMs: number, numCtx: number }}
  */
 function selectChatModel(prompt = '', preference = 'auto') {
     const text = String(prompt || '').trim();
     const cfg = adminCfg();
     const chat = { model: getChatModel(), mode: 'chat', keepAlive: CHAT_KEEP_ALIVE, timeoutMs: 300000, numCtx: parseInt(cfg.chatNumCtx, 10) || CHAT_NUM_CTX };
+    const balanced = { model: getBalancedModel(), mode: 'balanced', keepAlive: BALANCED_KEEP_ALIVE, timeoutMs: 360000, numCtx: parseInt(cfg.balancedNumCtx, 10) || BALANCED_NUM_CTX };
     const reasoning = { model: getReasoningModel(), mode: 'reasoning', keepAlive: REASONING_KEEP_ALIVE, timeoutMs: 420000, numCtx: parseInt(cfg.reasoningNumCtx, 10) || REASONING_NUM_CTX };
 
     if (preference === 'chat') return chat;
+    if (preference === 'balanced') return balanced;
     if (preference === 'reasoning') return reasoning;
     if (!text || SMALLTALK_REGEX.test(text)) return chat;
 
     if (REASONING_REGEX.test(text) || text.length >= LONG_PROMPT_THRESHOLD) {
         return reasoning;
     }
-    return chat;
+    // 스마트 자동 모드에서 일반 질문/대화는 균형 잡힌 4B 모델로 풍부하고 정확하게 응답
+    return balanced;
 }
 
 module.exports = {
     OLLAMA_HOST,
     CHAT_MODEL,
+    BALANCED_MODEL,
     REASONING_MODEL,
     CHAT_KEEP_ALIVE,
+    BALANCED_KEEP_ALIVE,
+    REASONING_KEEP_ALIVE,
     isDualMode,
     selectChatModel,
     getChatModel,
+    getBalancedModel,
     getReasoningModel,
     ensureModelSlot
 };

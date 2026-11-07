@@ -35,16 +35,21 @@
                 const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
                 setVal('inputAiChatModel', data.config.chatModel || '');
                 setVal('inputAiChatModelLabel', data.config.chatModelLabel || '');
+                setVal('inputAiBalancedModel', data.config.balancedModel || '');
+                setVal('inputAiBalancedModelLabel', data.config.balancedModelLabel || '');
                 setVal('inputAiReasoningModel', data.config.reasoningModel || '');
                 setVal('inputAiReasoningModelLabel', data.config.reasoningModelLabel || '');
                 setVal('inputAiChatNumCtx', data.config.chatNumCtx || 0);
+                setVal('inputAiBalancedNumCtx', data.config.balancedNumCtx || 0);
                 setVal('inputAiReasoningNumCtx', data.config.reasoningNumCtx || 0);
                 const chatModelEl = document.getElementById('inputAiChatModel');
+                const balancedModelEl = document.getElementById('inputAiBalancedModel');
                 const reasonModelEl = document.getElementById('inputAiReasoningModel');
                 if (chatModelEl && env.chatModel) chatModelEl.placeholder = `기본값: ${env.chatModel}`;
+                if (balancedModelEl && env.balancedModel) balancedModelEl.placeholder = `기본값: ${env.balancedModel}`;
                 if (reasonModelEl && env.reasoningModel) reasonModelEl.placeholder = `기본값: ${env.reasoningModel}`;
                 const hintEl = document.getElementById('aiEnvModelHint');
-                if (hintEl && env.chatModel) hintEl.textContent = `${env.chatModel} / ${env.reasoningModel || env.chatModel}`;
+                if (hintEl && env.chatModel) hintEl.textContent = `${env.chatModel} / ${env.balancedModel || 'gemma3:4b'} / ${env.reasoningModel || env.chatModel}`;
 
                 updateAiWelcomePreview();
                 updateAiHeroPreview();
@@ -125,9 +130,12 @@
                     heroDescription,
                     chatModel: (document.getElementById('inputAiChatModel') || {}).value?.trim() ?? undefined,
                     chatModelLabel: (document.getElementById('inputAiChatModelLabel') || {}).value?.trim() ?? undefined,
+                    balancedModel: (document.getElementById('inputAiBalancedModel') || {}).value?.trim() ?? undefined,
+                    balancedModelLabel: (document.getElementById('inputAiBalancedModelLabel') || {}).value?.trim() ?? undefined,
                     reasoningModel: (document.getElementById('inputAiReasoningModel') || {}).value?.trim() ?? undefined,
                     reasoningModelLabel: (document.getElementById('inputAiReasoningModelLabel') || {}).value?.trim() ?? undefined,
                     chatNumCtx: parseInt((document.getElementById('inputAiChatNumCtx') || {}).value, 10) || 0,
+                    balancedNumCtx: parseInt((document.getElementById('inputAiBalancedNumCtx') || {}).value, 10) || 0,
                     reasoningNumCtx: parseInt((document.getElementById('inputAiReasoningNumCtx') || {}).value, 10) || 0
                 })
             });

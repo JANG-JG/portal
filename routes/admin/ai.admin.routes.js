@@ -8,13 +8,13 @@ const express = require('express');
 const router = express.Router();
 const { getAiConfig, updateAiConfig } = require('../../services/aiConfig.service');
 const { checkAiHealth } = require('../../services/aiAssistant.service');
-const { CHAT_MODEL, REASONING_MODEL } = require('../../services/aiModelRouter.service');
+const { CHAT_MODEL, BALANCED_MODEL, REASONING_MODEL } = require('../../services/aiModelRouter.service');
 
 // 1. AI 설정 조회 (관리자)
 router.get('/', (req, res) => {
     try {
         const config = getAiConfig();
-        res.json({ success: true, config, envDefaults: { chatModel: CHAT_MODEL, reasoningModel: REASONING_MODEL } });
+        res.json({ success: true, config, envDefaults: { chatModel: CHAT_MODEL, balancedModel: BALANCED_MODEL, reasoningModel: REASONING_MODEL } });
     } catch (err) {
         res.status(500).json({ success: false, message: 'AI 설정을 불러오지 못했습니다.', error: err.message });
     }
@@ -24,13 +24,14 @@ router.get('/', (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { welcomeMessage, maxPromptLength, heroIcon, heroTitle, heroDescription } = req.body;
-        const { chatModel, reasoningModel, chatNumCtx, reasoningNumCtx, chatModelLabel, reasoningModelLabel } = req.body;
+        const { chatModel, balancedModel, reasoningModel, chatNumCtx, balancedNumCtx, reasoningNumCtx, chatModelLabel, balancedModelLabel, reasoningModelLabel } = req.body;
         const MODEL_RE = /^[A-Za-z0-9._:\/-]{0,100}$/;
         if ((chatModel !== undefined && !MODEL_RE.test(String(chatModel).trim())) ||
+            (balancedModel !== undefined && !MODEL_RE.test(String(balancedModel).trim())) ||
             (reasoningModel !== undefined && !MODEL_RE.test(String(reasoningModel).trim()))) {
-            return res.status(400).json({ success: false, message: '모델명은 영문/숫자/.:_-/ 만 사용할 수 있습니다. (예: exaone4:opt)' });
+            return res.status(400).json({ success: false, message: '모델명은 영문/숫자/.:_-/ 만 사용할 수 있습니다. (예: gemma3:1b, gemma3:4b, exaone4:opt)' });
         }
-        for (const v of [chatNumCtx, reasoningNumCtx]) {
+        for (const v of [chatNumCtx, balancedNumCtx, reasoningNumCtx]) {
             const n = parseInt(v, 10);
             if (v !== undefined && v !== '' && !(n === 0 || (n >= 512 && n <= 131072))) {
                 return res.status(400).json({ success: false, message: '컨텍스트 창은 0(기본값) 또는 512~131,072 사이여야 합니다.' });
@@ -63,10 +64,13 @@ router.post('/', async (req, res) => {
             heroTitle,
             heroDescription,
             chatModel,
+            balancedModel,
             reasoningModel,
             chatNumCtx,
+            balancedNumCtx,
             reasoningNumCtx,
             chatModelLabel,
+            balancedModelLabel,
             reasoningModelLabel
         });
 

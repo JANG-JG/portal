@@ -17,19 +17,26 @@ const DEFAULT_AI_CONFIG = {
     heroIcon: '🤖',
     heroTitle: 'AI 비서에게 무엇이든 물어보세요',
     heroDescription: 'JG 포털 로컬 AI가 질문에 친절하고 안전하게 답변해 드립니다.',
-    // 모델 설정 (빈 값 = .env OLLAMA_CHAT_MODEL / OLLAMA_REASONING_MODEL 사용)
+    // 모델 설정 (빈 값 = .env OLLAMA_CHAT_MODEL / OLLAMA_BALANCED_MODEL / OLLAMA_REASONING_MODEL 사용)
     chatModel: '',
+    balancedModel: '',
     reasoningModel: '',
-    // 컨텍스트 창 (기본 32K로 VRAM 활용 극대화)
-    chatNumCtx: 32768,
-    reasoningNumCtx: 32768,
+    // 컨텍스트 창 (토큰 수)
+    chatNumCtx: 4096,
+    balancedNumCtx: 4096,
+    reasoningNumCtx: 4096,
     // 화면 표시용 친화적 모델 라벨 (비어있으면 기본 한글 라벨 사용)
-    chatModelLabel: '⚡ 빠른 대화',
-    reasoningModelLabel: '🧠 깊은 생각'
+    chatModelLabel: '⚡ 빠른 대화 (1B)',
+    balancedModelLabel: '⚖️ 균형 대화 (4B)',
+    reasoningModelLabel: '🧠 깊은 생각 (EXAONE)'
 };
 
 const MODEL_NAME_REGEX = /^[A-Za-z0-9._:\/-]{1,100}$/;
-const MODEL_KEYS = ['chatModel', 'reasoningModel', 'chatNumCtx', 'reasoningNumCtx', 'chatModelLabel', 'reasoningModelLabel'];
+const MODEL_KEYS = [
+    'chatModel', 'balancedModel', 'reasoningModel',
+    'chatNumCtx', 'balancedNumCtx', 'reasoningNumCtx',
+    'chatModelLabel', 'balancedModelLabel', 'reasoningModelLabel'
+];
 
 let cachedConfig = { ...DEFAULT_AI_CONFIG };
 let isDbInitialized = false;
@@ -151,17 +158,17 @@ function sanitizeConfig(input = {}) {
         output.heroDescription = input.heroDescription.trim().slice(0, 300);
     }
 
-    ['chatModel', 'reasoningModel'].forEach((k) => {
+    ['chatModel', 'balancedModel', 'reasoningModel'].forEach((k) => {
         const v = typeof input[k] === 'string' ? input[k].trim() : '';
         output[k] = MODEL_NAME_REGEX.test(v) ? v : '';
     });
 
-    ['chatNumCtx', 'reasoningNumCtx'].forEach((k) => {
+    ['chatNumCtx', 'balancedNumCtx', 'reasoningNumCtx'].forEach((k) => {
         const n = parseInt(input[k], 10);
         output[k] = (!isNaN(n) && n >= 512 && n <= 131072) ? n : 0;
     });
 
-    ['chatModelLabel', 'reasoningModelLabel'].forEach((k) => {
+    ['chatModelLabel', 'balancedModelLabel', 'reasoningModelLabel'].forEach((k) => {
         if (typeof input[k] === 'string') {
             output[k] = input[k].trim().slice(0, 50);
         }
