@@ -18,6 +18,7 @@
     "sharp": "^0.35.5",
     "sqlite3": "^5.1.7",
     "web-push": "^3.6.7",
-    "compression": "^1.7.5"
+    "compression": "^1.7.5",
+    "undici": "^7.3.0"
   }
 }
