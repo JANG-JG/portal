@@ -32,6 +32,9 @@ router.get('/stats', async (req, res) => {
             } catch (e) {}
         }
 
+        const modelRow = await new Promise(r => newsDb.get("SELECT value FROM system_settings WHERE key = 'news_ai_summary_model'", (e, row) => r(row || null)));
+        const summaryModel = (modelRow && modelRow.value) ? modelRow.value.trim() : 'gemini-3.1-flash-lite';
+
         let dbSizeKb = 0;
         try {
             if (fs.existsSync(NEWS_DB_PATH)) {
@@ -49,6 +52,7 @@ router.get('/stats', async (req, res) => {
             collectionEnabled: !settingRow || settingRow.value !== '0',
             telegramBriefingTimes: briefingTimes,
             excludeKeywords,
+            summaryModel,
             recentArticles,
             weather
         });
@@ -125,6 +129,52 @@ router.post('/exclude-keywords', (req, res) => {
                 return res.status(500).json({ success: false, message: '저장 실패: ' + err.message });
             }
             res.json({ success: true, keywords: cleanKws, message: '수집 제외 키워드가 저장되었습니다.' });
+        });
+    } else {
+        res.status(500).json({ success: false, message: 'newsDb가 연결되지 않았습니다.' });
+    }
+});
+
+// 3-1. 뉴스 AI 요약 모델 조회 및 설정 API
+const ALLOWED_SUMMARY_MODELS = [
+    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite (초경량 · 최저비용)', desc: '초고속 및 최저비용 요약 특화' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (표준 초고속)', desc: '가성비와 정확도의 완벽한 균형' },
+    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite (차세대 경량)', desc: '3.x 세대 최신 경량 요약 모델' },
+    { id: 'gemini-3.0-flash', name: 'Gemini 3 Flash (차세대 고성능)', desc: '심층 문맥 이해 및 고품질 요약' },
+    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (요약 특화 초경량)', desc: '최신 초경량 요약 특화 모델' }
+];
+
+router.get('/summary-model', async (req, res) => {
+    try {
+        let currentModel = 'gemini-3.1-flash-lite';
+        if (newsDb) {
+            const row = await new Promise(r => newsDb.get("SELECT value FROM system_settings WHERE key = 'news_ai_summary_model'", (e, rRow) => r(rRow || null)));
+            if (row && row.value) currentModel = row.value.trim();
+        }
+        res.json({ success: true, currentModel, supportedModels: ALLOWED_SUMMARY_MODELS });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '요약 모델 조회 실패: ' + e.message });
+    }
+});
+
+router.post('/summary-model', (req, res) => {
+    const { model } = req.body;
+    const validIds = ALLOWED_SUMMARY_MODELS.map(m => m.id);
+    if (!model || !validIds.includes(model)) {
+        return res.status(400).json({ success: false, message: '유효한 요약 모델을 선택해 주세요.' });
+    }
+
+    if (newsDb) {
+        newsDb.run(`
+            INSERT INTO system_settings (key, value, updated_at)
+            VALUES ('news_ai_summary_model', ?, datetime('now', '+9 hours'))
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+        `, [model], (err) => {
+            if (err) {
+                console.error('[NewsDB] news_ai_summary_model 저장 실패:', err);
+                return res.status(500).json({ success: false, message: '저장 실패: ' + err.message });
+            }
+            res.json({ success: true, model, message: `뉴스 AI 요약 모델이 '${model}'(으)로 저장되었습니다.` });
         });
     } else {
         res.status(500).json({ success: false, message: 'newsDb가 연결되지 않았습니다.' });

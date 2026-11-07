@@ -46,6 +46,16 @@
 
                 updateAiWelcomePreview();
                 updateAiHeroPreview();
+
+                // 뉴스 AI 요약 모델 동기화
+                try {
+                    const newsModelRes = await fetch('/api/admin/news/summary-model');
+                    const newsModelData = await newsModelRes.json();
+                    if (newsModelData.success && newsModelData.currentModel) {
+                        const newsSel = document.getElementById('inputAiNewsSummaryModel');
+                        if (newsSel) newsSel.value = newsModelData.currentModel;
+                    }
+                } catch (e) {}
             }
         } catch (err) {
             console.error('[admin-ai] 설정 로드 오류:', err);
@@ -280,6 +290,31 @@
         }
     }
 
+    /**
+     * AI 비서 탭에서 뉴스 AI 요약 모델 변경 시 동기화 저장
+     */
+    async function syncNewsSummaryModelFromAiTab(model) {
+        if (typeof window.saveAdminNewsModel === 'function') {
+            await window.saveAdminNewsModel(model);
+        } else {
+            try {
+                const res = await fetch('/api/admin/news/summary-model', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message || `뉴스 AI 요약 모델이 '${model}'(으)로 저장되었습니다.`);
+                } else {
+                    alert('저장 실패: ' + (data.message || '오류 발생'));
+                }
+            } catch (e) {
+                alert('통신 오류: ' + e.message);
+            }
+        }
+    }
+
     // 전역 노출
     window.loadAdminAiConfig = loadAdminAiConfig;
     window.saveAdminAiConfig = saveAdminAiConfig;
@@ -289,6 +324,7 @@
     window.setAiLengthPreset = setAiLengthPreset;
     window.setAiReasoningCtxPreset = setAiReasoningCtxPreset;
     window.checkAdminAiHealth = checkAdminAiHealth;
+    window.syncNewsSummaryModelFromAiTab = syncNewsSummaryModelFromAiTab;
 
     // DOM 로드 시 초기화
     document.addEventListener('DOMContentLoaded', () => {

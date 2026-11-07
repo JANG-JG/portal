@@ -67,6 +67,15 @@ async function loadNewsData() {
             currentAdminExcludeKeywords = Array.isArray(data.excludeKeywords) ? data.excludeKeywords : [];
             renderAdminExcludeChips();
         }
+
+        if (data.summaryModel) {
+            const selectEl = document.getElementById('adminSelectNewsSummaryModel');
+            const badgeEl = document.getElementById('adminCurrentNewsModelBadge');
+            if (selectEl) selectEl.value = data.summaryModel;
+            if (badgeEl) badgeEl.textContent = data.summaryModel;
+            const aiTabSelect = document.getElementById('inputAiNewsSummaryModel');
+            if (aiTabSelect) aiTabSelect.value = data.summaryModel;
+        }
     } catch (err) {
         console.error('뉴스 데이터 로드 오류:', err);
     }
@@ -399,6 +408,37 @@ async function saveAdminExcludeKeywords() {
     }
 }
 
+// 3-6. 뉴스 AI 요약 모델 저장 함수
+async function saveAdminNewsModel(customModel) {
+    const selectEl = document.getElementById('adminSelectNewsSummaryModel');
+    const targetModel = customModel || (selectEl ? selectEl.value : null);
+    if (!targetModel) {
+        alert('저장할 뉴스 AI 요약 모델을 선택해 주세요.');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/admin/news/summary-model', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: targetModel })
+        });
+        const data = await res.json();
+        if (data.success) {
+            const badgeEl = document.getElementById('adminCurrentNewsModelBadge');
+            if (badgeEl) badgeEl.textContent = targetModel;
+            if (selectEl) selectEl.value = targetModel;
+            const aiTabSelect = document.getElementById('inputAiNewsSummaryModel');
+            if (aiTabSelect) aiTabSelect.value = targetModel;
+            alert(data.message || `뉴스 AI 요약 모델이 '${targetModel}'(으)로 저장되었습니다.`);
+        } else {
+            alert('저장 실패: ' + (data.message || '알 수 없는 오류'));
+        }
+    } catch (e) {
+        alert('뉴스 요약 모델 저장 중 통신 오류 발생: ' + e.message);
+    }
+}
+
 // 전역 window 바인딩
 window.loadBloodData = loadBloodData;
 window.testBloodSmtpEmail = testBloodSmtpEmail;
@@ -417,4 +457,5 @@ window.saveAdminBriefingTimes = saveAdminBriefingTimes;
 window.addAdminExcludeKeyword = addAdminExcludeKeyword;
 window.removeAdminExcludeKeyword = removeAdminExcludeKeyword;
 window.saveAdminExcludeKeywords = saveAdminExcludeKeywords;
+window.saveAdminNewsModel = saveAdminNewsModel;
 
