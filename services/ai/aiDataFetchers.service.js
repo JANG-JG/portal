@@ -13,7 +13,7 @@ const { decryptMemoText, decryptCalendarText } = require('../crypto.service');
 const { classifyBloodPressure } = require('../bloodClassifier.util');
 const { searchWikiContent, getWikiSummary } = require('../wikiSummary.service');
 const { searchAlbumPhotos, getRecentAlbumActivity } = require('../albumSummary.service');
-const { getTopNewsIssues, searchNewsByKeyword } = require('../newsHeadline.service');
+const { getTopNewsIssues, searchNewsByKeyword, getRecentBreaking } = require('../newsHeadline.service');
 const { ADMIN_USERS } = require('../../config/constants');
 
 /** 🛡️ 관리자 권한 확인 헬퍼 */
@@ -212,15 +212,22 @@ async function fetchMarketIndicators() {
     }
 }
 
-/** 가족 공용: 주요 뉴스 헤드라인 (키워드 검색 가능) */
+/** 가족 공용: 주요 뉴스 헤드라인 (키워드 검색 가능, 24시간 속보 및 최근 이슈 다층 폴백) */
 async function fetchNewsTop(keyword = null) {
     try {
-        if (keyword && keyword.trim()) {
-            const searchResults = await searchNewsByKeyword(keyword.trim(), 4);
-            return { available: true, keyword, news: searchResults || [] };
+        const today = getTodayKst();
+        if (keyword && typeof keyword === 'string' && keyword.trim()) {
+            const searchResults = await searchNewsByKeyword(keyword.trim(), today, 5);
+            const items = Array.isArray(searchResults?.items) ? searchResults.items : (Array.isArray(searchResults) ? searchResults : []);
+            if (items.length > 0) {
+                return { available: true, keyword: keyword.trim(), news: items };
+            }
         }
-        const topNews = await getTopNewsIssues(4);
-        return { available: true, news: topNews || [] };
+        let topNews = await getTopNewsIssues(today, 5);
+        if (!Array.isArray(topNews) || topNews.length === 0) {
+            topNews = await getRecentBreaking(24, 5);
+        }
+        return { available: true, keyword: (keyword && keyword.trim()) || null, news: Array.isArray(topNews) ? topNews : [] };
     } catch (e) {
         return { available: false, message: '뉴스 헤드라인 조회 오류' };
     }

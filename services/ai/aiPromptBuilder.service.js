@@ -162,10 +162,14 @@ function formatToolDataToContext(toolName, data) {
             else text += `- 오늘의 주요 뉴스 헤드라인:\n`;
             if (Array.isArray(data.news) && data.news.length > 0) {
                 data.news.forEach((n, idx) => {
-                    text += `  ${idx + 1}. ${n.title || n.headline} (${n.media || '언론사'})\n`;
+                    const media = n.media_name || n.media || '주요 언론';
+                    const category = n.category_name || n.category || '';
+                    const catTag = category ? `[${category}] ` : '';
+                    const summary = (n.summary && n.summary.length > 15) ? ` - ${n.summary.slice(0, 90).trim()}...` : '';
+                    text += `  ${idx + 1}. ${catTag}${n.title || n.headline || '제목 없음'} (${media})${summary}\n`;
                 });
             } else {
-                text += `  - 등록된 뉴스가 없습니다.\n`;
+                text += `  - 현재 수집된 최신 뉴스가 없습니다.\n`;
             }
             break;
 

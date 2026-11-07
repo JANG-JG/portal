@@ -78,6 +78,23 @@ function resolveNeededTools(prompt, user) {
     return Array.from(tools);
 }
 
+/** 🎯 질문 텍스트로부터 도구 실행에 필요한 핀포인트 파라미터 스마트 추출 */
+function resolveToolParams(toolName, prompt) {
+    if (!prompt || typeof prompt !== 'string') return {};
+    const text = prompt.trim();
+
+    if (toolName === 'get_news_top') {
+        const isGeneral = /^(주요\s*뉴스|오늘\s*뉴스|실시간\s*뉴스|속보|뉴스\s*(알려|보여|요약|정리|있어|뭐\s*있|소식)|오늘\s*소식)/i.test(text);
+        if (!isGeneral) {
+            const m = text.match(/([가-힣a-zA-Z0-9]{2,})\s*(관련|에\s*대한)?\s*(뉴스|기사|속보|소식)/);
+            if (m && m[1] && !/^(주요|오늘|실시간|최신|요즘|모든|전체)$/.test(m[1])) {
+                return { keyword: m[1] };
+            }
+        }
+    }
+    return {};
+}
+
 /** 🛡️ 가족 계정의 관리자 전용 데이터 요청 거절 가드 */
 function checkUnauthorizedAdminQuery(prompt, user) {
     if (isAdmin(user)) return null;
@@ -119,7 +136,8 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
 
     if (neededTools.length > 0) {
         const fetchPromises = neededTools.map(async (toolName) => {
-            const execResult = await executeTool(toolName, {}, user);
+            const params = resolveToolParams(toolName, prompt);
+            const execResult = await executeTool(toolName, params, user);
             if (execResult && execResult.success) {
                 return formatToolDataToContext(toolName, execResult.data);
             }

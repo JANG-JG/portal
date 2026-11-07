@@ -96,9 +96,18 @@ function clusterTopIssues(articles, limit) {
  * @param {string} todayKst - 'YYYY-MM-DD'
  */
 function getTopNewsIssues(todayKst, limit = 5) {
+    let targetDate = todayKst;
+    let maxLimit = limit;
+    if (typeof todayKst === 'number') {
+        maxLimit = todayKst;
+        targetDate = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    } else if (!targetDate || typeof targetDate !== 'string') {
+        targetDate = new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    }
+
     const now = Date.now();
-    if (cache.date === todayKst && now - cache.ts < CACHE_TTL_MS && cache.items.length) {
-        return Promise.resolve(cache.items.slice(0, limit));
+    if (cache.date === targetDate && now - cache.ts < CACHE_TTL_MS && cache.items.length) {
+        return Promise.resolve(cache.items.slice(0, maxLimit));
     }
     return new Promise(resolve => {
         if (!newsDb) return resolve([]);
@@ -107,13 +116,31 @@ function getTopNewsIssues(todayKst, limit = 5) {
              FROM news_articles
              WHERE date = ? AND category_name != '속보' AND title NOT LIKE '%[속보]%' AND title NOT LIKE '%(속보)%'
              ORDER BY id DESC LIMIT 600`,
-            [todayKst],
+            [targetDate],
             (err, rows) => {
-                if (err || !rows || rows.length === 0) return resolve([]);
+                if (err || !rows || rows.length === 0) {
+                    // 🛡️ 당일 기사가 아직 없거나 적을 경우(이른 아침/수집 대기) 최근 기사 200건 기반 이슈 군집화 폴백
+                    return newsDb.all(
+                        `SELECT id, category_name, title, link, media_name, summary, published_at, image_url
+                         FROM news_articles
+                         WHERE category_name != '속보' AND title NOT LIKE '%[속보]%' AND title NOT LIKE '%(속보)%'
+                         ORDER BY id DESC LIMIT 200`,
+                        [],
+                        (fErr, fRows) => {
+                            if (fErr || !fRows || fRows.length === 0) return resolve([]);
+                            try {
+                                const fallbackItems = clusterTopIssues(fRows, 8);
+                                resolve(fallbackItems.slice(0, maxLimit));
+                            } catch (e2) {
+                                resolve([]);
+                            }
+                        }
+                    );
+                }
                 try {
                     const items = clusterTopIssues(rows, 8);
-                    cache = { date: todayKst, ts: now, items };
-                    resolve(items.slice(0, limit));
+                    cache = { date: targetDate, ts: now, items };
+                    resolve(items.slice(0, maxLimit));
                 } catch (e) {
                     resolve([]);
                 }
@@ -149,7 +176,11 @@ function extractQueryKeywords(prompt) {
 function searchNewsByKeyword(prompt, todayKst, limit = 5) {
     const keywords = extractQueryKeywords(prompt);
     if (!keywords.length || !newsDb) return Promise.resolve({ keywords, items: [] });
-    const from = new Date(new Date(todayKst + 'T00:00:00+09:00').getTime() - 7 * 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+    const validToday = (typeof todayKst === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(todayKst))
+        ? todayKst
+        : new Date(Date.now() + 9 * 3600000).toISOString().slice(0, 10);
+    const maxLimit = typeof limit === 'number' ? limit : 5;
+    const from = new Date(new Date(validToday + 'T00:00:00+09:00').getTime() - 7 * 86400000).toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
     const cond = keywords.map(() => '(title LIKE ? OR summary LIKE ?)').join(' OR ');
     const params = [from];
     keywords.forEach(k => params.push(`%${k}%`, `%${k}%`));
