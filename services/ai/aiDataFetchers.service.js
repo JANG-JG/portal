@@ -9,7 +9,7 @@ const { db, assetDb, newsDb, portalDb } = require('../db');
 const { getLiveWeatherData, getDefaultWeatherCity } = require('../weather.service');
 const { getLiveMarketData, enrichAssetsWithQuotes } = require('../market.service');
 const { getCurrentCpuPercent, getRealMemoryInfo, getDiskUsage, formatUptime } = require('../systemMonitor.service');
-const { decryptMemoText } = require('../crypto.service');
+const { decryptMemoText, decryptCalendarText } = require('../crypto.service');
 const { classifyBloodPressure } = require('../bloodClassifier.util');
 const { searchWikiContent, getWikiSummary } = require('../wikiSummary.service');
 const { searchAlbumPhotos, getRecentAlbumActivity } = require('../albumSummary.service');
@@ -27,6 +27,34 @@ function isAdmin(user) {
 /** 🕒 KST 오늘 날짜 문자열 (YYYY-MM-DD) */
 function getTodayKst() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+}
+
+/** 🕒 KST 특정 일수 후 날짜 문자열 (YYYY-MM-DD) */
+function getDaysAfterKst(days = 14) {
+    const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+    return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
+}
+
+/** 🔓 캘린더 텍스트 안전 복호화 헬퍼 (암호문 노출 원천 차단) */
+function safeDecryptCalendar(cipherText, userId, isFamily = false) {
+    if (!cipherText || typeof cipherText !== 'string') return '';
+    if (!cipherText.startsWith('enc:v1:')) return cipherText;
+
+    // 1차: 지정된 모드로 복호화 시도
+    let res = decryptCalendarText(cipherText, userId, isFamily);
+    if (res && res !== '🔒 [암호화된 일정]') return res;
+
+    // 2차: 반대 모드로 폴백 시도
+    res = decryptCalendarText(cipherText, userId, !isFamily);
+    if (res && res !== '🔒 [암호화된 일정]') return res;
+
+    // 3차: 관리자 키로 폴백 시도
+    if (userId !== 'admin') {
+        res = decryptCalendarText(cipherText, 'admin', false);
+        if (res && res !== '🔒 [암호화된 일정]') return res;
+    }
+
+    return '';
 }
 
 // =============================================================================
@@ -192,16 +220,16 @@ async function fetchNewsTop(keyword = null) {
     }
 }
 
-/** 가족 공용: 가족 캘린더 일정 (is_family = 1) */
+/** 가족 공용: 가족 캘린더 일정 (is_family = 1 또는 category = '가족') */
 async function fetchFamilyCalendar(startDate, endDate) {
     const start = startDate || getTodayKst();
-    const end = endDate || start;
+    const end = endDate || (startDate ? startDate : getDaysAfterKst(14));
 
     return new Promise((resolve) => {
         portalDb.all(
-            `SELECT id, title, event_date, event_time, category, memo, is_all_day 
+            `SELECT id, user_id, title, event_date, event_time, category, memo, is_all_day 
              FROM calendar_events 
-             WHERE is_family = 1 AND event_date BETWEEN ? AND ? 
+             WHERE (is_family = 1 OR category = '가족') AND event_date BETWEEN ? AND ? 
              ORDER BY event_date ASC, event_time ASC LIMIT 10`,
             [start, end],
             (err, rows) => {
@@ -210,11 +238,11 @@ async function fetchFamilyCalendar(startDate, endDate) {
                     available: true,
                     count: rows ? rows.length : 0,
                     events: (rows || []).map(r => ({
-                        title: r.title,
+                        title: safeDecryptCalendar(r.title, r.user_id, true) || '가족 일정',
                         date: r.event_date,
                         time: r.is_all_day ? '하루 종일' : (r.event_time || '시간 미지정'),
-                        category: r.category,
-                        memo: r.memo
+                        category: r.category || '가족',
+                        memo: safeDecryptCalendar(r.memo, r.user_id, true) || ''
                     }))
                 });
             }
@@ -255,16 +283,17 @@ async function fetchFamilyPhotos(query) {
 // =============================================================================
 
 /** 개인 전용: 본인 개인 캘린더 일정 */
-async function fetchPersonalCalendar(userId, startDate, endDate) {
+async function fetchPersonalCalendar(userOrId, startDate, endDate) {
+    const userId = typeof userOrId === 'string' ? userOrId : (userOrId?.username || userOrId?.id || 'admin');
     if (!userId) return { available: false, message: '사용자 정보가 필요합니다.' };
     const start = startDate || getTodayKst();
-    const end = endDate || start;
+    const end = endDate || (startDate ? startDate : getDaysAfterKst(14));
 
     return new Promise((resolve) => {
         portalDb.all(
-            `SELECT id, title, event_date, event_time, category, memo, is_all_day 
+            `SELECT id, user_id, title, event_date, event_time, category, memo, is_all_day 
              FROM calendar_events 
-             WHERE user_id = ? AND is_family = 0 AND event_date BETWEEN ? AND ? 
+             WHERE user_id = ? AND is_family = 0 AND (category != '가족' OR category IS NULL) AND event_date BETWEEN ? AND ? 
              ORDER BY event_date ASC, event_time ASC LIMIT 10`,
             [userId, start, end],
             (err, rows) => {
@@ -273,11 +302,11 @@ async function fetchPersonalCalendar(userId, startDate, endDate) {
                     available: true,
                     count: rows ? rows.length : 0,
                     events: (rows || []).map(r => ({
-                        title: r.title,
+                        title: safeDecryptCalendar(r.title, userId, false) || '개인 일정',
                         date: r.event_date,
                         time: r.is_all_day ? '하루 종일' : (r.event_time || '시간 미지정'),
-                        category: r.category,
-                        memo: r.memo
+                        category: r.category || '개인',
+                        memo: safeDecryptCalendar(r.memo, userId, false) || ''
                     }))
                 });
             }

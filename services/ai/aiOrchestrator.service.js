@@ -157,7 +157,7 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
     // 5. [실측 최적화] EXAONE 4.0 1.2B가 데이터를 100% 인용하도록 User 메시지에 실시간 팩트 주입
     let finalUserMessage = prompt;
     if (toolResults.length > 0) {
-        finalUserMessage = `[실시간 포털 최신 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [실시간 포털 최신 데이터]의 내용을 사실 그대로 인용하여 사용자에게 다정하고 명확하게 답변해 주세요:\n"${prompt}"`;
+        finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. (영문 시스템 함수명이나 도구 호출명은 답변에 절대 언급하지 마세요):\n"${prompt}"`;
     }
 
     messages.push({ role: 'user', content: finalUserMessage });
