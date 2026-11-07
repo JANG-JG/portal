@@ -505,11 +505,19 @@
                 if (!thinkingEndedAt) thinkingEndedAt = Date.now();
 
                 if (typeof fullText === 'string') {
-                    // 생각 태그 정제 (한글단어(영단어) 병기는 그대로 보존)
-                    accumulatedText = fullText
+                    // 생각 태그 정제 및 마크다운 중복 괄호 복원
+                    let cleaned = fullText
                         .replace(/<(think|thought|reasoning)>[\s\S]*?<\/(think|thought|reasoning)>/gi, '')
                         .replace(/<\/?(think|thought|reasoning)>/gi, '')
-                        .replace(/\[\/?(think|thought|reasoning)\]/gi, '');
+                        .replace(/\[\/?(think|thought|reasoning)\]/gi, '')
+                        .replace(/\[([^\]\n]+)\]\]/g, '[$1]')
+                        .replace(/\[\[([^\]\n]+)\]/g, '[$1]');
+
+                    // 프론트엔드 2차 방어: 본문 시작부 메타 독백 누출 정제
+                    const metaRegex = /^(?:(?:Okay|Ok|오케이|알겠습니다|자,)\s*[,.]?\s*)?(?:사용자(?:가|는|의|에게)|요청(?:한|하신|내용)|질문(?:한|하신|내용)|전문\s*분석\s*추론|추론\s*내용을|답변\s*계획|답변을\s*작성)[\s\S]*?(?=\n\n|\n[#\-*]|\n\d+\.\s|안녕하세요|네,\s|오늘의|실시간|현재)/i;
+                    cleaned = cleaned.replace(metaRegex, '').trim();
+
+                    accumulatedText = cleaned;
                 }
                 if (typeof finalThinking === 'string' && finalThinking.trim()) {
                     thinkingText = finalThinking.trim();

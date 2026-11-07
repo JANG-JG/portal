@@ -33,12 +33,38 @@ const OPEN_TAG_REGEX = /<think>|<thought>|\[think\]|\[thought\]|<reasoning>|\[re
 const CLOSE_TAG_REGEX = /<\/think>|<\/thought>|\[\/think\]|\[\/thought\]|<\/reasoning>|\[\/reasoning\]/i;
 
 /**
- * 🏷️ 전문/경제/기술 영단어가 단독으로 쓰였을 때 한글단어(영단어) 형식으로 친절하게 보완
- * (사용자가 원한 대로 영단어를 쓸 때 한글단어(영단어) 형태로 나오도록 지원)
+ * 🏷️ 영단어 및 마크다운 서식 정제 엔진
+ * - [규칙 2] 100% 일상 친화적 한국어 인터페이스 준수
+ * - 일상 단어(midday, duration 등) 순수 한국어 치환
+ * - 주요 금융/시사 고유명사 및 약어 '한글단어(영단어)' 표기 보장
+ * - 마크다운 괄호 중복 깨짐([추가]]) 자동 복원
  */
 function ensureKoreanEnglishPair(text) {
     if (!text || typeof text !== 'string') return text;
-    const pairs = [
+    let result = text;
+
+    // 1. 마크다운 중복 괄호 서식 깨짐 복원 (예: [추가]] -> [추가], [[ -> [, ]] -> ])
+    result = result
+        .replace(/\[([^\]\n]+)\]\]/g, '[$1]')
+        .replace(/\[\[([^\]\n]+)\]/g, '[$1]');
+
+    // 2. 일상 친화적 한국어 변환 (불필요한 영어 노출 원천 차단)
+    const dailyTerms = [
+        { regex: /\bmidday\b/gi, repl: '한낮' },
+        { regex: /\bduration\b/gi, repl: '지속 시간' },
+        { regex: /\bFederal\s+Reserve\b/gi, repl: '미 연방준비제도(Fed)' },
+        { regex: /\bBase\s+Rate\b/gi, repl: '기준금리' },
+        { regex: /\bExchange\s+Rate\b/gi, repl: '환율' },
+        { regex: /\bStock\s+Market\b/gi, repl: '증시' },
+        { regex: /\bheadline\b/gi, repl: '주요 소식' },
+        { regex: /\bheadlines\b/gi, repl: '주요 헤드라인' }
+    ];
+    for (const term of dailyTerms) {
+        result = result.replace(term.regex, term.repl);
+    }
+
+    // 3. 주요 공식 약어 '한글단어(영단어)' 보장
+    const officialPairs = [
         { regex: /(?<![가-힣\(\/])\bFX\b(?![가-힣\)])/g, repl: '외환(FX)' },
         { regex: /(?<![가-힣\(\/])\bKOSPI\b(?![가-힣\)])/g, repl: '코스피(KOSPI)' },
         { regex: /(?<![가-힣\(\/])\bKOSDAQ\b(?![가-힣\)])/g, repl: '코스닥(KOSDAQ)' },
@@ -48,11 +74,51 @@ function ensureKoreanEnglishPair(text) {
         { regex: /(?<![가-힣\(\/])\bFOMC\b(?![가-힣\)])/g, repl: '연방공개시장위원회(FOMC)' },
         { regex: /(?<![가-힣\(\/])\bBOK\b(?![가-힣\)])/g, repl: '한국은행(BOK)' }
     ];
-    let result = text;
-    for (const p of pairs) {
+    for (const p of officialPairs) {
         result = result.replace(p.regex, p.repl);
     }
+
     return result;
+}
+
+/**
+ * 🕵️‍♂️ 본문 시작부에 튀어나오는 모델의 메타 독백(CoT 누출)을 감지하여 생각 과정으로 흡수
+ * @param {string} text - 본문 후보 텍스트
+ * @param {boolean} final - 스트림 완료 여부
+ * @returns {{ absorbedThinking: string, cleanAnswer: string, isStillInMeta: boolean }}
+ */
+function extractLeadingMetaThinking(text, final = false) {
+    if (!text || typeof text !== 'string') {
+        return { absorbedThinking: '', cleanAnswer: '', isStillInMeta: false };
+    }
+
+    const trimmed = text.replace(/^\s+/, '');
+    if (!trimmed) {
+        return { absorbedThinking: '', cleanAnswer: '', isStillInMeta: false };
+    }
+
+    // 메타 독백 시작 트리거 감지 (Okay, 사용자가~, 전문 분석~, 추론 내용을~ 등)
+    const metaStartRegex = /^(?:(?:Okay|Ok|오케이|알겠습니다|자,)\s*[,.]?\s*)?(?:사용자(?:가|는|의|에게)|요청(?:한|하신|내용)|질문(?:한|하신|내용)|전문\s*분석\s*추론|추론\s*내용을|사전\s*정리된\s*내용|생각해\s*보면|답변\s*계획|답변을\s*작성|이\s*정보(?:들을)?\s*바탕으로)/i;
+
+    if (!metaStartRegex.test(trimmed)) {
+        return { absorbedThinking: '', cleanAnswer: text, isStillInMeta: false };
+    }
+
+    // 메타 독백 종료 및 실제 본문 시작 전환점 탐색
+    const transitionRegex = /\n\s*(?:\n+|(?=[#\-*]|\d+\.\s|안녕하세요|네,\s|오늘의|실시간|현재|문의하신|요청하신|가족\s*포털))/i;
+    const match = trimmed.search(transitionRegex);
+
+    if (match !== -1) {
+        const absorbed = trimmed.slice(0, match).trim();
+        const remainder = trimmed.slice(match).replace(/^\s+/, '');
+        return { absorbedThinking: absorbed, cleanAnswer: remainder, isStillInMeta: false };
+    }
+
+    if (final) {
+        return { absorbedThinking: trimmed, cleanAnswer: '', isStillInMeta: false };
+    }
+
+    return { absorbedThinking: trimmed, cleanAnswer: '', isStillInMeta: true };
 }
 
 /**
@@ -77,7 +143,7 @@ function stripThinkTags(text) {
  * - 2) 여는 태그 없이 닫는 태그만 있는 템플릿 선주입 모델(EXAONE 4.0 등) 대응
  * - 3) 태그가 없는 경우: 추론 모드에서는 닫는 태그 전까지 생각 스트림으로 버퍼링, 일반 모드에서는 본문 즉시 스트리밍
  */
-function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThinking = false) {
+function splitThinkStreamInternal(raw, final = false, isReasoning = false, hasNativeThinking = false) {
     const text = raw || '';
     if (!text) return { thinking: '', answer: '', closed: false };
 
@@ -182,6 +248,24 @@ function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThin
 }
 
 /**
+ * 🛡️ 생각 과정(thinking)과 본문(answer) 분리 + 본문 시작 메타 독백 흡수 가드
+ */
+function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThinking = false) {
+    const res = splitThinkStreamInternal(raw, final, isReasoning, hasNativeThinking);
+    if (res.answer) {
+        const meta = extractLeadingMetaThinking(res.answer, final);
+        if (meta.absorbedThinking) {
+            res.thinking = (res.thinking ? res.thinking + '\n\n' : '') + meta.absorbedThinking;
+            res.answer = meta.cleanAnswer;
+            if (meta.isStillInMeta) {
+                res.closed = false;
+            }
+        }
+    }
+    return res;
+}
+
+/**
  * 🧠 추론 모델이 생각(<think>)만 출력하고 본문 없이(또는 점/기호만으로) 종료된 경우
  * 생각 내용을 바탕으로 사용자에게 제공할 최종 본문을 즉시 이어서 실시간 스트리밍하는 2차 복구 안전망
  */
@@ -190,7 +274,22 @@ async function streamAnswerFromThinking({ messages, thinkingText, model, keepAli
     const lastUserMsg = (Array.isArray(messages) ? [...messages].reverse().find(m => m && m.role === 'user') : null);
     const userPrompt = lastUserMsg ? String(lastUserMsg.content).replace(/\[참고용 실시간[\s\S]*?\[사용자 질문\]/i, '').replace(/[\r\n]+/g, ' ').trim() : '사용자 질문';
 
-    const promptForRecovery = `사용자가 다음과 같은 질문을 하였고, 전문 분석 추론이 완료되었습니다.\n\n[사용자 질문]\n${userPrompt.slice(0, 500)}\n\n[전문 분석 추론 내용]\n${thinkingText.slice(0, 3000)}\n\n위 전문 분석 추론 내용을 바탕으로, 사용자에게 정중하고 친절한 한국어 존댓말(~해요, ~합니다)로 풍부하고 완성도 높은 최종 분석 답변을 상세하게 작성해 주세요. (영단어를 언급할 때는 반드시 '한글단어(영단어)' 형태로 친절하게 표기해 주시고, 100% 자연스러운 우리말 완성된 마크다운 본문만 바로 작성해 주세요.)`;
+    const systemPrompt = `당신은 JG 가족 포털의 전용 AI 비서 "제이지(JG)"입니다.
+가족 구성원에게 다정하고 친절한 한국어 존댓말(~해요, ~합니다)로 완성된 최종 답변을 상세하게 제공합니다.
+[필수 준수 규칙]
+1. 내부 독백/혼잣말 절대 금지: "Okay", "사용자가 ~를 요청했군", "사용자는 아마도 ~", "답변을 작성해 보자", "추론 내용을 보면" 등의 혼잣말이나 메타 독백을 절대로 본문에 쓰지 마세요.
+2. 첫 어절부터 곧바로 사용자에게 건네는 완성형 한국어 존댓말 본문으로 시작하세요.
+3. 100% 일상 한국어 사용: 일상 단어(midday, duration 등)에 영어를 쓰지 말고 한낮, 소요 시간 등 순수 우리말로 작성하세요. 공식 약어만 '한글단어(영단어)' 형태로 표기하세요.`;
+
+    const promptForRecovery = `다음 [사용자 질문]에 대해 [사전 정리된 핵심 참고 내용]을 바탕으로 사용자에게 제공할 최종 분석 답변 본문을 작성해 주세요.
+
+[사용자 질문]
+${userPrompt.slice(0, 500)}
+
+[사전 정리된 핵심 참고 내용]
+${thinkingText.slice(0, 3000)}
+
+위 내용을 바탕으로 사용자에게 친절하고 다정한 한국어 존댓말로 상세하고 풍부하게 답변해 주세요. 혼잣말이나 메타 독백 없이 곧바로 완성된 한국어 본문만 작성해 주세요.`;
 
     // EXAONE 단일 모델로 즉시 복구 (gemma 등 타 모델 로딩 방지)
     const candidateModels = [model, 'exaone4:opt'].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
@@ -204,6 +303,7 @@ async function streamAnswerFromThinking({ messages, thinkingText, model, keepAli
                 body: JSON.stringify({
                     model: targetModel,
                     messages: [
+                        { role: 'system', content: systemPrompt },
                         { role: 'user', content: promptForRecovery }
                     ],
                     stream: true,
@@ -225,7 +325,8 @@ async function streamAnswerFromThinking({ messages, thinkingText, model, keepAli
             const reader = res.body.getReader();
             const decoder = new TextDecoder('utf-8');
             let buffer = '';
-            let recoveryAnswer = '';
+            let recoveryRaw = '';
+            let sentRecovery = '';
 
             while (true) {
                 const { done, value } = await reader.read();
@@ -243,16 +344,33 @@ async function streamAnswerFromThinking({ messages, thinkingText, model, keepAli
                         const delta = json.message?.content || json.response || '';
                         if (delta) {
                             const cleanDelta = delta.replace(/<\/?think>/gi, '');
-                            if (cleanDelta) {
-                                recoveryAnswer += cleanDelta;
-                                sendEvent({ type: 'content', delta: cleanDelta, token: cleanDelta });
+                            recoveryRaw += cleanDelta;
+                            const meta = extractLeadingMetaThinking(recoveryRaw, false);
+                            if (meta.cleanAnswer && !meta.isStillInMeta) {
+                                if (meta.cleanAnswer.length > sentRecovery.length) {
+                                    const aDelta = meta.cleanAnswer.slice(sentRecovery.length);
+                                    sentRecovery = meta.cleanAnswer;
+                                    if (aDelta) {
+                                        sendEvent({ type: 'content', delta: aDelta, token: aDelta });
+                                    }
+                                }
                             }
                         }
                     } catch (e) {}
                 }
             }
 
-            const trimmedAns = recoveryAnswer.trim();
+            const finalMeta = extractLeadingMetaThinking(recoveryRaw, true);
+            const finalClean = (finalMeta.cleanAnswer || recoveryRaw).replace(/<\/?think>/gi, '').trim();
+            if (finalClean.length > sentRecovery.length) {
+                const remaining = finalClean.slice(sentRecovery.length);
+                sentRecovery = finalClean;
+                if (remaining) {
+                    sendEvent({ type: 'content', delta: remaining, token: remaining });
+                }
+            }
+
+            const trimmedAns = finalClean.trim();
             if (trimmedAns.length >= 20) {
                 console.log(`[aiStreamClient] ✅ 2차 본문 자동 완성 성공 (${targetModel}, ${trimmedAns.length}자)`);
                 return trimmedAns;
