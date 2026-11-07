@@ -19,6 +19,7 @@
     let activeWelcomeContent = DEFAULT_WELCOME_MSG.content;
     const changeListeners = new Set();
     let isSyncing = false;
+    let pendingDraftSession = null;
 
     function notifyChange() {
         try {
@@ -44,15 +45,34 @@
                 saveAllSessions(sessions);
             }
         }
+        if (pendingDraftSession && pendingDraftSession.messages?.length === 1) {
+            pendingDraftSession.messages[0].content = activeWelcomeContent;
+        }
     }
 
     function getCustomWelcomeMessage() { return activeWelcomeContent; }
+
+    function filterValidSessions(rawList) {
+        if (!Array.isArray(rawList)) return [];
+        return rawList.filter(s => {
+            if (!s || !s.id) return false;
+            // 사용자의 실제 발화가 1개 이상 있거나 서버 집계 messageCount가 1 이상인 경우만 유효
+            const hasUserMsg = Array.isArray(s.messages) && s.messages.some(m => m.role === 'user');
+            const hasMsgCount = Number(s.messageCount) > 0;
+            return hasUserMsg || hasMsgCount;
+        });
+    }
 
     function loadAllSessions() {
         try {
             let raw = localStorage.getItem(SESSIONS_STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
             if (raw && !localStorage.getItem(SESSIONS_STORAGE_KEY)) localStorage.setItem(SESSIONS_STORAGE_KEY, raw);
-            return raw ? (JSON.parse(raw) || []) : [];
+            const parsed = raw ? (JSON.parse(raw) || []) : [];
+            const valid = filterValidSessions(parsed);
+            if (parsed.length !== valid.length) {
+                saveAllSessions(valid);
+            }
+            return valid;
         } catch (e) {
             console.error('[AI History] 로컬 캐시 세션 로드 오류:', e);
             return [];
@@ -80,18 +100,16 @@
     function generateSessionId() { return 'sess_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7); }
 
     function createNewSession(customTitle) {
-        const sessions = loadAllSessions();
         const activeId = getActiveSessionId();
-        const curActive = activeId ? sessions.find(s => s.id === activeId) : null;
 
-        // 이미 사용자의 발화가 하나도 없는 빈 '새 대화' 상태라면 중복 생성 없이 기존 빈 세션 유지
-        if (curActive && curActive.title === '새 대화' && (!curActive.messages || !curActive.messages.some(m => m.role === 'user'))) {
-            setActiveSessionId(curActive.id);
-            return curActive;
+        // 이미 사용자의 발화가 없는 임시(draft) 세션이 활성 상태라면 중복 생성 없이 기존 임시 세션 유지
+        if (pendingDraftSession && pendingDraftSession.id === activeId) {
+            if (customTitle && customTitle !== '새 대화') pendingDraftSession.title = customTitle;
+            return pendingDraftSession;
         }
 
         const now = Date.now();
-        const newSession = {
+        pendingDraftSession = {
             id: generateSessionId(),
             title: customTitle || '새 대화',
             createdAt: now,
@@ -99,45 +117,58 @@
             messages: [{ role: 'assistant', content: activeWelcomeContent, timestamp: now }]
         };
 
-        sessions.unshift(newSession);
-        if (sessions.length > 50) sessions.length = 50;
-
-        saveAllSessions(sessions);
-        setActiveSessionId(newSession.id);
-
-        fetch('/api/ai/history/sessions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ id: newSession.id, title: newSession.title })
-        }).catch(err => console.warn('[AI History] 서버 세션 비동기 생성 알림:', err));
-
+        // 대화를 나누기 전에는 DB 및 세션 목록에 등록하지 않고 오직 활성 ID만 설정
+        setActiveSessionId(pendingDraftSession.id);
         notifyChange();
-        return newSession;
+        return pendingDraftSession;
     }
 
     function getActiveSession() {
         const sessions = loadAllSessions();
         const activeId = getActiveSessionId();
-        let cur = activeId ? sessions.find(s => s.id === activeId) : null;
 
-        // 활성 세션이 없거나 찾을 수 없으면 과거 대화를 강제로 열지 않고 항상 깨끗한 '새 대화' 시작
-        if (!cur) cur = createNewSession();
-
-        if (!cur.messages || cur.messages.length === 0) {
-            fetchSessionDetailAsync(cur.id);
+        if (activeId) {
+            const found = sessions.find(s => s.id === activeId);
+            if (found) {
+                if (!found.messages || found.messages.length === 0) {
+                    fetchSessionDetailAsync(found.id);
+                }
+                return found;
+            }
+            if (pendingDraftSession && pendingDraftSession.id === activeId) {
+                return pendingDraftSession;
+            }
         }
-        return cur;
+
+        // 활성 세션이 없거나 찾을 수 없으면 깨끗한 새 임시 세션 생성
+        return createNewSession();
     }
 
     function addMessageToActiveSession(role, content, timestamp) {
         const sessions = loadAllSessions();
         let activeId = getActiveSessionId();
         let session = sessions.find(s => s.id === activeId);
+        let isFirstCommit = false;
 
         if (!session) {
-            session = createNewSession();
+            // 아직 세션 목록에 등록되지 않은 임시(draft) 세션 상태에서 첫 발화가 시작된 시점
+            if (pendingDraftSession && pendingDraftSession.id === activeId) {
+                session = pendingDraftSession;
+            } else {
+                const now = Date.now();
+                session = {
+                    id: activeId || generateSessionId(),
+                    title: '새 대화',
+                    createdAt: now,
+                    updatedAt: now,
+                    messages: [{ role: 'assistant', content: activeWelcomeContent, timestamp: now }]
+                };
+                activeId = session.id;
+                setActiveSessionId(activeId);
+            }
             sessions.unshift(session);
-            activeId = session.id;
+            pendingDraftSession = null;
+            isFirstCommit = true;
         }
 
         const msgTime = timestamp || Date.now();
@@ -155,7 +186,17 @@
             sessions.splice(idx, 1);
             sessions.unshift(session);
         }
+        if (sessions.length > 50) sessions.length = 50;
         saveAllSessions(sessions);
+
+        // 첫 질문 커밋 시점에 서버에 세션 생성 통지
+        if (isFirstCommit) {
+            fetch('/api/ai/history/sessions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ id: session.id, title: session.title })
+            }).catch(err => console.warn('[AI History] 서버 세션 비동기 생성 알림:', err));
+        }
 
         fetch(`/api/ai/history/sessions/${encodeURIComponent(session.id)}/messages`, {
             method: 'POST',
@@ -163,6 +204,7 @@
             body: JSON.stringify({ role, content, timestamp: msgTime })
         }).catch(err => console.warn('[AI History] 서버 메시지 비동기 저장 알림:', err));
 
+        notifyChange();
         return session;
     }
 
@@ -177,8 +219,9 @@
         saveAllSessions(sessions);
 
         if (getActiveSessionId() === sessionId) {
-            if (sessions.length > 0) setActiveSessionId(sessions[0].id);
-            else createNewSession();
+            pendingDraftSession = null;
+            setActiveSessionId(null);
+            createNewSession();
         }
 
         fetch(`/api/ai/history/sessions/${encodeURIComponent(sessionId)}`, {
@@ -276,9 +319,10 @@
                             messages: (local?.messages?.length > 0) ? local.messages : null
                         };
                     });
-                    // 로컬 전용 신규 세션(새 대화 등) 보존
+                    // 로컬 전용 신규 세션 중 유효한 사용자 발화가 있는 경우만 보존
                     localSessions.forEach(loc => {
-                        if (!mergedSessions.some(s => s.id === loc.id)) {
+                        const hasUser = Array.isArray(loc.messages) && loc.messages.some(m => m.role === 'user');
+                        if (hasUser && !mergedSessions.some(s => s.id === loc.id)) {
                             mergedSessions.unshift(loc);
                         }
                     });
@@ -331,8 +375,8 @@
         const sessions = loadAllSessions();
         const activeId = getActiveSessionId();
         const displaySessions = sessions.filter(s => {
-            const hasUser = s.messages ? s.messages.some(m => m.role === 'user') : (s.messageCount > 0);
-            return hasUser || s.id === activeId;
+            const hasUser = s.messages ? s.messages.some(m => m.role === 'user') : (Number(s.messageCount) > 0);
+            return hasUser;
         });
 
         if (displaySessions.length === 0) {

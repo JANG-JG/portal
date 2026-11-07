@@ -74,6 +74,18 @@ function dbRun(sql, params = []) {
  */
 async function getUserSessions(userId) {
     if (!userId) return [];
+    
+    // 메시지가 없는 고아 세션(대화가 한 번도 오가지 않은 빈 세션) 자동 정리
+    try {
+        await dbRun(`
+            DELETE FROM ai_chat_sessions 
+            WHERE user_id = ? 
+              AND id NOT IN (SELECT DISTINCT session_id FROM ai_chat_messages)
+        `, [userId]);
+    } catch (cleanErr) {
+        console.warn('[AI History] 빈 세션 정리 경고:', cleanErr.message);
+    }
+
     const sql = `
         SELECT 
             s.id,
@@ -84,6 +96,7 @@ async function getUserSessions(userId) {
             (SELECT m.content FROM ai_chat_messages m WHERE m.session_id = s.id ORDER BY m.id DESC LIMIT 1) AS lastMessage
         FROM ai_chat_sessions s
         WHERE s.user_id = ?
+          AND (SELECT COUNT(*) FROM ai_chat_messages m WHERE m.session_id = s.id) > 0
         ORDER BY s.updated_at DESC
         LIMIT 50
     `;
@@ -240,6 +253,10 @@ async function syncSessionsFromClient(userId, sessions) {
     for (const sess of sessions) {
         if (!sess || !sess.id) continue;
         
+        // 사용자가 보낸 메시지가 없는 빈 세션은 DB로 동기화하지 않음
+        const hasUserMsg = Array.isArray(sess.messages) && sess.messages.some(m => m.role === 'user');
+        if (!hasUserMsg && (!sess.messageCount || sess.messageCount === 0)) continue;
+
         // 이미 DB에 존재하는지 확인
         const exists = await dbGet(`SELECT id FROM ai_chat_sessions WHERE id = ?`, [sess.id]);
         if (!exists) {
