@@ -567,11 +567,26 @@
             abort(msg = '생성이 중단되었습니다.') {
                 if (isDone) return;
                 isDone = true; isThinkingClosed = true;
-                renderThinking(false);
+                if (!thinkingEndedAt) thinkingEndedAt = Date.now();
+                renderThinking(false, { endedAt: thinkingEndedAt });
                 row.dataset.rawText = accumulatedText;
                 if (contentEl) {
                     const noticeHtml = `<span class="ai-stream-aborted-badge">⏹️ ${escapeHtml(msg)}</span>`;
                     contentEl.innerHTML = (accumulatedText ? renderAiMarkdown(accumulatedText) + '<br>' : '') + noticeHtml;
+                }
+                if (accumulatedText) {
+                    refreshActions();
+                }
+            },
+            fail(errorMsg = '오류가 발생했습니다.') {
+                if (isDone) return;
+                isDone = true; isThinkingClosed = true;
+                if (!thinkingEndedAt) thinkingEndedAt = Date.now();
+                renderThinking(false, { endedAt: thinkingEndedAt });
+                row.dataset.rawText = accumulatedText ? (accumulatedText + '\n\n' + errorMsg) : errorMsg;
+                if (contentEl) {
+                    const errorHtml = `<div class="ai-stream-error-notice" style="color:var(--ai-accent-red, #dc2626); font-size:13px; margin-top:8px; line-height:1.5;">⚠️ ${escapeHtml(errorMsg)}</div>`;
+                    contentEl.innerHTML = (accumulatedText ? renderAiMarkdown(accumulatedText) + '<br>' : '') + errorHtml;
                 }
                 if (accumulatedText) {
                     refreshActions();

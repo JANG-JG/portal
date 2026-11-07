@@ -7,8 +7,16 @@
  */
 
 const { OLLAMA_HOST } = require('../aiModelRouter.service');
+const { Agent } = require('undici');
 
 const DEFAULT_OLLAMA_HOST = (process.env.OLLAMA_HOST || OLLAMA_HOST || 'http://localhost:11434').trim();
+
+// Ollama 대형 모델 콜드 로딩(최대 2~3분) 및 긴 추론을 위한 undici 커스텀 Dispatcher (기본 60초 타임아웃 해제)
+const ollamaDispatcher = new Agent({
+    headersTimeout: 600000, // 10분 (600초)
+    bodyTimeout: 600000,    // 10분 (600초)
+    connectTimeout: 30000   // 30초
+});
 
 /**
  * 🌐 Ollama 서버 상태 및 모델 가용성 헬스체크
@@ -472,7 +480,8 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
-            signal: abortController.signal
+            signal: abortController.signal,
+            dispatcher: ollamaDispatcher
         });
 
         if (!ollamaRes.ok) {

@@ -451,7 +451,11 @@
                 onError: (errMsg) => {
                     if (window.JgAiRender) {
                         window.JgAiRender.removeTypingIndicator(typingId);
-                        window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', errMsg, aiTimestamp);
+                        if (streamingBubble && typeof streamingBubble.fail === 'function') {
+                            streamingBubble.fail(errMsg);
+                        } else {
+                            window.JgAiRender.appendMessageBubble(messageContainerEl, 'assistant', errMsg, aiTimestamp);
+                        }
                     }
                 },
                 onAbort: (abortMsg) => {
