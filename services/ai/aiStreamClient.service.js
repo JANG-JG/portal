@@ -92,20 +92,22 @@ function splitThinkStream(raw, final = false) {
         return { thinking, answer, closed: true };
     }
 
-    // 3) <think> 태그가 전혀 없는 경우
+    // 3) <think> 태그가 전혀 없는 일반 대화 모드 -> 답변 본문(answer)으로 즉시 스트리밍
     if (final) {
         return { thinking: '', answer: (stripThinkTags(text) || '').trim(), closed: false };
     }
 
-    // EXAONE 4.0 템플릿은 프롬프트 끝에 <think>를 선주입 → </think> 전까지는 생각 과정으로 스트리밍
-    // (종료 시까지 </think>가 없으면 위 final 분기에서 전체를 답변으로 처리, 생각 패널은 자동 제거)
-    let holdTail = 0;
-    for (const tag of ['</think>', '<think>']) {
-        for (let k = tag.length - 1; k > 0; k--) {
-            if (text.toLowerCase().endsWith(tag.slice(0, k))) { holdTail = Math.max(holdTail, k); break; }
+    // 여는 태그(<think>)가 들어오는 중일 수 있으므로 말미의 부분 태그만 버퍼링
+    let holdOpen = 0;
+    const openTag = '<think>';
+    for (let k = openTag.length - 1; k > 0; k--) {
+        if (text.toLowerCase().endsWith(openTag.slice(0, k))) {
+            holdOpen = k;
+            break;
         }
     }
-    return { thinking: text.slice(0, text.length - holdTail).replace(/^\s+/, ''), answer: '', closed: false };
+    const cleanAnswer = text.slice(0, text.length - holdOpen);
+    return { thinking: '', answer: cleanAnswer.replace(/^\s+/, ''), closed: false };
 }
 
 /**
@@ -116,8 +118,10 @@ function splitThinkStream(raw, final = false) {
  * @param {string} options.model - 구동 모델 (예: exaone3.5:2.4b, exaone4:opt)
  * @param {Array} options.messages - [{role: 'system'|'user'|'assistant', content: '...'}]
  * @param {Object} [options.tools] - Ollama 도구 목록 (옵션)
+ * @param {Object} [options.options] - Ollama 생성 옵션 (num_ctx, num_predict 등)
+ * @param {string} [options.keepAlive] - Ollama 모델 메모리 상주 시간 (기본 24h)
  */
-async function streamChatToClient({ req, res, model, messages, tools = null }) {
+async function streamChatToClient({ req, res, model, messages, tools = null, options = {}, keepAlive = '24h' }) {
     // 1. SSE 응답 헤더 설정
     if (!res.headersSent) {
         res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -149,10 +153,12 @@ async function streamChatToClient({ req, res, model, messages, tools = null }) {
             model,
             messages,
             stream: true,
-            options: {
+            keep_alive: keepAlive || '24h',
+            options: Object.assign({
                 temperature: 0.7,
-                top_p: 0.9
-            }
+                top_p: 0.9,
+                num_predict: -1 // 대화 길이 축소 없이 끝까지 충실하고 풍부하게 생성 (상한 없음)
+            }, options)
         };
 
         if (Array.isArray(tools) && tools.length > 0) {
