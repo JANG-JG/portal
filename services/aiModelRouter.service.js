@@ -17,13 +17,14 @@ const LEGACY_MODEL = (process.env.OLLAMA_MODEL || '').trim();
 const CHAT_MODEL = (process.env.OLLAMA_CHAT_MODEL || '').trim() || LEGACY_MODEL || 'exaone4:opt';
 const REASONING_MODEL = (process.env.OLLAMA_REASONING_MODEL || '').trim() || CHAT_MODEL;
 
-// 상주 시간: 대화 모델은 길게, 추론 모델은 짧게 (단일 상주 환경에서 교체 비용 최소화)
+// 상주 시간: EXAONE 단일 모델 24시간 VRAM 상주로 모델 교체 딜레이 원천 차단
 const CHAT_KEEP_ALIVE = '24h';
-const REASONING_KEEP_ALIVE = '5m';
+const REASONING_KEEP_ALIVE = '24h';
 
-// 추론 모델 컨텍스트 창 (.env OLLAMA_REASONING_NUM_CTX, 예: 16384 / 미설정·0이면 Modelfile 기본값)
-// 출력 토큰은 상한 없음(num_predict -1)이지만 실제 생성 길이는 이 컨텍스트 창 크기에 묶인다.
-const REASONING_NUM_CTX = parseInt(process.env.OLLAMA_REASONING_NUM_CTX || '0', 10) || 0;
+// 컨텍스트 창 기본값: 워크스테이션 VRAM 활용을 극대화하여 32K(32,768)로 확장
+const DEFAULT_NUM_CTX = 32768;
+const CHAT_NUM_CTX = parseInt(process.env.OLLAMA_CHAT_NUM_CTX || '', 10) || DEFAULT_NUM_CTX;
+const REASONING_NUM_CTX = parseInt(process.env.OLLAMA_REASONING_NUM_CTX || '', 10) || DEFAULT_NUM_CTX;
 
 // 추론이 필요한 질문 패턴 (원인/분석/비교/계산/계획/판단 등)
 const REASONING_REGEX = new RegExp([
@@ -88,10 +89,9 @@ async function ensureModelSlot(targetModel) {
 function selectChatModel(prompt = '', preference = 'auto') {
     const text = String(prompt || '').trim();
     const cfg = adminCfg();
-    const chat = { model: getChatModel(), mode: 'chat', keepAlive: CHAT_KEEP_ALIVE, timeoutMs: 300000, numCtx: parseInt(cfg.chatNumCtx, 10) || 0 };
-    // 모델 교체(로딩) 시간을 고려해 타임아웃 여유 확보
+    const chat = { model: getChatModel(), mode: 'chat', keepAlive: CHAT_KEEP_ALIVE, timeoutMs: 300000, numCtx: parseInt(cfg.chatNumCtx, 10) || CHAT_NUM_CTX };
     const reasoning = { model: getReasoningModel(), mode: 'reasoning', keepAlive: REASONING_KEEP_ALIVE, timeoutMs: 420000, numCtx: parseInt(cfg.reasoningNumCtx, 10) || REASONING_NUM_CTX };
-    if (!isDualMode()) return chat;
+
     if (preference === 'chat') return chat;
     if (preference === 'reasoning') return reasoning;
     if (!text || SMALLTALK_REGEX.test(text)) return chat;

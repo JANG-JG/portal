@@ -172,14 +172,13 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
         });
     }
 
-    // 5. 질문 의도에 따른 모델 및 파라미터 선택
+    // 5. 질문 의도에 따른 모델 및 파라미터 선택 (EXAONE 단일 모델)
     const picked = selectChatModel(prompt);
-    const activeModel = picked.model || getChatModel() || 'exaone3.5:2.4b';
+    const activeModel = picked.model || getChatModel() || 'exaone4:opt';
     const isReasoning = (picked.mode === 'reasoning');
-    const streamOptions = {};
-    if (picked.numCtx) {
-        streamOptions.num_ctx = picked.numCtx;
-    }
+    const streamOptions = {
+        num_ctx: picked.numCtx || 32768
+    };
 
     // 6. [실측 최적화] EXAONE 4.0 1.2B가 데이터를 100% 인용하고 본문 출력을 누락하지 않도록 User 메시지 지침 보강
     let finalUserMessage = prompt;

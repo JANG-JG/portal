@@ -148,8 +148,8 @@ async function streamAnswerFromThinking({ messages, thinkingText, model, keepAli
 
     const promptForRecovery = `사용자가 다음과 같은 질문을 하였고, 전문 분석 추론이 완료되었습니다.\n\n[사용자 질문]\n${userPrompt.slice(0, 500)}\n\n[전문 분석 추론 내용]\n${thinkingText.slice(0, 3000)}\n\n위 전문 분석 추론 내용을 바탕으로, 사용자에게 정중하고 친절한 한국어 존댓말(~해요, ~합니다)로 풍부하고 완성도 높은 최종 분석 답변을 상세하게 작성해 주세요. (추가 안내나 잡담 없이 완성된 마크다운 본문만 바로 작성해 주세요.)`;
 
-    // 1순위: 한국어 작문력과 속도가 뛰어난 gemma2:jg, 폴백: 원본 모델
-    const candidateModels = ['gemma2:jg', 'exaone3.5:2.4b', model].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
+    // EXAONE 단일 모델로 즉시 복구 (gemma 등 타 모델 로딩 방지)
+    const candidateModels = [model, 'exaone4:opt'].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
 
     for (const targetModel of candidateModels) {
         try {
@@ -268,6 +268,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
             options: Object.assign({
                 temperature: 0.7,
                 top_p: 0.9,
+                num_ctx: 32768, // 워크스테이션 VRAM 활용을 극대화한 32K 컨텍스트
                 num_predict: -1 // 대화 길이 축소 없이 끝까지 충실하고 풍부하게 생성 (상한 없음)
             }, options)
         };

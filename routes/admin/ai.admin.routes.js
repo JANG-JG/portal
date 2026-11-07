@@ -28,7 +28,7 @@ router.post('/', async (req, res) => {
         const MODEL_RE = /^[A-Za-z0-9._:\/-]{0,100}$/;
         if ((chatModel !== undefined && !MODEL_RE.test(String(chatModel).trim())) ||
             (reasoningModel !== undefined && !MODEL_RE.test(String(reasoningModel).trim()))) {
-            return res.status(400).json({ success: false, message: '모델명은 영문/숫자/.:_-/ 만 사용할 수 있습니다. (예: gemma2:jg)' });
+            return res.status(400).json({ success: false, message: '모델명은 영문/숫자/.:_-/ 만 사용할 수 있습니다. (예: exaone4:opt)' });
         }
         for (const v of [chatNumCtx, reasoningNumCtx]) {
             const n = parseInt(v, 10);

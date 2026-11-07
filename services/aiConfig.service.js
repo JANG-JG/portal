@@ -20,9 +20,9 @@ const DEFAULT_AI_CONFIG = {
     // 모델 설정 (빈 값 = .env OLLAMA_CHAT_MODEL / OLLAMA_REASONING_MODEL 사용)
     chatModel: '',
     reasoningModel: '',
-    // 컨텍스트 창 (0 = 모델 기본값 / 클수록 긴 답변 가능하지만 보조서버 메모리 사용 증가)
-    chatNumCtx: 0,
-    reasoningNumCtx: 0
+    // 컨텍스트 창 (기본 32K로 VRAM 활용 극대화)
+    chatNumCtx: 32768,
+    reasoningNumCtx: 32768
 };
 
 const MODEL_NAME_REGEX = /^[A-Za-z0-9._:\/-]{1,100}$/;
