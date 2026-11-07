@@ -307,7 +307,12 @@
             if (updated) updateSessionTitleUI(updated.title);
         }
         input.value = '';
-        input.focus();
+        const isTouchOrMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
+        if (isTouchOrMobile) {
+            input.blur();
+        } else {
+            input.focus();
+        }
 
         // 2. 대기 인디케이터 표시
         isSending = true;

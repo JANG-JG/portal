@@ -357,6 +357,8 @@
         promptInputEl.value = '';
         promptInputEl.style.height = '24px';
         promptInputEl.style.overflowY = 'hidden';
+        const isTouchOrMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
+        if (isTouchOrMobile) promptInputEl.blur();
         const charCounterEl = document.getElementById('aiCharCount');
         if (charCounterEl) {
             charCounterEl.textContent = `0/${currentMaxPromptLength}`;
@@ -454,7 +456,14 @@
         isSending = false;
         updateSubmitButtonState(false);
         scrollToBottom();
-        if (promptInputEl) promptInputEl.focus();
+        const isTouchOrMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (window.innerWidth <= 768);
+        if (promptInputEl) {
+            if (isTouchOrMobile) {
+                promptInputEl.blur();
+            } else {
+                promptInputEl.focus();
+            }
+        }
     }
 
     function scrollToBottom() {
