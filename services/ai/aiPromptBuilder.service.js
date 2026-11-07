@@ -133,12 +133,23 @@ function formatToolDataToContext(toolName, data) {
             if (data.diskPercent) text += `- 디스크 사용량: ${data.diskPercent}%\n`;
             break;
 
-        case 'get_weather':
-            text += `- 지역: ${data.city} 날씨\n`;
-            text += `- 현재 날씨: ${data.condition}, 기온: ${data.temperature}°C (체감 ${data.feelsLike}°C)\n`;
-            text += `- 습도: ${data.humidity}%, 미세먼지: ${data.pm10}`;
-            if (data.rainPop) text += `, 강수 확률: ${data.rainPop}`;
+        case 'get_weather': {
+            const formatUnit = (val, unit) => {
+                if (!val && val !== 0) return '-';
+                const s = String(val).trim();
+                return s.includes(unit) ? s : `${s}${unit}`;
+            };
+            text += `- 지역: ${data.city || '현재 위치'} 날씨\n`;
+            text += `- 현재 날씨: ${data.condition || '맑음'}, 기온: ${formatUnit(data.temperature, '°C')} (체감 ${formatUnit(data.feelsLike, '°C')})\n`;
+            if (data.tempMin && data.tempMax) {
+                text += `- 오늘 예상 기온: 최저 ${formatUnit(data.tempMin, '°C')} / 최고 ${formatUnit(data.tempMax, '°C')}\n`;
+            }
+            text += `- 습도: ${formatUnit(data.humidity, '%')}`;
+            if (data.windSpeed) text += `, 바람: ${data.windSpeed}`;
+            if (data.rainPop) text += `, 강수 확률: ${formatUnit(data.rainPop, '%')}`;
+            if (data.pm10) text += `, 미세먼지: ${data.pm10}`;
             break;
+        }
 
         case 'get_market_indicators':
             if (data.kospi) text += `- 코스피(KOSPI): ${data.kospi.price} (${data.kospi.changePercent >= 0 ? '+' : ''}${data.kospi.changePercent}%)\n`;

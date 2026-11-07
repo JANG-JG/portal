@@ -35,7 +35,7 @@ function resolveNeededTools(prompt, user) {
     }
 
     // 2. 가족 공용 데이터 질문 감지
-    if (/(날씨|기온|비\s*오|눈\s*오|우산|미세먼지|체감온도|추워|더워|습도)/.test(text)) {
+    if (/(날씨|기온|온도|비\s*(오|올|내리|왔)|눈\s*(오|올|내리|왔)|우산|미세\s*먼지|황사|체감|추워|더워|쌀쌀|따뜻|습도|바람|하늘|일기\s*예보|기상\s*(청|정보|상황)|외출|바깥|옷차림|뭐\s*입|패딩|코트)/.test(text)) {
         tools.add('get_weather');
     }
     if (/(증시|코스피|코스닥|환율|달러|시장\s*지수)/.test(text)) {
@@ -62,8 +62,8 @@ function resolveNeededTools(prompt, user) {
         tools.add('get_personal_memos');
     }
 
-    // 5. 복합 질문 ("오늘 브리핑", "오늘 하루 어때", "요약해줘")
-    if (/(브리핑|오늘\s*(하루|요약|안내)|좋은\s*아침|굿모닝|상황\s*보고)/.test(text)) {
+    // 5. 복합 질문 및 첫 인사 ("오늘 브리핑", "오늘 하루 어때", "안녕", "좋은 아침")
+    if (/(브리핑|오늘\s*(하루|요약|안내|어때|상황|소식|날씨)|좋은\s*(아침|하루)|굿모닝|상황\s*보고|반가워|안녕|시작해|출근)/.test(text)) {
         tools.add('get_weather');
         tools.add('get_family_calendar');
         tools.add('get_personal_calendar');

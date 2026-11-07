@@ -280,7 +280,11 @@
                 <div class="ai-bubble">
                     <div class="ai-typing-indicator">
                         <span>AI 비서가 생각하는 중입니다</span>
-                        <span class="ai-typing-dot"></span>
+                        <span class="ai-typing-dots">
+                            <span class="ai-typing-dot"></span>
+                            <span class="ai-typing-dot"></span>
+                            <span class="ai-typing-dot"></span>
+                        </span>
                     </div>
                 </div>
             </div>

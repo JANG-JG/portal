@@ -171,19 +171,25 @@ async function fetchSystemStatus(user) {
 /** 가족 공용: 실시간 날씨 */
 async function fetchWeatherSummary(user) {
     try {
-        const city = (user && user.weather_city) ? user.weather_city : getDefaultWeatherCity();
+        const city = (user && user.weather_city) ? user.weather_city : await getDefaultWeatherCity();
         const weather = await getLiveWeatherData(city);
-        if (!weather || !weather.success) {
+        if (!weather || !weather.temp || !weather.condition) {
             return { available: false, message: '날씨 정보를 불러올 수 없습니다.' };
         }
+        const todayForecast = Array.isArray(weather.forecast) && weather.forecast.length > 0 ? weather.forecast[0] : null;
+        const rainPop = (todayForecast?.rain && todayForecast.rain !== '-') ? todayForecast.rain : null;
+
         return {
             available: true,
-            city: weather.cityKo || weather.city,
+            city: weather.city || '서울',
             temperature: weather.temp,
-            feelsLike: weather.feelsLike,
-            condition: weather.descKo || weather.description,
-            humidity: weather.humidity,
-            rainPop: weather.pop !== undefined ? `${Math.round(weather.pop * 100)}%` : null,
+            feelsLike: weather.feels_like || weather.temp,
+            condition: weather.condition,
+            humidity: weather.humidity || '50%',
+            windSpeed: weather.wind_speed || null,
+            tempMin: (todayForecast?.min && todayForecast.min !== '-') ? todayForecast.min : null,
+            tempMax: (todayForecast?.max && todayForecast.max !== '-') ? todayForecast.max : null,
+            rainPop: rainPop,
             pm10: weather.pm10Grade || '보통'
         };
     } catch (e) {
