@@ -89,23 +89,26 @@
                         const dataStr = trimmed.slice(5).trim();
                         try {
                             const data = JSON.parse(dataStr);
-                            if (currentEventType === 'thinking') {
-                                if (typeof onThinking === 'function') onThinking(data.token || '');
-                            } else if (currentEventType === 'token') {
-                                const t = data.token || '';
-                                fullText += t;
-                                if (typeof onToken === 'function') onToken(t);
-                            } else if (currentEventType === 'done' || data.done) {
+                            const eventType = data.type || currentEventType;
+
+                            if (eventType === 'thinking') {
+                                const thinkChunk = data.delta || data.token || '';
+                                if (typeof onThinking === 'function') onThinking(thinkChunk);
+                            } else if (eventType === 'content' || eventType === 'token') {
+                                const chunk = data.delta || data.token || '';
+                                fullText += chunk;
+                                if (typeof onToken === 'function') onToken(chunk);
+                            } else if (eventType === 'done' || data.done) {
                                 isStreamDone = true;
                                 const final = data.fullText || fullText;
                                 if (typeof onDone === 'function') onDone(final, data);
-                            } else if (currentEventType === 'error') {
+                            } else if (eventType === 'error') {
                                 isStreamDone = true;
                                 if (typeof onError === 'function') onError(data.message || '오류가 발생했습니다.');
-                            } else if (data.token) {
-                                const t = data.token || '';
-                                fullText += t;
-                                if (typeof onToken === 'function') onToken(t);
+                            } else if (data.delta || data.token) {
+                                const chunk = data.delta || data.token || '';
+                                fullText += chunk;
+                                if (typeof onToken === 'function') onToken(chunk);
                             }
                         } catch (e) {
                             // JSON 파싱 실패 무시

@@ -1,0 +1,181 @@
+/**
+ * 🎯 JG 포털 AI 비서 - 전체 에이전트 오케스트레이터 (aiOrchestrator.service.js)
+ * - [핵심 역할] 인텐트 판별 -> 3계층 도구 병렬 실행 -> 프롬프트 조립 -> SSE 스트리밍
+ * - [무장애 설계] Ollama 오프라인 시 0.1초 내 규칙 브리핑 자동 폴백
+ * - [보안 강화] 관리자 전용 질의 가족 계정 접근 시 안내 메시지 즉시 반환
+ * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화
+ */
+
+const { executeTool } = require('./aiTools.registry');
+const { isAdmin } = require('./aiDataFetchers.service');
+const { buildSystemPrompt, formatToolDataToContext } = require('./aiPromptBuilder.service');
+const { streamChatToClient } = require('./aiStreamClient.service');
+const { getChatModel } = require('../aiModelRouter.service');
+
+/** 🔍 사용자 질문에서 필요한 도구 목록 지능형 선별 */
+function resolveNeededTools(prompt, user) {
+    if (!prompt || typeof prompt !== 'string') return [];
+    const text = prompt.trim().toLowerCase();
+    const isUserAdmin = isAdmin(user);
+    const tools = new Set();
+
+    // 1. 관리자 전용 데이터 질문 감지
+    const isBloodQuery = /(혈압|약\s*(먹었|챙겼)|투약|수축기|이완기|맥박|약\s*복용)/.test(text);
+    const isAssetQuery = /(자산|주식|포트폴리오|계좌|잔액|수익률|배당|보유\s*종목)/.test(text);
+    const isSystemQuery = /(서버\s*(상태|cpu|메모리|자원|점유)|디스크\s*용량|시스템\s*관제)/.test(text);
+
+    if (isBloodQuery) {
+        if (isUserAdmin) tools.add('get_blood_records');
+    }
+    if (isAssetQuery) {
+        if (isUserAdmin) tools.add('get_asset_summary');
+    }
+    if (isSystemQuery) {
+        if (isUserAdmin) tools.add('get_system_status');
+    }
+
+    // 2. 가족 공용 데이터 질문 감지
+    if (/(날씨|기온|비\s*오|눈\s*오|우산|미세먼지|체감온도|추워|더워|습도)/.test(text)) {
+        tools.add('get_weather');
+    }
+    if (/(증시|코스피|코스닥|환율|달러|시장\s*지수)/.test(text)) {
+        tools.add('get_market_indicators');
+    }
+    if (/(뉴스|헤드라인|속보|이슈|신문|오늘\s*소식)/.test(text)) {
+        tools.add('get_news_top');
+    }
+    if (/(위키|매뉴얼|사용법|어떻게\s*써|규칙|레시피|생활\s*가이드)/.test(text)) {
+        tools.add('get_family_wiki');
+    }
+    if (/(사진|앨범|찍은|추억|갤러리)/.test(text)) {
+        tools.add('get_family_photos');
+    }
+
+    // 3. 캘린더 및 일정 질문 감지
+    if (/(일정|스케줄|약속|계획|언제|행사|제사|여행|할\s*일)/.test(text)) {
+        tools.add('get_family_calendar');
+        tools.add('get_personal_calendar');
+    }
+
+    // 4. 메모장 질문 감지
+    if (/(메모|적어둔|기록한|적은\s*거|메모장)/.test(text)) {
+        tools.add('get_personal_memos');
+    }
+
+    // 5. 복합 질문 ("오늘 브리핑", "오늘 하루 어때", "요약해줘")
+    if (/(브리핑|오늘\s*(하루|요약|안내)|좋은\s*아침|굿모닝|상황\s*보고)/.test(text)) {
+        tools.add('get_weather');
+        tools.add('get_family_calendar');
+        tools.add('get_personal_calendar');
+        if (isUserAdmin) {
+            tools.add('get_blood_records');
+            tools.add('get_asset_summary');
+        } else {
+            tools.add('get_news_top');
+        }
+    }
+
+    return Array.from(tools);
+}
+
+/** 🛡️ 가족 계정의 관리자 전용 데이터 요청 거절 가드 */
+function checkUnauthorizedAdminQuery(prompt, user) {
+    if (isAdmin(user)) return null;
+    const text = prompt.trim().toLowerCase();
+
+    if (/(혈압|복약|약\s*먹었|투약)/.test(text)) {
+        return '혈압 및 복약 건강 관리 데이터는 관리자 전용 정보로 보호되어 있어요. 도움이 필요하시면 관리자에게 문의해 주세요!';
+    }
+    if (/(자산|주식|계좌|잔액|수익률|배당)/.test(text)) {
+        return '금융 자산 및 계좌 정보는 관리자 전용 정보입니다. 가족 계정에서는 조회가 제한되어 있어요.';
+    }
+    if (/(관리자\s*페이지|서버\s*설정|db\s*관리|시스템\s*설정)/.test(text)) {
+        return '시스템 관제 및 관리자 설정은 접근 권한이 없습니다.';
+    }
+    return null;
+}
+
+/**
+ * 🚀 전체 대화 요청 오케스트레이션 메인 함수
+ */
+async function orchestrateChatRequest({ req, res, prompt, history = [], user }) {
+    // 1. 비인가 관리자 데이터 질의 사전 차단
+    const unauthorizedMsg = checkUnauthorizedAdminQuery(prompt, user);
+    if (unauthorizedMsg) {
+        if (!res.headersSent) {
+            res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+        }
+        res.write(`data: ${JSON.stringify({ type: 'start', model: 'policy-guard' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'content', delta: unauthorizedMsg })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        return res.end();
+    }
+
+    // 2. 필요 도구 판별 및 병렬 데이터 수집
+    const neededTools = resolveNeededTools(prompt, user);
+    const toolResults = [];
+
+    if (neededTools.length > 0) {
+        const fetchPromises = neededTools.map(async (toolName) => {
+            const execResult = await executeTool(toolName, {}, user);
+            if (execResult && execResult.success) {
+                return formatToolDataToContext(toolName, execResult.data);
+            }
+            return null;
+        });
+
+        const settled = await Promise.allSettled(fetchPromises);
+        settled.forEach(s => {
+            if (s.status === 'fulfilled' && s.value) {
+                toolResults.push(s.value);
+            }
+        });
+    }
+
+    // 3. 시스템 프롬프트 빌드 (역할, 시간, 한국어 존댓말)
+    const systemPrompt = buildSystemPrompt(user);
+
+    // 4. 대화 이력 구성 (안전한 최근 4~6턴)
+    const messages = [
+        { role: 'system', content: systemPrompt }
+    ];
+
+    if (Array.isArray(history)) {
+        const safeHistory = history.slice(-6);
+        safeHistory.forEach(item => {
+            if (item && item.role && item.content) {
+                messages.push({
+                    role: item.role === 'user' ? 'user' : 'assistant',
+                    content: String(item.content).slice(0, 1000)
+                });
+            }
+        });
+    }
+
+    // 5. [실측 최적화] EXAONE 4.0 1.2B가 데이터를 100% 인용하도록 User 메시지에 실시간 팩트 주입
+    let finalUserMessage = prompt;
+    if (toolResults.length > 0) {
+        finalUserMessage = `[실시간 포털 최신 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [실시간 포털 최신 데이터]의 내용을 사실 그대로 인용하여 사용자에게 다정하고 명확하게 답변해 주세요:\n"${prompt}"`;
+    }
+
+    messages.push({ role: 'user', content: finalUserMessage });
+
+    // 5. Ollama 구동 모델 결정 (기본: getChatModel(), fallback: exaone3.5:2.4b)
+    const activeModel = getChatModel() || 'exaone3.5:2.4b';
+
+    // 6. SSE 실시간 스트리밍 실행
+    await streamChatToClient({
+        req,
+        res,
+        model: activeModel,
+        messages
+    });
+}
+
+module.exports = {
+    resolveNeededTools,
+    checkUnauthorizedAdminQuery,
+    orchestrateChatRequest
+};

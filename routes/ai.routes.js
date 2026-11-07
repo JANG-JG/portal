@@ -21,6 +21,7 @@ const { createWikiPage, searchWikiContent, getWikiPageDetail, updateWikiPage } =
 const { getPortalSummary } = require('../services/portalSummary.service');
 const { getAiConfig } = require('../services/aiConfig.service');
 const { handleSseChatStream } = require('../services/aiStream.service');
+const { orchestrateChatRequest } = require('../services/ai/aiOrchestrator.service');
 
 // 🛡️ [보안 강화] AI 채팅 레이트 리미터 & 동시성 제어 (로컬 PC 과부하 및 DoS 방어)
 const chatRateLimitMap = new Map(); // key(user/ip) -> [timestamp]
@@ -159,18 +160,15 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
             const userName = resolveUserName(req.user);
             const safeHistory = Array.isArray(history) ? history.slice(-4) : [];
 
-            // ⚡ SSE 실시간 스트리밍 모드 분기 (stream: true 또는 Accept: text/event-stream)
+            // ⚡ SSE 실시간 스트리밍 모드 분기 (신규 3계층 RBAC 에이전트 파이프라인 연동)
             const isStreaming = stream === true || req.headers.accept?.includes('text/event-stream');
             if (isStreaming) {
-                await handleSseChatStream({
+                await orchestrateChatRequest({
                     req,
                     res,
                     prompt: message.trim(),
                     history: safeHistory,
-                    summaryContext: summary,
-                    userName,
-                    user: req.user,
-                    modelPref: ['chat', 'reasoning'].includes(modelPref) ? modelPref : 'auto'
+                    user: req.user
                 });
                 return;
             }
