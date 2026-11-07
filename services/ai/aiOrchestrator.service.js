@@ -10,7 +10,7 @@ const { executeTool } = require('./aiTools.registry');
 const { isAdmin } = require('./aiDataFetchers.service');
 const { buildSystemPrompt, formatToolDataToContext } = require('./aiPromptBuilder.service');
 const { streamChatToClient } = require('./aiStreamClient.service');
-const { getChatModel, selectChatModel } = require('../aiModelRouter.service');
+const { getChatModel, selectChatModel, ensureModelSlot } = require('../aiModelRouter.service');
 
 /** 🔍 사용자 질문에서 필요한 도구 목록 지능형 선별 */
 function resolveNeededTools(prompt, user) {
@@ -175,6 +175,7 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
     // 5. 질문 의도에 따른 모델 및 파라미터 선택 (EXAONE 단일 모델)
     const picked = selectChatModel(prompt);
     const activeModel = picked.model || getChatModel() || 'exaone4:opt';
+    await ensureModelSlot(activeModel);
     const isReasoning = (picked.mode === 'reasoning' || activeModel.toLowerCase().includes('exaone'));
     const streamOptions = {
         num_ctx: picked.numCtx || 32768
