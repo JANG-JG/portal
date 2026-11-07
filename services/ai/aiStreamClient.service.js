@@ -137,8 +137,9 @@ function extractLeadingMetaThinking(text, final = false) {
     // 3) 분석 표 마크다운 패턴 (예: "| 사용자 요청 사항 | 최종 분석 |")
     const isMetaTable = /^\|?\s*(?:사용자\s*요청|최종\s*분석|요청\s*사항|분석\s*내용)[\s\S]*?\|/i.test(trimmed);
 
-    // 4) 한국어 메타 독백 시작 트리거 (Okay, 사용자가~, 전문 분석~ 등)
-    const metaStartRegex = /^(?:(?:Okay|Ok|오케이|알겠습니다|자,)\s*[,.]?\s*)?(?:사용자(?:가|는|의|에게|에|를)|요청(?:한|하신|내용|사항)|질문(?:한|하신|내용)|전문\s*분석|추론\s*(?:내용|과정|을)|사전\s*정리된|생각해\s*보면|답변\s*(?:계획|작성|을\s*작성)|이\s*정보(?:들을)?\s*바탕으로)/i;
+    // 4) 한국어 내부 메타 독백 시작 트리거 (답변 계획, 내부 검토 등 순수 혼잣말에 한정)
+    // ⚠️ 주의: '질문하신', '요청하신', '이 정보를 바탕으로' 등 정중한 한국어 본문 시작 문구는 절대로 메타 독백으로 잡지 않음
+    const metaStartRegex = /^(?:(?:Okay|Ok|오케이|자,)\s*[,.]?\s*)?(?:추론\s*(?:내용|과정|단계|목표)|전문\s*분석|사전\s*정리된\s*(?:메모|내용)|생각해\s*보면|답변\s*(?:계획|전략)|내부\s*(?:검토|분석)|사용자\s*질문\s*분석\s*:)/i;
 
     const isMeta = isEnglishMonologue || isMetaTable || metaStartRegex.test(trimmed);
 
@@ -294,7 +295,9 @@ function splitThinkStreamInternal(raw, final = false, isReasoning = false, hasNa
  */
 function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThinking = false) {
     const res = splitThinkStreamInternal(raw, final, isReasoning, hasNativeThinking);
-    if (res.answer) {
+    // 🛡️ 추론 모드(EXAONE 등) 또는 모델 자체 생각 태그가 있을 때만 메타 독백 흡수 가드 가동
+    // 일반 대화 모드(Gemma 3 4B / 1B 등)에서는 모델 답변 본문이 절대 잘리거나 흡수되지 않고 100% 통과
+    if (res.answer && (isReasoning || hasNativeThinking)) {
         const meta = extractLeadingMetaThinking(res.answer, final);
         if (meta.absorbedThinking) {
             res.thinking = (res.thinking ? res.thinking + '\n\n' : '') + meta.absorbedThinking;
@@ -463,6 +466,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
     try {
         sendEvent({ type: 'start', model });
 
+        const resolvedNumCtx = Math.max(Number(options.num_ctx) || 4096, 2048);
         const payload = {
             model,
             messages,
@@ -471,9 +475,10 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
             options: Object.assign({
                 temperature: 0.7,
                 top_p: 0.9,
-                num_ctx: 4096, // VRAM 최적화 및 쾌속 응답 컨텍스트 (기본 4K)
                 num_predict: -1 // 대화 길이 축소 없이 끝까지 충실하고 풍부하게 생성 (상한 없음)
-            }, options)
+            }, options, {
+                num_ctx: resolvedNumCtx // VRAM 최적화 및 답변 잘림 방지 (최소 2048, 기본 4096)
+            })
         };
 
         if (Array.isArray(tools) && tools.length > 0) {
@@ -576,6 +581,10 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                 }
 
                 if (json.done) {
+                    if (json.done_reason) {
+                        const isTruncated = json.done_reason === 'length';
+                        console.log(`[aiStreamClient] 🏁 모델(${model}) 생성 완료: done_reason="${json.done_reason}"${isTruncated ? ' ⚠️ [컨텍스트 한계 도달]' : ''}, eval_count=${json.eval_count || 0}`);
+                    }
                     const hasNative = (nativeThinking.length > 0);
                     const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode, hasNative);
                     let finalThinking = (nativeThinking + (hasNative ? (finalPart.thinking ? ' ' + finalPart.thinking : '') : finalPart.thinking)).trim();

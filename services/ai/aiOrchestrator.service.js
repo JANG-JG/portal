@@ -161,29 +161,38 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
         });
     }
 
-    // 3. 시스템 프롬프트 빌드 (역할, 시간, 한국어 존댓말)
-    const systemPrompt = buildSystemPrompt(user);
+    // 3. 질문 의도에 따른 모델 및 파라미터 사전 선택 (모델에 맞는 최적 프롬프트 주입 목적)
+    const picked = selectChatModel(prompt, preference);
+    const activeModel = picked.model || getChatModel() || 'exaone4:opt';
+    const isReasoning = (picked.mode === 'reasoning' || activeModel.toLowerCase().includes('exaone'));
 
-    // 4. 대화 이력 구성 (안전한 최근 4~6턴)
+    // 4. 모델별 맞춤 경량 시스템 프롬프트 빌드 (Gemma 대화 모델은 토큰 60% 절약)
+    const systemPrompt = buildSystemPrompt(user, activeModel);
+
+    // 5. 대화 이력 구성 (컨텍스트 창 고갈 방지를 위한 스마트 토큰 버짓 제어)
     const messages = [
         { role: 'system', content: systemPrompt }
     ];
 
-    if (Array.isArray(history)) {
-        const safeHistory = history.slice(-6);
-        safeHistory.forEach(item => {
+    if (Array.isArray(history) && history.length > 0) {
+        // 최근 4턴 이내, 총 1,200자 이내로 스마트 슬라이싱하여 신규 답변 생성 공간을 충분히 확보
+        const recentHistory = history.slice(-4);
+        let accumulatedChars = 0;
+        const validItems = [];
+        for (let i = recentHistory.length - 1; i >= 0; i--) {
+            const item = recentHistory[i];
             if (item && item.role && item.content) {
-                messages.push({
+                const text = String(item.content).slice(0, 500);
+                if (accumulatedChars + text.length > 1200) break;
+                accumulatedChars += text.length;
+                validItems.unshift({
                     role: item.role === 'user' ? 'user' : 'assistant',
-                    content: String(item.content).slice(0, 1000)
+                    content: text
                 });
             }
-        });
+        }
+        messages.push(...validItems);
     }
-
-    // 5. 질문 의도에 따른 모델 및 파라미터 선택
-    const picked = selectChatModel(prompt, preference);
-    const activeModel = picked.model || getChatModel() || 'exaone4:opt';
 
     // ⚡ 주기적 하트비트 (: keepalive) 가동 (Ollama 모델 로딩/생성 중 네트워크 타임아웃 원천 차단)
     const heartbeatTimer = setInterval(() => {
@@ -205,9 +214,8 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
             if (typeof res.flush === 'function') res.flush();
         }
 
-        const isReasoning = (picked.mode === 'reasoning' || activeModel.toLowerCase().includes('exaone'));
         const streamOptions = {
-            num_ctx: picked.numCtx || 4096
+            num_ctx: Math.max(Number(picked.numCtx) || 4096, 2048)
         };
 
         // 6. [실측 최적화] EXAONE 4.0 1.2B가 데이터를 100% 인용하고 본문 출력을 누락하지 않도록 User 메시지 지침 보강

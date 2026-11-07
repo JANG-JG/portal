@@ -101,9 +101,14 @@ async function ensureModelSlot(targetModel) {
 function selectChatModel(prompt = '', preference = 'auto') {
     const text = String(prompt || '').trim();
     const cfg = adminCfg();
-    const chat = { model: getChatModel(), mode: 'chat', keepAlive: CHAT_KEEP_ALIVE, timeoutMs: 300000, numCtx: parseInt(cfg.chatNumCtx, 10) || CHAT_NUM_CTX };
-    const balanced = { model: getBalancedModel(), mode: 'balanced', keepAlive: BALANCED_KEEP_ALIVE, timeoutMs: 360000, numCtx: parseInt(cfg.balancedNumCtx, 10) || BALANCED_NUM_CTX };
-    const reasoning = { model: getReasoningModel(), mode: 'reasoning', keepAlive: REASONING_KEEP_ALIVE, timeoutMs: 420000, numCtx: parseInt(cfg.reasoningNumCtx, 10) || REASONING_NUM_CTX };
+    const resolveCtx = (val, fallback) => {
+        const parsed = parseInt(val, 10);
+        if (!isNaN(parsed) && parsed >= 2048) return parsed;
+        return fallback || DEFAULT_NUM_CTX;
+    };
+    const chat = { model: getChatModel(), mode: 'chat', keepAlive: CHAT_KEEP_ALIVE, timeoutMs: 300000, numCtx: resolveCtx(cfg.chatNumCtx, CHAT_NUM_CTX) };
+    const balanced = { model: getBalancedModel(), mode: 'balanced', keepAlive: BALANCED_KEEP_ALIVE, timeoutMs: 360000, numCtx: resolveCtx(cfg.balancedNumCtx, BALANCED_NUM_CTX) };
+    const reasoning = { model: getReasoningModel(), mode: 'reasoning', keepAlive: REASONING_KEEP_ALIVE, timeoutMs: 420000, numCtx: resolveCtx(cfg.reasoningNumCtx, REASONING_NUM_CTX) };
 
     if (preference === 'chat') return chat;
     if (preference === 'balanced') return balanced;

@@ -109,6 +109,12 @@ function initAiConfigDb() {
                 if (merged.welcomeMessage) merged.welcomeMessage = String(merged.welcomeMessage).replace(/\s*\(LG EXAONE 4\.0\)/g, '');
                 if (merged.heroDescription) merged.heroDescription = String(merged.heroDescription).replace(/LG EXAONE 4\.0 기반 로컬 AI/g, 'JG 포털 로컬 AI');
 
+                // 🛡️ 4B 모델(balancedNumCtx) 등 컨텍스트가 2048 미만(1024 등)으로 저장된 경우 답변 끊김 방지를 위해 4096으로 자동 보정
+                if (merged.balancedNumCtx && parseInt(merged.balancedNumCtx, 10) < 2048) {
+                    console.log(`[aiConfig.service] 🔧 balancedNumCtx(${merged.balancedNumCtx})가 너무 작아 답변 끊김 방지를 위해 4096으로 자동 보정합니다.`);
+                    merged.balancedNumCtx = 4096;
+                }
+
                 cachedConfig = sanitizeConfig(merged);
 
                 // DB에 누락된 키가 있으면 기본/병합값으로 저장
@@ -165,7 +171,14 @@ function sanitizeConfig(input = {}) {
 
     ['chatNumCtx', 'balancedNumCtx', 'reasoningNumCtx'].forEach((k) => {
         const n = parseInt(input[k], 10);
-        output[k] = (!isNaN(n) && n >= 512 && n <= 131072) ? n : 0;
+        // 🛡️ 컨텍스트 창 최소 2048 보장 (1024 등 과소 설정 시 답변 조기 중단 방지)
+        if (!isNaN(n) && n >= 2048 && n <= 131072) {
+            output[k] = n;
+        } else if (n > 0 && n < 2048) {
+            output[k] = 4096;
+        } else {
+            output[k] = 0;
+        }
     });
 
     ['chatModelLabel', 'balancedModelLabel', 'reasoningModelLabel'].forEach((k) => {
