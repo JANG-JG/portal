@@ -444,23 +444,44 @@
         return {
             element: row,
             appendThinking(token) {
-                if (isDone || !token || isThinkingClosed) return;
+                if (isDone || !token) return;
                 thinkingText += token;
-                renderThinking(thinkingEl ? undefined : true);
+                // 아직 답변 본문이 시작되지 않았으면 펼친 상태 유지, 시작되었으면 닫힌 상태로 내용만 누적
+                renderThinking(isThinkingClosed ? false : (thinkingEl ? undefined : true));
             },
             appendToken(token) {
                 if (isDone || !token) return;
                 if (!isThinkingClosed) { isThinkingClosed = true; renderThinking(false); }
-                accumulatedText += token;
-                row.dataset.rawText = accumulatedText;
+
+                // 🛡️ 혹시 토큰에 생각 태그가 포함되어 유입된 경우 자동 격리
+                let cleanToken = token;
+                const thoughtMatch = cleanToken.match(/<(think|thought|reasoning)>([\s\S]*?)<\/(think|thought|reasoning)>/i);
+                if (thoughtMatch) {
+                    thinkingText += (thinkingText ? '\n' : '') + thoughtMatch[2].trim();
+                    renderThinking(false);
+                    cleanToken = cleanToken.replace(/<(think|thought|reasoning)>[\s\S]*?<\/(think|thought|reasoning)>/gi, '');
+                }
+                cleanToken = cleanToken.replace(/<\/?(think|thought|reasoning)>/gi, '').replace(/\[\/?(think|thought|reasoning)\]/gi, '');
+
+                accumulatedText += cleanToken;
+                // 영단어 괄호 병기 실시간 정제
+                const displaySafeText = accumulatedText.replace(/([가-힣0-9]+)\s*\([a-zA-Z\s,.\/&'-]{2,}\)/g, '$1');
+                row.dataset.rawText = displaySafeText;
                 if (contentEl) {
-                    contentEl.innerHTML = renderAiMarkdown(accumulatedText) + '<span class="ai-typing-cursor"></span>';
+                    contentEl.innerHTML = renderAiMarkdown(displaySafeText) + '<span class="ai-typing-cursor"></span>';
                 }
             },
             complete(fullText, finalThinking) {
                 if (isDone) return;
                 isDone = true; isThinkingClosed = true;
-                if (typeof fullText === 'string') accumulatedText = fullText;
+                if (typeof fullText === 'string') {
+                    // 생각 태그 및 영단어 괄호 정제
+                    accumulatedText = fullText
+                        .replace(/<(think|thought|reasoning)>[\s\S]*?<\/(think|thought|reasoning)>/gi, '')
+                        .replace(/<\/?(think|thought|reasoning)>/gi, '')
+                        .replace(/\[\/?(think|thought|reasoning)\]/gi, '')
+                        .replace(/([가-힣0-9]+)\s*\([a-zA-Z\s,.\/&'-]{2,}\)/g, '$1');
+                }
                 if (typeof finalThinking === 'string') thinkingText = finalThinking;
                 renderThinking(false);
                 row.dataset.rawText = accumulatedText;

@@ -27,47 +27,77 @@ async function checkOllamaHealth(host = DEFAULT_OLLAMA_HOST) {
     }
 }
 
+const ALL_OPEN_TAGS = ['<think>', '<thought>', '[think]', '[thought]', '<reasoning>', '[reasoning]'];
+const ALL_CLOSE_TAGS = ['</think>', '</thought>', '[/think]', '[/thought]', '</reasoning>', '[/reasoning]'];
+const OPEN_TAG_REGEX = /<think>|<thought>|\[think\]|\[thought\]|<reasoning>|\[reasoning\]/i;
+const CLOSE_TAG_REGEX = /<\/think>|<\/thought>|\[\/think\]|\[\/thought\]|<\/reasoning>|\[\/reasoning\]/i;
+
 /**
- * EXAONE 4.0 및 추론 모델 사고 과정 태그 제거
+ * 🛡️ 경제/금융 등 전문 용어 뒤에 모델이 무의식적으로 병기한 영단어 괄호 자동 정제
+ * 예: "환율(FX Rate)이 오르면 외국인 자금(Capital Outflow) 유출" -> "환율이 오르면 외국인 자금 유출"
+ */
+function cleanEnglishParentheses(text) {
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/([가-힣0-9]+)\s*\([a-zA-Z\s,.\/&'-]{2,}\)/g, '$1');
+}
+
+/**
+ * EXAONE 4.0 및 추론 모델 사고 과정 태그 완전 제거
  */
 function stripThinkTags(text) {
     if (!text || typeof text !== 'string') return text;
-    return text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/^[\s\S]*?<\/think>/i, '').replace(/<think>[\s\S]*$/i, '');
+    return text
+        .replace(/<(think|thought|reasoning)>[\s\S]*?<\/(think|thought|reasoning)>/gi, '')
+        .replace(/\[(think|thought|reasoning)\][\s\S]*?\[\/(think|thought|reasoning)\]/gi, '')
+        .replace(/^[\s\S]*?<\/(think|thought|reasoning)>/i, '')
+        .replace(/^[\s\S]*?\[\/(think|thought|reasoning)\]/i, '')
+        .replace(/<(think|thought|reasoning)>[\s\S]*$/i, '')
+        .replace(/\[(think|thought|reasoning)\][\s\S]*$/i, '')
+        .replace(/<\/?(think|thought|reasoning)>/gi, '')
+        .replace(/\[\/?(think|thought|reasoning)\]/gi, '');
 }
 
 /**
  * 스트리밍 원문을 생각 과정(thinking)과 답변 본문(answer)으로 분리
- * - 1) <think>...</think> 태그 분리
- * - 2) 여는 태그 없이 </think>만 있는 템플릿 선주입 모델(EXAONE 4.0 등) 대응
- * - 3) 태그가 없는 경우: 추론 모드에서는 </think> 전까지 생각 스트림으로 버퍼링, 일반 모드에서는 본문 즉시 스트리밍
+ * - 1) <think>...</think>, <thought>...</thought>, [THINK]...[/THINK] 태그 분리
+ * - 2) 여는 태그 없이 닫는 태그만 있는 템플릿 선주입 모델(EXAONE 4.0 등) 대응
+ * - 3) 태그가 없는 경우: 추론 모드에서는 닫는 태그 전까지 생각 스트림으로 버퍼링, 일반 모드에서는 본문 즉시 스트리밍
  */
 function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThinking = false) {
     const text = raw || '';
     if (!text) return { thinking: '', answer: '', closed: false };
 
-    // 0) 네이티브 thinking 필드로 이미 생각을 수신한 경우:
-    // 이후 생성되는 raw 텍스트는 100% 답변 본문임
+    // 0) 네이티브 thinking 필드로 이미 생각을 수신 중이거나 완료한 경우:
+    // 혹시 text(content) 시작 부분에 남아있는 닫는 태그나 생각 잔여물이 있는지 검사
     if (hasNativeThinking) {
+        const closeMatch = text.match(CLOSE_TAG_REGEX);
+        if (closeMatch) {
+            const closeIdx = closeMatch.index;
+            const extraThinking = text.slice(0, closeIdx).trim();
+            const rawAns = text.slice(closeIdx + closeMatch[0].length);
+            const cleanAns = stripThinkTags(rawAns).replace(/^\s+/, '');
+            return { thinking: extraThinking, answer: cleanAns, closed: true };
+        }
         const clean = stripThinkTags(text).replace(/^\s+/, '');
         return { thinking: '', answer: clean, closed: true };
     }
 
-    const thinkTagRegex = /<think>/i;
-    const thinkCloseRegex = /<\/think>/i;
-    const hasOpen = thinkTagRegex.test(text);
-    const hasClose = thinkCloseRegex.test(text);
+    const openMatch = text.match(OPEN_TAG_REGEX);
+    const closeMatch = text.match(CLOSE_TAG_REGEX);
+    const hasOpen = !!openMatch;
+    const hasClose = !!closeMatch;
 
-    // 1) <think> 여는 태그가 있는 경우
+    // 1) 여는 태그가 있는 경우
     if (hasOpen) {
-        const openMatch = text.match(thinkTagRegex);
         const openIdx = openMatch.index;
         const afterOpen = text.slice(openIdx + openMatch[0].length);
-        const closeMatch = afterOpen.match(thinkCloseRegex);
+        const innerCloseMatch = afterOpen.match(CLOSE_TAG_REGEX);
 
-        if (closeMatch) {
-            const closeIdx = closeMatch.index;
+        if (innerCloseMatch) {
+            const closeIdx = innerCloseMatch.index;
             const thinking = afterOpen.slice(0, closeIdx).trim();
-            const answer = (stripThinkTags(afterOpen.slice(closeIdx + closeMatch[0].length)) || '').replace(/^\s+/, '');
+            const afterClose = afterOpen.slice(closeIdx + innerCloseMatch[0].length);
+            const answer = (stripThinkTags(afterClose) || '').replace(/^\s+/, '');
             return { thinking, answer, closed: true };
         }
 
@@ -76,11 +106,11 @@ function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThin
         }
 
         let hold = 0;
-        const closeTag = '</think>';
-        for (let k = closeTag.length - 1; k > 0; k--) {
-            if (afterOpen.toLowerCase().endsWith(closeTag.slice(0, k))) {
-                hold = k;
-                break;
+        for (const cTag of ALL_CLOSE_TAGS) {
+            for (let k = cTag.length - 1; k > 0; k--) {
+                if (afterOpen.toLowerCase().endsWith(cTag.slice(0, k))) {
+                    hold = Math.max(hold, k);
+                }
             }
         }
         return {
@@ -90,27 +120,27 @@ function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThin
         };
     }
 
-    // 2) 여는 태그 없이 닫는 태그 </think>만 있는 경우 (EXAONE 4.0 템플릿 선주입 대응)
+    // 2) 여는 태그 없이 닫는 태그만 있는 경우 (EXAONE 4.0 템플릿 선주입 대응)
     if (hasClose) {
-        const closeMatch = text.match(thinkCloseRegex);
         const closeIdx = closeMatch.index;
         const thinking = text.slice(0, closeIdx).trim();
-        const answer = (stripThinkTags(text.slice(closeIdx + closeMatch[0].length)) || '').replace(/^\s+/, '');
+        const afterClose = text.slice(closeIdx + closeMatch[0].length);
+        const answer = (stripThinkTags(afterClose) || '').replace(/^\s+/, '');
         return { thinking, answer, closed: true };
     }
 
     // 3) 태그가 아직 없는 상태
-    // 3-A) 추론 모델 모드: </think>가 나오기 전까지는 생각 스트림으로 버퍼링
+    // 3-A) 추론 모델 모드: 닫는 태그가 나오기 전까지는 생각 스트림으로 버퍼링
     if (isReasoning) {
         if (final) {
             return { thinking: (stripThinkTags(text) || '').trim(), answer: '', closed: false };
         }
         let holdTail = 0;
-        const closeTag = '</think>';
-        for (let k = closeTag.length - 1; k > 0; k--) {
-            if (text.toLowerCase().endsWith(closeTag.slice(0, k))) {
-                holdTail = k;
-                break;
+        for (const cTag of ALL_CLOSE_TAGS) {
+            for (let k = cTag.length - 1; k > 0; k--) {
+                if (text.toLowerCase().endsWith(cTag.slice(0, k))) {
+                    holdTail = Math.max(holdTail, k);
+                }
             }
         }
         return {
@@ -120,17 +150,17 @@ function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThin
         };
     }
 
-    // 3-B) 일반 대화 모델 모드 -> 답변 본문(answer)으로 즉시 스트리밍
+    // 3-B) 일반 대화 모델 모드 -> 여는 태그 접두사 확인 후 답변 본문(answer)으로 즉시 스트리밍
     if (final) {
         return { thinking: '', answer: (stripThinkTags(text) || '').trim(), closed: false };
     }
 
     let holdOpen = 0;
-    const openTag = '<think>';
-    for (let k = openTag.length - 1; k > 0; k--) {
-        if (text.toLowerCase().endsWith(openTag.slice(0, k))) {
-            holdOpen = k;
-            break;
+    for (const oTag of ALL_OPEN_TAGS) {
+        for (let k = oTag.length - 1; k > 0; k--) {
+            if (text.toLowerCase().endsWith(oTag.slice(0, k))) {
+                holdOpen = Math.max(holdOpen, k);
+            }
         }
     }
     const cleanAnswer = text.slice(0, text.length - holdOpen);
@@ -146,7 +176,7 @@ async function streamAnswerFromThinking({ messages, thinkingText, model, keepAli
     const lastUserMsg = (Array.isArray(messages) ? [...messages].reverse().find(m => m && m.role === 'user') : null);
     const userPrompt = lastUserMsg ? String(lastUserMsg.content).replace(/\[참고용 실시간[\s\S]*?\[사용자 질문\]/i, '').replace(/[\r\n]+/g, ' ').trim() : '사용자 질문';
 
-    const promptForRecovery = `사용자가 다음과 같은 질문을 하였고, 전문 분석 추론이 완료되었습니다.\n\n[사용자 질문]\n${userPrompt.slice(0, 500)}\n\n[전문 분석 추론 내용]\n${thinkingText.slice(0, 3000)}\n\n위 전문 분석 추론 내용을 바탕으로, 사용자에게 정중하고 친절한 한국어 존댓말(~해요, ~합니다)로 풍부하고 완성도 높은 최종 분석 답변을 상세하게 작성해 주세요. (추가 안내나 잡담 없이 완성된 마크다운 본문만 바로 작성해 주세요.)`;
+    const promptForRecovery = `사용자가 다음과 같은 질문을 하였고, 전문 분석 추론이 완료되었습니다.\n\n[사용자 질문]\n${userPrompt.slice(0, 500)}\n\n[전문 분석 추론 내용]\n${thinkingText.slice(0, 3000)}\n\n위 전문 분석 추론 내용을 바탕으로, 사용자에게 정중하고 친절한 한국어 존댓말(~해요, ~합니다)로 풍부하고 완성도 높은 최종 분석 답변을 상세하게 작성해 주세요. (불필요한 영어 단어나 괄호 영문 병기는 일체 쓰지 마시고, 100% 자연스러운 우리말 완성된 마크다운 본문만 바로 작성해 주세요.)`;
 
     // EXAONE 단일 모델로 즉시 복구 (gemma 등 타 모델 로딩 방지)
     const candidateModels = [model, 'exaone4:opt'].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
@@ -338,15 +368,15 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                     const hasNative = (nativeThinking.length > 0);
                     const part = splitThinkStream(rawAnswer, false, isReasoningMode, hasNative);
 
-                    // 생각 과정 스트리밍 (네이티브 thinking이 없는 모델일 때 <think> 태그 분리)
-                    if (!hasNative && part.thinking.length > sentThinking.length && part.thinking.startsWith(sentThinking)) {
+                    // 생각 과정 스트리밍
+                    if (part.thinking.length > sentThinking.length && part.thinking.startsWith(sentThinking)) {
                         const tDelta = part.thinking.slice(sentThinking.length);
                         sentThinking = part.thinking;
                         sendEvent({ type: 'thinking', delta: tDelta, token: tDelta });
                     }
 
-                    // 답변 본문 스트리밍
-                    const visible = part.answer;
+                    // 답변 본문 실시간 스트리밍 (영단어 괄호 병기 자동 정제)
+                    const visible = cleanEnglishParentheses(part.answer);
                     if (visible.length > sentAnswer.length && visible.startsWith(sentAnswer)) {
                         const aDelta = visible.slice(sentAnswer.length);
                         sentAnswer = visible;
@@ -357,8 +387,8 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                 if (json.done) {
                     const hasNative = (nativeThinking.length > 0);
                     const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode, hasNative);
-                    let finalThinking = (nativeThinking + (hasNative ? '' : finalPart.thinking)).trim();
-                    let finalAnswer = finalPart.answer.trim();
+                    let finalThinking = (nativeThinking + (hasNative ? (finalPart.thinking ? ' ' + finalPart.thinking : '') : finalPart.thinking)).trim();
+                    let finalAnswer = cleanEnglishParentheses(finalPart.answer.trim());
 
                     // 🛡️ [생각 후 본문 답변 미출력 방어 안전망]
                     // 생각 내용이 존재하는데, 본문 답변이 비어있거나 점/기호뿐인 경우 (유효 글자 수 15자 미만)
@@ -375,8 +405,8 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                             sendEvent
                         });
                         if (recovered) {
-                            finalAnswer = recovered;
-                            sentAnswer = recovered;
+                            finalAnswer = cleanEnglishParentheses(recovered);
+                            sentAnswer = finalAnswer;
                         }
                     } else {
                         if (finalAnswer.length > sentAnswer.length && finalAnswer.startsWith(sentAnswer)) {
@@ -388,7 +418,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
 
                     sendEvent({
                         type: 'done',
-                        fullText: finalAnswer || sentAnswer || (meaningfulAnswerLen >= 15 ? rawAnswer : '분석 결과를 정리하는 중 일시적인 지연이 발생했습니다. 다시 한번 질문해 주세요.'),
+                        fullText: finalAnswer || sentAnswer || (meaningfulAnswerLen >= 15 ? cleanEnglishParentheses(rawAnswer) : '분석 결과를 정리하는 중 일시적인 지연이 발생했습니다. 다시 한번 질문해 주세요.'),
                         thinkingText: finalThinking,
                         totalDuration: json.total_duration,
                         evalCount: json.eval_count
@@ -400,9 +430,10 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
         }
 
         if (!res.writableEnded) {
-            const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode);
-            let finalThinking = (nativeThinking + finalPart.thinking).trim();
-            let finalAnswer = finalPart.answer.trim();
+            const hasNative = (nativeThinking.length > 0);
+            const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode, hasNative);
+            let finalThinking = (nativeThinking + (hasNative ? (finalPart.thinking ? ' ' + finalPart.thinking : '') : finalPart.thinking)).trim();
+            let finalAnswer = cleanEnglishParentheses(finalPart.answer.trim());
 
             const meaningfulAnswerLen = finalAnswer.replace(/[^\w\uAC00-\uD7A3]/g, '').length;
             if (meaningfulAnswerLen < 15 && finalThinking.length >= 25 && !abortController.signal.aborted) {
@@ -417,8 +448,8 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                     sendEvent
                 });
                 if (recovered) {
-                    finalAnswer = recovered;
-                    sentAnswer = recovered;
+                    finalAnswer = cleanEnglishParentheses(recovered);
+                    sentAnswer = finalAnswer;
                 }
             } else {
                 if (finalAnswer.length > sentAnswer.length && finalAnswer.startsWith(sentAnswer)) {
@@ -430,7 +461,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
 
             sendEvent({
                 type: 'done',
-                fullText: finalAnswer || sentAnswer || rawAnswer,
+                fullText: finalAnswer || sentAnswer || cleanEnglishParentheses(rawAnswer),
                 thinkingText: finalThinking
             });
             res.end();

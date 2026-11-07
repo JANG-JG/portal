@@ -183,10 +183,10 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
     // 6. [실측 최적화] EXAONE 4.0 1.2B가 데이터를 100% 인용하고 본문 출력을 누락하지 않도록 User 메시지 지침 보강
     let finalUserMessage = prompt;
     if (toolResults.length > 0) {
-        finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 대화 길이를 요약하거나 축소하지 말고, 필요한 세부 사항과 수치를 충분히 담아 풍부하고 상세하게 설명해 주세요. (영문 시스템 함수명이나 도구 호출명은 답변에 절대 언급하지 마세요):\n"${prompt}"`;
+        finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 대화 길이를 요약하거나 축소하지 말고, 필요한 세부 사항과 수치를 충분히 담아 풍부하고 상세하게 설명해 주세요. (영단어 병기나 시스템 함수명은 절대 쓰지 마시고 100% 쉬운 우리말로만 답변하세요):\n"${prompt}"`;
     }
     if (isReasoning) {
-        finalUserMessage += `\n\n(참고: 생각(Thinking) 과정을 거친 후, 반드시 생각 태그 바깥에 사용자에게 보여줄 친절하고 상세한 최종 분석 답변 본문을 한국어로 풍부하게 작성해 주세요. 생각만 하고 끝마치지 마세요.)`;
+        finalUserMessage += `\n\n(작성 지침: 생각(Thinking) 과정은 생각 영역 안에서만 마무리하고, 반드시 생각 태그 바깥에 사용자에게 보여줄 친절하고 상세한 최종 분석 답변 본문을 100% 한국어로 풍부하게 작성해 주세요. 영단어 괄호 병기는 일체 하지 마시고 생각만 하고 끝마치지 마세요.)`;
     }
 
     messages.push({ role: 'user', content: finalUserMessage });
