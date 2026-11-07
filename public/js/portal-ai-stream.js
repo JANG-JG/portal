@@ -75,7 +75,7 @@
 
                 for (const line of lines) {
                     const trimmed = line.trim();
-                    if (!trimmed) {
+                    if (!trimmed || trimmed.startsWith(':')) {
                         currentEventType = 'message';
                         continue;
                     }

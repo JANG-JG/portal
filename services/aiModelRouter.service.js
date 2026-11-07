@@ -71,19 +71,31 @@ function isDualMode() {
  * 실패해도 본 요청은 그대로 진행 (best-effort)
  */
 async function ensureModelSlot(targetModel) {
-    if (!targetModel || typeof fetch !== 'function') return;
+    if (!targetModel || typeof fetch !== 'function') return { isAlreadyLoaded: true };
     try {
         const psRes = await fetch(new URL('/api/ps', OLLAMA_HOST), { signal: AbortSignal.timeout(5000) });
         const loaded = ((await psRes.json()).models || []).map(m => m.name || m.model).filter(Boolean);
-        const others = loaded.filter(name => name !== targetModel);
-        await Promise.all(others.map(name => fetch(new URL('/api/generate', OLLAMA_HOST), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: name, keep_alive: 0 }),
-            signal: AbortSignal.timeout(30000)
-        }).catch(() => null)));
+        const isMatch = (name, target) => {
+            if (!name || !target) return false;
+            if (name === target) return true;
+            const normName = name.replace(/:latest$/, '');
+            const normTarget = target.replace(/:latest$/, '');
+            return normName === normTarget || normName.startsWith(normTarget + ':') || normTarget.startsWith(normName + ':');
+        };
+        const isAlreadyLoaded = loaded.some(name => isMatch(name, targetModel));
+        const others = loaded.filter(name => !isMatch(name, targetModel));
+        if (others.length > 0) {
+            await Promise.all(others.map(name => fetch(new URL('/api/generate', OLLAMA_HOST), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: name, keep_alive: 0 }),
+                signal: AbortSignal.timeout(30000)
+            }).catch(() => null)));
+        }
+        return { isAlreadyLoaded };
     } catch (e) {
         console.warn('[AI 라우터] 모델 자리 확보 실패(무시):', e.message);
+        return { isAlreadyLoaded: true };
     }
 }
 

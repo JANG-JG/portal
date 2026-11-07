@@ -130,6 +130,15 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
         return res.end();
     }
 
+    // ⚡ SSE 실시간 스트리밍 응답 헤더 즉시 수립 (프록시/클라우드플레어 1차 타임아웃 차단)
+    if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders?.();
+    }
+
     // 2. 필요 도구 판별 및 병렬 데이터 수집
     const neededTools = resolveNeededTools(prompt, user);
     const toolResults = [];
@@ -175,33 +184,56 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
     // 5. 질문 의도에 따른 모델 및 파라미터 선택
     const picked = selectChatModel(prompt, preference);
     const activeModel = picked.model || getChatModel() || 'exaone4:opt';
-    await ensureModelSlot(activeModel);
-    const isReasoning = (picked.mode === 'reasoning' || activeModel.toLowerCase().includes('exaone'));
-    const streamOptions = {
-        num_ctx: picked.numCtx || 32768
-    };
 
-    // 6. [실측 최적화] EXAONE 4.0 1.2B가 데이터를 100% 인용하고 본문 출력을 누락하지 않도록 User 메시지 지침 보강
-    let finalUserMessage = prompt;
-    if (toolResults.length > 0) {
-        finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 대화 길이를 요약하거나 축소하지 말고, 필요한 세부 사항과 수치를 충분히 담아 풍부하고 상세하게 설명해 주세요. (시스템 함수명이나 영단어를 섞지 마시고, 100% 매끄럽고 친근한 순수 우리말 한국어로 설명해 주세요):\n"${prompt}"`;
+    // ⚡ 주기적 하트비트 (: keepalive) 가동 (Ollama 모델 로딩/생성 중 네트워크 타임아웃 원천 차단)
+    const heartbeatTimer = setInterval(() => {
+        if (!res.writableEnded) {
+            res.write(': keepalive\n\n');
+            if (typeof res.flush === 'function') res.flush();
+        }
+    }, 4000);
+
+    try {
+        const slotResult = await ensureModelSlot(activeModel);
+        if (slotResult && slotResult.isAlreadyLoaded === false) {
+            const friendlyName = (activeModel.includes('4b') ? '⚖️ 균형 대화 (4B)' : activeModel.includes('1b') ? '⚡ 빠른 대화 (1B)' : '🧠 깊은 생각 (EXAONE)');
+            res.write(`data: ${JSON.stringify({
+                type: 'thinking',
+                delta: `[안내] ${friendlyName} 모델을 메모리에 새로 불러오는 중입니다... ⏳\n(모델 전환 시 약 30~50초 소요됩니다. 잠시만 기다려 주세요 😊)\n\n`,
+                token: `[안내] ${friendlyName} 모델을 메모리에 새로 불러오는 중입니다... ⏳\n(모델 전환 시 약 30~50초 소요됩니다. 잠시만 기다려 주세요 😊)\n\n`
+            })}\n\n`);
+            if (typeof res.flush === 'function') res.flush();
+        }
+
+        const isReasoning = (picked.mode === 'reasoning' || activeModel.toLowerCase().includes('exaone'));
+        const streamOptions = {
+            num_ctx: picked.numCtx || 4096
+        };
+
+        // 6. [실측 최적화] EXAONE 4.0 1.2B가 데이터를 100% 인용하고 본문 출력을 누락하지 않도록 User 메시지 지침 보강
+        let finalUserMessage = prompt;
+        if (toolResults.length > 0) {
+            finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 대화 길이를 요약하거나 축소하지 말고, 필요한 세부 사항과 수치를 충분히 담아 풍부하고 상세하게 설명해 주세요. (시스템 함수명이나 영단어를 섞지 마시고, 100% 매끄럽고 친근한 순수 우리말 한국어로 설명해 주세요):\n"${prompt}"`;
+        }
+        if (isReasoning) {
+            finalUserMessage += `\n\n(작성 지침: 생각과 답변 모두 100% 한국어로 진행하세요. 생각은 1~2문장으로 한국어로만 간결히 정리하고, 본문에서는 표나 'Done!' 메모만 남기지 말고 곧바로 사용자에게 건네는 완성된 한국어 존댓말 본문으로 충실하게 작성해 주세요.)`;
+        }
+
+        messages.push({ role: 'user', content: finalUserMessage });
+
+        // 7. SSE 실시간 스트리밍 실행 (대화 길이 제한 없이 풍부하게 끝까지 생성)
+        await streamChatToClient({
+            req,
+            res,
+            model: activeModel,
+            messages,
+            options: streamOptions,
+            keepAlive: picked.keepAlive || '24h',
+            isReasoningMode: isReasoning
+        });
+    } finally {
+        clearInterval(heartbeatTimer);
     }
-    if (isReasoning) {
-        finalUserMessage += `\n\n(작성 지침: 생각과 답변 모두 100% 한국어로 진행하세요. 생각은 1~2문장으로 한국어로만 간결히 정리하고, 본문에서는 표나 'Done!' 메모만 남기지 말고 곧바로 사용자에게 건네는 완성된 한국어 존댓말 본문으로 충실하게 작성해 주세요.)`;
-    }
-
-    messages.push({ role: 'user', content: finalUserMessage });
-
-    // 7. SSE 실시간 스트리밍 실행 (대화 길이 제한 없이 풍부하게 끝까지 생성)
-    await streamChatToClient({
-        req,
-        res,
-        model: activeModel,
-        messages,
-        options: streamOptions,
-        keepAlive: picked.keepAlive || '24h',
-        isReasoningMode: isReasoning
-    });
 }
 
 module.exports = {

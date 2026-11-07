@@ -459,7 +459,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
             options: Object.assign({
                 temperature: 0.7,
                 top_p: 0.9,
-                num_ctx: 32768, // 워크스테이션 VRAM 활용을 극대화한 32K 컨텍스트
+                num_ctx: 4096, // VRAM 최적화 및 쾌속 응답 컨텍스트 (기본 4K)
                 num_predict: -1 // 대화 길이 축소 없이 끝까지 충실하고 풍부하게 생성 (상한 없음)
             }, options)
         };

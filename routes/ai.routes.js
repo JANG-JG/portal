@@ -120,6 +120,8 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
 
 // 3. 가족 AI 챗봇 실시간 대화 (입력 검증 + 레이트 리미트 + 동시성 보호 + SSE 스트리밍)
 router.post('/api/ai/chat', authenticateToken, async (req, res) => {
+    req.setTimeout(600000);
+    res.setTimeout(600000);
     try {
         const { message, history, stream, modelPref } = req.body;
         if (!message || typeof message !== 'string' || !message.trim()) {
