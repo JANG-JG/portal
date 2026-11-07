@@ -13,7 +13,7 @@ const { decryptMemoText, decryptCalendarText } = require('../crypto.service');
 const { classifyBloodPressure } = require('../bloodClassifier.util');
 const { searchWikiContent, getWikiSummary } = require('../wikiSummary.service');
 const { searchAlbumPhotos, getRecentAlbumActivity } = require('../albumSummary.service');
-const { getTopNewsIssues, searchNewsByKeyword, getRecentBreaking } = require('../newsHeadline.service');
+const { getTopNewsIssues, searchNewsByKeyword, getRecentBreaking, getNateRankings } = require('../newsHeadline.service');
 const { ADMIN_USERS } = require('../../config/constants');
 
 /** 🛡️ 관리자 권한 확인 헬퍼 */
@@ -223,7 +223,10 @@ async function fetchNewsTop(keyword = null) {
                 return { available: true, keyword: keyword.trim(), news: items };
             }
         }
-        let topNews = await getTopNewsIssues(today, 5);
+        let topNews = await getNateRankings(5);
+        if (!Array.isArray(topNews) || topNews.length === 0) {
+            topNews = await getTopNewsIssues(today, 5);
+        }
         if (!Array.isArray(topNews) || topNews.length === 0) {
             topNews = await getRecentBreaking(24, 5);
         }

@@ -260,18 +260,31 @@ function getLatestByCategories(categories = [], limit = 5) {
 }
 
 /**
- * 뉴스룸 일일 날씨 요약 (daily_weather: 최저/최고, 바람, 자외선 등) - 오늘 없으면 최신 1건
- * @returns {Promise<{date: string, weather_info: string}|null>}
+ * 네이트 실시간 랭킹 Top N 기사 및 핵심 요약 조회 (AI 심층 브리핑 연동)
+ * @returns {Promise<object[]>}
  */
-function getDailyWeatherSummary(todayKst) {
-    if (!newsDb) return Promise.resolve(null);
+function getNateRankings(limit = 5) {
+    if (!newsDb) return Promise.resolve([]);
     return new Promise(resolve => {
-        newsDb.get(
-            'SELECT date, weather_info FROM daily_weather WHERE date <= ? ORDER BY date DESC LIMIT 1',
-            [todayKst],
-            (err, row) => resolve(err || !row ? null : row)
+        newsDb.all(
+            `SELECT rank, title, media_name, summary, rank_change, collected_at
+             FROM nate_ranking
+             ORDER BY id DESC, rank ASC
+             LIMIT ?`,
+            [limit],
+            (err, rows) => {
+                if (err || !rows) return resolve([]);
+                resolve(rows);
+            }
         );
     });
 }
 
-module.exports = { getTopNewsIssues, searchNewsByKeyword, getRecentBreaking, getLatestByCategories, getDailyWeatherSummary };
+module.exports = {
+    getTopNewsIssues,
+    searchNewsByKeyword,
+    getRecentBreaking,
+    getLatestByCategories,
+    getDailyWeatherSummary,
+    getNateRankings,
+};
