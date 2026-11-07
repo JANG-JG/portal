@@ -41,9 +41,16 @@ function stripThinkTags(text) {
  * - 2) 여는 태그 없이 </think>만 있는 템플릿 선주입 모델(EXAONE 4.0 등) 대응
  * - 3) 태그가 없는 경우: 추론 모드에서는 </think> 전까지 생각 스트림으로 버퍼링, 일반 모드에서는 본문 즉시 스트리밍
  */
-function splitThinkStream(raw, final = false, isReasoning = false) {
+function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThinking = false) {
     const text = raw || '';
     if (!text) return { thinking: '', answer: '', closed: false };
+
+    // 0) 네이티브 thinking 필드로 이미 생각을 수신한 경우:
+    // 이후 생성되는 raw 텍스트는 100% 답변 본문임
+    if (hasNativeThinking) {
+        const clean = stripThinkTags(text).replace(/^\s+/, '');
+        return { thinking: '', answer: clean, closed: true };
+    }
 
     const thinkTagRegex = /<think>/i;
     const thinkCloseRegex = /<\/think>/i;
@@ -93,7 +100,7 @@ function splitThinkStream(raw, final = false, isReasoning = false) {
     }
 
     // 3) 태그가 아직 없는 상태
-    // 3-A) 추론 모델 모드: </think>가 나오기 전까지는 생각 스트림으로 처리
+    // 3-A) 추론 모델 모드: </think>가 나오기 전까지는 생각 스트림으로 버퍼링
     if (isReasoning) {
         if (final) {
             return { thinking: (stripThinkTags(text) || '').trim(), answer: '', closed: false };
@@ -135,72 +142,82 @@ function splitThinkStream(raw, final = false, isReasoning = false) {
  * 생각 내용을 바탕으로 사용자에게 제공할 최종 본문을 즉시 이어서 실시간 스트리밍하는 2차 복구 안전망
  */
 async function streamAnswerFromThinking({ messages, thinkingText, model, keepAlive, options, abortSignal, sendEvent }) {
-    try {
-        const followUpMessages = messages.concat([
-            {
-                role: 'assistant',
-                content: `<think>\n${thinkingText.slice(-3000)}\n</think>\n`
-            },
-            {
-                role: 'user',
-                content: '위 생각을 바탕으로, 사용자에게 친절하고 상세한 최종 분석 답변 본문을 한국어로 작성해 주세요. (추가 생각 과정이나 <think> 태그 없이 완성된 분석 본문만 작성해 주세요.)'
+    // 마지막 사용자 질문 추출
+    const lastUserMsg = (Array.isArray(messages) ? [...messages].reverse().find(m => m && m.role === 'user') : null);
+    const userPrompt = lastUserMsg ? String(lastUserMsg.content).replace(/\[참고용 실시간[\s\S]*?\[사용자 질문\]/i, '').replace(/[\r\n]+/g, ' ').trim() : '사용자 질문';
+
+    const promptForRecovery = `사용자가 다음과 같은 질문을 하였고, 전문 분석 추론이 완료되었습니다.\n\n[사용자 질문]\n${userPrompt.slice(0, 500)}\n\n[전문 분석 추론 내용]\n${thinkingText.slice(0, 3000)}\n\n위 전문 분석 추론 내용을 바탕으로, 사용자에게 정중하고 친절한 한국어 존댓말(~해요, ~합니다)로 풍부하고 완성도 높은 최종 분석 답변을 상세하게 작성해 주세요. (추가 안내나 잡담 없이 완성된 마크다운 본문만 바로 작성해 주세요.)`;
+
+    // 1순위: 한국어 작문력과 속도가 뛰어난 gemma2:jg, 폴백: 원본 모델
+    const candidateModels = ['gemma2:jg', 'exaone3.5:2.4b', model].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
+
+    for (const targetModel of candidateModels) {
+        try {
+            console.log(`[aiStreamClient] 2차 본문 완성 안전망 가동 (모델: ${targetModel})...`);
+            const res = await fetch(`${DEFAULT_OLLAMA_HOST}/api/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: targetModel,
+                    messages: [
+                        { role: 'user', content: promptForRecovery }
+                    ],
+                    stream: true,
+                    keep_alive: keepAlive || '24h',
+                    options: Object.assign({
+                        temperature: 0.7,
+                        top_p: 0.9,
+                        num_predict: -1
+                    }, options)
+                }),
+                signal: abortSignal
+            });
+
+            if (!res.ok) {
+                console.warn(`[aiStreamClient] 2차 본문 모델(${targetModel}) 실패 (HTTP ${res.status}), 다음 후보 시도...`);
+                continue;
             }
-        ]);
 
-        const res = await fetch(`${DEFAULT_OLLAMA_HOST}/api/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model,
-                messages: followUpMessages,
-                stream: true,
-                think: false,
-                keep_alive: keepAlive || '24h',
-                options: Object.assign({
-                    temperature: 0.6,
-                    top_p: 0.9,
-                    num_predict: -1
-                }, options)
-            }),
-            signal: abortSignal
-        });
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buffer = '';
+            let recoveryAnswer = '';
 
-        if (!res.ok) return '';
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        let recoveryAnswer = '';
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
-
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed) continue;
-                try {
-                    const json = JSON.parse(trimmed);
-                    const delta = json.message?.content || json.response || '';
-                    if (delta) {
-                        const cleanDelta = delta.replace(/<\/?think>/gi, '');
-                        if (cleanDelta) {
-                            recoveryAnswer += cleanDelta;
-                            sendEvent({ type: 'content', delta: cleanDelta, token: cleanDelta });
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed) continue;
+                    try {
+                        const json = JSON.parse(trimmed);
+                        const delta = json.message?.content || json.response || '';
+                        if (delta) {
+                            const cleanDelta = delta.replace(/<\/?think>/gi, '');
+                            if (cleanDelta) {
+                                recoveryAnswer += cleanDelta;
+                                sendEvent({ type: 'content', delta: cleanDelta, token: cleanDelta });
+                            }
                         }
-                    }
-                } catch (e) {}
+                    } catch (e) {}
+                }
             }
+
+            const trimmedAns = recoveryAnswer.trim();
+            if (trimmedAns.length >= 20) {
+                console.log(`[aiStreamClient] ✅ 2차 본문 자동 완성 성공 (${targetModel}, ${trimmedAns.length}자)`);
+                return trimmedAns;
+            }
+        } catch (e) {
+            console.warn(`[aiStreamClient] 2차 본문 시도 중 에러 (${targetModel}):`, e.message);
         }
-        return recoveryAnswer.trim();
-    } catch (e) {
-        console.warn('[aiStreamClient] 2차 본문 완성 안전망 실패(무시):', e.message);
-        return '';
     }
+    return '';
 }
 
 /**
@@ -317,10 +334,11 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                 const delta = json.message?.content || json.response || '';
                 if (delta) {
                     rawAnswer += delta;
-                    const part = splitThinkStream(rawAnswer, false, isReasoningMode);
+                    const hasNative = (nativeThinking.length > 0);
+                    const part = splitThinkStream(rawAnswer, false, isReasoningMode, hasNative);
 
-                    // 생각 과정 스트리밍
-                    if (part.thinking.length > sentThinking.length && part.thinking.startsWith(sentThinking)) {
+                    // 생각 과정 스트리밍 (네이티브 thinking이 없는 모델일 때 <think> 태그 분리)
+                    if (!hasNative && part.thinking.length > sentThinking.length && part.thinking.startsWith(sentThinking)) {
                         const tDelta = part.thinking.slice(sentThinking.length);
                         sentThinking = part.thinking;
                         sendEvent({ type: 'thinking', delta: tDelta, token: tDelta });
@@ -336,8 +354,9 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                 }
 
                 if (json.done) {
-                    const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode);
-                    let finalThinking = (nativeThinking + finalPart.thinking).trim();
+                    const hasNative = (nativeThinking.length > 0);
+                    const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode, hasNative);
+                    let finalThinking = (nativeThinking + (hasNative ? '' : finalPart.thinking)).trim();
                     let finalAnswer = finalPart.answer.trim();
 
                     // 🛡️ [생각 후 본문 답변 미출력 방어 안전망]
@@ -368,7 +387,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
 
                     sendEvent({
                         type: 'done',
-                        fullText: finalAnswer || sentAnswer || rawAnswer,
+                        fullText: finalAnswer || sentAnswer || (meaningfulAnswerLen >= 15 ? rawAnswer : '분석 결과를 정리하는 중 일시적인 지연이 발생했습니다. 다시 한번 질문해 주세요.'),
                         thinkingText: finalThinking,
                         totalDuration: json.total_duration,
                         evalCount: json.eval_count
