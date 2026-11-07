@@ -421,7 +421,7 @@
                     if (!streamingBubble) {
                         streamingBubble = window.JgAiRender ? window.JgAiRender.createStreamingBubble(messageContainerEl, aiTimestamp) : null;
                     }
-                    if (streamingBubble) streamingBubble.complete(fullText, doneData && doneData.thinkingText);
+                    if (streamingBubble) streamingBubble.complete(fullText, doneData && doneData.thinkingText, doneData);
                     currentChatHistory.push({ role: 'assistant', content: fullText, timestamp: aiTimestamp });
                     if (window.JgAiHistory) {
                         window.JgAiHistory.addMessageToActiveSession('assistant', fullText, aiTimestamp);

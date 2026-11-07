@@ -33,12 +33,26 @@ const OPEN_TAG_REGEX = /<think>|<thought>|\[think\]|\[thought\]|<reasoning>|\[re
 const CLOSE_TAG_REGEX = /<\/think>|<\/thought>|\[\/think\]|\[\/thought\]|<\/reasoning>|\[\/reasoning\]/i;
 
 /**
- * 🛡️ 경제/금융 등 전문 용어 뒤에 모델이 무의식적으로 병기한 영단어 괄호 자동 정제
- * 예: "환율(FX Rate)이 오르면 외국인 자금(Capital Outflow) 유출" -> "환율이 오르면 외국인 자금 유출"
+ * 🏷️ 전문/경제/기술 영단어가 단독으로 쓰였을 때 한글단어(영단어) 형식으로 친절하게 보완
+ * (사용자가 원한 대로 영단어를 쓸 때 한글단어(영단어) 형태로 나오도록 지원)
  */
-function cleanEnglishParentheses(text) {
+function ensureKoreanEnglishPair(text) {
     if (!text || typeof text !== 'string') return text;
-    return text.replace(/([가-힣0-9]+)\s*\([a-zA-Z\s,.\/&'-]{2,}\)/g, '$1');
+    const pairs = [
+        { regex: /(?<![가-힣\(\/])\bFX\b(?![가-힣\)])/g, repl: '외환(FX)' },
+        { regex: /(?<![가-힣\(\/])\bKOSPI\b(?![가-힣\)])/g, repl: '코스피(KOSPI)' },
+        { regex: /(?<![가-힣\(\/])\bKOSDAQ\b(?![가-힣\)])/g, repl: '코스닥(KOSDAQ)' },
+        { regex: /(?<![가-힣\(\/])\bFED\b(?![가-힣\)])/gi, repl: '미 연준(Fed)' },
+        { regex: /(?<![가-힣\(\/])\bGDP\b(?![가-힣\)])/g, repl: '국내총생산(GDP)' },
+        { regex: /(?<![가-힣\(\/])\bCPI\b(?![가-힣\)])/g, repl: '소비자물가지수(CPI)' },
+        { regex: /(?<![가-힣\(\/])\bFOMC\b(?![가-힣\)])/g, repl: '연방공개시장위원회(FOMC)' },
+        { regex: /(?<![가-힣\(\/])\bBOK\b(?![가-힣\)])/g, repl: '한국은행(BOK)' }
+    ];
+    let result = text;
+    for (const p of pairs) {
+        result = result.replace(p.regex, p.repl);
+    }
+    return result;
 }
 
 /**
@@ -176,7 +190,7 @@ async function streamAnswerFromThinking({ messages, thinkingText, model, keepAli
     const lastUserMsg = (Array.isArray(messages) ? [...messages].reverse().find(m => m && m.role === 'user') : null);
     const userPrompt = lastUserMsg ? String(lastUserMsg.content).replace(/\[참고용 실시간[\s\S]*?\[사용자 질문\]/i, '').replace(/[\r\n]+/g, ' ').trim() : '사용자 질문';
 
-    const promptForRecovery = `사용자가 다음과 같은 질문을 하였고, 전문 분석 추론이 완료되었습니다.\n\n[사용자 질문]\n${userPrompt.slice(0, 500)}\n\n[전문 분석 추론 내용]\n${thinkingText.slice(0, 3000)}\n\n위 전문 분석 추론 내용을 바탕으로, 사용자에게 정중하고 친절한 한국어 존댓말(~해요, ~합니다)로 풍부하고 완성도 높은 최종 분석 답변을 상세하게 작성해 주세요. (불필요한 영어 단어나 괄호 영문 병기는 일체 쓰지 마시고, 100% 자연스러운 우리말 완성된 마크다운 본문만 바로 작성해 주세요.)`;
+    const promptForRecovery = `사용자가 다음과 같은 질문을 하였고, 전문 분석 추론이 완료되었습니다.\n\n[사용자 질문]\n${userPrompt.slice(0, 500)}\n\n[전문 분석 추론 내용]\n${thinkingText.slice(0, 3000)}\n\n위 전문 분석 추론 내용을 바탕으로, 사용자에게 정중하고 친절한 한국어 존댓말(~해요, ~합니다)로 풍부하고 완성도 높은 최종 분석 답변을 상세하게 작성해 주세요. (영단어를 언급할 때는 반드시 '한글단어(영단어)' 형태로 친절하게 표기해 주시고, 100% 자연스러운 우리말 완성된 마크다운 본문만 바로 작성해 주세요.)`;
 
     // EXAONE 단일 모델로 즉시 복구 (gemma 등 타 모델 로딩 방지)
     const candidateModels = [model, 'exaone4:opt'].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
@@ -329,6 +343,8 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
         let sentThinking = '';
         let sentAnswer = '';
         let nativeThinking = '';
+        let thinkStartMs = null;
+        let thinkEndMs = null;
 
         while (true) {
             const { done, value } = await reader.read();
@@ -360,6 +376,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                 // 2) Ollama 네이티브 thinking 필드 처리 (Ollama 0.5+ / EXAONE 4.0 추론)
                 const thinkToken = json.message?.thinking || json.thinking || '';
                 if (thinkToken) {
+                    if (!thinkStartMs) thinkStartMs = Date.now();
                     nativeThinking += thinkToken;
                     sendEvent({ type: 'thinking', delta: thinkToken, token: thinkToken });
                 }
@@ -373,6 +390,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
 
                     // 생각 과정 스트리밍
                     if (part.thinking.length > sentThinking.length && part.thinking.startsWith(sentThinking)) {
+                        if (!thinkStartMs) thinkStartMs = Date.now();
                         const tDelta = part.thinking.slice(sentThinking.length);
                         sentThinking = part.thinking;
                         sendEvent({ type: 'thinking', delta: tDelta, token: tDelta });
@@ -380,6 +398,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
 
                     // 답변 본문 실시간 스트리밍 (무중단 실시간 타이핑 렌더링)
                     if (part.answer.length > sentAnswer.length) {
+                        if (thinkStartMs && !thinkEndMs) thinkEndMs = Date.now();
                         if (part.answer.startsWith(sentAnswer)) {
                             const aDelta = part.answer.slice(sentAnswer.length);
                             sentAnswer = part.answer;
@@ -403,7 +422,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                     const hasNative = (nativeThinking.length > 0);
                     const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode, hasNative);
                     let finalThinking = (nativeThinking + (hasNative ? (finalPart.thinking ? ' ' + finalPart.thinking : '') : finalPart.thinking)).trim();
-                    let finalAnswer = cleanEnglishParentheses(finalPart.answer.trim());
+                    let finalAnswer = ensureKoreanEnglishPair(finalPart.answer.trim());
 
                     // 🛡️ [생각 후 본문 답변 미출력 방어 안전망]
                     // 생각 내용이 존재하는데, 본문 답변이 비어있거나 점/기호뿐인 경우 (유효 글자 수 15자 미만)
@@ -420,7 +439,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                             sendEvent
                         });
                         if (recovered) {
-                            finalAnswer = cleanEnglishParentheses(recovered);
+                            finalAnswer = ensureKoreanEnglishPair(recovered);
                             sentAnswer = finalAnswer;
                         }
                     } else {
@@ -438,10 +457,16 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                         }
                     }
 
+                    if (!thinkEndMs && thinkStartMs) thinkEndMs = Date.now();
+                    const thinkDurationSec = (thinkStartMs && thinkEndMs)
+                        ? Math.max(1, Math.round((thinkEndMs - thinkStartMs) / 1000))
+                        : (json.total_duration ? Math.max(1, Math.round(json.total_duration / 1e9)) : null);
+
                     sendEvent({
                         type: 'done',
-                        fullText: finalAnswer || sentAnswer || (meaningfulAnswerLen >= 15 ? cleanEnglishParentheses(rawAnswer) : '분석 결과를 정리하는 중 일시적인 지연이 발생했습니다. 다시 한번 질문해 주세요.'),
+                        fullText: finalAnswer || sentAnswer || (meaningfulAnswerLen >= 15 ? ensureKoreanEnglishPair(rawAnswer) : '분석 결과를 정리하는 중 일시적인 지연이 발생했습니다. 다시 한번 질문해 주세요.'),
                         thinkingText: finalThinking,
+                        thinkDurationSec,
                         totalDuration: json.total_duration,
                         evalCount: json.eval_count
                     });
@@ -455,7 +480,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
             const hasNative = (nativeThinking.length > 0);
             const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode, hasNative);
             let finalThinking = (nativeThinking + (hasNative ? (finalPart.thinking ? ' ' + finalPart.thinking : '') : finalPart.thinking)).trim();
-            let finalAnswer = cleanEnglishParentheses(finalPart.answer.trim());
+            let finalAnswer = ensureKoreanEnglishPair(finalPart.answer.trim());
 
             const meaningfulAnswerLen = finalAnswer.replace(/[^\w\uAC00-\uD7A3]/g, '').length;
             if (meaningfulAnswerLen < 15 && finalThinking.length >= 25 && !abortController.signal.aborted) {
@@ -470,7 +495,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                     sendEvent
                 });
                 if (recovered) {
-                    finalAnswer = cleanEnglishParentheses(recovered);
+                    finalAnswer = ensureKoreanEnglishPair(recovered);
                     sentAnswer = finalAnswer;
                 }
             } else {
@@ -488,10 +513,14 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                 }
             }
 
+            if (!thinkEndMs && thinkStartMs) thinkEndMs = Date.now();
+            const thinkDurationSec = (thinkStartMs && thinkEndMs) ? Math.max(1, Math.round((thinkEndMs - thinkStartMs) / 1000)) : null;
+
             sendEvent({
                 type: 'done',
-                fullText: finalAnswer || sentAnswer || cleanEnglishParentheses(rawAnswer),
-                thinkingText: finalThinking
+                fullText: finalAnswer || sentAnswer || ensureKoreanEnglishPair(rawAnswer),
+                thinkingText: finalThinking,
+                thinkDurationSec
             });
             res.end();
         }

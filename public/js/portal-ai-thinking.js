@@ -11,6 +11,8 @@
     }
 
     function elapsedSec(panelEl) {
+        const fixedSec = Number(panelEl.dataset.durationSec || 0);
+        if (fixedSec > 0) return Math.max(1, Math.round(fixedSec));
         const start = Number(panelEl.dataset.startedAt || 0);
         if (!start) return null;
         const end = Number(panelEl.dataset.endedAt || 0) || Date.now();
@@ -22,7 +24,8 @@
         const label = live
             ? `💭 생각하는 중…${sec ? ` ${sec}초` : ''}`
             : `💭 생각하는 과정 보기${sec ? ` (${sec}초 동안 생각함)` : ''}`;
-        panelEl.querySelector('.ai-thinking-summary').textContent = label;
+        const summaryEl = panelEl.querySelector('.ai-thinking-summary');
+        if (summaryEl) summaryEl.textContent = label;
     }
 
     function stopTimer(panelEl) {
@@ -37,7 +40,7 @@
      * @param {HTMLElement|null} panelEl 기존 패널 (없으면 생성)
      * @param {HTMLElement} contentEl 답변 본문 요소 (패널은 이 요소 바로 위에 삽입)
      * @param {string} text 생각 과정 전체 텍스트
-     * @param {{open?: boolean, live?: boolean}} opts open: 펼침 여부(미지정 시 유지), live: 생각 진행 중 여부
+     * @param {{open?: boolean, live?: boolean, startedAt?: number, endedAt?: number, durationSec?: number}} opts
      * @returns {HTMLElement|null} 패널 요소 (내용이 없으면 제거 후 null)
      */
     function render(panelEl, contentEl, text, opts = {}) {
@@ -52,13 +55,19 @@
             panelEl.className = 'ai-thinking';
             panelEl.innerHTML = '<summary class="ai-thinking-summary"></summary><div class="ai-thinking-body"></div>';
             contentEl.parentNode.insertBefore(panelEl, contentEl);
-            // 실시간 생각 시작 시점 기록 (기록 불러오기 등 완료 상태 렌더 시에는 시간 미표시)
-            if (opts.live) panelEl.dataset.startedAt = String(Date.now());
+            panelEl.dataset.startedAt = String(opts.startedAt || Date.now());
         }
+
+        if (opts.durationSec) panelEl.dataset.durationSec = String(opts.durationSec);
+        if (opts.startedAt && !panelEl.dataset.startedAt) panelEl.dataset.startedAt = String(opts.startedAt);
+        if (opts.endedAt) panelEl.dataset.endedAt = String(opts.endedAt);
+
         if (typeof opts.open === 'boolean') panelEl.open = opts.open;
         panelEl.classList.toggle('is-live', !!opts.live);
+
         if (opts.live) {
-            if (!panelEl._thinkTimer && panelEl.dataset.startedAt && !panelEl.dataset.endedAt) {
+            if (!panelEl.dataset.startedAt) panelEl.dataset.startedAt = String(Date.now());
+            if (!panelEl._thinkTimer && !panelEl.dataset.endedAt) {
                 const el = panelEl;
                 el._thinkTimer = setInterval(() => {
                     if (!el.isConnected) return stopTimer(el);
@@ -67,7 +76,9 @@
             }
         } else {
             stopTimer(panelEl);
-            if (panelEl.dataset.startedAt && !panelEl.dataset.endedAt) panelEl.dataset.endedAt = String(Date.now());
+            if (panelEl.dataset.startedAt && !panelEl.dataset.endedAt) {
+                panelEl.dataset.endedAt = String(opts.endedAt || Date.now());
+            }
         }
         updateLabel(panelEl, !!opts.live);
         panelEl.querySelector('.ai-thinking-body').innerHTML = escapeText(body).replace(/\n/g, '<br>');

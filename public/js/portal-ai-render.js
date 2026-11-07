@@ -279,7 +279,8 @@
             <div class="ai-bubble-wrap">
                 <div class="ai-bubble">
                     <div class="ai-typing-indicator">
-                        <span>AI 비서가 생각하는 중입니다</span>
+                        <span class="ai-typing-text">AI 비서가 생각하는 중입니다</span>
+                        <span class="ai-typing-timer" style="font-size:12px; color:var(--ai-text-muted); margin-left:4px; font-variant-numeric:tabular-nums;">(1초)</span>
                         <span class="ai-typing-dots">
                             <span class="ai-typing-dot"></span>
                             <span class="ai-typing-dot"></span>
@@ -290,11 +291,24 @@
             </div>
         `;
         container.appendChild(row);
+        const startTime = Date.now();
+        const timerEl = row.querySelector('.ai-typing-timer');
+        row._typingTimer = setInterval(() => {
+            if (!row.isConnected) {
+                clearInterval(row._typingTimer);
+                return;
+            }
+            const sec = Math.max(1, Math.round((Date.now() - startTime) / 1000));
+            if (timerEl) timerEl.textContent = `(${sec}초)`;
+        }, 1000);
     }
 
     function removeTypingIndicator(id) {
         const el = document.getElementById(id);
-        if (el) el.remove();
+        if (el) {
+            if (el._typingTimer) clearInterval(el._typingTimer);
+            el.remove();
+        }
     }
 
     /**
@@ -419,9 +433,20 @@
         const actionsEl = row.querySelector('.ai-bubble-actions');
         let accumulatedText = '', isDone = false, isThinkingClosed = false;
         let thinkingText = '', thinkingEl = null;
+        const thinkStartTime = Date.now();
+        let thinkingStartedAt = null;
+        let thinkingEndedAt = null;
+
         // 💭 생각하는 과정 패널 (portal-ai-thinking.js 위임: 생각 중 펼침 → 답변 시작 시 자동 접힘)
-        const renderThinking = (open) => {
-            if (window.JgAiThinking) thinkingEl = window.JgAiThinking.render(thinkingEl, contentEl, thinkingText, { open, live: !isDone && !isThinkingClosed });
+        const renderThinking = (open, extraOpts = {}) => {
+            if (window.JgAiThinking) {
+                thinkingEl = window.JgAiThinking.render(thinkingEl, contentEl, thinkingText, Object.assign({
+                    open,
+                    live: !isDone && !isThinkingClosed,
+                    startedAt: thinkingStartedAt || thinkStartTime,
+                    endedAt: thinkingEndedAt
+                }, extraOpts));
+            }
         };
 
         function refreshActions() {
@@ -445,13 +470,18 @@
             element: row,
             appendThinking(token) {
                 if (isDone || !token) return;
+                if (!thinkingStartedAt) thinkingStartedAt = Date.now();
                 thinkingText += token;
                 // 아직 답변 본문이 시작되지 않았으면 펼친 상태 유지, 시작되었으면 닫힌 상태로 내용만 누적
                 renderThinking(isThinkingClosed ? false : (thinkingEl ? undefined : true));
             },
             appendToken(token) {
                 if (isDone || !token) return;
-                if (!isThinkingClosed) { isThinkingClosed = true; renderThinking(false); }
+                if (!isThinkingClosed) {
+                    isThinkingClosed = true;
+                    if (!thinkingEndedAt) thinkingEndedAt = Date.now();
+                    renderThinking(false);
+                }
 
                 // 🛡️ 혹시 토큰에 생각 태그가 포함되어 유입된 경우 자동 격리
                 let cleanToken = token;
@@ -464,26 +494,39 @@
                 cleanToken = cleanToken.replace(/<\/?(think|thought|reasoning)>/gi, '').replace(/\[\/?(think|thought|reasoning)\]/gi, '');
 
                 accumulatedText += cleanToken;
-                // 영단어 괄호 병기 실시간 정제
-                const displaySafeText = accumulatedText.replace(/([가-힣0-9]+)\s*\([a-zA-Z\s,.\/&'-]{2,}\)/g, '$1');
-                row.dataset.rawText = displaySafeText;
+                row.dataset.rawText = accumulatedText;
                 if (contentEl) {
-                    contentEl.innerHTML = renderAiMarkdown(displaySafeText) + '<span class="ai-typing-cursor"></span>';
+                    contentEl.innerHTML = renderAiMarkdown(accumulatedText) + '<span class="ai-typing-cursor"></span>';
                 }
             },
-            complete(fullText, finalThinking) {
+            complete(fullText, finalThinking, doneData) {
                 if (isDone) return;
                 isDone = true; isThinkingClosed = true;
+                if (!thinkingEndedAt) thinkingEndedAt = Date.now();
+
                 if (typeof fullText === 'string') {
-                    // 생각 태그 및 영단어 괄호 정제
+                    // 생각 태그 정제 (한글단어(영단어) 병기는 그대로 보존)
                     accumulatedText = fullText
                         .replace(/<(think|thought|reasoning)>[\s\S]*?<\/(think|thought|reasoning)>/gi, '')
                         .replace(/<\/?(think|thought|reasoning)>/gi, '')
-                        .replace(/\[\/?(think|thought|reasoning)\]/gi, '')
-                        .replace(/([가-힣0-9]+)\s*\([a-zA-Z\s,.\/&'-]{2,}\)/g, '$1');
+                        .replace(/\[\/?(think|thought|reasoning)\]/gi, '');
                 }
-                if (typeof finalThinking === 'string') thinkingText = finalThinking;
-                renderThinking(false);
+                if (typeof finalThinking === 'string' && finalThinking.trim()) {
+                    thinkingText = finalThinking.trim();
+                }
+
+                let durationSec = undefined;
+                if (doneData && typeof doneData.thinkDurationSec === 'number') {
+                    durationSec = doneData.thinkDurationSec;
+                } else if (doneData && doneData.totalDuration) {
+                    durationSec = Math.max(1, Math.round(doneData.totalDuration / 1e9));
+                } else if (thinkingStartedAt && thinkingEndedAt) {
+                    durationSec = Math.max(1, Math.round((thinkingEndedAt - thinkingStartedAt) / 1000));
+                } else if (thinkingText) {
+                    durationSec = Math.max(1, Math.round((Date.now() - thinkStartTime) / 1000));
+                }
+
+                renderThinking(false, { durationSec, endedAt: thinkingEndedAt });
                 row.dataset.rawText = accumulatedText;
                 if (contentEl) {
                     contentEl.innerHTML = renderAiMarkdown(accumulatedText);
