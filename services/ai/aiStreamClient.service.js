@@ -39,9 +39,9 @@ function stripThinkTags(text) {
  * 스트리밍 원문을 생각 과정(thinking)과 답변 본문(answer)으로 분리
  * - 1) <think>...</think> 태그 분리
  * - 2) 여는 태그 없이 </think>만 있는 템플릿 선주입 모델(EXAONE 4.0 등) 대응
- * - 3) 태그가 없는 경우: 스트리밍 중에는 </think> 전까지 생각으로 스트리밍하되, 최종 완료 시 </think>가 없으면 전체를 본문으로 전환
+ * - 3) 태그가 없는 경우: 추론 모드에서는 </think> 전까지 생각 스트림으로 버퍼링, 일반 모드에서는 본문 즉시 스트리밍
  */
-function splitThinkStream(raw, final = false) {
+function splitThinkStream(raw, final = false, isReasoning = false) {
     const text = raw || '';
     if (!text) return { thinking: '', answer: '', closed: false };
 
@@ -92,12 +92,32 @@ function splitThinkStream(raw, final = false) {
         return { thinking, answer, closed: true };
     }
 
-    // 3) <think> 태그가 전혀 없는 일반 대화 모드 -> 답변 본문(answer)으로 즉시 스트리밍
+    // 3) 태그가 아직 없는 상태
+    // 3-A) 추론 모델 모드: </think>가 나오기 전까지는 생각 스트림으로 처리
+    if (isReasoning) {
+        if (final) {
+            return { thinking: (stripThinkTags(text) || '').trim(), answer: '', closed: false };
+        }
+        let holdTail = 0;
+        const closeTag = '</think>';
+        for (let k = closeTag.length - 1; k > 0; k--) {
+            if (text.toLowerCase().endsWith(closeTag.slice(0, k))) {
+                holdTail = k;
+                break;
+            }
+        }
+        return {
+            thinking: text.slice(0, text.length - holdTail).replace(/^\s+/, ''),
+            answer: '',
+            closed: false
+        };
+    }
+
+    // 3-B) 일반 대화 모델 모드 -> 답변 본문(answer)으로 즉시 스트리밍
     if (final) {
         return { thinking: '', answer: (stripThinkTags(text) || '').trim(), closed: false };
     }
 
-    // 여는 태그(<think>)가 들어오는 중일 수 있으므로 말미의 부분 태그만 버퍼링
     let holdOpen = 0;
     const openTag = '<think>';
     for (let k = openTag.length - 1; k > 0; k--) {
@@ -111,6 +131,79 @@ function splitThinkStream(raw, final = false) {
 }
 
 /**
+ * 🧠 추론 모델이 생각(<think>)만 출력하고 본문 없이(또는 점/기호만으로) 종료된 경우
+ * 생각 내용을 바탕으로 사용자에게 제공할 최종 본문을 즉시 이어서 실시간 스트리밍하는 2차 복구 안전망
+ */
+async function streamAnswerFromThinking({ messages, thinkingText, model, keepAlive, options, abortSignal, sendEvent }) {
+    try {
+        const followUpMessages = messages.concat([
+            {
+                role: 'assistant',
+                content: `<think>\n${thinkingText.slice(-3000)}\n</think>\n`
+            },
+            {
+                role: 'user',
+                content: '위 생각을 바탕으로, 사용자에게 친절하고 상세한 최종 분석 답변 본문을 한국어로 작성해 주세요. (추가 생각 과정이나 <think> 태그 없이 완성된 분석 본문만 작성해 주세요.)'
+            }
+        ]);
+
+        const res = await fetch(`${DEFAULT_OLLAMA_HOST}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model,
+                messages: followUpMessages,
+                stream: true,
+                think: false,
+                keep_alive: keepAlive || '24h',
+                options: Object.assign({
+                    temperature: 0.6,
+                    top_p: 0.9,
+                    num_predict: -1
+                }, options)
+            }),
+            signal: abortSignal
+        });
+
+        if (!res.ok) return '';
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let recoveryAnswer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                try {
+                    const json = JSON.parse(trimmed);
+                    const delta = json.message?.content || json.response || '';
+                    if (delta) {
+                        const cleanDelta = delta.replace(/<\/?think>/gi, '');
+                        if (cleanDelta) {
+                            recoveryAnswer += cleanDelta;
+                            sendEvent({ type: 'content', delta: cleanDelta, token: cleanDelta });
+                        }
+                    }
+                } catch (e) {}
+            }
+        }
+        return recoveryAnswer.trim();
+    } catch (e) {
+        console.warn('[aiStreamClient] 2차 본문 완성 안전망 실패(무시):', e.message);
+        return '';
+    }
+}
+
+/**
  * ⚡ Ollama /api/chat SSE 스트리밍 처리기
  * @param {Object} options
  * @param {import('express').Request} options.req - 클라이언트 요청
@@ -120,8 +213,9 @@ function splitThinkStream(raw, final = false) {
  * @param {Object} [options.tools] - Ollama 도구 목록 (옵션)
  * @param {Object} [options.options] - Ollama 생성 옵션 (num_ctx, num_predict 등)
  * @param {string} [options.keepAlive] - Ollama 모델 메모리 상주 시간 (기본 24h)
+ * @param {boolean} [options.isReasoningMode] - 깊은 생각 추론 모드 여부
  */
-async function streamChatToClient({ req, res, model, messages, tools = null, options = {}, keepAlive = '24h' }) {
+async function streamChatToClient({ req, res, model, messages, tools = null, options = {}, keepAlive = '24h', isReasoningMode = false }) {
     // 1. SSE 응답 헤더 설정
     if (!res.headersSent) {
         res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
@@ -223,7 +317,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                 const delta = json.message?.content || json.response || '';
                 if (delta) {
                     rawAnswer += delta;
-                    const part = splitThinkStream(rawAnswer, false);
+                    const part = splitThinkStream(rawAnswer, false, isReasoningMode);
 
                     // 생각 과정 스트리밍
                     if (part.thinking.length > sentThinking.length && part.thinking.startsWith(sentThinking)) {
@@ -242,14 +336,34 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                 }
 
                 if (json.done) {
-                    const finalPart = splitThinkStream(rawAnswer, true);
-                    const finalThinking = (nativeThinking + finalPart.thinking).trim();
-                    const finalAnswer = finalPart.answer.trim();
+                    const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode);
+                    let finalThinking = (nativeThinking + finalPart.thinking).trim();
+                    let finalAnswer = finalPart.answer.trim();
 
-                    if (finalAnswer.length > sentAnswer.length && finalAnswer.startsWith(sentAnswer)) {
-                        const remaining = finalAnswer.slice(sentAnswer.length);
-                        sentAnswer = finalAnswer;
-                        sendEvent({ type: 'content', delta: remaining, token: remaining });
+                    // 🛡️ [생각 후 본문 답변 미출력 방어 안전망]
+                    // 생각 내용이 존재하는데, 본문 답변이 비어있거나 점/기호뿐인 경우 (유효 글자 수 15자 미만)
+                    const meaningfulAnswerLen = finalAnswer.replace(/[^\w\uAC00-\uD7A3]/g, '').length;
+                    if (meaningfulAnswerLen < 15 && finalThinking.length >= 25 && !abortController.signal.aborted) {
+                        console.log(`[aiStreamClient] 🧠 생각 후 본문 미출력 감지 (본문: ${meaningfulAnswerLen}자, 생각: ${finalThinking.length}자). 2차 본문 자동 완성 가동...`);
+                        const recovered = await streamAnswerFromThinking({
+                            messages,
+                            thinkingText: finalThinking,
+                            model,
+                            keepAlive,
+                            options,
+                            abortSignal: abortController.signal,
+                            sendEvent
+                        });
+                        if (recovered) {
+                            finalAnswer = recovered;
+                            sentAnswer = recovered;
+                        }
+                    } else {
+                        if (finalAnswer.length > sentAnswer.length && finalAnswer.startsWith(sentAnswer)) {
+                            const remaining = finalAnswer.slice(sentAnswer.length);
+                            sentAnswer = finalAnswer;
+                            sendEvent({ type: 'content', delta: remaining, token: remaining });
+                        }
                     }
 
                     sendEvent({
@@ -259,19 +373,39 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                         totalDuration: json.total_duration,
                         evalCount: json.eval_count
                     });
+                    res.end();
+                    return;
                 }
             }
         }
 
         if (!res.writableEnded) {
-            const finalPart = splitThinkStream(rawAnswer, true);
-            const finalThinking = (nativeThinking + finalPart.thinking).trim();
-            const finalAnswer = finalPart.answer.trim();
+            const finalPart = splitThinkStream(rawAnswer, true, isReasoningMode);
+            let finalThinking = (nativeThinking + finalPart.thinking).trim();
+            let finalAnswer = finalPart.answer.trim();
 
-            if (finalAnswer.length > sentAnswer.length && finalAnswer.startsWith(sentAnswer)) {
-                const remaining = finalAnswer.slice(sentAnswer.length);
-                sentAnswer = finalAnswer;
-                sendEvent({ type: 'content', delta: remaining, token: remaining });
+            const meaningfulAnswerLen = finalAnswer.replace(/[^\w\uAC00-\uD7A3]/g, '').length;
+            if (meaningfulAnswerLen < 15 && finalThinking.length >= 25 && !abortController.signal.aborted) {
+                console.log(`[aiStreamClient] 🧠 스트림 말미 생각 후 본문 미출력 감지. 2차 본문 자동 완성 가동...`);
+                const recovered = await streamAnswerFromThinking({
+                    messages,
+                    thinkingText: finalThinking,
+                    model,
+                    keepAlive,
+                    options,
+                    abortSignal: abortController.signal,
+                    sendEvent
+                });
+                if (recovered) {
+                    finalAnswer = recovered;
+                    sentAnswer = recovered;
+                }
+            } else {
+                if (finalAnswer.length > sentAnswer.length && finalAnswer.startsWith(sentAnswer)) {
+                    const remaining = finalAnswer.slice(sentAnswer.length);
+                    sentAnswer = finalAnswer;
+                    sendEvent({ type: 'content', delta: remaining, token: remaining });
+                }
             }
 
             sendEvent({

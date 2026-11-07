@@ -183,6 +183,7 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
     // 6. 질문 의도에 따른 모델 및 파라미터 선택
     const picked = selectChatModel(prompt);
     const activeModel = picked.model || getChatModel() || 'exaone3.5:2.4b';
+    const isReasoning = (picked.mode === 'reasoning');
     const streamOptions = {};
     if (picked.numCtx) {
         streamOptions.num_ctx = picked.numCtx;
@@ -195,7 +196,8 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
         model: activeModel,
         messages,
         options: streamOptions,
-        keepAlive: picked.keepAlive || '24h'
+        keepAlive: picked.keepAlive || '24h',
+        isReasoningMode: isReasoning
     });
 }
 
