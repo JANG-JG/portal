@@ -34,7 +34,9 @@
                 const env = data.envDefaults || {};
                 const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
                 setVal('inputAiChatModel', data.config.chatModel || '');
+                setVal('inputAiChatModelLabel', data.config.chatModelLabel || '');
                 setVal('inputAiReasoningModel', data.config.reasoningModel || '');
+                setVal('inputAiReasoningModelLabel', data.config.reasoningModelLabel || '');
                 setVal('inputAiChatNumCtx', data.config.chatNumCtx || 0);
                 setVal('inputAiReasoningNumCtx', data.config.reasoningNumCtx || 0);
                 const chatModelEl = document.getElementById('inputAiChatModel');
@@ -122,7 +124,9 @@
                     heroTitle,
                     heroDescription,
                     chatModel: (document.getElementById('inputAiChatModel') || {}).value?.trim() ?? undefined,
+                    chatModelLabel: (document.getElementById('inputAiChatModelLabel') || {}).value?.trim() ?? undefined,
                     reasoningModel: (document.getElementById('inputAiReasoningModel') || {}).value?.trim() ?? undefined,
+                    reasoningModelLabel: (document.getElementById('inputAiReasoningModelLabel') || {}).value?.trim() ?? undefined,
                     chatNumCtx: parseInt((document.getElementById('inputAiChatNumCtx') || {}).value, 10) || 0,
                     reasoningNumCtx: parseInt((document.getElementById('inputAiReasoningNumCtx') || {}).value, 10) || 0
                 })

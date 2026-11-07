@@ -54,6 +54,20 @@
                     if (titleEl && data.config.heroTitle) titleEl.textContent = data.config.heroTitle;
                     if (descEl && data.config.heroDescription) descEl.innerHTML = data.config.heroDescription.replace(/\n/g, '<br>');
                 }
+
+                // 4. 모델 선택 셀렉트 박스 라벨 적용 (관리자가 지정한 한글 친화적 명칭)
+                const optChat = document.getElementById('optAiChatModel');
+                const optReasoning = document.getElementById('optAiReasoningModel');
+                if (optChat && data.config.chatModelLabel) {
+                    optChat.textContent = data.config.chatModelLabel;
+                }
+                if (optReasoning && data.config.reasoningModelLabel) {
+                    optReasoning.textContent = data.config.reasoningModelLabel;
+                }
+                const badgeEl = document.getElementById('aiSidebarModelBadge');
+                if (badgeEl && data.config.chatModelLabel) {
+                    badgeEl.textContent = `${data.config.chatModelLabel} 🟢`;
+                }
             }
         } catch (e) {
             console.warn('[AI Page] 런타임 설정 로드 실패 (기본값 유지):', e);

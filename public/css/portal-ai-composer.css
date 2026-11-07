@@ -120,7 +120,38 @@
 .ai-input-bottom-left {
     display: flex;
     align-items: center;
+    gap: 8px;
     min-width: 0;
+}
+
+/* AI 모델/모드 선택 셀렉트 박스 */
+.ai-model-select {
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #4b5563;
+    background-color: #F7F6F2;
+    border: 1px solid #E5E7EB;
+    border-radius: 9999px;
+    padding: 3px 20px 3px 8px;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    max-width: 140px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+}
+
+.ai-model-select:hover, .ai-model-select:focus {
+    background-color: #FFFFFF;
+    border-color: #D97706;
+    color: #1F2937;
+    box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.12);
 }
 
 .ai-input-bottom-right {

@@ -168,7 +168,8 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
                     res,
                     prompt: message.trim(),
                     history: safeHistory,
-                    user: req.user
+                    user: req.user,
+                    preference: modelPref || 'auto'
                 });
                 return;
             }

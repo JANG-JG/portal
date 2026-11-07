@@ -24,7 +24,7 @@ router.get('/', (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { welcomeMessage, maxPromptLength, heroIcon, heroTitle, heroDescription } = req.body;
-        const { chatModel, reasoningModel, chatNumCtx, reasoningNumCtx } = req.body;
+        const { chatModel, reasoningModel, chatNumCtx, reasoningNumCtx, chatModelLabel, reasoningModelLabel } = req.body;
         const MODEL_RE = /^[A-Za-z0-9._:\/-]{0,100}$/;
         if ((chatModel !== undefined && !MODEL_RE.test(String(chatModel).trim())) ||
             (reasoningModel !== undefined && !MODEL_RE.test(String(reasoningModel).trim()))) {
@@ -65,7 +65,9 @@ router.post('/', async (req, res) => {
             chatModel,
             reasoningModel,
             chatNumCtx,
-            reasoningNumCtx
+            reasoningNumCtx,
+            chatModelLabel,
+            reasoningModelLabel
         });
 
         if (!result.success) {

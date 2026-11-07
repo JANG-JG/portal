@@ -115,7 +115,7 @@ function checkUnauthorizedAdminQuery(prompt, user) {
 /**
  * 🚀 전체 대화 요청 오케스트레이션 메인 함수
  */
-async function orchestrateChatRequest({ req, res, prompt, history = [], user }) {
+async function orchestrateChatRequest({ req, res, prompt, history = [], user, preference = 'auto' }) {
     // 1. 비인가 관리자 데이터 질의 사전 차단
     const unauthorizedMsg = checkUnauthorizedAdminQuery(prompt, user);
     if (unauthorizedMsg) {
@@ -172,8 +172,8 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
         });
     }
 
-    // 5. 질문 의도에 따른 모델 및 파라미터 선택 (EXAONE 단일 모델)
-    const picked = selectChatModel(prompt);
+    // 5. 질문 의도에 따른 모델 및 파라미터 선택
+    const picked = selectChatModel(prompt, preference);
     const activeModel = picked.model || getChatModel() || 'exaone4:opt';
     await ensureModelSlot(activeModel);
     const isReasoning = (picked.mode === 'reasoning' || activeModel.toLowerCase().includes('exaone'));

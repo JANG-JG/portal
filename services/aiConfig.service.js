@@ -22,11 +22,14 @@ const DEFAULT_AI_CONFIG = {
     reasoningModel: '',
     // 컨텍스트 창 (기본 32K로 VRAM 활용 극대화)
     chatNumCtx: 32768,
-    reasoningNumCtx: 32768
+    reasoningNumCtx: 32768,
+    // 화면 표시용 친화적 모델 라벨 (비어있으면 기본 한글 라벨 사용)
+    chatModelLabel: '⚡ 빠른 대화',
+    reasoningModelLabel: '🧠 깊은 생각'
 };
 
 const MODEL_NAME_REGEX = /^[A-Za-z0-9._:\/-]{1,100}$/;
-const MODEL_KEYS = ['chatModel', 'reasoningModel', 'chatNumCtx', 'reasoningNumCtx'];
+const MODEL_KEYS = ['chatModel', 'reasoningModel', 'chatNumCtx', 'reasoningNumCtx', 'chatModelLabel', 'reasoningModelLabel'];
 
 let cachedConfig = { ...DEFAULT_AI_CONFIG };
 let isDbInitialized = false;
@@ -156,6 +159,12 @@ function sanitizeConfig(input = {}) {
     ['chatNumCtx', 'reasoningNumCtx'].forEach((k) => {
         const n = parseInt(input[k], 10);
         output[k] = (!isNaN(n) && n >= 512 && n <= 131072) ? n : 0;
+    });
+
+    ['chatModelLabel', 'reasoningModelLabel'].forEach((k) => {
+        if (typeof input[k] === 'string') {
+            output[k] = input[k].trim().slice(0, 50);
+        }
     });
 
     return output;
