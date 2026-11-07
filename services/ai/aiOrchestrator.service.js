@@ -175,7 +175,7 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
     // 5. 질문 의도에 따른 모델 및 파라미터 선택 (EXAONE 단일 모델)
     const picked = selectChatModel(prompt);
     const activeModel = picked.model || getChatModel() || 'exaone4:opt';
-    const isReasoning = (picked.mode === 'reasoning');
+    const isReasoning = (picked.mode === 'reasoning' || activeModel.toLowerCase().includes('exaone'));
     const streamOptions = {
         num_ctx: picked.numCtx || 32768
     };
@@ -186,7 +186,7 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user }) 
         finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 대화 길이를 요약하거나 축소하지 말고, 필요한 세부 사항과 수치를 충분히 담아 풍부하고 상세하게 설명해 주세요. (시스템 함수명이나 영단어를 섞지 마시고, 100% 매끄럽고 친근한 순수 우리말 한국어로 설명해 주세요):\n"${prompt}"`;
     }
     if (isReasoning) {
-        finalUserMessage += `\n\n(작성 지침: 생각(Thinking) 과정은 생각 영역 안에서만 마무리하고, 본문 시작 시 'Okay', '사용자가 ~를 요청했군', '전문 분석 추론 내용을 보면' 같은 혼잣말이나 메타 독백을 절대 쓰지 마세요. 영단어 없이 첫 문장부터 사용자에게 건네는 완성된 한국어 존댓말 본문으로 시작해 주세요.)`;
+        finalUserMessage += `\n\n(작성 지침: 생각과 답변 모두 100% 한국어로 진행하세요. 생각은 1~2문장으로 한국어로만 간결히 정리하고, 본문에서는 표나 'Done!' 메모만 남기지 말고 곧바로 사용자에게 건네는 완성된 한국어 존댓말 본문으로 충실하게 작성해 주세요.)`;
     }
 
     messages.push({ role: 'user', content: finalUserMessage });

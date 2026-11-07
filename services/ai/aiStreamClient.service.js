@@ -112,23 +112,31 @@ function extractLeadingMetaThinking(text, final = false) {
         return { absorbedThinking: '', cleanAnswer: '', isStillInMeta: false };
     }
 
-    // 본문 최상단에 남은 단독 영단어/CoT 종료 찌꺼기(예: "technical.\n") 흡수
-    const leakWordMatch = trimmed.match(/^([a-zA-Z]{2,20}\.)(?:\s*\n+|$)/);
+    // 1) 본문 최상단에 남은 단독 영단어/CoT 종료 찌꺼기(예: "technical.\n", "Done!\n", "Okay.\n") 흡수
+    const leakWordMatch = trimmed.match(/^([a-zA-Z]{2,20}\.|\bDone!|\bOkay\.?)(?:\s*\n+|$)/i);
     if (leakWordMatch) {
         const absorbed = leakWordMatch[1];
         const remainder = trimmed.slice(leakWordMatch[0].length).replace(/^\s+/, '');
         return { absorbedThinking: absorbed, cleanAnswer: remainder, isStillInMeta: false };
     }
 
-    // 메타 독백 시작 트리거 감지 (Okay, 사용자가~, 전문 분석~, 추론 내용을~ 등)
-    const metaStartRegex = /^(?:(?:Okay|Ok|오케이|알겠습니다|자,)\s*[,.]?\s*)?(?:사용자(?:가|는|의|에게)|요청(?:한|하신|내용)|질문(?:한|하신|내용)|전문\s*분석\s*추론|추론\s*내용을|사전\s*정리된\s*내용|생각해\s*보면|답변\s*계획|답변을\s*작성|이\s*정보(?:들을)?\s*바탕으로)/i;
+    // 2) 영문 추론/독백 패턴 (연속된 영단어로 시작하는 문장, 예: "accurate and polite...", "Considering the...", "Based on...")
+    const isEnglishMonologue = /^[a-zA-Z]{2,}(?:[\s,.'’"“”-]+[a-zA-Z0-9]{1,}){2,}/.test(trimmed);
 
-    if (!metaStartRegex.test(trimmed)) {
+    // 3) 분석 표 마크다운 패턴 (예: "| 사용자 요청 사항 | 최종 분석 |")
+    const isMetaTable = /^\|?\s*(?:사용자\s*요청|최종\s*분석|요청\s*사항|분석\s*내용)[\s\S]*?\|/i.test(trimmed);
+
+    // 4) 한국어 메타 독백 시작 트리거 (Okay, 사용자가~, 전문 분석~ 등)
+    const metaStartRegex = /^(?:(?:Okay|Ok|오케이|알겠습니다|자,)\s*[,.]?\s*)?(?:사용자(?:가|는|의|에게|에|를)|요청(?:한|하신|내용|사항)|질문(?:한|하신|내용)|전문\s*분석|추론\s*(?:내용|과정|을)|사전\s*정리된|생각해\s*보면|답변\s*(?:계획|작성|을\s*작성)|이\s*정보(?:들을)?\s*바탕으로)/i;
+
+    const isMeta = isEnglishMonologue || isMetaTable || metaStartRegex.test(trimmed);
+
+    if (!isMeta) {
         return { absorbedThinking: '', cleanAnswer: text, isStillInMeta: false };
     }
 
     // 메타 독백 종료 및 실제 본문 시작 전환점 탐색
-    const transitionRegex = /\n\s*(?:\n+|(?=[#\-*]|\d+\.\s|안녕하세요|네,\s|오늘의|실시간|현재|문의하신|요청하신|가족\s*포털))/i;
+    const transitionRegex = /\n\s*(?:\n+|(?=[#\-*]|\d+\.\s|안녕하세요|네,\s|오늘의|실시간|현재|문의하신|요청하신|가족\s*포털|[가-힣]{2,10}(?:님|께)[,\s]))/i;
     const match = trimmed.search(transitionRegex);
 
     if (match !== -1) {
@@ -293,26 +301,21 @@ function splitThinkStream(raw, final = false, isReasoning = false, hasNativeThin
  * 생각 내용을 바탕으로 사용자에게 제공할 최종 본문을 즉시 이어서 실시간 스트리밍하는 2차 복구 안전망
  */
 async function streamAnswerFromThinking({ messages, thinkingText, model, keepAlive, options, abortSignal, sendEvent }) {
-    // 마지막 사용자 질문 추출
+    // 마지막 사용자 메시지 추출 (실시간 포털 데이터 보존)
     const lastUserMsg = (Array.isArray(messages) ? [...messages].reverse().find(m => m && m.role === 'user') : null);
-    const userPrompt = lastUserMsg ? String(lastUserMsg.content).replace(/\[참고용 실시간[\s\S]*?\[사용자 질문\]/i, '').replace(/[\r\n]+/g, ' ').trim() : '사용자 질문';
+    const fullUserContent = lastUserMsg ? String(lastUserMsg.content).trim() : '사용자 질문';
 
     const systemPrompt = `당신은 JG 가족 포털의 전용 AI 비서 "제이지(JG)"입니다.
 가족 구성원에게 다정하고 친절한 한국어 존댓말(~해요, ~합니다)로 완성된 최종 답변을 상세하게 제공합니다.
 [필수 준수 규칙]
-1. 내부 독백/혼잣말 절대 금지: "Okay", "사용자가 ~를 요청했군", "사용자는 아마도 ~", "답변을 작성해 보자", "추론 내용을 보면" 등의 혼잣말이나 메타 독백을 절대로 본문에 쓰지 마세요.
+1. 내부 독백/혼잣말/메타 표 절대 금지: "Okay", "사용자가 ~를 요청했군", "Done!", "| 사용자 요청 사항 |" 등의 혼잣말이나 메타 표를 절대로 쓰지 마세요.
 2. 첫 어절부터 곧바로 사용자에게 건네는 완성형 한국어 존댓말 본문으로 시작하세요.
 3. 100% 일상 한국어 사용: 일상 단어(midday, duration 등)에 영어를 쓰지 말고 한낮, 소요 시간 등 순수 우리말로 작성하세요. 공식 약어만 '한글단어(영단어)' 형태로 표기하세요.`;
 
-    const promptForRecovery = `다음 [사용자 질문]에 대해 [사전 정리된 핵심 참고 내용]을 바탕으로 사용자에게 제공할 최종 분석 답변 본문을 작성해 주세요.
+    const promptForRecovery = `${fullUserContent}
 
-[사용자 질문]
-${userPrompt.slice(0, 500)}
-
-[사전 정리된 핵심 참고 내용]
-${thinkingText.slice(0, 3000)}
-
-위 내용을 바탕으로 사용자에게 친절하고 다정한 한국어 존댓말로 상세하고 풍부하게 답변해 주세요. 혼잣말이나 메타 독백 없이 곧바로 완성된 한국어 본문만 작성해 주세요.`;
+[답변 작성 필수 지침]
+위 질문과 실시간 데이터를 바탕으로, 생각 메모나 표 없이 첫 문장부터 사용자에게 다정하고 친절한 완성된 한국어 존댓말 본문으로 상세하고 풍부하게 설명해 주세요.`;
 
     // EXAONE 단일 모델로 즉시 복구 (gemma 등 타 모델 로딩 방지)
     const candidateModels = [model, 'exaone4:opt'].filter((v, idx, arr) => v && arr.indexOf(v) === idx);
@@ -568,7 +571,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                     // 🛡️ [생각 후 본문 답변 미출력 방어 안전망]
                     // 생각 내용이 존재하는데, 본문 답변이 비어있거나 점/기호뿐인 경우 (유효 글자 수 15자 미만)
                     const meaningfulAnswerLen = finalAnswer.replace(/[^\w\uAC00-\uD7A3]/g, '').length;
-                    if (meaningfulAnswerLen < 15 && finalThinking.length >= 25 && !abortController.signal.aborted) {
+                    if (meaningfulAnswerLen < 15 && !abortController.signal.aborted) {
                         console.log(`[aiStreamClient] 🧠 생각 후 본문 미출력 감지 (본문: ${meaningfulAnswerLen}자, 생각: ${finalThinking.length}자). 2차 본문 자동 완성 가동...`);
                         const recovered = await streamAnswerFromThinking({
                             messages,
@@ -624,7 +627,7 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
             let finalAnswer = ensureKoreanEnglishPair(finalPart.answer.trim());
 
             const meaningfulAnswerLen = finalAnswer.replace(/[^\w\uAC00-\uD7A3]/g, '').length;
-            if (meaningfulAnswerLen < 15 && finalThinking.length >= 25 && !abortController.signal.aborted) {
+            if (meaningfulAnswerLen < 15 && !abortController.signal.aborted) {
                 console.log(`[aiStreamClient] 🧠 스트림 말미 생각 후 본문 미출력 감지. 2차 본문 자동 완성 가동...`);
                 const recovered = await streamAnswerFromThinking({
                     messages,
