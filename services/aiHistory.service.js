@@ -156,7 +156,7 @@ async function createSession(userId, sessionId, title = '새 대화') {
 
     const cleanTitle = (title && typeof title === 'string') ? title.trim().substring(0, 50) : '새 대화';
     await dbRun(
-        `INSERT INTO ai_chat_sessions (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))`,
+        `INSERT OR IGNORE INTO ai_chat_sessions (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))`,
         [sessionId, userId, cleanTitle]
     );
 
