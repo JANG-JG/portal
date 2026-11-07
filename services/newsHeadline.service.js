@@ -280,6 +280,21 @@ function getNateRankings(limit = 5) {
     });
 }
 
+/**
+ * 뉴스룸 일일 날씨 요약 (daily_weather: 최저/최고, 바람, 자외선 등) - 오늘 없으면 최신 1건
+ * @returns {Promise<{date: string, weather_info: string}|null>}
+ */
+function getDailyWeatherSummary(todayKst) {
+    if (!newsDb) return Promise.resolve(null);
+    return new Promise(resolve => {
+        newsDb.get(
+            'SELECT date, weather_info FROM daily_weather WHERE date <= ? ORDER BY date DESC LIMIT 1',
+            [todayKst],
+            (err, row) => resolve(err || !row ? null : row)
+        );
+    });
+}
+
 module.exports = {
     getTopNewsIssues,
     searchNewsByKeyword,
