@@ -48,14 +48,29 @@ function ensureKoreanEnglishPair(text) {
         .replace(/\[([^\]\n]+)\]\]/g, '[$1]')
         .replace(/\[\[([^\]\n]+)\]/g, '[$1]');
 
-    // 2. 일상 친화적 한국어 변환 (불필요한 영어 노출 원천 차단)
+    // 2. 일상 친화적 한국어 변환 (불필요한 영어 노출 및 콩글리시 원천 차단)
     const dailyTerms = [
+        { regex: /\bchilly\s*한\b|\bchilly한(?![가-힣])/gi, repl: '쌀쌀한' },
+        { regex: /\bchilly(?![가-힣a-zA-Z])/gi, repl: '쌀쌀함' },
+        { regex: /\bexcellent\s*한\b|\bexcellent한(?![가-힣])/gi, repl: '훌륭한' },
+        { regex: /\bexcellent(?![가-힣a-zA-Z])/gi, repl: '훌륭함' },
+        { regex: /\buseful\s*할\b|\buseful할(?![가-힣])/gi, repl: '유용할' },
+        { regex: /\buseful\s*한\b|\buseful한(?![가-힣])/gi, repl: '유용한' },
+        { regex: /\buseful(?![가-힣a-zA-Z])/gi, repl: '유용함' },
+        { regex: /\bselection\s*으로\b|\bselection으로(?![가-힣])/gi, repl: '선발로' },
+        { regex: /\bselection(?![가-힣a-zA-Z])/gi, repl: '선발' },
+        { regex: /\bcoverage\s*되었습니다\b|\bcoverage되었습니다(?![가-힣])/gi, repl: '보도되었습니다' },
+        { regex: /\bcoverage\s*됐습니다\b|\bcoverage됐습니다(?![가-힣])/gi, repl: '보도됐습니다' },
+        { regex: /\bcoverage(?![가-힣a-zA-Z])/gi, repl: '보도' },
+        { regex: /\b(?:p|posi)?tive\s*입장(?![가-힣])/gi, repl: '긍정적인 입장' },
+        { regex: /\bnegative\s*입장(?![가-힣])/gi, repl: '부정적인 입장' },
         { regex: /\bmidday\b/gi, repl: '한낮' },
         { regex: /\bduration\b/gi, repl: '지속 시간' },
         { regex: /\bFederal\s+Reserve\b/gi, repl: '미 연방준비제도(Fed)' },
         { regex: /\bBase\s+Rate\b/gi, repl: '기준금리' },
         { regex: /\bExchange\s+Rate\b/gi, repl: '환율' },
         { regex: /\bStock\s+Market\b/gi, repl: '증시' },
+        { regex: /\bbreaking\s*news\b/gi, repl: '속보' },
         { regex: /\bheadline\b/gi, repl: '주요 소식' },
         { regex: /\bheadlines\b/gi, repl: '주요 헤드라인' }
     ];
@@ -95,6 +110,14 @@ function extractLeadingMetaThinking(text, final = false) {
     const trimmed = text.replace(/^\s+/, '');
     if (!trimmed) {
         return { absorbedThinking: '', cleanAnswer: '', isStillInMeta: false };
+    }
+
+    // 본문 최상단에 남은 단독 영단어/CoT 종료 찌꺼기(예: "technical.\n") 흡수
+    const leakWordMatch = trimmed.match(/^([a-zA-Z]{2,20}\.)(?:\s*\n+|$)/);
+    if (leakWordMatch) {
+        const absorbed = leakWordMatch[1];
+        const remainder = trimmed.slice(leakWordMatch[0].length).replace(/^\s+/, '');
+        return { absorbedThinking: absorbed, cleanAnswer: remainder, isStillInMeta: false };
     }
 
     // 메타 독백 시작 트리거 감지 (Okay, 사용자가~, 전문 분석~, 추론 내용을~ 등)

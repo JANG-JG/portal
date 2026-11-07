@@ -49,11 +49,31 @@
         safe = safe.replace(/&lt;del&gt;([\s\S]*?)&lt;\/del&gt;/gi, '<del>$1</del>');
         safe = safe.replace(/&lt;br\s*\/?&gt;/gi, '<br>');
 
-        // 5. 마크다운 헤딩 (#, ##, ###, ####) 및 볼드/취소선/링크 변환
+        // 5. 마크다운 헤딩 (#, ##, ###, ####)
         safe = safe.replace(/^[ \t]*#{1,2}[ \t]+(.*)$/gm, '<strong class="ai-md-heading ai-md-h3">$1</strong>');
         safe = safe.replace(/^[ \t]*#{3,4}[ \t]+(.*)$/gm, '<strong class="ai-md-heading ai-md-h4">$1</strong>');
-        safe = safe.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-        safe = safe.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+
+        // 5-1. 표준 볼드 및 언더스코어 강조 쌍 (**...**, __...__)
+        safe = safe.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+        safe = safe.replace(/__([^_\n]+?)__/g, '<strong>$1</strong>');
+
+        // 5-2. 불완전 볼드 쌍 복원 (**...*) - 닫는 별표가 1개만 입력된 경우
+        safe = safe.replace(/\*\*([^*\n]+?)\*(?!\*)/g, '<strong>$1</strong>');
+
+        // 5-3. 목록/헤더 라인에서 열리고 닫히지 않은 볼드 스마트 복원 (예: 3. **🏏 스포츠 뉴스: ...)
+        safe = safe.replace(/(^[ \t]*(?:\d+\.\s*|[•\-*]\s*)?)\*\*([^*\n]+)$/gm, '$1<strong>$2</strong>');
+
+        // 5-4. 인라인에서 열리고 닫히지 않은 볼드 복원 (콜론 앞까지 또는 남은 ** 감싸기)
+        safe = safe.replace(/\*\*([^*\n:]{2,30}):/g, '<strong>$1</strong>:');
+        safe = safe.replace(/\*\*([^*\n]+)/g, '<strong>$1</strong>');
+
+        // 5-5. 이탤릭 및 보조 강조 (*...*)
+        safe = safe.replace(/(?<![*\w])\*([^*\n\s][^*\n]*?[^*\n\s])\*(?![*\w])/g, '<em>$1</em>');
+
+        // 5-6. 문장 끝에 무의식적으로 남은 단독 별표 정제 (예: "확인!*" -> "확인!")
+        safe = safe.replace(/([가-힣a-zA-Z0-9!?~.)])\*+([ \t]*)$/gm, '$1$2');
+
+        // 5-7. 취소선, 링크, 불릿 리스트 변환
         safe = safe.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
         safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="ai-link">$1</a>');
         safe = safe.replace(/^[ \t]*[-*][ \t]+(.*)$/gm, '• $1');
@@ -513,7 +533,8 @@
                         .replace(/\[([^\]\n]+)\]\]/g, '[$1]')
                         .replace(/\[\[([^\]\n]+)\]/g, '[$1]');
 
-                    // 프론트엔드 2차 방어: 본문 시작부 메타 독백 누출 정제
+                    // 프론트엔드 2차 방어: 본문 시작부 단독 영단어/CoT 찌꺼기 및 메타 독백 누출 정제
+                    cleaned = cleaned.replace(/^[a-zA-Z]{2,20}\.\s*(?:\n+|$)/i, '').trim();
                     const metaRegex = /^(?:(?:Okay|Ok|오케이|알겠습니다|자,)\s*[,.]?\s*)?(?:사용자(?:가|는|의|에게)|요청(?:한|하신|내용)|질문(?:한|하신|내용)|전문\s*분석\s*추론|추론\s*내용을|답변\s*계획|답변을\s*작성)[\s\S]*?(?=\n\n|\n[#\-*]|\n\d+\.\s|안녕하세요|네,\s|오늘의|실시간|현재)/i;
                     cleaned = cleaned.replace(metaRegex, '').trim();
 
