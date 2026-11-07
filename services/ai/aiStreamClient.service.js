@@ -284,6 +284,9 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
     const sendEvent = (eventData) => {
         if (!res.writableEnded) {
             res.write(`data: ${JSON.stringify(eventData)}\n\n`);
+            if (typeof res.flush === 'function') {
+                res.flush();
+            }
         }
     };
 
@@ -375,12 +378,24 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                         sendEvent({ type: 'thinking', delta: tDelta, token: tDelta });
                     }
 
-                    // 답변 본문 실시간 스트리밍 (영단어 괄호 병기 자동 정제)
-                    const visible = cleanEnglishParentheses(part.answer);
-                    if (visible.length > sentAnswer.length && visible.startsWith(sentAnswer)) {
-                        const aDelta = visible.slice(sentAnswer.length);
-                        sentAnswer = visible;
-                        sendEvent({ type: 'content', delta: aDelta, token: aDelta });
+                    // 답변 본문 실시간 스트리밍 (무중단 실시간 타이핑 렌더링)
+                    if (part.answer.length > sentAnswer.length) {
+                        if (part.answer.startsWith(sentAnswer)) {
+                            const aDelta = part.answer.slice(sentAnswer.length);
+                            sentAnswer = part.answer;
+                            sendEvent({ type: 'content', delta: aDelta, token: aDelta });
+                        } else {
+                            // 공통 접두사 안전망 (태그/공백 분리 등으로 인한 미세 변동 방어)
+                            let commonLen = 0;
+                            while (commonLen < sentAnswer.length && commonLen < part.answer.length && sentAnswer[commonLen] === part.answer[commonLen]) {
+                                commonLen++;
+                            }
+                            const aDelta = part.answer.slice(commonLen);
+                            sentAnswer = part.answer;
+                            if (aDelta) {
+                                sendEvent({ type: 'content', delta: aDelta, token: aDelta });
+                            }
+                        }
                     }
                 }
 
@@ -409,10 +424,17 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                             sentAnswer = finalAnswer;
                         }
                     } else {
-                        if (finalAnswer.length > sentAnswer.length && finalAnswer.startsWith(sentAnswer)) {
-                            const remaining = finalAnswer.slice(sentAnswer.length);
-                            sentAnswer = finalAnswer;
-                            sendEvent({ type: 'content', delta: remaining, token: remaining });
+                        // 미전송된 마지막 잔여 토큰 방출
+                        if (finalPart.answer.length > sentAnswer.length) {
+                            let commonLen = 0;
+                            while (commonLen < sentAnswer.length && commonLen < finalPart.answer.length && sentAnswer[commonLen] === finalPart.answer[commonLen]) {
+                                commonLen++;
+                            }
+                            const remaining = finalPart.answer.slice(commonLen);
+                            sentAnswer = finalPart.answer;
+                            if (remaining) {
+                                sendEvent({ type: 'content', delta: remaining, token: remaining });
+                            }
                         }
                     }
 
@@ -452,10 +474,17 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
                     sentAnswer = finalAnswer;
                 }
             } else {
-                if (finalAnswer.length > sentAnswer.length && finalAnswer.startsWith(sentAnswer)) {
-                    const remaining = finalAnswer.slice(sentAnswer.length);
-                    sentAnswer = finalAnswer;
-                    sendEvent({ type: 'content', delta: remaining, token: remaining });
+                // 미전송된 마지막 잔여 토큰 방출
+                if (finalPart.answer.length > sentAnswer.length) {
+                    let commonLen = 0;
+                    while (commonLen < sentAnswer.length && commonLen < finalPart.answer.length && sentAnswer[commonLen] === finalPart.answer[commonLen]) {
+                        commonLen++;
+                    }
+                    const remaining = finalPart.answer.slice(commonLen);
+                    sentAnswer = finalPart.answer;
+                    if (remaining) {
+                        sendEvent({ type: 'content', delta: remaining, token: remaining });
+                    }
                 }
             }
 

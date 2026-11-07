@@ -47,7 +47,15 @@ const kindergartenRoutes = require('./routes/kindergarten.routes');
 
 const app = express();
 app.set('trust proxy', 1);
-app.use(compression());
+// ⚡ SSE(text/event-stream) 스트리밍 버퍼링 방지를 위한 압축 예외 필터
+app.use(compression({
+    filter: (req, res) => {
+        if (req.headers.accept && req.headers.accept.includes('text/event-stream')) {
+            return false;
+        }
+        return compression.filter(req, res);
+    }
+}));
 
 // 🌐 CORS 화이트리스트 검증 미들웨어
 app.use((req, res, next) => {
