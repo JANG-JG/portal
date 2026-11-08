@@ -302,7 +302,7 @@ function renderPortalNewsList(tab) {
         const cat = a.category_name || (tab === 'breaking' ? '속보' : '주요');
         const isBreaking = tab === 'breaking' || cat === '속보' || title.includes('[속보]') || title.includes('(속보)');
         const catBadgeClass = isBreaking ? 'badge-breaking' : 'badge-normal';
-        const link = a.link || 'https://news.j-jg.cc';
+        const link = a.link || '/go/news';
         const img = a.image_url || '';
         const summary = (a.summary || '').trim();
         const hasSummary = Boolean(summary);
@@ -378,7 +378,7 @@ function openPortalNewsSummaryModal(index, tab) {
     }
 
     if (originLink) {
-        originLink.href = item.link || 'https://news.j-jg.cc';
+        originLink.href = item.link || '/go/news';
     }
 
     modal.style.display = 'flex';

@@ -299,7 +299,7 @@
                 news.forEach(n => {
                     const item = document.createElement('a');
                     item.className = 'qs-item';
-                    item.href = n.link || 'https://news.j-jg.cc';
+                    item.href = n.link || '/go/news';
                     item.target = '_blank';
                     item.rel = 'noopener noreferrer';
                     const titleHtml = highlightMatch(n.title || '', query);
@@ -348,7 +348,7 @@
                 hospitals.forEach(h => {
                     const item = document.createElement('a');
                     item.className = 'qs-item';
-                    item.href = `https://blood.j-jg.cc/hospital.html`;
+                    item.href = `/go/blood?path=/hospital.html`;
                     const hospNameHtml = highlightMatch(h.hospital_name || '병원', query);
                     const deptHtml = highlightMatch(h.department || '', query);
                     const memoHtml = highlightMatch(h.memo || '', query);
@@ -381,7 +381,7 @@
                 assets.forEach(a => {
                     const item = document.createElement('a');
                     item.className = 'qs-item';
-                    item.href = `https://asset.j-jg.cc`;
+                    item.href = `/go/asset`;
                     const symHtml = highlightMatch(a.symbol || '', query);
                     const nameHtml = highlightMatch(a.full_name || a.symbol || '', query);
 
