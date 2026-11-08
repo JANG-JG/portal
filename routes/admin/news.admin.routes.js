@@ -137,11 +137,10 @@ router.post('/exclude-keywords', (req, res) => {
 
 // 3-1. 뉴스 AI 요약 모델 조회 및 설정 API
 const ALLOWED_SUMMARY_MODELS = [
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite (초경량 · 최저비용)', desc: '초고속 및 최저비용 요약 특화' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (표준 초고속)', desc: '가성비와 정확도의 완벽한 균형' },
-    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite (차세대 경량)', desc: '3.x 세대 최신 경량 요약 모델' },
-    { id: 'gemini-3.0-flash', name: 'Gemini 3 Flash (차세대 고성능)', desc: '심층 문맥 이해 및 고품질 요약' },
-    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (요약 특화 초경량)', desc: '최신 초경량 요약 특화 모델' }
+    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite (초경량 · 최저비용 권장)', desc: '구글 최저비용 초고속 요약 모델' },
+    { id: 'gemini-3.5-flash-lite', name: 'Gemini 3.5 Flash-Lite (요약 특화 경량)', desc: '문맥 이해력 강화 차세대 경량 모델' },
+    { id: 'gemini-3.0-flash', name: 'Gemini 3 Flash (고성능 표준)', desc: '심층 문맥 이해 및 고품질 요약' },
+    { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash (최신 플래그십 플래시)', desc: '최고 성능의 최신 범용 플래시 모델' }
 ];
 
 router.get('/summary-model', async (req, res) => {
