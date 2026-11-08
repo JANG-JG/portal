@@ -71,7 +71,6 @@
         document.head.appendChild(link);
     }
 
-
     // 3. 긴급 속보 상단 띠 DOM 생성
     let currentBreakingSignature = '';
     const breakingBar = document.createElement('div');
@@ -307,7 +306,6 @@
                 if (/안개/.test(c)) return 'fog';
                 if (c === '흐림') return 'overcast';
                 if (/구름\s*많음|구름\s*조금|대체로\s*흐림/.test(c)) return isDay === 1 ? 'partly-cloudy-day' : 'partly-cloudy-night';
-                if (/맑음|대체로\s*맑음/.test(c)) return isDay === 1 ? 'clear-day' : 'clear-night';
                 return isDay === 1 ? 'clear-day' : 'clear-night';
             };
 
@@ -317,11 +315,9 @@
 
             const isKma = weather.data_source === 'kma' || weather.source_label === '기상청 공식';
             const kmaTag = isKma ? `<span style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:9.5px; padding:1px 4px; border-radius:3px; font-weight:700; margin-left:3px;">기상청</span>` : '';
-            const pm10Status = (weather.air_quality && weather.air_quality.pm10_status && weather.air_quality.pm10_status !== '-') ? weather.air_quality.pm10_status : '';
-            const airBadge = pm10Status ? `<span style="background:rgba(148,163,184,0.15); color:#94a3b8; font-size:9.5px; padding:1px 4px; border-radius:3px; margin-left:2px;">미세 ${pm10Status}</span>` : '';
             const minMaxText = (weather.min_temp && weather.max_temp) ? ` (최저 ${weather.min_temp} / 최고 ${weather.max_temp})` : '';
             const kmaPrefix = isKma ? '[기상청 공식] ' : '';
-            const weatherTitle = `${kmaPrefix}실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''})${minMaxText}${pm10Status ? ` • 미세먼지 ${pm10Status}` : ''} - 클릭 시 상세 기상 브리핑 이동`;
+            const weatherTitle = `${kmaPrefix}실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''})${minMaxText} - 클릭 시 상세 기상 브리핑 이동`;
             const conditionBadge = weather.condition ? `<span style="color:#cbd5e1; font-size:10.5px; margin-left:3px; font-weight:500;">${weather.condition}</span>` : '';
 
             const kospiRatio = kospi.ratio && kospi.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kospi.ratio}</span>` : '';
@@ -330,7 +326,7 @@
 
             const slides = [];
 
-            // 1. 날씨 슬라이드 및 상단 내비게이션 날씨 배지 실시간 동기화
+            // 1. 기상 현황 슬라이드 및 상단 내비게이션 날씨 배지 실시간 동기화
             if (weather && weather.temp && weather.temp !== '-') {
                 const topCityEl = document.getElementById('welcomeWeatherCity');
                 const topTempEl = document.getElementById('welcomeWeatherTemp');
@@ -339,19 +335,26 @@
                 if (topCityEl) topCityEl.textContent = cityName;
                 if (topTempEl) topTempEl.textContent = weather.temp;
                 if (topBadgeEl) topBadgeEl.title = weatherTitle;
-                if (topIconEl && weatherSlug) {
-                    topIconEl.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
-                }
+                if (topIconEl && weatherSlug) topIconEl.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
 
                 slides.push(
-                    `<a href="https://j-jg.cc/go/news?path=/weather" class="jg-v-item" title="${weatherTitle}">
-                        <span style="display:inline-flex; align-items:center; gap:4px;">${weatherIconSvg}<span>${cityName}</span></span>
-                        <span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>
-                        ${conditionBadge}
-                        ${kmaTag}
-                        ${airBadge}
-                    </a>`
+                    `<a href="https://j-jg.cc/go/news?path=/weather" class="jg-v-item" title="${weatherTitle}"><span style="display:inline-flex; align-items:center; gap:4px;">${weatherIconSvg}<span>${cityName}</span></span><span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>${conditionBadge}${kmaTag}</a>`
                 );
+
+                // 2. 대기질/미세먼지 정보 분리 슬라이드 (모바일 360px 잘림 방지)
+                const air = weather.air_quality || {};
+                const pm10St = (air.pm10_status && air.pm10_status !== '-') ? air.pm10_status : '';
+                const pm25St = (air.pm25_status && air.pm25_status !== '-') ? air.pm25_status : '';
+                if (pm10St || pm25St) {
+                    const airColor = (pm10St === '좋음' || pm25St === '좋음') ? '#34d399' : (pm10St.includes('나쁨') || pm25St.includes('나쁨') ? '#f87171' : '#38bdf8');
+                    const pm10Part = pm10St ? `미세 ${pm10St}` : '';
+                    const pm25Part = pm25St ? `초미세 ${pm25St}` : '';
+                    const airText = [pm10Part, pm25Part].filter(Boolean).join(' · ');
+                    const airTitle = `${cityName} 대기질: ${pm10Part ? `미세먼지 ${pm10St} ` : ''}${pm25Part ? `초미세먼지 ${pm25St}` : ''} - 상세 보기`;
+                    slides.push(
+                        `<a href="https://j-jg.cc/go/news?path=/weather" class="jg-v-item" title="${airTitle}"><span style="display:inline-flex; align-items:center; gap:3px;">🍃<span>${cityName}</span></span><span style="color:${airColor}; font-weight:700;">${airText}</span></a>`
+                    );
+                }
             }
 
             // 2. 코스피 슬라이드
