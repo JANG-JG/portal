@@ -38,45 +38,79 @@
     color: var(--hm-text-main) !important;
 }
 
-/* 뉴스 기사 리스트 */
-.news-rec-list {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.25rem !important;
+/* ==============================================================================
+ * 📰 실시간 뉴스룸 위젯 & AI 3줄 요약 모달
+ * ============================================================================== */
+.news-rec-list { display: flex !important; flex-direction: column !important; gap: 0.35rem !important; }
+.portal-news-card-item {
+    display: flex !important; align-items: center !important; justify-content: space-between !important;
+    padding: 0.5rem 0.55rem !important; background: #ffffff !important;
+    border: 1px solid var(--hm-border-subtle, #f1f5f9) !important; border-radius: 8px !important;
+    transition: background 0.12s ease, border-color 0.12s ease !important;
+    box-sizing: border-box !important; min-width: 0 !important;
 }
-.news-rec-item,
-.bento-news-row {
-    background: #ffffff !important;
-    color: var(--hm-text-main) !important;
-    border-bottom: 1px solid var(--hm-border-subtle) !important;
-    padding: 0.5rem 0.6rem !important;
-    border-radius: 6px !important;
-    transition: background 0.12s ease !important;
-    text-decoration: none !important;
+.portal-news-card-item:hover { background: var(--hm-bg-subtle, #f8fafc) !important; border-color: var(--hm-border, #e2e8f0) !important; }
+.portal-news-main-col { flex: 1 1 0% !important; min-width: 0 !important; display: flex !important; flex-direction: column !important; gap: 0.2rem !important; }
+.portal-news-meta-row { display: flex !important; align-items: center !important; gap: 0.35rem !important; font-size: 0.72rem !important; line-height: 1 !important; }
+.portal-news-badge { font-size: 0.68rem !important; font-weight: 700 !important; padding: 2px 5px !important; border-radius: 4px !important; flex-shrink: 0 !important; }
+.portal-news-badge.badge-normal { background: #eff6ff !important; color: #1d4ed8 !important; border: 1px solid #bfdbfe !important; }
+.portal-news-badge.badge-breaking { background: #fef2f2 !important; color: #dc2626 !important; border: 1px solid #fecaca !important; }
+.portal-news-media { color: var(--hm-text-muted, #64748b) !important; font-size: 0.72rem !important; white-space: nowrap !important; }
+.portal-news-time { color: var(--hm-text-muted, #94a3b8) !important; font-size: 0.7rem !important; font-family: var(--font-mono, monospace) !important; }
+.portal-news-title {
+    font-size: 0.83rem !important; font-weight: 600 !important; color: var(--hm-text-main, #0f172a) !important;
+    text-decoration: none !important; white-space: nowrap !important; overflow: hidden !important;
+    text-overflow: ellipsis !important; display: block !important; line-height: 1.35 !important;
 }
-.news-rec-item:hover,
-.bento-news-row:hover {
-    background: var(--hm-bg-subtle) !important;
+.portal-news-title:hover { color: #1d4ed8 !important; }
+.portal-news-actions { display: flex !important; align-items: center !important; gap: 0.4rem !important; margin-top: 0.15rem !important; }
+.portal-news-ai-btn {
+    font-size: 11px !important; height: 22px !important; padding: 0 7px !important;
+    background: rgba(29, 78, 216, 0.08) !important; color: #1d4ed8 !important;
+    border: 1px solid rgba(29, 78, 216, 0.25) !important; border-radius: 4px !important;
+    font-weight: 700 !important; cursor: pointer !important; display: inline-flex !important;
+    align-items: center !important; gap: 2px !important; transition: all 0.12s ease !important;
 }
-.news-rec-text,
-.bento-news-row span {
-    color: var(--hm-text-main) !important;
-    font-weight: 600 !important;
+.portal-news-ai-btn:hover { background: #1d4ed8 !important; color: #ffffff !important; }
+.portal-news-origin-link { font-size: 11px !important; color: var(--hm-text-muted, #64748b) !important; text-decoration: none !important; font-weight: 500 !important; }
+.portal-news-origin-link:hover { color: var(--hm-text-main, #0f172a) !important; }
+.portal-news-thumb-wrap {
+    width: 56px !important; height: 42px !important; border-radius: 6px !important;
+    overflow: hidden !important; flex-shrink: 0 !important; margin-left: 0.5rem !important;
+    background: #f1f5f9 !important; border: 1px solid var(--hm-border-subtle, #e2e8f0) !important;
 }
-.news-cat-badge {
-    background: var(--hm-bg-subtle) !important;
-    border: 1px solid var(--hm-border) !important;
-    color: var(--hm-text-muted) !important;
+.portal-news-thumb { width: 100% !important; height: 100% !important; object-fit: cover !important; display: block !important; }
+.news-rec-loading { color: var(--hm-text-muted, #64748b) !important; text-align: center; padding: 1.5rem 0; font-size: 0.82rem; }
+
+/* AI 요약 팝업 모달 */
+.portal-news-modal-backdrop {
+    position: fixed; inset: 0; z-index: 10000; background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+    padding: 1rem; box-sizing: border-box;
 }
-.news-rec-media {
-    color: var(--hm-text-muted) !important;
+.portal-news-modal-dialog {
+    background: #ffffff; width: 100%; max-width: 460px; border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    overflow: hidden; display: flex; flex-direction: column; animation: pnmFadeIn 0.18s ease-out;
 }
-.news-rec-loading {
-    color: var(--hm-text-muted) !important;
-    text-align: center;
-    padding: 1.5rem 0;
-    font-size: 0.85rem;
+@keyframes pnmFadeIn {
+    from { opacity: 0; transform: scale(0.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
+.portal-news-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 0.85rem 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.portal-news-modal-title-group { display: flex; align-items: center; gap: 0.5rem; }
+.portal-news-modal-icon { font-size: 1.2rem; }
+.portal-news-modal-title { font-size: 0.95rem; font-weight: 800; color: #1d4ed8; }
+.portal-news-modal-media { font-size: 0.72rem; color: #64748b; }
+.portal-news-modal-close { background: transparent; border: none; font-size: 1.15rem; color: #94a3b8; cursor: pointer; padding: 2px 6px; line-height: 1; }
+.portal-news-modal-body { padding: 1rem; max-height: 60vh; overflow-y: auto; }
+.portal-news-modal-headline { font-size: 0.95rem; font-weight: 700; line-height: 1.45; color: #0f172a; margin: 0 0 0.75rem 0; }
+.portal-news-bullet-row { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.5rem; padding: 0.5rem 0.65rem; background: #f8fafc; border-radius: 6px; border-left: 3px solid #1d4ed8; }
+.portal-news-bullet-dot { color: #1d4ed8; font-size: 0.75rem; flex-shrink: 0; margin-top: 2px; }
+.portal-news-bullet-text { font-size: 0.83rem; line-height: 1.5; color: #334155; }
+.portal-news-modal-footer { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+.portal-news-modal-link { font-size: 0.8rem; font-weight: 700; color: #1d4ed8; text-decoration: none; }
+.portal-news-modal-btn { padding: 0.35rem 0.85rem; background: #0f172a; color: #ffffff; font-size: 0.8rem; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; }
 
 /* ==============================================================================
  * 💰 2. 총 자산 포트폴리오 & 시장지표 롤링 바

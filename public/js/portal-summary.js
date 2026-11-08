@@ -168,15 +168,8 @@ function loadSummary() {
 
             // 1-7. 실시간 뉴스 & 속보 바인딩
             if (data.news) {
-                const recListEl = document.getElementById('newsRecommendedList');
-                if (recListEl && data.news.recommendedArticles && data.news.recommendedArticles.length > 0) {
-                    recListEl.innerHTML = data.news.recommendedArticles.slice(0, 3).map(a => `
-                        <a href="${a.link}" target="_blank" rel="noopener noreferrer" class="bento-news-row" style="text-decoration:none; padding:0.45rem 0.6rem; border-bottom:1px solid var(--hm-border, #e2e8f0); display:flex; justify-content:space-between; align-items:center;">
-                            <span style="font-size:0.82rem; color:var(--hm-text-main, #0f172a); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:75%;">${a.title}</span>
-                            <span style="font-size:0.72rem; color:var(--hm-text-muted, #64748b); font-family:var(--font-mono);">${a.media_name || '뉴스'}</span>
-                        </a>
-                    `).join('');
-                }
+                window._portalNewsData = data.news;
+                renderPortalNewsList(window._portalNewsActiveTab || 'major');
                 if (typeof bindBreakingTicker === 'function') {
                     bindBreakingTicker(data.news.breakingArticles || []);
                 }
@@ -258,4 +251,154 @@ function getFallbackSummaryData() {
             secondary: { name: '보조서버 (구형 노트북)', cpu: '대기 중', ram: '대기 중', disk: '2.1% (9.6GB / 456GB)', network: '백업 대기 (새벽 04:00)', temp: '38.5°C', status: 'standby', statusText: '백업 대기' }
         }
     };
+}
+
+// ==============================================================================
+// 📰 4. 실시간 뉴스룸 탭 전환 & 리스트 렌더링 & AI 3줄 요약 모달 제어
+// ==============================================================================
+window._portalNewsActiveTab = 'major';
+
+function switchPortalNewsTab(tab) {
+    window._portalNewsActiveTab = tab;
+    const btnMajor = document.getElementById('btnPortalNewsMajor');
+    const btnBreaking = document.getElementById('btnPortalNewsBreaking');
+    if (btnMajor && btnBreaking) {
+        btnMajor.classList.toggle('active', tab === 'major');
+        btnBreaking.classList.toggle('active', tab === 'breaking');
+    }
+    renderPortalNewsList(tab);
+}
+window.switchPortalNewsTab = switchPortalNewsTab;
+
+function renderPortalNewsList(tab) {
+    const recListEl = document.getElementById('newsRecommendedList');
+    if (!recListEl) return;
+    const newsData = window._portalNewsData;
+    if (!newsData) return;
+
+    let articles = [];
+    if (tab === 'breaking') {
+        articles = newsData.breakingArticles || [];
+    } else {
+        articles = (newsData.topIssues && newsData.topIssues.length > 0) ? newsData.topIssues : (newsData.recommendedArticles || []);
+    }
+
+    if (!articles || articles.length === 0) {
+        recListEl.innerHTML = `<div class="news-rec-loading">${tab === 'breaking' ? '최근 1시간 내 속보가 없습니다.' : '등록된 주요 기사가 없습니다.'}</div>`;
+        return;
+    }
+
+    const items = articles.slice(0, 3);
+    recListEl.innerHTML = items.map((a, idx) => {
+        const title = a.title || '뉴스 기사';
+        const media = a.media_name || '뉴스';
+        const cat = a.category_name || (tab === 'breaking' ? '속보' : '주요');
+        const isBreaking = tab === 'breaking' || cat === '속보' || title.includes('[속보]') || title.includes('(속보)');
+        const catBadgeClass = isBreaking ? 'badge-breaking' : 'badge-normal';
+        const link = a.link || 'https://news.j-jg.cc';
+        const img = a.image_url || '';
+        const summary = (a.summary || '').trim();
+        const hasSummary = Boolean(summary);
+
+        let timeLabel = '';
+        if (a.published_at && a.published_at.length >= 16) {
+            timeLabel = a.published_at.slice(11, 16);
+        }
+
+        return `
+            <div class="portal-news-card-item">
+                <div class="portal-news-main-col">
+                    <div class="portal-news-meta-row">
+                        <span class="portal-news-badge ${catBadgeClass}">${isBreaking ? '🚨 속보' : cat}</span>
+                        <span class="portal-news-media">${media}</span>
+                        ${timeLabel ? `<span class="portal-news-time">${timeLabel}</span>` : ''}
+                    </div>
+                    <a href="${link}" target="_blank" rel="noopener noreferrer" class="portal-news-title" title="${escapePortalNewsAttr(title)}">
+                        ${escapePortalNewsHtml(title)}
+                    </a>
+                    <div class="portal-news-actions">
+                        ${hasSummary ? `
+                            <button type="button" class="portal-news-ai-btn" onclick="openPortalNewsSummaryModal(${idx}, '${tab}')">
+                                ⚡ AI 3줄 요약
+                            </button>
+                        ` : ''}
+                        <a href="${link}" target="_blank" rel="noopener noreferrer" class="portal-news-origin-link">
+                            원문 보기 ↗
+                        </a>
+                    </div>
+                </div>
+                ${img ? `
+                <div class="portal-news-thumb-wrap">
+                    <img src="${img}" alt="" class="portal-news-thumb" loading="lazy" onerror="this.parentElement.style.display='none'">
+                </div>` : ''}
+            </div>
+        `;
+    }).join('');
+}
+window.renderPortalNewsList = renderPortalNewsList;
+
+function openPortalNewsSummaryModal(index, tab) {
+    const newsData = window._portalNewsData;
+    if (!newsData) return;
+    const list = (tab === 'breaking') ? (newsData.breakingArticles || []) : ((newsData.topIssues && newsData.topIssues.length > 0) ? newsData.topIssues : (newsData.recommendedArticles || []));
+    const item = list[index];
+    if (!item) return;
+
+    const modal = document.getElementById('portalNewsSummaryModal');
+    if (!modal) return;
+
+    const mediaEl = document.getElementById('pnmMedia');
+    const headlineEl = document.getElementById('pnmHeadline');
+    const summaryContainer = document.getElementById('pnmSummary');
+    const originLink = document.getElementById('pnmOriginLink');
+
+    if (mediaEl) mediaEl.textContent = `${item.media_name || '주요 언론'} • ${item.published_at ? item.published_at.slice(0, 16) : '오늘'}`;
+    if (headlineEl) headlineEl.textContent = item.title || '';
+
+    const summaryText = (item.summary || '').trim();
+    if (summaryContainer) {
+        if (summaryText) {
+            const lines = summaryText.split(/(?<=[.!?])\s+/).filter(Boolean);
+            summaryContainer.innerHTML = lines.map(line => `
+                <div class="portal-news-bullet-row">
+                    <span class="portal-news-bullet-dot">✦</span>
+                    <span class="portal-news-bullet-text">${escapePortalNewsHtml(line)}</span>
+                </div>
+            `).join('');
+        } else {
+            summaryContainer.innerHTML = `<div class="portal-news-modal-loading">AI 요약이 준비되지 않았습니다. 원문 기사를 확인해 주세요.</div>`;
+        }
+    }
+
+    if (originLink) {
+        originLink.href = item.link || 'https://news.j-jg.cc';
+    }
+
+    modal.style.display = 'flex';
+    if (typeof lockBodyScroll === 'function') lockBodyScroll();
+}
+window.openPortalNewsSummaryModal = openPortalNewsSummaryModal;
+
+function closePortalNewsSummaryModal() {
+    const modal = document.getElementById('portalNewsSummaryModal');
+    if (modal) {
+        modal.style.display = 'none';
+        if (typeof unlockBodyScroll === 'function') unlockBodyScroll();
+    }
+}
+window.closePortalNewsSummaryModal = closePortalNewsSummaryModal;
+
+function handlePortalNewsModalBackdrop(e) {
+    if (e.target.id === 'portalNewsSummaryModal' || e.target.classList.contains('portal-news-modal-backdrop')) {
+        closePortalNewsSummaryModal();
+    }
+}
+window.handlePortalNewsModalBackdrop = handlePortalNewsModalBackdrop;
+
+function escapePortalNewsHtml(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function escapePortalNewsAttr(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }

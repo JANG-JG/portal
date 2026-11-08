@@ -212,6 +212,10 @@
             }
         }
 
+        function escapeHtml(str) {
+            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
         function escapeRegExp(string) {
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
@@ -319,6 +323,19 @@
                     sec.appendChild(item);
                     renderedCount++;
                 });
+
+                // 📰 뉴스룸 전문 검색 바로가기
+                if (query) {
+                    const moreItem = document.createElement('a');
+                    moreItem.className = 'qs-item';
+                    moreItem.href = `/go/news?path=/search?q=${encodeURIComponent(query)}`;
+                    moreItem.style.background = 'rgba(29, 78, 216, 0.05)';
+                    moreItem.style.justifyContent = 'center';
+                    moreItem.style.border = '1px dashed rgba(29, 78, 216, 0.3)';
+                    moreItem.innerHTML = `<span style="font-size:0.8rem; font-weight:700; color:#1d4ed8;">🔍 뉴스룸에서 ‘${highlightMatch(query, query)}’ 통합 검색 더보기 ↗</span>`;
+                    sec.appendChild(moreItem);
+                }
+
                 listEl.appendChild(sec);
             }
 
@@ -389,6 +406,12 @@
 
             if (renderedCount === 0) {
                 noResultsEl.style.display = 'block';
+                const subEl = noResultsEl.querySelector('.qs-no-results-sub');
+                if (subEl && query) {
+                    subEl.innerHTML = `다른 키워드로 검색해 보세요.<br><a href="/go/news?path=/search?q=${encodeURIComponent(query)}" style="display:inline-block; margin-top:0.6rem; color:#1d4ed8; font-weight:700; text-decoration:none; font-size:0.8rem; background:rgba(29,78,216,0.08); padding:5px 12px; border-radius:4px;">📰 뉴스룸에서 ‘${escapeHtml(query)}’ 전문 검색하기 ↗</a>`;
+                } else if (subEl) {
+                    subEl.textContent = '다른 키워드로 검색해 보세요.';
+                }
                 noResultsEl.querySelector('.qs-no-results-text').textContent = '해당 카테고리의 결과가 없습니다.';
                 listEl.style.display = 'none';
             } else {

@@ -196,7 +196,7 @@
         },
         {
           "name": "속보 뉴스 피드",
-          "url": "https://news.j-jg.cc/breaking",
+          "url": "/go/news?path=/breaking",
           "icon": "🚨",
           "desc": "실시간 긴급 속보 스트림"
         },
@@ -205,6 +205,12 @@
           "url": "/go/news?path=/economy",
           "icon": "📊",
           "desc": "국내외 증시 및 금융 지표"
+        },
+        {
+          "name": "통합 뉴스 검색",
+          "url": "/go/news?path=/search",
+          "icon": "🔍",
+          "desc": "실시간 기사 및 속보 통합 검색"
         }
       ]
     },

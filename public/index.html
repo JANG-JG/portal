@@ -412,7 +412,13 @@
                             <span class="homarr-card-icon">📰</span>
                             <h3 class="homarr-card-title">실시간 주요 뉴스</h3>
                         </div>
-                        <a href="/go/news" class="homarr-card-link">뉴스룸 →</a>
+                        <div class="portal-news-header-actions" style="display:flex; align-items:center; gap:0.4rem;">
+                            <div class="server-pill-toggle" id="portalNewsTabToggle">
+                                <button type="button" class="server-pill-btn active" id="btnPortalNewsMajor" onclick="switchPortalNewsTab('major')">주요뉴스</button>
+                                <button type="button" class="server-pill-btn" id="btnPortalNewsBreaking" onclick="switchPortalNewsTab('breaking')">🚨 속보</button>
+                            </div>
+                            <a href="/go/news" class="homarr-card-link">뉴스룸 →</a>
+                        </div>
                     </div>
 
                     <!-- 실시간 시장 지표 미니 칩 바 -->
@@ -439,8 +445,8 @@
                     </div>
 
                     <div class="bento-card-footer">
-                        <span>실시간 자동 수집 엔진</span>
-                        <a href="https://news.j-jg.cc/breaking" style="color:var(--hm-text-muted); text-decoration:none;">🚨 실시간 속보 ↗</a>
+                        <a href="/go/news?path=/search" style="color:var(--hm-text-muted); text-decoration:none;">🔍 뉴스 통합 검색 ↗</a>
+                        <a href="/go/news?path=/breaking" style="color:var(--hm-text-muted); text-decoration:none;">🚨 실시간 속보 피드 ↗</a>
                     </div>
                 </div>
 
@@ -548,6 +554,32 @@
     <!-- @@MODAL_QUICKSEARCH@@ -->
 
     <!-- @@MODAL_WEATHER@@ -->
+    
+    <!-- 📰 실시간 뉴스 3줄 AI 요약 바텀시트/모달 -->
+    <div class="portal-news-modal-backdrop" id="portalNewsSummaryModal" onclick="handlePortalNewsModalBackdrop(event)" style="display:none;">
+        <div class="portal-news-modal-dialog" role="dialog" aria-modal="true">
+            <div class="portal-news-modal-header">
+                <div class="portal-news-modal-title-group">
+                    <span class="portal-news-modal-icon">⚡</span>
+                    <div>
+                        <div class="portal-news-modal-title">AI 핵심 3줄 요약</div>
+                        <div class="portal-news-modal-media" id="pnmMedia">-</div>
+                    </div>
+                </div>
+                <button type="button" class="portal-news-modal-close" onclick="closePortalNewsSummaryModal()" title="닫기">✕</button>
+            </div>
+            <div class="portal-news-modal-body">
+                <h4 class="portal-news-modal-headline" id="pnmHeadline">-</h4>
+                <div class="portal-news-modal-summary" id="pnmSummary">
+                    <div class="portal-news-modal-loading">요약 내용을 불러오는 중...</div>
+                </div>
+            </div>
+            <div class="portal-news-modal-footer">
+                <a href="#" id="pnmOriginLink" target="_blank" rel="noopener noreferrer" class="portal-news-modal-link">기사 원문 읽기 ↗</a>
+                <button type="button" class="portal-news-modal-btn" onclick="closePortalNewsSummaryModal()">닫기</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 🧩 모듈화된 프론트엔드 컴포넌트 스크립트 (500줄 이하 모듈화 헌법 준수) -->
     <script src="/js/portal-market.js"></script>
