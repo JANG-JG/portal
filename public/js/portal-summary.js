@@ -63,13 +63,13 @@ function loadSummary() {
             if (medBadge && medStatusText && medSubText) {
                 if (isTaken) {
                     medBadge.className = 'bento-badge badge-emerald';
-                    medBadge.textContent = '약 먹었어요 ✅';
+                    medBadge.textContent = '✓ 복용완료';
                     medStatusText.textContent = '오늘 약 복용 완료';
                     medSubText.textContent = med.medication_time ? (med.medication_time.replace('T', ' ').slice(5, 16) + ' 기록') : '오늘 약 챙겨먹기 완료';
                     if (btnWidgetMed) btnWidgetMed.style.display = 'none';
                 } else {
                     medBadge.className = 'bento-badge badge-amber';
-                    medBadge.textContent = '오늘 미복용 ⚠️';
+                    medBadge.textContent = '⚠️ 미복용';
                     medStatusText.textContent = '오늘 약을 아직 안 챙겨드셨어요';
                     medSubText.textContent = (med && med.medication_time) ? ('최근: ' + med.medication_time.replace('T', ' ').slice(5, 16)) : '약 복용 기록 없음';
                     if (btnWidgetMed) btnWidgetMed.style.display = 'inline-flex';
@@ -143,7 +143,7 @@ function loadSummary() {
             const assetEl = document.getElementById('assetSummary');
             if (assetEl && ast && ast.items && ast.items.length > 0) {
                 const first = ast.items[0];
-                const dirSymbol = first.direction === 'up' ? '▲' : '▼';
+                const dirSymbol = first.direction === 'up' ? '▲' : (first.direction === 'down' ? '▼' : '-');
                 assetEl.innerHTML = `
                     <div class="bento-market-ticker-box" style="margin-bottom: 0;">
                         <div class="market-ticker-inner font-mono" id="assetTickerRow">

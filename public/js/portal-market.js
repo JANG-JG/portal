@@ -48,8 +48,8 @@ function startComprehensiveMarketRolling(market) {
     let curIndex = 0;
     function updateTicker(idx) {
         const item = items[idx];
-        const arrow = item.dir === 'up' ? '▲' : '▼';
-        const color = item.dir === 'up' ? 'var(--status-rose)' : 'var(--status-emerald)';
+        const arrow = item.dir === 'up' ? '▲' : (item.dir === 'down' ? '▼' : '-');
+        const color = item.dir === 'up' ? '#ef4444' : (item.dir === 'down' ? '#2563eb' : 'var(--hm-text-muted, #64748b)');
 
         tickerBox.classList.add('fade-out');
         setTimeout(() => {
@@ -175,14 +175,14 @@ function startAssetFading(tickerRow, items) {
     assetFadeTimer = setInterval(() => {
         currentIndex = (currentIndex + 1) % items.length;
         const stock = items[currentIndex];
-        const dirSymbol = stock.direction === 'up' ? '▲' : '▼';
+        const dirSymbol = stock.direction === 'up' ? '▲' : (stock.direction === 'down' ? '▼' : '-');
 
         tickerRow.classList.add('fade-out');
         setTimeout(() => {
             const valEl = document.getElementById('assetTickerBox') || tickerRow;
             valEl.innerHTML = `
-                <span class="stock-kor-name" title="${stock.name}" style="color:var(--text-primary); font-weight:700; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis;">${stock.name}</span>
-                <span class="stock-price" style="color:var(--text-primary); font-weight:700; font-size:0.75rem; flex-shrink:0;">${stock.formattedTotal}</span>
+                <span class="stock-kor-name" title="${stock.name}" style="color:var(--hm-text-main, #0f172a); font-weight:700; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis;">${stock.name}</span>
+                <span class="stock-price" style="color:var(--hm-text-main, #0f172a); font-weight:700; font-size:0.75rem; flex-shrink:0;">${stock.formattedTotal}</span>
                 <span class="stock-diff ${stock.direction}" style="font-size:0.72rem; flex-shrink:0;">${dirSymbol} ${stock.diffPercent}</span>
             `;
             tickerRow.classList.remove('fade-out');

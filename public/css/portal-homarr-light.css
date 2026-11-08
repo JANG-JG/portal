@@ -45,8 +45,9 @@
     --hm-shadow-lg: 0 10px 25px -4px rgba(15, 23, 42, 0.08);
 }
 
-/* 캔버스 및 기본 텍스트 전환 */
-body {
+/* 캔버스 및 기본 텍스트 전환 (100dvh 풀스크린 표준 준수) */
+html, body {
+    min-height: 100dvh;
     background-color: var(--hm-bg-page) !important;
     color: var(--hm-text-main) !important;
 }
@@ -198,12 +199,14 @@ html.hide-blood .homarr-ring-box {
     color: var(--hm-text-muted);
 }
 
-/* 우측 헬스 서머리 (복약 & 혈압) */
+/* 우측 헬스 서머리 (복약 & 혈압) - 360px 무넘침 가드 */
 .homarr-health-summary-box {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
     align-items: center;
+    min-width: 0;
+    width: 100%;
 }
 .homarr-med-action-card,
 .homarr-blood-mini-card {
@@ -215,6 +218,9 @@ html.hide-blood .homarr-ring-box {
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 .homarr-blood-mini-card {
     cursor: pointer;
@@ -224,6 +230,12 @@ html.hide-blood .homarr-ring-box {
     border-color: var(--hm-border-strong);
     background: #eef2f6;
 }
+.homarr-med-info,
+.homarr-blood-info {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
 .homarr-label {
     display: block;
     font-size: 0.72rem;
@@ -231,21 +243,29 @@ html.hide-blood .homarr-ring-box {
     color: var(--hm-text-muted);
     margin-bottom: 2px;
     letter-spacing: -0.01em;
+    white-space: nowrap;
 }
 .homarr-med-title {
     font-size: 0.92rem;
     font-weight: 700;
     color: var(--hm-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .homarr-med-sub,
 .homarr-blood-sub {
     font-size: 0.76rem;
     color: var(--hm-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .homarr-blood-val {
     font-size: 1.15rem;
     font-weight: 800;
     color: var(--hm-text-main);
+    white-space: nowrap;
 }
 .homarr-btn-med {
     display: inline-flex;
