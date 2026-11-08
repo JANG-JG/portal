@@ -144,6 +144,96 @@ function normalizeCityCode(cityInput) {
 }
 
 /**
+ * 🏛️ 기상청 공식 저장 날씨 조회 (단일 진실 공급원: briefing.db daily_weather)
+ * - 대한민국 기상청 단기예보 Open API 및 에어코리아 공식 수집 데이터(details_json) 파싱
+ */
+function getSavedKmaWeather(cityKey) {
+    return new Promise((resolve) => {
+        if (!newsDb) return resolve(null);
+        newsDb.get(
+            "SELECT date, weather_info, details_json, created_at FROM daily_weather ORDER BY date DESC, rowid DESC LIMIT 1",
+            [],
+            (err, row) => {
+                if (err || !row || !row.details_json) {
+                    return resolve(null);
+                }
+                try {
+                    const details = JSON.parse(row.details_json);
+                    if (!details || !details.current) {
+                        return resolve(null);
+                    }
+
+                    const dbCityKey = normalizeCityCode(details.city || details.city_display || 'Gyeryong');
+                    // 요청된 도시가 명시되었고, DB에 저장된 도시와 다르면 null 반환 (외부 서비스로 안전 폴백)
+                    if (cityKey && normalizeCityCode(cityKey) !== dbCityKey) {
+                        return resolve(null);
+                    }
+
+                    const curr = details.current || {};
+                    const air = details.air_quality || {};
+                    const lifestyle = details.lifestyle || {};
+                    const cond = curr.condition || '맑음';
+                    const isDay = curr.is_day !== undefined ? Number(curr.is_day) : 1;
+                    const iconSlug = curr.icon_slug || getWeatherIconSlug(cond, isDay);
+                    const icon = curr.icon || getWeatherIcon(cond, isDay);
+
+                    const rawTemp = curr.temp !== undefined ? String(curr.temp).replace('°C', '').trim() : '-';
+                    const rawFeels = curr.feels_like !== undefined ? String(curr.feels_like).replace('°C', '').trim() : rawTemp;
+                    const temp = rawTemp !== '-' ? `${rawTemp}°C` : '-';
+                    const feelsLike = rawFeels !== '-' ? `${rawFeels}°C` : temp;
+
+                    // 사용자 친화적 도시명 정제 ('충남 계룡시' -> '계룡')
+                    const rawCity = details.city_display || CITY_KO_MAP[dbCityKey] || details.city || '계룡';
+                    const displayName = (rawCity === 'Gyeryong' || rawCity.includes('계룡'))
+                        ? '계룡'
+                        : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
+
+                    // 자연어 브리핑 가이드 문장 추출
+                    const guideText = (lifestyle && lifestyle.summary_sentence)
+                        || details.summary_text
+                        || row.weather_info
+                        || '상쾌하고 쾌적한 하루 보내세요.';
+
+                    const weatherData = {
+                        city: displayName,
+                        city_full: details.city_display || displayName,
+                        city_code: dbCityKey,
+                        temp: temp,
+                        condition: cond,
+                        icon: icon,
+                        icon_slug: iconSlug,
+                        icon_url: `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconSlug}.svg`,
+                        is_day: isDay,
+                        feels_like: feelsLike,
+                        min_temp: curr.min_temp ? `${String(curr.min_temp).replace('°C', '').trim()}°C` : '',
+                        max_temp: curr.max_temp ? `${String(curr.max_temp).replace('°C', '').trim()}°C` : '',
+                        humidity: curr.humidity ? `${curr.humidity}%` : '',
+                        wind_speed: curr.wind_speed ? `${curr.wind_speed}km/h` : '',
+                        wind_dir: curr.wind_dir || '',
+                        air_quality: {
+                            pm10: air.pm10 || '-',
+                            pm10_status: air.pm10_status || '보통',
+                            pm25: air.pm2_5 || air.pm25 || '-',
+                            pm25_status: air.pm25_status || '보통',
+                            station_name: air.station_name || ''
+                        },
+                        guide: guideText,
+                        lifestyle: Array.isArray(lifestyle.guides) ? lifestyle.guides : [],
+                        data_source: details.weather_source || 'kma',
+                        source_label: '기상청 공식',
+                        updated_at: details.updated_at || row.created_at || row.date || '',
+                        forecast: []
+                    };
+                    resolve(weatherData);
+                } catch (parseErr) {
+                    resolve(null);
+                }
+            }
+        );
+    });
+}
+
+/**
  * 🌐 시스템 기본 날씨 도시 조회 (단일 진실 공급원: briefing.db system_settings)
  */
 function getDefaultWeatherCity() {
@@ -181,6 +271,14 @@ async function refreshWeatherInBackground(rawCity, korCityName) {
                 const data = await resp.json();
                 const curr = data && data.current ? data.current : null;
                 if (curr) {
+                    // 기상청 공식 데이터가 이미 캐시에 있다면 실황은 보존하고 예보만 업데이트 (스마트 병합)
+                    const currentCached = weatherCacheMap.get(cityKey);
+                    if (currentCached && currentCached.data && currentCached.data.data_source === 'kma') {
+                        currentCached.data.forecast = buildDailyForecast(data.daily);
+                        currentCached.timestamp = Date.now();
+                        return currentCached.data;
+                    }
+
                     const tempVal = typeof curr.temperature_2m === 'number' ? curr.temperature_2m : parseFloat(curr.temperature_2m || 0);
                     const feelsVal = typeof curr.apparent_temperature === 'number' ? curr.apparent_temperature : parseFloat(curr.apparent_temperature || 0);
                     const isDay = typeof curr.is_day === 'number' ? curr.is_day : 1;
@@ -236,6 +334,32 @@ async function getLiveWeatherData(requestedCity) {
     const korCityName = CITY_KO_MAP[cityKey] || '서울';
     const now = Date.now();
     const cached = weatherCacheMap.get(cityKey);
+
+    // 0. 기상청 공식 저장 데이터(briefing.db daily_weather) 1순위 조회
+    const defaultCity = await getDefaultWeatherCity();
+    const isDefaultOrTargetCity = !requestedCity || (cityKey === normalizeCityCode(defaultCity));
+
+    if (isDefaultOrTargetCity) {
+        // 최근 5분 이내의 유효한 기상청 캐시가 있다면 즉시 반환 (0ms)
+        if (cached && cached.data && cached.data.data_source === 'kma' && (now - cached.timestamp < 5 * 60 * 1000)) {
+            return cached.data;
+        }
+
+        const savedKma = await getSavedKmaWeather(cityKey);
+        if (savedKma) {
+            // 기존 캐시의 주간 예보(forecast)가 있다면 보존 및 백그라운드 갱신
+            if (cached && cached.data && Array.isArray(cached.data.forecast) && cached.data.forecast.length > 0) {
+                savedKma.forecast = cached.data.forecast;
+            } else {
+                refreshWeatherInBackground(cityKey, korCityName).catch(() => {});
+            }
+            weatherCacheMap.set(cityKey, {
+                timestamp: now,
+                data: savedKma
+            });
+            return savedKma;
+        }
+    }
 
     // 1. 유효한 신선 캐시 (10분 이내) -> 0ms 즉시 반환
     if (cached && cached.data && (now - cached.timestamp < WEATHER_CACHE_TTL_MS) && cached.timestamp > 0) {
@@ -339,6 +463,7 @@ module.exports = {
     normalizeCityCode,
     getDefaultWeatherCity,
     getLiveWeatherData,
+    getSavedKmaWeather,
     refreshWeatherInBackground,
     getActiveWeatherCities,
     refreshAllActiveWeather,

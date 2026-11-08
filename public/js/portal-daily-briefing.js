@@ -154,7 +154,7 @@
     }
 
     /**
-     * 날씨 칩 렌더링
+     * 날씨 칩 렌더링 (기상청 공식 저장 데이터 및 생활가이드 문장 연동)
      */
     function renderWeatherChip(weather) {
         const titleEl = document.getElementById('briefingChipWeatherTitle');
@@ -164,8 +164,14 @@
 
         if (weather && weather.temp) {
             if (iconEl) iconEl.textContent = weather.icon || '🌤️';
-            titleEl.textContent = `${weather.city || '서울'} ${weather.temp} (${weather.condition || '맑음'})`;
-            descEl.textContent = weather.guide || '상쾌한 하루 되세요.';
+            const rawCity = weather.city || '계룡';
+            const cleanCity = (rawCity === 'Gyeryong' || rawCity.includes('계룡'))
+                ? '계룡'
+                : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
+            const isKma = weather.data_source === 'kma' || weather.source_label === '기상청 공식';
+            const kmaTag = isKma ? ' · 기상청' : '';
+            titleEl.textContent = `${cleanCity} ${weather.temp} (${weather.condition || '맑음'})${kmaTag}`;
+            descEl.textContent = weather.guide || '상쾌하고 쾌적한 하루 보내세요.';
         } else {
             if (iconEl) iconEl.textContent = '🌤️';
             titleEl.textContent = '오늘의 날씨';

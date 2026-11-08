@@ -5,7 +5,7 @@
 // - 비로그인/세션 만료 시 안전 Fallback 데이터
 // ==============================================================================
 
-// 🌤️ 상단 날씨 뱃지 UI 렌더링 헬퍼
+// 🌤️ 상단 날씨 뱃지 UI 렌더링 헬퍼 (기상청 공식 저장 데이터 완벽 지원)
 function updateWeatherBadge(w) {
     if (!w) return;
     const iconEl = document.getElementById('welcomeWeatherIcon');
@@ -20,11 +20,18 @@ function updateWeatherBadge(w) {
             iconEl.textContent = w.icon;
         }
     }
-    const displayName = (w.city === 'Gyeryong' ? '계룡' : (w.city || '서울'));
+    const rawCity = w.city || '계룡';
+    const displayName = (rawCity === 'Gyeryong' || rawCity.includes('계룡'))
+        ? '계룡'
+        : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
     if (cityEl) cityEl.textContent = displayName;
     if (tempEl && w.temp) tempEl.textContent = w.temp;
     if (badgeEl && w.condition) {
-        badgeEl.title = `실시간 날씨: ${displayName} ${w.temp || ''} (${w.condition}) - 클릭 시 날씨 브리핑 이동`;
+        const isKma = w.data_source === 'kma' || w.source_label === '기상청 공식';
+        const kmaPrefix = isKma ? '[기상청 공식] ' : '';
+        const minMaxText = (w.min_temp && w.max_temp) ? ` (최저 ${w.min_temp} / 최고 ${w.max_temp})` : '';
+        const airText = (w.air_quality && w.air_quality.pm10_status) ? ` • 미세 ${w.air_quality.pm10_status}` : '';
+        badgeEl.title = `${kmaPrefix}실시간 날씨: ${displayName} ${w.temp || ''} (${w.condition})${minMaxText}${airText} - 클릭 시 상세 날씨 브리핑 이동`;
     }
 }
 window.updateWeatherBadge = updateWeatherBadge;

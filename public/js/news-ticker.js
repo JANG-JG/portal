@@ -289,7 +289,10 @@
             const kosdaq = market.kosdaq || { price: '850.0', direction: 'down' };
             const usd = market.usd_krw || { price: '1,350.0', direction: 'up' };
 
-            const cityName = (weather.city === 'Gyeryong' || !weather.city) ? '계룡' : weather.city;
+            const rawCity = weather.city || '계룡';
+            const cityName = (rawCity === 'Gyeryong' || rawCity.includes('계룡'))
+                ? '계룡'
+                : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
             const usdPriceText = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
 
             const getBasmiliusSlug = (condition, isDay = 1) => {
@@ -312,7 +315,13 @@
             const weatherSlug = weather.icon_slug || getBasmiliusSlug(weather.condition, weatherIsDay);
             const weatherIconSvg = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:16px; height:16px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
 
-            const weatherTitle = `실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''}) - 클릭 시 날씨 안내 이동`;
+            const isKma = weather.data_source === 'kma' || weather.source_label === '기상청 공식';
+            const kmaTag = isKma ? `<span style="background:rgba(56,189,248,0.15); color:#38bdf8; font-size:9.5px; padding:1px 4px; border-radius:3px; font-weight:700; margin-left:3px;">기상청</span>` : '';
+            const pm10Status = (weather.air_quality && weather.air_quality.pm10_status && weather.air_quality.pm10_status !== '-') ? weather.air_quality.pm10_status : '';
+            const airBadge = pm10Status ? `<span style="background:rgba(148,163,184,0.15); color:#94a3b8; font-size:9.5px; padding:1px 4px; border-radius:3px; margin-left:2px;">미세 ${pm10Status}</span>` : '';
+            const minMaxText = (weather.min_temp && weather.max_temp) ? ` (최저 ${weather.min_temp} / 최고 ${weather.max_temp})` : '';
+            const kmaPrefix = isKma ? '[기상청 공식] ' : '';
+            const weatherTitle = `${kmaPrefix}실시간 날씨: ${cityName} ${weather.temp || ''} (${weather.condition || ''})${minMaxText}${pm10Status ? ` • 미세먼지 ${pm10Status}` : ''} - 클릭 시 상세 기상 브리핑 이동`;
             const conditionBadge = weather.condition ? `<span style="color:#cbd5e1; font-size:10.5px; margin-left:3px; font-weight:500;">${weather.condition}</span>` : '';
 
             const kospiRatio = kospi.ratio && kospi.ratio !== '-' ? `<span style="font-size:10.5px; margin-left:3px;">${kospi.ratio}</span>` : '';
@@ -326,8 +335,10 @@
                 const topCityEl = document.getElementById('welcomeWeatherCity');
                 const topTempEl = document.getElementById('welcomeWeatherTemp');
                 const topIconEl = document.getElementById('welcomeWeatherIcon');
+                const topBadgeEl = document.getElementById('welcomeWeatherBadge');
                 if (topCityEl) topCityEl.textContent = cityName;
                 if (topTempEl) topTempEl.textContent = weather.temp;
+                if (topBadgeEl) topBadgeEl.title = weatherTitle;
                 if (topIconEl && weatherSlug) {
                     topIconEl.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;
                 }
@@ -337,6 +348,8 @@
                         <span style="display:inline-flex; align-items:center; gap:4px;">${weatherIconSvg}<span>${cityName}</span></span>
                         <span style="color:#38bdf8; font-weight:700;">${weather.temp}</span>
                         ${conditionBadge}
+                        ${kmaTag}
+                        ${airBadge}
                     </a>`
                 );
             }
