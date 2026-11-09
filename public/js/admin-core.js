@@ -28,7 +28,8 @@ const SUBTABS_CONFIG = {
     'tab-album': [
         { id: 'subpane-album-summary', label: '사진첩 통계 & 스토리지', icon: '📊' },
         { id: 'subpane-album-photos', label: '최근 업로드 사진 관리', icon: '🖼️' },
-        { id: 'subpane-album-members', label: '가족 구성원 활동 현황', icon: '👥' }
+        { id: 'subpane-album-members', label: '가족 구성원 활동 현황', icon: '👥' },
+        { id: 'subpane-album-ai-logs', label: 'AI 분석 이력 & 로그', icon: '🤖' }
     ],
     'tab-wiki': [
         { id: 'subpane-wiki-overview', label: '위키 현황 & 퀵카드', icon: '📊' },
@@ -351,6 +352,7 @@ function switchAdminTab(tabId, btn, targetSubId = null, shouldScroll = true) {
         if (typeof window.loadAlbumAdminStats === 'function') window.loadAlbumAdminStats();
         if (typeof window.loadAlbumAdminPhotos === 'function') window.loadAlbumAdminPhotos();
         if (typeof window.loadAlbumAdminMembers === 'function') window.loadAlbumAdminMembers();
+        if (typeof window.loadAlbumAiLogs === 'function') window.loadAlbumAiLogs();
     } else if (tabId === 'tab-wiki') {
         if (typeof window.loadWikiAdminOverview === 'function') window.loadWikiAdminOverview();
         if (typeof window.loadWikiAdminRoutines === 'function') window.loadWikiAdminRoutines();

@@ -168,4 +168,58 @@ router.get('/members', (req, res) => {
     });
 });
 
+/**
+ * 5. 🤖 AI 사진 분석 이력 로그 조회 API
+ * GET /api/admin/album/ai-logs?page=1&limit=30
+ */
+router.get('/ai-logs', (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 30));
+    const offset = (page - 1) * limit;
+
+    const sql = `
+        SELECT l.*, p.original_name, p.thumbnail_filename
+        FROM ai_logs l
+        LEFT JOIN photos p ON l.photo_id = p.id
+        ORDER BY l.id DESC
+        LIMIT ? OFFSET ?
+    `;
+
+    albumDb.all(sql, [limit, offset], (err, rows) => {
+        if (err) {
+            return res.json({
+                success: true,
+                logs: [],
+                stats: { totalCount: 0, successCount: 0, avgDurationMs: 0, successRate: 100 },
+                pagination: { page, limit, total: 0, totalPages: 0 }
+            });
+        }
+
+        const countSql = 'SELECT COUNT(*) as total FROM ai_logs';
+        albumDb.get(countSql, [], (cErr, cRow) => {
+            const total = cRow ? cRow.total : (rows || []).length;
+            const statsSql = `
+                SELECT 
+                    COUNT(*) as total_count,
+                    COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as success_count,
+                    COALESCE(AVG(duration_ms), 0) as avg_duration_ms
+                FROM ai_logs
+            `;
+            albumDb.get(statsSql, [], (sErr, sRow) => {
+                const totalCount = sRow ? sRow.total_count : 0;
+                const successCount = sRow ? sRow.success_count : 0;
+                const avgDuration = sRow ? Math.round(sRow.avg_duration_ms) : 0;
+                const successRate = totalCount > 0 ? Math.round((successCount / totalCount) * 100) : 100;
+
+                res.json({
+                    success: true,
+                    logs: rows || [],
+                    stats: { totalCount, successCount, avgDurationMs: avgDuration, successRate },
+                    pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+                });
+            });
+        });
+    });
+});
+
 module.exports = router;

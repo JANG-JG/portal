@@ -168,6 +168,154 @@ async function loadAlbumAdminMembers() {
 }
 window.loadAlbumAdminMembers = loadAlbumAdminMembers;
 
+/**
+ * 1-4. 🤖 AI 사진 분석 이력 및 로그 목록 조회
+ */
+let cachedAiLogs = [];
+
+async function loadAlbumAiLogs() {
+    const tbody = document.getElementById('albumAiLogsTableBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:2rem 0; color:#94a3b8;">AI 분석 로그를 불러오는 중...</td></tr>';
+
+    try {
+        const res = await fetch('/api/admin/album/ai-logs?limit=50');
+        const data = await res.json();
+
+        if (data && data.success) {
+            const s = data.stats || {};
+            const setT = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            setT('albumAiStatTotal', `${s.totalCount || 0}건`);
+            setT('albumAiStatSuccessRate', `${s.successRate || 100}%`);
+            setT('albumAiStatAvgDuration', s.avgDurationMs ? `${(s.avgDurationMs / 1000).toFixed(1)}초` : '0초');
+            if (data.logs && data.logs[0] && data.logs[0].models_used) setT('albumAiStatEngine', data.logs[0].models_used);
+
+            cachedAiLogs = data.logs || [];
+
+            if (cachedAiLogs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:2.5rem 0; color:#94a3b8;">기록된 AI 분석 로그가 없습니다.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = cachedAiLogs.map((log) => {
+                const isSuccess = log.status === 'completed';
+                const statusBadge = isSuccess
+                    ? '<span class="admin-badge admin-badge-success" style="padding:2px 8px; font-size:0.75rem;">성공</span>'
+                    : '<span class="admin-badge admin-badge-danger" style="padding:2px 8px; font-size:0.75rem;">실패</span>';
+
+                const typeLabel = log.task_type === 'existing_photo' ? '등록 사진' : '신규 업로드';
+                const photoLabel = log.photo_id ? `#${log.photo_id}번 게시물` : (log.original_name || '미등록');
+                const durationSec = log.duration_ms ? (log.duration_ms / 1000).toFixed(1) + '초' : '-';
+                const models = log.models_used || '-';
+                const dateStr = log.created_at ? log.created_at.slice(0, 16) : '-';
+                const summaryText = log.caption_result ? escapeHtml(log.caption_result) : (log.error_message ? `<span style="color:#ef4444;">${escapeHtml(log.error_message)}</span>` : '-');
+
+                return `
+                    <tr>
+                        <td style="font-family:monospace; font-size:0.8rem; color:#64748b;">${escapeHtml(log.task_id ? log.task_id.slice(-8) : String(log.id))}</td>
+                        <td style="font-weight:600; font-size:0.85rem;">${photoLabel}</td>
+                        <td><span style="font-size:0.75rem; background:#f1f5f9; padding:2px 6px; border-radius:4px;">${typeLabel}</span></td>
+                        <td style="font-size:0.78rem; color:#475569;">${escapeHtml(models)}</td>
+                        <td style="font-size:0.82rem;">${log.total_photos || 1}장</td>
+                        <td style="font-size:0.82rem; font-weight:600; color:#3b82f6;">${durationSec}</td>
+                        <td>${statusBadge}</td>
+                        <td style="font-size:0.82rem; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(log.caption_result || '')}">
+                            ${summaryText}
+                        </td>
+                        <td style="font-size:0.75rem; color:#94a3b8;">${dateStr}</td>
+                        <td>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-xs" style="padding:2px 8px;" onclick="openAdminAiLogDetail(${log.id})">
+                                🔍 보기
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    } catch (e) {
+        console.error('AI 로그 조회 실패:', e);
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:2rem 0; color:#ef4444;">로그를 불러오지 못했습니다.</td></tr>';
+    }
+}
+window.loadAlbumAiLogs = loadAlbumAiLogs;
+
+/**
+ * AI 로그 상세 모달 열기
+ */
+function openAdminAiLogDetail(logId) {
+    const log = cachedAiLogs.find((l) => l.id === logId);
+    if (!log) return;
+
+    const modal = document.getElementById('adminAiLogDetailModal');
+    const content = document.getElementById('adminAiLogDetailContent');
+    if (!modal || !content) return;
+
+    let details = null;
+    try {
+        if (log.details_json) {
+            details = typeof log.details_json === 'object' ? log.details_json : JSON.parse(log.details_json);
+        }
+    } catch (e) {}
+
+    const photoCards = (details && Array.isArray(details.photoDetails) && details.photoDetails.length > 0)
+        ? details.photoDetails.map((pd, i) => `
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.75rem; display:flex; flex-direction:column; gap:0.35rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.78rem; font-weight:700; color:#4338ca; background:#e0e7ff; padding:2px 6px; border-radius:4px;">사진 ${pd.photoIndex || (i + 1)}</span>
+                </div>
+                <div style="font-size:0.83rem; font-weight:600; color:#1e293b;">👁️ 시각 관찰: ${escapeHtml(pd.koreanDesc || pd.englishDesc || '-')}</div>
+                <div style="font-size:0.78rem; color:#475569; background:#ffffff; padding:0.4rem 0.6rem; border-radius:4px; border-left:3px solid #6366f1;">
+                    💡 <strong>추론 근거:</strong> ${escapeHtml(pd.reasoning || '-')}
+                </div>
+                ${pd.englishDesc ? `<div style="font-size:0.72rem; color:#94a3b8; font-family:monospace; margin-top:2px;">원문: ${escapeHtml(pd.englishDesc)}</div>` : ''}
+            </div>
+        `).join('')
+        : '<div style="color:#94a3b8; font-size:0.82rem; text-align:center; padding:1rem 0;">세부 사진별 추론 기록이 없습니다.</div>';
+
+    const overallReasoning = details ? (details.overallReasoning || '-') : '-';
+
+    content.innerHTML = `
+        <div style="background:#f1f5f9; padding:0.75rem 1rem; border-radius:0.5rem; font-size:0.82rem; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+            <div><strong>작업 ID:</strong> <span style="font-family:monospace;">${escapeHtml(log.task_id || String(log.id))}</span></div>
+            <div><strong>분석 일시:</strong> ${escapeHtml(log.created_at || '-')}</div>
+            <div><strong>사용 모델:</strong> ${escapeHtml(log.models_used || '-')}</div>
+            <div><strong>소요 시간:</strong> ${log.duration_ms ? (log.duration_ms / 1000).toFixed(1) + '초' : '-'}</div>
+            <div><strong>작업 유형:</strong> ${log.task_type === 'existing_photo' ? '등록 사진' : '신규 업로드'}</div>
+            <div><strong>분석 장수:</strong> ${log.total_photos || 1}장</div>
+        </div>
+
+        <div style="background:#eef2ff; border:1px solid #c7d2fe; border-radius:0.5rem; padding:0.75rem 1rem;">
+            <div style="font-weight:700; color:#3730a3; font-size:0.85rem; margin-bottom:0.25rem;">📝 생성된 가족 한 줄 이야기 (캡션)</div>
+            <div style="font-size:0.9rem; color:#1e1b4b; font-weight:600; line-height:1.4;">${escapeHtml(log.caption_result || '-')}</div>
+            ${log.tags_result ? `<div style="font-size:0.8rem; color:#4338ca; margin-top:0.35rem; font-weight:600;">${escapeHtml(log.tags_result)}</div>` : ''}
+        </div>
+
+        <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:0.5rem; padding:0.75rem 1rem;">
+            <div style="font-weight:700; color:#6b21a8; font-size:0.85rem; margin-bottom:0.25rem;">🧠 전체 종합 추론 요약</div>
+            <div style="font-size:0.82rem; color:#3b0764; line-height:1.45;">${escapeHtml(overallReasoning)}</div>
+        </div>
+
+        <div>
+            <div style="font-weight:700; color:#1e293b; font-size:0.88rem; margin-bottom:0.5rem;">📸 사진별 상세 분석 & 추론 내역</div>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                ${photoCards}
+            </div>
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+}
+window.openAdminAiLogDetail = openAdminAiLogDetail;
+
+function closeAdminAiLogDetailModal() {
+    const modal = document.getElementById('adminAiLogDetailModal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    modal.classList.add('hidden');
+}
+window.closeAdminAiLogDetailModal = closeAdminAiLogDetailModal;
 
 // ------------------------------------------------------------------------------
 // 2. 💾 통합 백업 센터 제어

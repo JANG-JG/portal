@@ -420,6 +420,11 @@
           "id": "subpane-album-members",
           "title": "가족 구성원 활동 현황",
           "icon": "👥"
+        },
+        {
+          "id": "subpane-album-ai-logs",
+          "title": "AI 분석 이력 & 로그",
+          "icon": "🤖"
         }
       ]
     },

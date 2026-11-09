@@ -113,4 +113,93 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 🤖 [서브패널 4] AI 사진 분석 이력 & 로그 -->
+            <div id="subpane-album-ai-logs" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <div class="admin-card-title">
+                            <span>🤖</span>
+                            <span>AI 사진 분석 이력 & 모델 추론 로그</span>
+                        </div>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAlbumAiLogs()">
+                                🔄 로그 새로고침
+                            </button>
+                        </div>
+                    </div>
+                    <div class="admin-card-body">
+                        <!-- AI 분석 통계 4종 벤토 카드 -->
+                        <div class="admin-overview-grid" style="margin-bottom:1.5rem;">
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#e0e7ff; color:#4338ca;">⚡</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">총 AI 분석 작업</div>
+                                    <div class="admin-stat-val" id="albumAiStatTotal">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#ecfdf5; color:#059669;">🎯</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">분석 성공률</div>
+                                    <div class="admin-stat-val" id="albumAiStatSuccessRate">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#fef3c7; color:#d97706;">⏱️</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">평균 분석 소요시간</div>
+                                    <div class="admin-stat-val" id="albumAiStatAvgDuration">-</div>
+                                </div>
+                            </div>
+                            <div class="admin-stat-card">
+                                <div class="admin-stat-icon" style="background:#f3e8ff; color:#7e22ce;">🧠</div>
+                                <div class="admin-stat-info">
+                                    <div class="admin-stat-label">기본 AI 비전 엔진</div>
+                                    <div class="admin-stat-val" style="font-size:0.95rem; font-weight:700; color:#6b21a8;" id="albumAiStatEngine">moondream + exaone4</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 로그 테이블 -->
+                        <div class="table-responsive">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>작업 번호</th>
+                                        <th>대상 사진</th>
+                                        <th>작업 유형</th>
+                                        <th>사용 모델</th>
+                                        <th>사진 수</th>
+                                        <th>소요 시간</th>
+                                        <th>상태</th>
+                                        <th>추론 요약 및 캡션</th>
+                                        <th>분석 일시</th>
+                                        <th>상세</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="albumAiLogsTableBody">
+                                    <tr><td colspan="10" style="text-align:center; padding:2.5rem 0; color:#94a3b8;">AI 분석 로그를 불러오는 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI 분석 상세 모달 -->
+        <div class="modal-overlay hidden" id="adminAiLogDetailModal" style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(15,23,42,0.6); z-index:10000; display:none; align-items:center; justify-content:center; padding:1rem;">
+            <div style="background:#ffffff; border-radius:1rem; max-width:680px; width:100%; max-height:85vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);">
+                <div style="padding:1rem 1.25rem; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-weight:700; font-size:1.05rem; color:#1e293b; display:flex; align-items:center; gap:0.5rem;">
+                        <span>🤖</span> <span>AI 분석 상세 및 추론 근거</span>
+                    </div>
+                    <button type="button" onclick="closeAdminAiLogDetailModal()" style="border:none; background:none; font-size:1.25rem; color:#64748b; cursor:pointer;">✕</button>
+                </div>
+                <div id="adminAiLogDetailContent" style="padding:1.25rem; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:1rem;"></div>
+                <div style="padding:0.75rem 1.25rem; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end; background:#f8fafc;">
+                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="closeAdminAiLogDetailModal()">닫기</button>
+                </div>
+            </div>
         </div>
