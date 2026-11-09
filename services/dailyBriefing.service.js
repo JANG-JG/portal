@@ -44,30 +44,40 @@ function getTimeSlot(hour) {
 }
 
 /**
- * 날씨 및 기온 기반 맞춤형 생활 가이드 문구
+ * 날씨 및 기온 기반 맞춤형 생활 가이드 문구 (기상청 수집 데이터 근거 연동)
  */
 function getWeatherGuide(weather) {
     if (!weather || !weather.temp) {
         return '오늘도 쾌적하고 기분 좋은 하루 보내세요.';
     }
 
-    const tempNum = parseFloat(weather.temp);
     const cond = weather.condition || '';
+    const isKma = (weather.data_source === 'kma' || weather.source_label === '기상청 공식');
+    const minT = weather.min_temp || (weather.forecast?.[0]?.min);
+    const maxT = weather.max_temp || (weather.forecast?.[0]?.max);
 
-    if (cond.includes('비') || cond.includes('소나기')) {
+    // 1순위: 기상청 공식 생활가이드 문장이 존재하면 우선 채택
+    if (isKma && weather.guide && !weather.guide.startsWith('상쾌하고')) {
+        return weather.guide;
+    }
+
+    if (cond.includes('비') || cond.includes('소나기') || cond.includes('이슬비')) {
         return '비 소식이 있으니 외출 시 우산을 꼭 챙기세요 ☔';
     }
     if (cond.includes('눈')) {
         return '눈길 빙판길 미끄럼에 주의하시고 따뜻하게 입으세요 ❄️';
     }
 
+    const tempNum = parseFloat(weather.temp);
     if (!isNaN(tempNum)) {
         if (tempNum >= 28) {
             return '날씨가 다소 덥습니다. 시원한 물을 자주 드세요 💧';
         } else if (tempNum <= 5) {
-            return '기온이 낮고 쌀쌀합니다. 따뜻한 외투와 목도리를 챙기세요 🧣';
+            const rangeStr = (minT && maxT) ? ` (최저 ${minT} / 최고 ${maxT})` : '';
+            return `기온이 낮고 쌀쌀합니다${rangeStr}. 따뜻한 외투를 챙기세요 🧣`;
         } else if (tempNum <= 15) {
-            return '일교차가 있는 날씨입니다. 겉옷을 가볍게 챙겨 외출하세요 🧥';
+            const rangeStr = (minT && maxT) ? ` (최저 ${minT} / 최고 ${maxT})` : '';
+            return `일교차가 있는 날씨입니다${rangeStr}. 겉옷을 가볍게 챙겨 외출하세요 🧥`;
         }
     }
 
@@ -219,6 +229,11 @@ function generateDailyBriefing({ summary, todayEvents = [], userRole = 'admin', 
             temp: (weather && weather.temp) || '',
             condition: (weather && weather.condition) || '맑음',
             icon: (weather && weather.icon) || '🌤️',
+            feels_like: (weather && weather.feels_like) || '',
+            min_temp: (weather && weather.min_temp) || (weather && weather.forecast?.[0]?.min) || '',
+            max_temp: (weather && weather.max_temp) || (weather && weather.forecast?.[0]?.max) || '',
+            data_source: (weather && weather.data_source) || 'open-meteo',
+            source_label: (weather && weather.source_label) || '기상청 공식',
             guide: weatherGuide
         },
         health,

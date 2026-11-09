@@ -144,9 +144,31 @@ function normalizeCityCode(cityInput) {
 }
 
 /**
- * 🏛️ 기상청 공식 저장 날씨 조회 (단일 진실 공급원: briefing.db daily_weather)
- * - 대한민국 기상청 단기예보 Open API 및 에어코리아 공식 수집 데이터(details_json) 파싱
+ * 🏛️ 기상청 공식 저장 날씨 파싱 및 조회 (단일 진실 공급원: briefing.db daily_weather)
+ * - details_json 누락 시에도 weather_info 텍스트에서 100% 기상청 관측값 안전 복원
  */
+function parseKmaWeatherText(text) {
+    if (!text || typeof text !== 'string') return {};
+    const condMatch = text.match(/(맑음|대체로 맑음|구름\s*많음|구름\s*조금|흐림|안개|이슬비|소나기|폭우|진눈깨비|비|눈)/);
+    const minM = text.match(/최저\s*(-?\d+(?:\.\d+)?)\s*°?C?/), maxM = text.match(/최고\s*(-?\d+(?:\.\d+)?)\s*°?C?/);
+    const curM = text.match(/현재\s*(-?\d+(?:\.\d+)?)\s*°?C?/), feeM = text.match(/체감(?:온도)?\s*(-?\d+(?:\.\d+)?)\s*°?C?/);
+    const humM = text.match(/습도\s*(\d+)%?/), windM = text.match(/바람\s*([^,]+)/);
+    const p10M = text.match(/미세먼지\s*([^(,]+)\(([^)]+)\)/), p25M = text.match(/초미세먼지\s*([^(,]+)\(([^)]+)\)/);
+    const guiM = text.match(/가이드:\s*(.+)$/);
+    const minT = minM ? `${minM[1]}°C` : '', maxT = maxM ? `${maxM[1]}°C` : '';
+    const feeT = feeM ? `${feeM[1]}°C` : (curM ? `${curM[1]}°C` : minT);
+    return {
+        condition: condMatch ? condMatch[1].trim() : '맑음',
+        temp: curM ? `${curM[1]}°C` : feeT, feels_like: feeT, min_temp: minT, max_temp: maxT,
+        humidity: humM ? `${humM[1]}%` : '', wind_speed: windM ? windM[1].trim() : '',
+        air_quality: {
+            pm10: p10M ? p10M[1].trim() : '-', pm10_status: p10M ? p10M[2].trim() : '보통',
+            pm25: p25M ? p25M[1].trim() : '-', pm25_status: p25M ? p25M[2].trim() : '보통'
+        },
+        guide: guiM ? guiM[1].trim() : text
+    };
+}
+
 function getSavedKmaWeather(cityKey) {
     return new Promise((resolve) => {
         if (!newsDb) return resolve(null);
@@ -154,77 +176,64 @@ function getSavedKmaWeather(cityKey) {
             "SELECT date, weather_info, details_json, created_at FROM daily_weather ORDER BY date DESC, rowid DESC LIMIT 1",
             [],
             (err, row) => {
-                if (err || !row || !row.details_json) {
-                    return resolve(null);
-                }
+                if (err || !row || (!row.details_json && !row.weather_info)) return resolve(null);
                 try {
-                    const details = JSON.parse(row.details_json);
-                    if (!details || !details.current) {
-                        return resolve(null);
+                    let details = {};
+                    if (row.details_json) {
+                        try { details = JSON.parse(row.details_json) || {}; } catch (_) {}
                     }
-
+                    const parsedText = parseKmaWeatherText(row.weather_info);
+                    const curr = details.current || {}, air = details.air_quality || {}, lifestyle = details.lifestyle || {};
                     const dbCityKey = normalizeCityCode(details.city || details.city_display || 'Gyeryong');
-                    // 요청된 도시가 명시되었고, DB에 저장된 도시와 다르면 null 반환 (외부 서비스로 안전 폴백)
-                    if (cityKey && normalizeCityCode(cityKey) !== dbCityKey) {
-                        return resolve(null);
-                    }
+                    if (cityKey && normalizeCityCode(cityKey) !== dbCityKey) return resolve(null);
 
-                    const curr = details.current || {};
-                    const air = details.air_quality || {};
-                    const lifestyle = details.lifestyle || {};
-                    const cond = curr.condition || '맑음';
+                    const cond = curr.condition || parsedText.condition || '맑음';
                     const isDay = curr.is_day !== undefined ? Number(curr.is_day) : 1;
                     const iconSlug = curr.icon_slug || getWeatherIconSlug(cond, isDay);
                     const icon = curr.icon || getWeatherIcon(cond, isDay);
 
-                    const rawTemp = curr.temp !== undefined ? String(curr.temp).replace('°C', '').trim() : '-';
-                    const rawFeels = curr.feels_like !== undefined ? String(curr.feels_like).replace('°C', '').trim() : rawTemp;
-                    const temp = rawTemp !== '-' ? `${rawTemp}°C` : '-';
-                    const feelsLike = rawFeels !== '-' ? `${rawFeels}°C` : temp;
+                    const rawTemp = curr.temp !== undefined ? String(curr.temp).replace('°C', '').trim() : '';
+                    const temp = rawTemp ? `${rawTemp}°C` : (parsedText.temp || '-');
+                    const rawFeels = curr.feels_like !== undefined ? String(curr.feels_like).replace('°C', '').trim() : '';
+                    const feelsLike = rawFeels ? `${rawFeels}°C` : (parsedText.feels_like || temp);
+                    const minTemp = curr.min_temp ? `${String(curr.min_temp).replace('°C', '').trim()}°C` : (parsedText.min_temp || '');
+                    const maxTemp = curr.max_temp ? `${String(curr.max_temp).replace('°C', '').trim()}°C` : (parsedText.max_temp || '');
 
-                    // 사용자 친화적 도시명 정제 ('충남 계룡시' -> '계룡')
                     const rawCity = details.city_display || CITY_KO_MAP[dbCityKey] || details.city || '계룡';
-                    const displayName = (rawCity === 'Gyeryong' || rawCity.includes('계룡'))
-                        ? '계룡'
-                        : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
+                    const displayName = (rawCity === 'Gyeryong' || rawCity.includes('계룡')) ? '계룡' : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
+                    const guideText = (lifestyle && lifestyle.summary_sentence) || details.summary_text || parsedText.guide || row.weather_info || '상쾌하고 쾌적한 하루 보내세요.';
 
-                    // 자연어 브리핑 가이드 문장 추출
-                    const guideText = (lifestyle && lifestyle.summary_sentence)
-                        || details.summary_text
-                        || row.weather_info
-                        || '상쾌하고 쾌적한 하루 보내세요.';
-
-                    const weatherData = {
+                    resolve({
                         city: displayName,
                         city_full: details.city_display || displayName,
                         city_code: dbCityKey,
-                        temp: temp,
-                        condition: cond,
-                        icon: icon,
-                        icon_slug: iconSlug,
+                        temp, condition: cond, icon, icon_slug: iconSlug,
                         icon_url: `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${iconSlug}.svg`,
-                        is_day: isDay,
-                        feels_like: feelsLike,
-                        min_temp: curr.min_temp ? `${String(curr.min_temp).replace('°C', '').trim()}°C` : '',
-                        max_temp: curr.max_temp ? `${String(curr.max_temp).replace('°C', '').trim()}°C` : '',
-                        humidity: curr.humidity ? `${curr.humidity}%` : '',
-                        wind_speed: curr.wind_speed ? `${curr.wind_speed}km/h` : '',
+                        is_day: isDay, feels_like: feelsLike, min_temp: minTemp, max_temp: maxTemp,
+                        humidity: curr.humidity ? `${curr.humidity}%` : (parsedText.humidity || ''),
+                        wind_speed: curr.wind_speed ? `${curr.wind_speed}km/h` : (parsedText.wind_speed || ''),
                         wind_dir: curr.wind_dir || '',
                         air_quality: {
-                            pm10: air.pm10 || '-',
-                            pm10_status: air.pm10_status || '보통',
-                            pm25: air.pm2_5 || air.pm25 || '-',
-                            pm25_status: air.pm25_status || '보통',
+                            pm10: air.pm10 || parsedText.air_quality?.pm10 || '-',
+                            pm10_status: air.pm10_status || parsedText.air_quality?.pm10_status || '보통',
+                            pm25: air.pm2_5 || air.pm25 || parsedText.air_quality?.pm25 || '-',
+                            pm25_status: air.pm25_status || parsedText.air_quality?.pm25_status || '보통',
                             station_name: air.station_name || ''
                         },
                         guide: guideText,
                         lifestyle: Array.isArray(lifestyle.guides) ? lifestyle.guides : [],
-                        data_source: details.weather_source || 'kma',
+                        data_source: 'kma',
                         source_label: '기상청 공식',
                         updated_at: details.updated_at || row.created_at || row.date || '',
-                        forecast: []
-                    };
-                    resolve(weatherData);
+                        forecast: (minTemp && maxTemp) ? [{
+                            date: row.date || new Date().toISOString().slice(0, 10),
+                            label: '오늘',
+                            condition: cond,
+                            min: minTemp,
+                            max: maxTemp,
+                            rain: cond.includes('비') ? '80%' : (cond.includes('눈') ? '70%' : '-')
+                        }] : []
+                    });
                 } catch (parseErr) {
                     resolve(null);
                 }

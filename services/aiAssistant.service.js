@@ -172,12 +172,22 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         ? '오늘 약 복용 완료 ✅' 
         : '오늘 혈압약 아직 안 챙겨드심(복용 필요 ⚠️)';
 
-    // 2) 오늘 날씨 & 외출 주의사항
-    const feelKo = weather ? describeFeelKo(weather.feels_like || weather.temp) : '';
-    const todayFc = (weather && Array.isArray(weather.forecast)) ? weather.forecast[0] : null;
-    const weatherText = weather 
-        ? `${weather.city || '계룡'} ${weather.temp || ''}, ${weather.condition || '맑음'}${feelKo ? `, 체감 ${feelKo}` : ''}${todayFc ? `, 최저 ${todayFc.min}/최고 ${todayFc.max}, 강수확률 ${todayFc.rain}` : ''}` 
-        : '';
+    // 2) 오늘 날씨 & 외출 주의사항 (기상청 수집 데이터 근거 최우선 반영)
+    let weatherText = '';
+    if (weather) {
+        const feelKo = describeFeelKo(weather.feels_like || weather.temp);
+        const todayFc = (Array.isArray(weather.forecast) && weather.forecast[0]) ? weather.forecast[0] : null;
+        const minT = weather.min_temp || (todayFc ? todayFc.min : '');
+        const maxT = weather.max_temp || (todayFc ? todayFc.max : '');
+        const isKma = (weather.data_source === 'kma' || weather.source_label === '기상청 공식');
+        const prefix = isKma ? '[기상청 공식 수집 데이터] ' : '';
+        const rainInfo = todayFc && todayFc.rain && todayFc.rain !== '-' ? `, 강수확률 ${todayFc.rain}` : '';
+        const tempRange = (minT && maxT) ? `, 최저 ${minT}/최고 ${maxT}` : '';
+        const airText = (weather.air_quality && weather.air_quality.pm10 && weather.air_quality.pm10 !== '-') 
+            ? `, 미세먼지 ${weather.air_quality.pm10_status || '보통'}` : '';
+        const guideText = weather.guide ? ` (가이드: ${weather.guide})` : '';
+        weatherText = `${prefix}${weather.city || '계룡'} 현재 ${weather.temp || ''}, ${weather.condition || '맑음'}${feelKo ? `, 체감 ${feelKo}` : ''}${tempRange}${rainInfo}${airText}${guideText}`;
+    }
 
     // 3) 오늘 당일 캘린더 일정 (오늘 일정이 있는 경우만)
     let eventText = '';
@@ -192,18 +202,11 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         for (const item of wiki.ddays) {
             const diff = parseDDayDiff(item);
             if (diff === null) continue;
-            if (diff === 0) {
-                urgentDdays.push(`오늘이 [${item.title}] D-Day 당일입니다`);
-            } else if (diff === 1) {
-                urgentDdays.push(`내일이 [${item.title}] (D-1)입니다`);
-            } else if (diff >= 2 && diff <= 3) {
-                urgentDdays.push(`[${item.title}] 일정이 D-${diff}일 남았습니다`);
-            }
-            // 4일 이상 남은 먼 D-Day나 이미 지난 D+ 일정은 절대 포함하지 않음!
+            if (diff === 0) urgentDdays.push(`오늘이 [${item.title}] D-Day 당일입니다`);
+            else if (diff === 1) urgentDdays.push(`내일이 [${item.title}] (D-1)입니다`);
+            else if (diff >= 2 && diff <= 3) urgentDdays.push(`[${item.title}] 일정이 D-${diff}일 남았습니다`);
         }
-        if (urgentDdays.length > 0) {
-            nearDdayText = urgentDdays.slice(0, 2).join(', ');
-        }
+        if (urgentDdays.length > 0) nearDdayText = urgentDdays.slice(0, 2).join(', ');
     }
 
     // 5) 날씨 맞춤형 위키 생활 팁 (선택적)
@@ -212,7 +215,7 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         tipText = `[${wiki.proactiveTip.title}] ${wiki.proactiveTip.reason || ''}`;
     }
 
-    // 상황 데이터 조합 (자산, 사진첩 등 산만한 잡음 정보 완전 배제하고 '오늘'에만 집중)
+    // 상황 데이터 조합
     const situationLines = [`- 사용자: ${userName}님`];
     if (weatherText) situationLines.push(`- 오늘 날씨: ${weatherText}`);
     situationLines.push(`- 오늘 복약: ${medText}`);
@@ -221,42 +224,32 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
     if (nearDdayText) situationLines.push(`- 임박 디데이: ${nearDdayText}`);
     if (tipText) situationLines.push(`- 오늘 생활 팁: ${tipText}`);
 
-    // 상황 텍스트 조립 (데이터가 없을 때를 대비한 기본값 처리)
-    const situationText = situationLines.length > 0 
-        ? situationLines.join('\n') 
-        : '- 특이 일정 없음, 평온한 하루';
+    const situationText = situationLines.length > 0 ? situationLines.join('\n') : '- 특이 일정 없음, 평온한 하루';
 
     const systemPrompt = `당신은 가족 구성원의 오늘 하루를 챙겨주는 다정한 알림 작성기입니다.
 주어진 [오늘 상황]을 보고, 가장 중요한 1~2가지만 골라 따뜻한 1~2문장의 조언을 만드세요.
 
 [작성 규칙]
 1. 반드시 "${userName}님,"으로 시작하세요.
-2. 서론이나 로봇 같은 인사 없이, 오늘 챙겨야 할 행동(외출, 복약, 일정 등)을 바로 말하세요.
-3. 모든 문장은 다정한 존댓말('~세요', '~해요') 평서문으로 끝내세요.
+2. 서론이나 인사치레 없이, 오늘 챙겨야 할 행동(외출 준비, 복약, 일정 등)을 바로 말하세요.
+3. [오늘 날씨]에 기상청 공식 수집 데이터가 제공된 경우, 기상청의 실제 기온(최저/최고/체감), 날씨 상태(비/눈/맑음), 비 소식 유무를 정확한 근거로 반영하세요.
+   - 예: 비·이슬비 소식이 있으면 우산을 챙기라고 안내하고, 아침·낮 기온이 쌀쌀하면 따뜻한 외투를 권유하세요.
+4. 모든 문장은 다정한 존댓말('~세요', '~해요') 평서문으로 끝내세요.
 
 [작성 예시]
 상황:
-- 날씨: 영하 3도, 맑음
-- 오늘 일정: 오전 회의
+- 오늘 날씨: [기상청 공식 수집 데이터] 계룡 현재 8°C, 이슬비, 체감 8°C, 최저 4°C/최고 12°C, 강수확률 80%
+- 오늘 복약: 오늘 약 복용 완료 ✅
 조언:
-${userName}님, 오늘은 아침 기온이 영하로 떨어져 쌀쌀하니 따뜻한 외투 꼭 챙겨 입으시고 오전 회의도 편안하게 잘 마치세요.
+${userName}님, 오늘 기상청 예보에 비 소식이 있고 기온이 쌀쌀하니 외출하실 때 우산과 따뜻한 외투 꼭 챙기세요.
 
 상황:
-- 오늘 생활 팁: 혈압약 복용 확인
-- 임박 디데이: D-Day 가족 식사
+- 오늘 날씨: [기상청 공식 수집 데이터] 계룡 현재 15°C, 맑음, 최저 5°C/최고 18°C
+- 오늘 복약: 오늘 혈압약 아직 안 챙겨드심(복용 필요 ⚠️)
 조언:
-${userName}님, 오늘 잊지 마시고 아침 약 꼭 챙겨 드시고, 저녁 가족 식사도 즐겁고 편안한 시간 보내세요.
+${userName}님, 잊지 마시고 아침 혈압약 꼭 챙겨 드시고, 일교차가 크니 가벼운 겉옷과 함께 상쾌한 하루 보내세요.`;
 
-상황:
-- 오늘 일정: 없음
-- 오늘 생활 팁: 환기 권장
-조언:
-${userName}님, 특별한 일정 없이 여유로운 하루인 만큼 가볍게 환기 한 번 하시고 편안하고 기분 좋은 하루 보내세요.`;
-
-    const userPrompt = `[오늘 상황]
-${situationText}
-
-[조언]:`;
+    const userPrompt = `[오늘 상황]\n${situationText}\n\n[조언]:`;
 
     try {
         const result = await sendOllamaRequest('/api/generate', {

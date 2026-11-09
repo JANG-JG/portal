@@ -171,7 +171,8 @@
             const isKma = weather.data_source === 'kma' || weather.source_label === '기상청 공식';
             const kmaTag = isKma ? ' · 기상청' : '';
             titleEl.textContent = `${cleanCity} ${weather.temp} (${weather.condition || '맑음'})${kmaTag}`;
-            descEl.textContent = weather.guide || '상쾌하고 쾌적한 하루 보내세요.';
+            const tempRange = (weather.min_temp && weather.max_temp) ? `최저 ${weather.min_temp} / 최고 ${weather.max_temp} · ` : '';
+            descEl.textContent = `${tempRange}${weather.guide || '상쾌하고 쾌적한 하루 보내세요.'}`;
         } else {
             if (iconEl) iconEl.textContent = '🌤️';
             titleEl.textContent = '오늘의 날씨';

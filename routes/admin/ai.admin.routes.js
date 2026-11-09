@@ -94,4 +94,29 @@ router.get('/health', async (req, res) => {
     }
 });
 
+// 4. AI 브리핑 최신 상태 및 기상청 데이터 연동 현황 (관리자 관제)
+router.get('/briefing-status', async (req, res) => {
+    try {
+        const { getLiveWeatherData } = require('../../services/weather.service');
+        const weather = await getLiveWeatherData();
+        res.json({
+            success: true,
+            weather: {
+                city: weather?.city,
+                temp: weather?.temp,
+                condition: weather?.condition,
+                min_temp: weather?.min_temp,
+                max_temp: weather?.max_temp,
+                feels_like: weather?.feels_like,
+                data_source: weather?.data_source,
+                source_label: weather?.source_label,
+                is_kma: (weather?.data_source === 'kma' || weather?.source_label === '기상청 공식'),
+                updated_at: weather?.updated_at
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '브리핑 날씨 상태 조회 실패', error: err.message });
+    }
+});
+
 module.exports = router;
