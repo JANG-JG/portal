@@ -59,6 +59,11 @@
         window.updateBrowserPermissionUI();
         window.fetchNotificationSettings();
         window.fetchNotificationHistory(false);
+        if ('Notification' in window && Notification.permission === 'granted') {
+            window.registerWebPushSubscription().then(() => {
+                window.updateBrowserPermissionUI();
+            }).catch(() => {});
+        }
     };
     window.closeNotificationModal = function() {
         const modal = document.getElementById('notificationModal');
@@ -116,8 +121,24 @@
             return;
         }
         if (Notification.permission === 'granted') {
-            if (tEl) tEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
-            if (bEl) bEl.style.display = 'none';
+            if (tEl) tEl.textContent = '🔄 기기 알림 연결 상태 확인 중...';
+            if (bEl) {
+                bEl.style.display = 'inline-block';
+                bEl.textContent = '기기 연결 갱신';
+            }
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription()).then(sub => {
+                    if (sub) {
+                        if (tEl) tEl.textContent = '✅ 기기 푸시 알림 수신 연결됨';
+                        if (bEl) bEl.textContent = '기기 연결 갱신';
+                    } else {
+                        if (tEl) tEl.textContent = '⚠️ 알림 권한 허용됨 (기기 등록 필요)';
+                        if (bEl) bEl.textContent = '기기 지금 등록';
+                    }
+                }).catch(() => {
+                    if (tEl) tEl.textContent = '✅ 브라우저 푸시 알림 수신 활성화';
+                });
+            }
         } else if (Notification.permission === 'denied') {
             if (tEl) tEl.textContent = '🚫 알림이 차단되어 있습니다. 사이트 설정에서 허용해 주세요.';
             if (bEl) {
@@ -138,12 +159,16 @@
             return alert('🚫 브라우저 알림이 차단되어 있습니다.\n\n[해결 방법]\n1. 브라우저 주소창 좌측(또는 우측)의 자물쇠/설정 아이콘을 터치하세요.\n2. [사이트 설정] -> [알림] -> [허용]으로 변경해 주세요.\n(스마트폰의 경우: [설정] -> [애플리케이션] -> [웹앱 또는 브라우저] -> [알림 허용])');
         }
         try {
-            const perm = await Notification.requestPermission();
+            let perm = Notification.permission;
+            if (perm !== 'granted') {
+                perm = await Notification.requestPermission();
+            }
             window.updateBrowserPermissionUI();
             if (perm === 'granted') {
                 const regRes = await window.registerWebPushSubscription();
+                window.updateBrowserPermissionUI();
                 if (regRes && regRes.success) {
-                    alert('🎉 알림 권한 및 기기 등록이 성공적으로 완료되었습니다!');
+                    alert('🎉 현재 기기가 푸시 알림 수신 대상으로 성공적으로 등록되었습니다!');
                 } else if (regRes && regRes.message) {
                     alert('알림 권한은 허용되었으나 기기 등록 실패: ' + regRes.message);
                 } else {
@@ -312,10 +337,27 @@
     };
     window.sendTestNotification = async function() {
         try {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                await window.registerWebPushSubscription().catch(() => {});
+            }
             const res = await fetch('/api/notification/test', { method: 'POST', credentials: 'include' });
             const data = await res.json();
             if (data.success) {
-                alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n수신 내역 탭에서도 확인하실 수 있습니다.');
+                if (data.count && data.count > 0) {
+                    alert(`🎉 등록된 기기(${data.count}대)로 테스트 푸시 알림이 발송되었습니다!\n스마트폰 상단 알림바를 확인해 보세요.`);
+                } else {
+                    const retry = confirm('⚠️ 알림 권한은 허용되어 있으나 서버에 연결된 기기 토큰이 없습니다.\n지금 이 기기를 푸시 수신 대상으로 등록하시겠습니까?');
+                    if (retry) {
+                        const regRes = await window.registerWebPushSubscription();
+                        window.updateBrowserPermissionUI();
+                        if (regRes && regRes.success) {
+                            alert('✅ 기기 등록 완료! 다시 테스트 발송을 진행합니다.');
+                            return window.sendTestNotification();
+                        } else {
+                            alert('기기 등록 실패: ' + (regRes && regRes.message ? regRes.message : '알 수 없는 오류'));
+                        }
+                    }
+                }
                 setTimeout(() => window.fetchNotificationHistory(false), 500);
             } else {
                 alert('테스트 알림 발송 실패: ' + (data.message || '서버 오류'));
@@ -517,15 +559,24 @@
     }
     const init = () => {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
+            navigator.serviceWorker.register('/sw.js').then(() => {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    navigator.serviceWorker.ready.then(() => {
+                        window.registerWebPushSubscription().catch(() => {});
+                    });
+                }
+            }).catch(() => {});
         }
         handleNotifIdFromUrl();
         initUnreadBadge();
         setInterval(initUnreadBadge, 60000);
         if ('Notification' in window && Notification.permission === 'granted') {
-            const meta = getDevicePushMetadata();
-            if (meta.deviceType !== 'mobile' || meta.clientType === 'pwa' || meta.clientType === 'apk') {
-                setTimeout(() => window.registerWebPushSubscription(), 1000);
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then(() => {
+                    setTimeout(() => window.registerWebPushSubscription().catch(() => {}), 500);
+                });
+            } else {
+                setTimeout(() => window.registerWebPushSubscription().catch(() => {}), 1000);
             }
         }
     };
