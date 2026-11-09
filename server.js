@@ -165,9 +165,9 @@ function injectAssetVersions(rawHtml) {
     return rawHtml
         .replace(/(href="\/css\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
         .replace(/(src="\/js\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
-        .replace(/(href="\/favicon\.[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+        .replace(/(href="\/favicon[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
         .replace(/(href="\/icon-[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
-        .replace(/(src="(?:\/|https?:\/\/j-jg\.cc\/)favicon\.[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+        .replace(/(src="(?:\/|https?:\/\/j-jg\.cc\/)favicon[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
         .replace(/(src="(?:\/|https?:\/\/j-jg\.cc\/)icon-[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
 }
 

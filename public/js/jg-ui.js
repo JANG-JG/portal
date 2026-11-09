@@ -323,12 +323,13 @@
 
     // 2-1. 전 사이트 파비콘 및 애플 터치 아이콘 / 매니페스트 캐시 고착 원천 차단 (동적 버전 스탬핑)
     (function syncGlobalFavicons() {
+        const host = window.location.hostname;
+        if (host === 'j-jg.cc' || host === 'album.j-jg.cc' || host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return;
         const head = document.head || document.getElementsByTagName('head')[0];
         if (!head) return;
-        const isSubPathAsset = window.location.pathname.startsWith('/asset');
-        const prefix = isSubPathAsset ? '/asset' : '';
+        const base = origin || 'https://j-jg.cc';
         const ensureIconLink = (rel, type, sizes, pathStr) => {
-            const hrefWithVer = `${prefix}${pathStr}?v=${JG_UI_VERSION}`;
+            const hrefUrl = `${base}${pathStr}`;
             let link = head.querySelector(`link[rel="${rel}"]${type ? `[type="${type}"]` : ''}${sizes ? `[sizes="${sizes}"]` : ''}`);
             if (!link && rel === 'shortcut icon') link = head.querySelector('link[rel="shortcut icon"]');
             if (!link && rel === 'apple-touch-icon') link = head.querySelector('link[rel="apple-touch-icon"]');
@@ -339,16 +340,14 @@
                 if (sizes) link.sizes = sizes;
                 head.appendChild(link);
             }
-            if (!link.href || !link.href.includes(JG_UI_VERSION)) {
-                link.href = hrefWithVer;
+            if (link.href !== hrefUrl) {
+                link.href = hrefUrl;
             }
         };
-        if (window.location.hostname !== 'album.j-jg.cc') {
-            ensureIconLink('shortcut icon', '', '', '/favicon.ico');
-            ensureIconLink('icon', 'image/svg+xml', '', '/favicon-v2.svg');
-            ensureIconLink('icon', 'image/png', '192x192', '/icon-v2-192.png');
-            ensureIconLink('apple-touch-icon', '', '', '/icon-v2-192.png');
-        }
+        ensureIconLink('shortcut icon', '', '', '/favicon.ico');
+        ensureIconLink('icon', 'image/svg+xml', '', '/favicon-v2.svg');
+        ensureIconLink('icon', 'image/png', '192x192', '/icon-v2-192.png');
+        ensureIconLink('apple-touch-icon', '', '', '/icon-v2-192.png');
     })();
 
     // 3. 상단 내비게이션 바 주입 (메인 포털 홈은 자체 내비바 및 portal-notification.js 사용으로 중복 주입 제외)
