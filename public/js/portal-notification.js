@@ -367,23 +367,7 @@
                 data = await res.json();
             }
             if (data.success && data.successCount > 0) {
-                if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
-                    try {
-                        const reg = await navigator.serviceWorker.ready;
-                        await reg.showNotification('🔔 알림 테스트', {
-                            body: '통합 포털 단일 알림 허브가 성공적으로 연결되었습니다! 속보, 날씨, 증시, 복약 및 혈압 알림을 실시간 수신할 수 있습니다.',
-                            icon: '/icon-monochrome.png',
-                            badge: '/badge-monochrome.png',
-                            tag: data.tag || 'jg-test-direct',
-                            renotify: true,
-                            vibrate: [300, 150, 300, 150, 300],
-                            data: { url: 'https://j-jg.cc/', notifId: data.notifId || null }
-                        });
-                    } catch (swErr) {
-                        console.warn('[TestPush] Local SW notification fallback error:', swErr);
-                    }
-                }
-                alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n(만약 상단바에 알림이 뜨지 않는다면 휴대폰 [설정 > 애플리케이션 > 삼성 인터넷(또는 웹앱) > 알림]이 켜져 있는지 확인해 주세요.)');
+                alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!');
                 setTimeout(() => window.fetchNotificationHistory(false), 500);
             } else {
                 alert('⚠️ 푸시 발송 대상 기기가 없거나 브라우저 알림 권한이 꺼져 있습니다.\n상단 [권한 허용 / 기기 재연결] 버튼 또는 브라우저 주소창 자물쇠(🔒) 설정에서 알림 권한을 확인해 주세요.');

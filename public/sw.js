@@ -22,9 +22,13 @@ const PRECACHE_ASSETS = [
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-                console.warn('[Portal SW] Precache partial error:', err);
-            });
+            return Promise.all(
+                PRECACHE_ASSETS.map((assetUrl) =>
+                    fetch(new Request(assetUrl, { cache: 'reload' }))
+                        .then((res) => (res && res.status === 200) ? cache.put(assetUrl, res) : null)
+                        .catch((err) => console.warn('[Portal SW] Precache item error:', assetUrl, err))
+                )
+            );
         }).then(() => self.skipWaiting())
     );
 });
@@ -56,13 +60,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 1-1. 중앙 UI 런처, 공통 내비게이션/티커, 매니페스트 및 파비콘/앱 아이콘: 항상 실시간 네트워크 직통 우선 (Network-First)
-    if (url.pathname.endsWith('/js/jg-ui.js') ||
-        url.pathname.includes('unified-nav') ||
-        url.pathname.includes('news-ticker') ||
-        url.pathname.includes('manifest.json') ||
-        url.pathname.includes('favicon') ||
-        url.pathname.includes('icon-')) {
+    // 1-1. 중앙 UI 런처 및 공통 내비게이션/티커: 항상 실시간 네트워크 직통 우선 (Network-First)
+    if (url.pathname.endsWith('/js/jg-ui.js') || url.pathname.includes('unified-nav') || url.pathname.includes('news-ticker')) {
         event.respondWith(
             fetch(req)
                 .then((res) => {
@@ -226,11 +225,16 @@ self.addEventListener('push', (event) => {
 
     event.waitUntil(
         self.registration.showNotification(finalTitle, options)
-            .then(() => {
+            .then(async () => {
+                let activeCount = -1;
+                try {
+                    const list = await self.registration.getNotifications();
+                    activeCount = Array.isArray(list) ? list.length : -1;
+                } catch (e) {}
                 return fetch('/api/notification/sw-ack', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: 'shown', title: finalTitle, tag: safeTag })
+                    body: JSON.stringify({ status: 'shown', title: finalTitle, tag: safeTag, activeCount })
                 }).catch(() => {});
             })
             .catch((err) => {

@@ -431,11 +431,11 @@ router.post('/test', authenticateToken, async (req, res) => {
 
 // 8-1. 서비스 워커 푸시 수신 및 알림 표시 ACK 로깅 API
 router.post('/sw-ack', (req, res) => {
-    const { status, title, tag, error } = req.body || {};
+    const { status, title, tag, activeCount, error } = req.body || {};
     if (status === 'error') {
         console.error(`❌ [SW-Push-ACK] 기기 알림 표시 오류: title=${title || '-'}, tag=${tag || '-'}, error=${error || 'unknown'}`);
     } else {
-        console.log(`📲 [SW-Push-ACK] 기기 푸시 수신 및 알림 표시 완료 (${status || 'shown'}): title=${title || '-'}, tag=${tag || '-'}`);
+        console.log(`📲 [SW-Push-ACK] 기기 푸시 수신 및 알림 표시 완료 (${status || 'shown'}): title=${title || '-'}, tag=${tag || '-'}, activeCount=${activeCount !== undefined ? activeCount : '-'}`);
     }
     res.json({ success: true });
 });
