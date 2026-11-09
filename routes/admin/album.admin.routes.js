@@ -12,7 +12,7 @@ const { ALBUM_DIR } = require('../../config/constants');
  */
 router.get('/stats', (req, res) => {
     const queries = {
-        photos: "SELECT COUNT(*) as cnt, COALESCE(SUM(file_size), 0) as total_size FROM photos",
+        photos: "SELECT COUNT(*) as cnt, COALESCE(SUM(file_size), 0) as total_size, COUNT(CASE WHEN (latitude IS NOT NULL AND longitude IS NOT NULL) OR (location IS NOT NULL AND TRIM(location) != '') THEN 1 END) as location_count FROM photos",
         comments: "SELECT COUNT(*) as cnt FROM photo_comments",
         reactions: "SELECT COUNT(*) as cnt FROM photo_reactions",
         members: "SELECT COUNT(*) as cnt FROM family_members WHERE is_active = 1"
@@ -29,6 +29,7 @@ router.get('/stats', (req, res) => {
                         success: true,
                         stats: {
                             total_photos: photoRow ? photoRow.cnt : 0,
+                            location_photos: photoRow ? photoRow.location_count : 0,
                             total_comments: commentRow ? commentRow.cnt : 0,
                             total_reactions: reactionRow ? reactionRow.cnt : 0,
                             active_members: memberRow ? memberRow.cnt : 0,

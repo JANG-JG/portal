@@ -22,7 +22,7 @@ async function loadAlbumAdminStats() {
             const elReactions = document.getElementById('albumStatReactions');
             const elStorage = document.getElementById('albumStatStorage');
 
-            if (elPhotos) elPhotos.textContent = `${s.total_photos.toLocaleString()}장`;
+            if (elPhotos) elPhotos.textContent = s.location_photos ? `${s.total_photos.toLocaleString()}장 (📍${s.location_photos}곳)` : `${s.total_photos.toLocaleString()}장`;
             if (elComments) elComments.textContent = `${s.total_comments.toLocaleString()}개`;
             if (elReactions) elReactions.textContent = `${s.total_reactions.toLocaleString()}개`;
             if (elStorage) elStorage.textContent = `${s.storage_mb} MB`;
