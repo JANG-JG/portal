@@ -321,8 +321,10 @@
         (document.head || document.documentElement).appendChild(script);
     }
 
-    // 3. 상단 내비게이션 바 주입
-    if (enableNav) {
+    // 3. 상단 내비게이션 바 주입 (메인 포털 홈은 자체 내비바 및 portal-notification.js 사용으로 중복 주입 제외)
+    const isPortalMain = (window.location.hostname === 'j-jg.cc' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.')) &&
+        (window.location.pathname === '/' || window.location.pathname === '/index.html' || !!document.getElementById('portal-tab-bar'));
+    if (enableNav && !isPortalMain) {
         // 스타일시트 동적 주입
         injectStylesheet(`${origin}/css/unified-nav.css?v=${JG_UI_VERSION}`);
         // 상단바 및 통합 알림 모듈 스크립트 동적 주입

@@ -53,28 +53,8 @@ router.post('/subscribe', authenticateToken, (req, res) => {
 
     const { endpoint, keys } = subscription;
 
-    // 🌟 모바일 일반 브라우저에서 포털 구독 요청 시에만 PWA 중복 차단 (가족앨범 등 서브 서비스는 정상 등록 허용)
     const isSubService = Boolean(deviceId && deviceId.startsWith('album_'));
-    if (!isSubService && isMobile && clientType === 'browser') {
-        return db.get(
-            `SELECT endpoint FROM push_subscriptions WHERE user_id = ? AND (client_type = 'pwa' OR client_type = 'apk') LIMIT 1`,
-            [userId],
-            (chkErr, appRow) => {
-                if (appRow && appRow.endpoint !== endpoint) {
-                    db.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [endpoint], () => {});
-                    console.log(`🧹 [WebPush Guard] 유저(${userId}) 전용 웹앱(PWA) 구독이 존재하므로 브라우저(${endpoint.slice(-12)}) 중복 등록 원천 차단`);
-                    return res.json({
-                        success: true,
-                        skippedBrowser: true,
-                        message: '전용 웹앱(PWA) 알림이 이미 등록되어 있어 브라우저 중복 알림을 자동으로 차단했습니다.'
-                    });
-                }
-                proceedSaveSubscription();
-            }
-        );
-    } else {
-        proceedSaveSubscription();
-    }
+    proceedSaveSubscription();
 
     function proceedSaveSubscription() {
         const query = `
@@ -98,8 +78,8 @@ router.post('/subscribe', authenticateToken, (req, res) => {
             }
 
             // 🌟 [중복 방지 스마트 정리]
-            // 1) 모바일 PWA 또는 APK 전용 앱으로 등록된 경우 동일 서비스의 이전 모바일 토큰만 스마트 정리 (포털과 가족앨범 상호 보존)
-            if (isMobile && (clientType === 'pwa' || clientType === 'apk')) {
+            // 1) 모바일에서 신규 구독 등록 시 동일 서비스의 이전 만료/중복 모바일 토큰 자동 정리 (포털과 가족앨범 상호 보존)
+            if (isMobile) {
                 const serviceFilter = isSubService
                     ? "AND (device_id LIKE 'album_%')"
                     : "AND (device_id NOT LIKE 'album_%' OR device_id IS NULL OR device_id = '')";
@@ -118,7 +98,7 @@ router.post('/subscribe', authenticateToken, (req, res) => {
                     [userId, endpoint],
                     function(delErr) {
                         if (!delErr && this.changes > 0) {
-                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 전용 앱(${clientType.toUpperCase()}) 등록에 따라 이전 토큰 ${this.changes}개 자동 정리 완료`);
+                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 모바일(${clientType.toUpperCase()}) 구독 등록에 따라 이전 토큰 ${this.changes}개 자동 정리 완료`);
                         }
                     }
                 );
@@ -474,7 +454,7 @@ router.post('/broadcast', async (req, res) => {
     if (!isInternalValid && rawToken) {
         try {
             const decoded = jwt.verify(rawToken, JWT_SECRET, { algorithms: ['HS256'] });
-            if (decoded && decoded.username && ADMIN_USERS.includes(decoded.username)) {
+            if (decoded && decoded.username && ADMIN_USERS.has(decoded.username)) {
                 isAdminTokenValid = true;
             }
         } catch (err) {}

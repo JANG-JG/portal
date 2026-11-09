@@ -92,6 +92,7 @@
         if (hView) hView.style.display = isSet ? 'none' : 'flex';
         if (sTab) sTab.classList.toggle('active', isSet);
         if (hTab) hTab.classList.toggle('active', !isSet);
+        window.updateBrowserPermissionUI();
         if (!isSet) window.fetchNotificationHistory(false);
     };
     window.switchNotifSubTab = function(type) {
@@ -110,20 +111,26 @@
     window.updateBrowserPermissionUI = function() {
         const tEl = document.getElementById('notifPermissionStatusText');
         const bEl = document.getElementById('btnRequestNotifPermission');
+        const bannerEl = document.getElementById('notifPermissionBanner');
+        const isSet = document.getElementById('notifMainTabSettings')?.classList.contains('active');
         if (!('Notification' in window)) {
             if (tEl) tEl.textContent = '❌ 이 브라우저는 웹 푸시를 지원하지 않습니다.';
             if (bEl) bEl.style.display = 'none';
+            if (bannerEl) bannerEl.style.display = isSet ? 'flex' : 'none';
             return;
         }
         if (Notification.permission === 'granted') {
             if (tEl) tEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
             if (bEl) bEl.style.display = 'none';
+            if (bannerEl) bannerEl.style.display = isSet ? 'flex' : 'none';
         } else if (Notification.permission === 'denied') {
             if (tEl) tEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
             if (bEl) bEl.style.display = 'none';
+            if (bannerEl) bannerEl.style.display = 'flex';
         } else {
             if (tEl) tEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
             if (bEl) bEl.style.display = 'inline-block';
+            if (bannerEl) bannerEl.style.display = 'flex';
         }
     };
     window.requestBrowserNotificationPermission = async function() {
@@ -292,13 +299,25 @@
     };
     window.sendTestNotification = async function() {
         try {
-            const res = await fetch('/api/notification/test', { method: 'POST', credentials: 'include' });
-            const data = await res.json();
-            if (data.success) {
+            if ('Notification' in window && Notification.permission === 'default') {
+                await window.requestBrowserNotificationPermission();
+                if (Notification.permission !== 'granted') return;
+            }
+            if ('Notification' in window && Notification.permission === 'granted') {
+                await window.registerWebPushSubscription();
+            }
+            let res = await fetch('/api/notification/test', { method: 'POST', credentials: 'include' });
+            let data = await res.json();
+            if (data.success && data.successCount === 0 && 'Notification' in window && Notification.permission === 'granted') {
+                await window.registerWebPushSubscription(true);
+                res = await fetch('/api/notification/test', { method: 'POST', credentials: 'include' });
+                data = await res.json();
+            }
+            if (data.success && (data.successCount === undefined || data.successCount > 0)) {
                 alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n수신 내역 탭에서도 확인하실 수 있습니다.');
                 setTimeout(() => window.fetchNotificationHistory(false), 500);
             } else {
-                alert('테스트 알림 발송 실패: ' + (data.message || '서버 오류'));
+                alert('⚠️ 푸시 발송 대상 기기가 없거나 브라우저 알림 권한이 꺼져 있습니다.\n브라우저 주소창 자물쇠(🔒) 설정에서 알림 권한을 확인해 주세요.');
             }
         } catch (e) { alert('테스트 알림 요청 오류: ' + e.message); }
     };
@@ -364,12 +383,13 @@
         } catch (e) { deviceId = 'unknown'; }
         return { clientType, deviceType, deviceId, userAgent: navigator.userAgent };
     }
-    window.registerWebPushSubscription = async function() {
+    window.registerWebPushSubscription = async function(forceResubscribe = false) {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
         try {
             const meta = getDevicePushMetadata();
             if (Notification.permission === 'default') {
                 const requested = await Notification.requestPermission();
+                window.updateBrowserPermissionUI();
                 if (requested !== 'granted') return;
             } else if (Notification.permission !== 'granted') return;
 
@@ -378,6 +398,10 @@
             if (!publicKey) return;
             const reg = await navigator.serviceWorker.ready;
             let sub = await reg.pushManager.getSubscription();
+            if (sub && forceResubscribe === true) {
+                try { await sub.unsubscribe(); } catch (e) {}
+                sub = null;
+            }
             if (!sub) {
                 const padding = '='.repeat((4 - publicKey.length % 4) % 4);
                 const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
@@ -386,7 +410,7 @@
                 for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
                 sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: out });
             }
-            const subRes = await fetch('/api/notification/subscribe', {
+            await fetch('/api/notification/subscribe', {
                 method: 'POST', credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -397,12 +421,6 @@
                     userAgent: meta.userAgent
                 })
             });
-            const subData = await subRes.json().catch(() => ({}));
-            if (subData && subData.skippedBrowser && sub) {
-                try { await sub.unsubscribe(); } catch (e) {}
-                console.log('🧹 [WebPush Guard] 전용 웹앱(PWA) 구독이 활성화되어 있어 일반 브라우저 중복 구독을 자동 해제했습니다.');
-                return;
-            }
         } catch (e) { console.error('[WebPush] 구독 오류:', e); }
     };
     window.unsubscribeWebPushSubscription = async function() {
@@ -426,7 +444,7 @@
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-    // 8. 서비스워커 등록, 뱃지 동기화, URL notif_id 자동 읽음 처리 및 PWA 자동 구독
+    // 8. 서비스워커 등록, 뱃지 동기화, URL notif_id 자동 읽음 처리 및 자동 구독
     async function initUnreadBadge() {
         try {
             const res = await fetch('/api/notification/history?limit=1', { credentials: 'include' });
@@ -461,9 +479,15 @@
         initUnreadBadge();
         setInterval(initUnreadBadge, 60000);
         if ('Notification' in window) {
-            const meta = getDevicePushMetadata();
-            if (meta.deviceType !== 'mobile' || meta.clientType === 'pwa' || meta.clientType === 'apk') {
-                setTimeout(() => window.registerWebPushSubscription(), 1000);
+            setTimeout(() => window.registerWebPushSubscription(), 800);
+            // 모바일 브라우저(삼성 인터넷/크롬)는 사용자 터치 제스처가 있어야 권한 허용 창을 띄우므로 첫 클릭 시 1회 자동 요청
+            if (Notification.permission === 'default') {
+                const onFirstGesture = () => {
+                    if (Notification.permission === 'default') {
+                        window.registerWebPushSubscription();
+                    }
+                };
+                document.addEventListener('click', onFirstGesture, { once: true, capture: true });
             }
         }
     };

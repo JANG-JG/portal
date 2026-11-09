@@ -139,6 +139,7 @@
         if (historyView) historyView.style.display = isSettings ? 'none' : 'block';
         if (settingsTabBtn) settingsTabBtn.classList.toggle('active', isSettings);
         if (historyTabBtn) historyTabBtn.classList.toggle('active', !isSettings);
+        if (typeof window.updateBrowserPermissionUI === 'function') window.updateBrowserPermissionUI();
 
         if (!isSettings && typeof window.fetchNotificationHistory === 'function') {
             window.fetchNotificationHistory(false);

@@ -102,16 +102,15 @@
 
     // 2. 상단 내비게이션 HTML 컴포넌트 비동기 로드 및 마운트 (localStorage SWR 캐싱)
     async function mountUnifiedNav() {
-        ensureUnifiedNavCss();
-
         if (isPortalMainPage()) {
             const existingNav = document.getElementById('unified-nav-root') || document.getElementById('unavRoot') || document.querySelector('header.unav-header');
             if (existingNav) existingNav.remove();
             const existingDrawer = document.getElementById('unavDrawer');
             if (existingDrawer) existingDrawer.remove();
-            initUnifiedNav();
             return;
         }
+
+        ensureUnifiedNavCss();
 
         let cachedHtml = null, cachedVer = null, cachedTime = 0;
         try {
@@ -387,14 +386,10 @@
 
         handleNotifIdFromUrl();
 
-        if ('Notification' in window && typeof window.getDevicePushMetadata === 'function') {
-            const meta = window.getDevicePushMetadata();
-            const isInstalledApp = meta.deviceType !== 'mobile' || meta.clientType === 'pwa' || meta.clientType === 'apk';
-            if (isInstalledApp) {
-                setTimeout(() => {
-                    if (typeof window.registerWebPushSubscription === 'function') window.registerWebPushSubscription();
-                }, 1000);
-            }
+        if ('Notification' in window) {
+            setTimeout(() => {
+                if (typeof window.registerWebPushSubscription === 'function') window.registerWebPushSubscription();
+            }, 1000);
         }
 
         if (!btn || !drawer) return;

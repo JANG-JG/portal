@@ -55,29 +55,56 @@
         return outputArray;
     }
 
+    function isPortalPushOrigin() {
+        const h = window.location.hostname;
+        return h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.');
+    }
+
     // 브라우저 푸시 알림 권한 상태 표시
     window.updateBrowserPermissionUI = function() {
         const textEl = document.getElementById('notifPermissionStatusText');
         const btnEl = document.getElementById('btnRequestNotifPermission');
+        const bannerEl = document.getElementById('notifPermissionBanner');
+        const isSettingsTab = document.getElementById('notifMainTabSettings')?.classList.contains('active');
         if (!('Notification' in window)) {
             if (textEl) textEl.textContent = '❌ 이 브라우저는 웹 푸시를 지원하지 않습니다.';
             if (btnEl) btnEl.style.display = 'none';
+            if (bannerEl) bannerEl.style.display = isSettingsTab ? 'flex' : 'none';
+            return;
+        }
+        if (!isPortalPushOrigin()) {
+            if (textEl) textEl.textContent = '🔔 푸시 알림 권한 등록은 메인 포털(j-jg.cc)에서 통합 관리됩니다.';
+            if (btnEl) {
+                btnEl.textContent = '포털에서 권한 설정';
+                btnEl.style.display = 'inline-block';
+            }
+            if (bannerEl) bannerEl.style.display = isSettingsTab ? 'flex' : 'none';
             return;
         }
         if (Notification.permission === 'granted') {
             if (textEl) textEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
             if (btnEl) btnEl.style.display = 'none';
+            if (bannerEl) bannerEl.style.display = isSettingsTab ? 'flex' : 'none';
         } else if (Notification.permission === 'denied') {
             if (textEl) textEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
             if (btnEl) btnEl.style.display = 'none';
+            if (bannerEl) bannerEl.style.display = 'flex';
         } else {
             if (textEl) textEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
-            if (btnEl) btnEl.style.display = 'inline-block';
+            if (btnEl) {
+                btnEl.textContent = '권한 허용';
+                btnEl.style.display = 'inline-block';
+            }
+            if (bannerEl) bannerEl.style.display = 'flex';
         }
     };
 
     // 브라우저 알림 권한 요청
     window.requestBrowserNotificationPermission = async function() {
+        if (!isPortalPushOrigin()) {
+            window.location.href = 'https://j-jg.cc/?open=notification';
+            return;
+        }
         if (!('Notification' in window)) {
             alert('현재 브라우저에서는 알림 권한을 지원하지 않습니다.');
             return;
@@ -96,15 +123,37 @@
         }
     };
 
-    // VAPID 키 및 푸시 매니저 구독 등록 (API)
+    // VAPID 키 및 푸시 매니저 구독 등록 (API) - 오직 메인 포털(j-jg.cc) 오리진에서만 수행
     window.registerWebPushSubscription = async function() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+        // 🛡️ 서브도메인(blood.j-jg.cc, asset.j-jg.cc 등)에서는 알림 권한 요청 및 구독 생성을 원천 차단하고, 잔존 서브도메인 구독만 자동 정리
+        if (!isPortalPushOrigin()) {
+            try {
+                const regs = await navigator.serviceWorker.getRegistrations();
+                for (const r of regs) {
+                    const oldSub = await r.pushManager.getSubscription();
+                    if (oldSub) {
+                        const ep = oldSub.endpoint;
+                        await oldSub.unsubscribe().catch(() => {});
+                        await fetch(`${NOTIF_BASE_URL}/api/notification/unsubscribe`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ endpoint: ep })
+                        }).catch(() => {});
+                    }
+                }
+            } catch (e) {}
+            return;
+        }
 
         try {
             const meta = window.getDevicePushMetadata();
 
             if (Notification.permission === 'default') {
                 const requested = await Notification.requestPermission();
+                window.updateBrowserPermissionUI();
                 if (requested !== 'granted') {
                     console.log('[WebPush] 알림 권한 미허용');
                     return;
@@ -146,7 +195,7 @@
                 });
             }
 
-            const subRes = await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
+            await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -158,12 +207,6 @@
                     userAgent: meta.userAgent
                 })
             });
-            const subData = await subRes.json().catch(() => ({}));
-            if (subData && subData.skippedBrowser && sub) {
-                try { await sub.unsubscribe(); } catch (e) {}
-                console.log('🧹 [WebPush Guard] PWA 구독 활성화 상태로 브라우저 중복 구독 해제');
-                return;
-            }
             console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
         } catch (e) {
             console.error('[푸시 구독 등록 실패]:', e);

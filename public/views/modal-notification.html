@@ -31,13 +31,14 @@
 
             <!-- 모달 본문 스크롤 영역 -->
             <div class="notif-modal-scroll">
+                <!-- 브라우저 권한 배너 (권한 미허용 시 수신 내역 탭에서도 상단 즉시 노출) -->
+                <div id="notifPermissionBanner" class="notif-perm-banner" style="margin-bottom: 0.75rem;">
+                    <span id="notifPermissionStatusText">🔒 브라우저 알림 권한 상태 확인 중...</span>
+                    <button type="button" id="btnRequestNotifPermission" onclick="requestBrowserNotificationPermission()">권한 허용</button>
+                </div>
+
                 <!-- 1️⃣ 탭 1: 알림 설정 뷰 -->
                 <div id="notifMainViewSettings" style="display: none;">
-                    <!-- 브라우저 권한 배너 -->
-                    <div id="notifPermissionBanner" class="notif-perm-banner">
-                        <span id="notifPermissionStatusText">🔒 브라우저 알림 권한 상태 확인 중...</span>
-                        <button type="button" id="btnRequestNotifPermission" onclick="requestBrowserNotificationPermission()">권한 허용</button>
-                    </div>
 
                     <!-- 0. 📸 가족 앨범 알림 -->
                     <div class="notif-card-group" id="notifGroupAlbum">
