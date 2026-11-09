@@ -145,12 +145,11 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
         db.all(query, [], (err, rows) => {
             if (err || !rows || rows.length === 0) {
                 console.log(`[UnifiedPush] 발송 대상 구독 기기 없음 (type: ${type}, user: ${userId || 'all'})`);
-                if (!shouldSaveHistory) {
-                    return resolve({ success: true, count: 0, targetCount: 0 });
-                }
-
-                // 1) 단일 사용자 대상 알림
+                // 단일 사용자 대상 알림이고 사용자가 알림을 끄지 않은 경우에만 내역 보존 (꺼둔 사용자에게 내역 적재 원천 차단)
                 if (userId && typeof userId === 'string' && !Array.isArray(userId)) {
+                    if (!shouldSaveHistory) {
+                        return resolve({ success: true, count: 0, targetCount: 0 });
+                    }
                     const checkSql = `
                         SELECT COALESCE(ns.enabled, 1) as enabled,
                                COALESCE(u.role, 'family') as role,
@@ -162,6 +161,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                     db.get(checkSql, [userId], (cErr, userCheck) => {
                         if (!cErr && userCheck && userCheck.enabled === 1) {
                             const isUserAdmin = (userId === 'admin' || userCheck.role === 'admin' || userCheck.u_rowid === 1);
+                            // 가족 계정인데 관리자 전용 알림(속보/날씨/증시/시스템 등)인 경우 저장 제외
                             if (!isUserAdmin && (type === 'system' || type === 'breaking' || type === 'weather' || type === 'asset' || type === 'economy' || type === 'finance' || type === 'stock' || type === 'hospital' || type === 'blood_pressure')) {
                                 return resolve({ success: true, count: 0, targetCount: 0 });
                             }
@@ -178,32 +178,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                     });
                     return;
                 }
-
-                // 2) 브로드캐스트/다중 대상 알림 (가족 앨범 등): 알림을 끄지 않은 대상자들의 알림함에 안전 보존
-                const targetUsersSql = `
-                    SELECT u.username, u.role, u.rowid, COALESCE(ns.enabled, 1) as enabled, COALESCE(ns.album_push_enabled, 1) as album_push_enabled
-                    FROM users u
-                    LEFT JOIN notification_settings ns ON u.username = ns.user_id
-                    WHERE COALESCE(ns.enabled, 1) = 1
-                    ${excludeUserId ? `AND u.username != '${String(excludeUserId).replace(/'/g, "''")}'` : ''}
-                `;
-                db.all(targetUsersSql, [], (tErr, userList) => {
-                    if (!tErr && Array.isArray(userList)) {
-                        userList.forEach(u => {
-                            if (type === 'album' && u.album_push_enabled === 0) return;
-                            saveNotificationHistory({
-                                userId: u.username,
-                                type,
-                                title: cleanTitle,
-                                body: cleanBody,
-                                icon: 'https://j-jg.cc/icon-monochrome.png',
-                                url: targetUrl
-                            });
-                        });
-                    }
-                    resolve({ success: true, count: 0, targetCount: 0 });
-                });
-                return;
+                return resolve({ success: true, count: 0, targetCount: 0 });
             }
 
             // 🌟 [기기별 스마트 토큰 발송 알고리즘: 서로 다른 기기(아이폰 vs 안드로이드 등) 독립 발송 보장]

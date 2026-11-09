@@ -7,7 +7,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261109_233932';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261109_212141';
 const {
     PORT,
     JWT_SECRET,
@@ -159,7 +159,7 @@ function assemblePortalHtml() {
     return shell;
 }
 
-// 정적 자원(/css/, /js/, 파비콘, 로고 아이콘, 매니페스트) 링크에 서버 동적 버전 자동 주입 (규칙 4 준수)
+// 정적 자원(/css/, /js/, 파비콘, 로고 아이콘) 링크에 서버 동적 버전 자동 주입 (규칙 4 준수)
 function injectAssetVersions(rawHtml) {
     if (!rawHtml) return rawHtml;
     return rawHtml
@@ -167,7 +167,6 @@ function injectAssetVersions(rawHtml) {
         .replace(/(src="\/js\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
         .replace(/(href="\/favicon\.[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
         .replace(/(href="\/icon-[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
-        .replace(/(href="\/manifest\.json)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
         .replace(/(src="(?:\/|https?:\/\/j-jg\.cc\/)favicon\.[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
         .replace(/(src="(?:\/|https?:\/\/j-jg\.cc\/)icon-[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
 }
@@ -259,36 +258,6 @@ app.get(['/error', '/error.html'], (req, res) => {
     const reqPath = req.query.path || '';
     const msg = req.query.msg || '';
     sendErrorPage(res, code, reqPath, msg);
-});
-
-// 1-7. PWA 매니페스트 동적 버전 주입 (웹앱 아이콘 캐시 고착 원천 차단)
-app.get('/manifest.json', (req, res) => {
-    const filePath = path.join(__dirname, 'public', 'manifest.json');
-    try {
-        let content = fs.readFileSync(filePath, 'utf8');
-        content = content.replace(/("\/icon-[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
-                         .replace(/("\/favicon\.[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
-        res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
-        res.setHeader('Pragma', 'no-cache');
-        res.type('application/manifest+json').send(content);
-    } catch (e) {
-        res.sendFile(filePath);
-    }
-});
-
-// 1-8. PWA 서비스 워커 즉시 최신화 라우트 (항상 네트워크 재검증 보장)
-app.get('/sw.js', (req, res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    res.setHeader('Service-Worker-Allowed', '/');
-    res.sendFile(path.join(__dirname, 'public', 'sw.js'));
-});
-
-// 1-9. 브라우저 표준 파비콘 (루트 요청 대응 및 즉시 갱신)
-app.get('/favicon.ico', (req, res) => {
-    res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
-    res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
 });
 
 // 2. 로그인 페이지

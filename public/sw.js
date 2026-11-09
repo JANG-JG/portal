@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261109_233932';
+const CACHE_NAME = 'jg-portal-v20261025_163833';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -9,7 +9,6 @@ const PRECACHE_ASSETS = [
     '/fonts/Pretendard-Medium.subset.woff2',
     '/fonts/Pretendard-SemiBold.subset.woff2',
     '/fonts/Pretendard-Bold.subset.woff2',
-    '/favicon.ico',
     '/favicon.svg',
     '/favicon.png',
     '/icon-192.png',

@@ -68,17 +68,11 @@
             if (textEl) textEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
             if (btnEl) btnEl.style.display = 'none';
         } else if (Notification.permission === 'denied') {
-            if (textEl) textEl.textContent = '🚫 알림이 차단되어 있습니다. 사이트 설정에서 허용해 주세요.';
-            if (btnEl) {
-                btnEl.style.display = 'inline-block';
-                btnEl.textContent = '해제 방법';
-            }
+            if (textEl) textEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
+            if (btnEl) btnEl.style.display = 'none';
         } else {
             if (textEl) textEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
-            if (btnEl) {
-                btnEl.style.display = 'inline-block';
-                btnEl.textContent = '권한 허용';
-            }
+            if (btnEl) btnEl.style.display = 'inline-block';
         }
     };
 
@@ -88,41 +82,35 @@
             alert('현재 브라우저에서는 알림 권한을 지원하지 않습니다.');
             return;
         }
-        if (Notification.permission === 'denied') {
-            return alert('🚫 브라우저 알림이 차단되어 있습니다.\n\n[해결 방법]\n1. 브라우저 주소창 좌측(또는 우측)의 자물쇠/설정 아이콘을 터치하세요.\n2. [사이트 설정] -> [알림] -> [허용]으로 변경해 주세요.\n(스마트폰의 경우: [설정] -> [애플리케이션] -> [웹앱 또는 브라우저] -> [알림 허용])');
-        }
         try {
             const perm = await Notification.requestPermission();
             window.updateBrowserPermissionUI();
             if (perm === 'granted') {
-                const regRes = await window.registerWebPushSubscription();
-                if (regRes && regRes.success) {
-                    alert('🎉 알림 권한 및 기기 등록이 성공적으로 완료되었습니다!');
-                } else if (regRes && regRes.message) {
-                    alert('알림 권한은 허용되었으나 기기 등록 실패: ' + regRes.message);
-                } else {
-                    alert('🎉 알림 권한이 허용되었습니다.');
-                }
+                await window.registerWebPushSubscription();
+                alert('🎉 알림 권한이 성공적으로 허용되었습니다!');
             } else {
                 alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
             }
         } catch (e) {
             console.error('권한 요청 실패:', e);
-            alert('알림 권한 요청 중 오류 발생: ' + (e.message || e));
         }
     };
 
     // VAPID 키 및 푸시 매니저 구독 등록 (API)
     window.registerWebPushSubscription = async function() {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            return { success: false, message: '브라우저가 웹 푸시를 지원하지 않습니다.' };
-        }
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
         try {
             const meta = window.getDevicePushMetadata();
 
-            if (Notification.permission !== 'granted') {
-                return { success: false, message: '브라우저 알림 권한이 허용되지 않았습니다.' };
+            if (Notification.permission === 'default') {
+                const requested = await Notification.requestPermission();
+                if (requested !== 'granted') {
+                    console.log('[WebPush] 알림 권한 미허용');
+                    return;
+                }
+            } else if (Notification.permission !== 'granted') {
+                return;
             }
 
             const keyRes = await fetch(`${NOTIF_BASE_URL}/api/notification/vapid-key`, { credentials: 'include' });
