@@ -117,9 +117,9 @@
             return;
         }
         if (Notification.permission === 'granted') {
-            const ok = await window.registerWebPushSubscription(true);
+            const ok = await window.registerWebPushSubscription(false);
             window.updateBrowserPermissionUI();
-            if (ok) alert('🎉 현재 기기의 푸시 알림 연결이 최신 상태로 갱신되었습니다!');
+            if (ok) alert('🎉 현재 기기의 푸시 알림 연결이 최신 상태로 확인되었습니다!');
             else alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
             return;
         }
@@ -127,7 +127,7 @@
             const perm = await Notification.requestPermission();
             window.updateBrowserPermissionUI();
             if (perm === 'granted') {
-                await window.registerWebPushSubscription(true);
+                await window.registerWebPushSubscription(false);
                 alert('🎉 알림 권한 허용 및 기기 등록이 완료되었습니다!');
             } else {
                 alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
@@ -138,94 +138,101 @@
     };
 
     // VAPID 키 및 푸시 매니저 구독 등록 (API) - 오직 메인 포털(j-jg.cc) 오리진에서만 수행
-    window.registerWebPushSubscription = async function(forceResubscribe = false) {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+    let _unavPushSubPromise = null;
+    window.registerWebPushSubscription = function(forceResubscribe = false) {
+        if (_unavPushSubPromise) return _unavPushSubPromise;
+        _unavPushSubPromise = (async () => {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
 
-        // 🛡️ 서브도메인(blood.j-jg.cc, asset.j-jg.cc 등)에서는 알림 권한 요청 및 구독 생성을 원천 차단하고, 잔존 서브도메인 구독만 자동 정리
-        if (!isPortalPushOrigin()) {
-            try {
-                const regs = await navigator.serviceWorker.getRegistrations();
-                for (const r of regs) {
-                    const oldSub = await r.pushManager.getSubscription();
-                    if (oldSub) {
-                        const ep = oldSub.endpoint;
-                        await oldSub.unsubscribe().catch(() => {});
-                        await fetch(`${NOTIF_BASE_URL}/api/notification/unsubscribe`, {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ endpoint: ep })
-                        }).catch(() => {});
-                    }
-                }
-            } catch (e) {}
-            return false;
-        }
-
-        if (!('Notification' in window) || Notification.permission !== 'granted') return false;
-
-        try {
-            const meta = window.getDevicePushMetadata();
-            const keyRes = await fetch(`${NOTIF_BASE_URL}/api/notification/vapid-key`, { credentials: 'include' });
-            if (!keyRes.ok) return false;
-            const { publicKey } = await keyRes.json();
-            if (!publicKey) return false;
-
-            let reg = await navigator.serviceWorker.getRegistration('/');
-            if (!reg) {
-                reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-            }
-            reg = await navigator.serviceWorker.ready;
-            let sub = await reg.pushManager.getSubscription();
-            const convertedKey = urlBase64ToUint8Array(publicKey);
-
-            if (sub && sub.options && sub.options.applicationServerKey) {
-                const currentKey = new Uint8Array(sub.options.applicationServerKey);
-                let isMatch = currentKey.length === convertedKey.length;
-                if (isMatch) {
-                    for (let i = 0; i < currentKey.length; i++) {
-                        if (currentKey[i] !== convertedKey[i]) {
-                            isMatch = false;
-                            break;
+            // 🛡️ 서브도메인(blood.j-jg.cc, asset.j-jg.cc 등)에서는 알림 권한 요청 및 구독 생성을 원천 차단하고, 잔존 서브도메인 구독만 자동 정리
+            if (!isPortalPushOrigin()) {
+                try {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (const r of regs) {
+                        const oldSub = await r.pushManager.getSubscription();
+                        if (oldSub) {
+                            const ep = oldSub.endpoint;
+                            await oldSub.unsubscribe().catch(() => {});
+                            await fetch(`${NOTIF_BASE_URL}/api/notification/unsubscribe`, {
+                                method: 'POST',
+                                credentials: 'include',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ endpoint: ep })
+                            }).catch(() => {});
                         }
                     }
-                }
-                if (!isMatch) {
-                    console.log('🔄 [VAPID Key Changed] 새 VAPID 키 감지: 기존 푸시 구독 취소 후 재구독');
-                    forceResubscribe = true;
-                }
+                } catch (e) {}
+                return false;
             }
 
-            if (sub && forceResubscribe === true) {
-                try { await sub.unsubscribe(); } catch (unsubErr) {}
-                sub = null;
-            }
+            if (!('Notification' in window) || Notification.permission !== 'granted') return false;
 
-            if (!sub) {
-                sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: convertedKey
+            try {
+                const meta = window.getDevicePushMetadata();
+                const keyRes = await fetch(`${NOTIF_BASE_URL}/api/notification/vapid-key`, { credentials: 'include' });
+                if (!keyRes.ok) return false;
+                const { publicKey } = await keyRes.json();
+                if (!publicKey) return false;
+
+                let reg = await navigator.serviceWorker.getRegistration('/');
+                if (!reg) {
+                    reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                }
+                reg = await navigator.serviceWorker.ready;
+                let sub = await reg.pushManager.getSubscription();
+                const convertedKey = urlBase64ToUint8Array(publicKey);
+
+                if (sub && sub.options && sub.options.applicationServerKey) {
+                    const currentKey = new Uint8Array(sub.options.applicationServerKey);
+                    let isMatch = currentKey.length === convertedKey.length;
+                    if (isMatch) {
+                        for (let i = 0; i < currentKey.length; i++) {
+                            if (currentKey[i] !== convertedKey[i]) {
+                                isMatch = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (!isMatch) {
+                        console.log('🔄 [VAPID Key Changed] 새 VAPID 키 감지: 기존 푸시 구독 취소 후 재구독');
+                        forceResubscribe = true;
+                    }
+                }
+
+                if (sub && forceResubscribe === true) {
+                    try { await sub.unsubscribe(); } catch (unsubErr) {}
+                    sub = null;
+                }
+
+                if (!sub) {
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: convertedKey
+                    });
+                }
+
+                const subRes = await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscription: sub,
+                        clientType: meta.clientType,
+                        deviceType: meta.deviceType,
+                        deviceId: meta.deviceId,
+                        userAgent: meta.userAgent
+                    })
                 });
+                console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
+                return subRes.ok;
+            } catch (e) {
+                console.error('[푸시 구독 등록 실패]:', e);
+                return false;
+            } finally {
+                _unavPushSubPromise = null;
             }
-
-            const subRes = await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
-                method: 'POST',
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subscription: sub,
-                    clientType: meta.clientType,
-                    deviceType: meta.deviceType,
-                    deviceId: meta.deviceId,
-                    userAgent: meta.userAgent
-                })
-            });
-            console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
-            return subRes.ok;
-        } catch (e) {
-            console.error('[푸시 구독 등록 실패]:', e);
-            return false;
-        }
+        })();
+        return _unavPushSubPromise;
     };
 
     // 푸시 구독 해제 (API)
@@ -262,7 +269,7 @@
                     }
                 }
                 if ('Notification' in window && Notification.permission === 'granted') {
-                    await window.registerWebPushSubscription();
+                    await window.registerWebPushSubscription(false);
                 }
             }
             let res = await fetch(`${NOTIF_BASE_URL}/api/notification/test`, {
@@ -279,7 +286,21 @@
                 data = await res.json();
             }
             if (data.success && data.successCount > 0) {
-                alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n수신 내역 탭에서도 확인하실 수 있습니다.');
+                if (isPortalPushOrigin() && 'serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+                    try {
+                        const reg = await navigator.serviceWorker.ready;
+                        await reg.showNotification('🔔 알림 테스트', {
+                            body: '통합 포털 단일 알림 허브가 성공적으로 연결되었습니다! 속보, 날씨, 증시, 복약 및 혈압 알림을 실시간 수신할 수 있습니다.',
+                            icon: '/icon-monochrome.png',
+                            badge: '/badge-monochrome.png',
+                            tag: data.tag || 'jg-test-direct',
+                            renotify: true,
+                            vibrate: [300, 150, 300, 150, 300],
+                            data: { url: 'https://j-jg.cc/', notifId: data.notifId || null }
+                        });
+                    } catch (swErr) {}
+                }
+                alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n(만약 상단바에 알림이 뜨지 않는다면 휴대폰 [설정 > 애플리케이션 > 삼성 인터넷(또는 웹앱) > 알림]이 켜져 있는지 확인해 주세요.)');
                 if (typeof window.fetchNotificationHistory === 'function') {
                     setTimeout(() => window.fetchNotificationHistory(false), 500);
                 }

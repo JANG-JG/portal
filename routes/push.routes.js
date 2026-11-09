@@ -79,38 +79,28 @@ router.post('/subscribe', authenticateToken, (req, res) => {
             console.log(`📥 [WebPush] 구독 등록 완료: 유저=${userId}, 타입=${clientType}/${deviceType}, 기기ID=${deviceId || '-'}, 엔드포인트=${endpoint.slice(0, 48)}...`);
 
             // 🌟 [중복 방지 스마트 정리]
-            // 1) 모바일에서 신규 구독 등록 시 동일 서비스의 이전 만료/중복 모바일 토큰 자동 정리 (포털과 가족앨범 상호 보존)
+            // 동일 클라이언트 타입(browser vs pwa 독립 보존) 및 동일 기기(device_id)의 이전 만료 토큰만 정리
             if (isMobile) {
                 const serviceFilter = isSubService
                     ? "AND (device_id LIKE 'album_%')"
                     : "AND (device_id NOT LIKE 'album_%' OR device_id IS NULL OR device_id = '')";
                 db.run(
                     `DELETE FROM push_subscriptions 
-                     WHERE user_id = ? AND endpoint != ? ${serviceFilter} AND (
-                         device_type = 'mobile' 
-                         OR user_agent LIKE '%Mobile%' 
-                         OR user_agent LIKE '%Android%'
-                         OR user_agent LIKE '%SamsungBrowser%'
-                         OR client_type = 'pwa'
-                         OR client_type = 'apk'
-                         OR client_type = 'browser'
-                         OR (device_id = '' OR device_id IS NULL)
+                     WHERE user_id = ? AND endpoint != ? AND client_type = ? ${serviceFilter} AND (
+                         device_id = ? OR device_id = '' OR device_id IS NULL
                      )`,
-                    [userId, endpoint],
+                    [userId, endpoint, clientType, deviceId || ''],
                     function(delErr) {
                         if (!delErr && this.changes > 0) {
-                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 최신 모바일(${clientType.toUpperCase()}) 구독 등록에 따라 이전 토큰 ${this.changes}개 자동 정리 완료`);
+                            console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 동일 앱(${clientType.toUpperCase()}/${deviceId || '-'}) 이전 토큰 ${this.changes}개 자동 정리 완료`);
                         }
                     }
                 );
-            }
-
-            // 2) 동일 device_id를 가진 다른 엔드포인트 자동 정리
-            if (deviceId && deviceId !== 'unknown') {
+            } else if (deviceId && deviceId !== 'unknown') {
                 db.run(
                     `DELETE FROM push_subscriptions 
-                     WHERE user_id = ? AND endpoint != ? AND device_id = ?`,
-                    [userId, endpoint, deviceId],
+                     WHERE user_id = ? AND endpoint != ? AND device_id = ? AND client_type = ?`,
+                    [userId, endpoint, deviceId, clientType],
                     function(delErr) {
                         if (!delErr && this.changes > 0) {
                             console.log(`🧹 [WebPush Cleanup] 유저(${userId}) 동일 기기(${deviceId}) 이전 토큰 ${this.changes}개 자동 정리 완료`);
@@ -437,6 +427,17 @@ router.post('/test', authenticateToken, async (req, res) => {
     } catch (e) {
         res.status(500).json({ success: false, message: '테스트 알림 발송 실패: ' + e.message });
     }
+});
+
+// 8-1. 서비스 워커 푸시 수신 및 알림 표시 ACK 로깅 API
+router.post('/sw-ack', (req, res) => {
+    const { status, title, tag, error } = req.body || {};
+    if (status === 'error') {
+        console.error(`❌ [SW-Push-ACK] 기기 알림 표시 오류: title=${title || '-'}, tag=${tag || '-'}, error=${error || 'unknown'}`);
+    } else {
+        console.log(`📲 [SW-Push-ACK] 기기 푸시 수신 및 알림 표시 완료 (${status || 'shown'}): title=${title || '-'}, tag=${tag || '-'}`);
+    }
+    res.json({ success: true });
 });
 
 // 9. 통합 포털 단일 알림 브로드캐스트 엔진 API (내부 시크릿 헤더 또는 관리자 JWT 서명 필수 검증)

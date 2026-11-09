@@ -217,7 +217,7 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                 else if (ep.includes('windows.com')) platform = 'windows';
                 else if (ep.includes('mozilla.com')) platform = 'firefox';
 
-                const deviceKey = `${uid}__${platform}__${r.device_id || 'default'}`;
+                const deviceKey = `${uid}__${platform}__${r.client_type || 'browser'}__${r.device_id || 'default'}`;
                 if (!deviceGroupMap.has(deviceKey)) {
                     deviceGroupMap.set(deviceKey, []);
                 }
@@ -225,21 +225,18 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
             });
 
             const sendRows = [];
-            deviceGroupMap.forEach((tokens, devKey) => {
-                if (tokens.length === 1) {
-                    sendRows.push(tokens[0]);
-                } else {
-                    // 동일 기기 내 다중 토큰인 경우 PWA 우선, 최신 갱신 토큰 1개 선택
-                    tokens.sort((a, b) => {
-                        const aPwa = (a.client_type === 'pwa' || a.client_type === 'apk') ? 1 : 0;
-                        const bPwa = (b.client_type === 'pwa' || b.client_type === 'apk') ? 1 : 0;
-                        if (aPwa !== bPwa) return bPwa - aPwa;
-                        const aTime = new Date(a.updated_at || 0).getTime();
-                        const bTime = new Date(b.updated_at || 0).getTime();
-                        if (aTime !== bTime) return bTime - aTime;
-                        return (b.id || 0) - (a.id || 0);
-                    });
-                    sendRows.push(tokens[0]);
+            const seenEndpoints = new Set();
+            deviceGroupMap.forEach((tokens) => {
+                tokens.sort((a, b) => {
+                    const aTime = new Date(a.updated_at || 0).getTime();
+                    const bTime = new Date(b.updated_at || 0).getTime();
+                    if (aTime !== bTime) return bTime - aTime;
+                    return (b.id || 0) - (a.id || 0);
+                });
+                const chosen = tokens[0];
+                if (chosen && chosen.endpoint && !seenEndpoints.has(chosen.endpoint)) {
+                    seenEndpoints.add(chosen.endpoint);
+                    sendRows.push(chosen);
                 }
             });
 
@@ -322,7 +319,8 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                         targetCount: sendRows.length,
                         successCount,
                         failCount,
-                        notifId
+                        notifId,
+                        tag: uniqueTag
                     });
                 });
             };

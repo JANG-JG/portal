@@ -204,12 +204,14 @@ self.addEventListener('push', (event) => {
         notifIcon = data.icon;
     }
 
+    const safeTag = (data && data.tag) ? String(data.tag) : ('jg-push-' + Date.now());
+
     // 🌟 안드로이드 Heads-up (상단 배너 팝업)을 유도하고 알림이 덮어써지지 않도록 옵션 구성
     const options = {
-        body: data.body,
+        body: data.body || '',
         icon: notifIcon,
         badge: notifBadge,
-        tag: data.tag || undefined,
+        tag: safeTag,
         renotify: true,
         requireInteraction: true,
         vibrate: [300, 150, 300, 150, 300],
@@ -220,8 +222,29 @@ self.addEventListener('push', (event) => {
         ]
     };
 
+    const finalTitle = data.title || '🔔 알림';
+
     event.waitUntil(
-        self.registration.showNotification(data.title, options)
+        self.registration.showNotification(finalTitle, options)
+            .then(() => {
+                return fetch('/api/notification/sw-ack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'shown', title: finalTitle, tag: safeTag })
+                }).catch(() => {});
+            })
+            .catch((err) => {
+                fetch('/api/notification/sw-ack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'error', title: finalTitle, tag: safeTag, error: String((err && err.message) || err) })
+                }).catch(() => {});
+                return self.registration.showNotification(finalTitle, {
+                    body: data.body || '',
+                    icon: '/icon-192.png',
+                    tag: safeTag
+                }).catch(() => {});
+            })
     );
 });
 

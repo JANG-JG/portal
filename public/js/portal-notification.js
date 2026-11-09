@@ -145,16 +145,39 @@
             return alert('🚫 브라우저에서 알림 권한이 차단되어 있습니다.\n브라우저 주소창의 자물쇠(🔒) 또는 사이트 설정에서 [알림]을 [허용]으로 변경해 주세요.');
         }
         if (Notification.permission === 'granted') {
-            const ok = await window.registerWebPushSubscription(true);
+            const ok = await window.registerWebPushSubscription(false);
             window.updateBrowserPermissionUI();
-            if (ok) alert('🎉 현재 기기의 푸시 알림 연결이 최신 상태로 갱신되었습니다!');
-            else alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+            if (ok) {
+                try {
+                    const reg = await navigator.serviceWorker.ready;
+                    await reg.showNotification('✅ 알림 기기 연결 완료', {
+                        body: '현재 기기에서 실시간 푸시 알림을 정상적으로 수신할 수 있습니다.',
+                        icon: '/icon-monochrome.png',
+                        badge: '/badge-monochrome.png',
+                        tag: 'jg-connect-check',
+                        renotify: true
+                    });
+                } catch (e) {}
+                alert('🎉 현재 기기의 푸시 알림 연결이 최신 상태로 확인되었습니다!');
+            } else {
+                alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+            }
             return;
         }
         const perm = await Notification.requestPermission();
         window.updateBrowserPermissionUI();
         if (perm === 'granted') {
-            await window.registerWebPushSubscription(true);
+            await window.registerWebPushSubscription(false);
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                await reg.showNotification('✅ 알림 기기 등록 완료', {
+                    body: '현재 기기에서 실시간 푸시 알림을 정상적으로 수신할 수 있습니다.',
+                    icon: '/icon-monochrome.png',
+                    badge: '/badge-monochrome.png',
+                    tag: 'jg-connect-check',
+                    renotify: true
+                });
+            } catch (e) {}
             alert('🎉 알림 권한 허용 및 기기 등록이 완료되었습니다!');
         } else {
             alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
@@ -334,7 +357,7 @@
                 }
             }
             if ('Notification' in window && Notification.permission === 'granted') {
-                await window.registerWebPushSubscription();
+                await window.registerWebPushSubscription(false);
             }
             let res = await fetch('/api/notification/test', { method: 'POST', credentials: 'include' });
             let data = await res.json();
@@ -344,7 +367,23 @@
                 data = await res.json();
             }
             if (data.success && data.successCount > 0) {
-                alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n수신 내역 탭에서도 확인하실 수 있습니다.');
+                if ('serviceWorker' in navigator && 'Notification' in window && Notification.permission === 'granted') {
+                    try {
+                        const reg = await navigator.serviceWorker.ready;
+                        await reg.showNotification('🔔 알림 테스트', {
+                            body: '통합 포털 단일 알림 허브가 성공적으로 연결되었습니다! 속보, 날씨, 증시, 복약 및 혈압 알림을 실시간 수신할 수 있습니다.',
+                            icon: '/icon-monochrome.png',
+                            badge: '/badge-monochrome.png',
+                            tag: data.tag || 'jg-test-direct',
+                            renotify: true,
+                            vibrate: [300, 150, 300, 150, 300],
+                            data: { url: 'https://j-jg.cc/', notifId: data.notifId || null }
+                        });
+                    } catch (swErr) {
+                        console.warn('[TestPush] Local SW notification fallback error:', swErr);
+                    }
+                }
+                alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n(만약 상단바에 알림이 뜨지 않는다면 휴대폰 [설정 > 애플리케이션 > 삼성 인터넷(또는 웹앱) > 알림]이 켜져 있는지 확인해 주세요.)');
                 setTimeout(() => window.fetchNotificationHistory(false), 500);
             } else {
                 alert('⚠️ 푸시 발송 대상 기기가 없거나 브라우저 알림 권한이 꺼져 있습니다.\n상단 [권한 허용 / 기기 재연결] 버튼 또는 브라우저 주소창 자물쇠(🔒) 설정에서 알림 권한을 확인해 주세요.');
@@ -413,62 +452,69 @@
         } catch (e) { deviceId = 'unknown'; }
         return { clientType, deviceType, deviceId, userAgent: navigator.userAgent };
     }
-    window.registerWebPushSubscription = async function(forceResubscribe = false) {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
-        if (!('Notification' in window) || Notification.permission !== 'granted') return false;
-        try {
-            const meta = getDevicePushMetadata();
-            const keyRes = await fetch('/api/notification/vapid-key', { credentials: 'include' });
-            if (!keyRes.ok) return false;
-            const { publicKey } = await keyRes.json();
-            if (!publicKey) return false;
+    let _pushSubPromise = null;
+    window.registerWebPushSubscription = function(forceResubscribe = false) {
+        if (_pushSubPromise) return _pushSubPromise;
+        _pushSubPromise = (async () => {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+            if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+            try {
+                const meta = getDevicePushMetadata();
+                const keyRes = await fetch('/api/notification/vapid-key', { credentials: 'include' });
+                if (!keyRes.ok) return false;
+                const { publicKey } = await keyRes.json();
+                if (!publicKey) return false;
 
-            let reg = await navigator.serviceWorker.getRegistration('/');
-            if (!reg) {
-                reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-            }
-            reg = await navigator.serviceWorker.ready;
-
-            const padding = '='.repeat((4 - publicKey.length % 4) % 4);
-            const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const out = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
-
-            let sub = await reg.pushManager.getSubscription();
-            if (sub && sub.options && sub.options.applicationServerKey) {
-                const curKey = new Uint8Array(sub.options.applicationServerKey);
-                let isMatch = curKey.length === out.length;
-                if (isMatch) {
-                    for (let i = 0; i < curKey.length; i++) {
-                        if (curKey[i] !== out[i]) { isMatch = false; break; }
-                    }
+                let reg = await navigator.serviceWorker.getRegistration('/');
+                if (!reg) {
+                    reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
                 }
-                if (!isMatch) forceResubscribe = true;
+                reg = await navigator.serviceWorker.ready;
+
+                const padding = '='.repeat((4 - publicKey.length % 4) % 4);
+                const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
+                const rawData = window.atob(base64);
+                const out = new Uint8Array(rawData.length);
+                for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
+
+                let sub = await reg.pushManager.getSubscription();
+                if (sub && sub.options && sub.options.applicationServerKey) {
+                    const curKey = new Uint8Array(sub.options.applicationServerKey);
+                    let isMatch = curKey.length === out.length;
+                    if (isMatch) {
+                        for (let i = 0; i < curKey.length; i++) {
+                            if (curKey[i] !== out[i]) { isMatch = false; break; }
+                        }
+                    }
+                    if (!isMatch) forceResubscribe = true;
+                }
+                if (sub && forceResubscribe === true) {
+                    try { await sub.unsubscribe(); } catch (e) {}
+                    sub = null;
+                }
+                if (!sub) {
+                    sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: out });
+                }
+                const subRes = await fetch('/api/notification/subscribe', {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        subscription: sub,
+                        clientType: meta.clientType,
+                        deviceType: meta.deviceType,
+                        deviceId: meta.deviceId,
+                        userAgent: meta.userAgent
+                    })
+                });
+                return subRes.ok;
+            } catch (e) {
+                console.error('[WebPush] 구독 오류:', e);
+                return false;
+            } finally {
+                _pushSubPromise = null;
             }
-            if (sub && forceResubscribe === true) {
-                try { await sub.unsubscribe(); } catch (e) {}
-                sub = null;
-            }
-            if (!sub) {
-                sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: out });
-            }
-            const subRes = await fetch('/api/notification/subscribe', {
-                method: 'POST', credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    subscription: sub,
-                    clientType: meta.clientType,
-                    deviceType: meta.deviceType,
-                    deviceId: meta.deviceId,
-                    userAgent: meta.userAgent
-                })
-            });
-            return subRes.ok;
-        } catch (e) {
-            console.error('[WebPush] 구독 오류:', e);
-            return false;
-        }
+        })();
+        return _pushSubPromise;
     };
     window.unsubscribeWebPushSubscription = async function() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -529,18 +575,19 @@
         setInterval(initUnreadBadge, 60000);
         if ('Notification' in window) {
             if (Notification.permission === 'granted') {
-                setTimeout(() => window.registerWebPushSubscription(), 600);
+                setTimeout(() => window.registerWebPushSubscription(false), 600);
             } else if (Notification.permission === 'default') {
                 // 모바일 브라우저는 반드시 사용자 클릭 제스처 안에서만 requestPermission 팝업을 허용함
-                const onFirstUserClick = async () => {
+                const onFirstUserClick = async (e) => {
+                    if (e && e.target && e.target.closest && e.target.closest('#notificationModal')) return;
                     if (Notification.permission === 'default') {
                         try {
                             const perm = await Notification.requestPermission();
                             window.updateBrowserPermissionUI();
                             if (perm === 'granted') {
-                                await window.registerWebPushSubscription(true);
+                                await window.registerWebPushSubscription(false);
                             }
-                        } catch (e) {}
+                        } catch (err) {}
                     }
                 };
                 document.addEventListener('click', onFirstUserClick, { once: true });
