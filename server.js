@@ -159,6 +159,18 @@ function assemblePortalHtml() {
     return shell;
 }
 
+// 정적 자원(/css/, /js/, 파비콘, 로고 아이콘) 링크에 서버 동적 버전 자동 주입 (규칙 4 준수)
+function injectAssetVersions(rawHtml) {
+    if (!rawHtml) return rawHtml;
+    return rawHtml
+        .replace(/(href="\/css\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+        .replace(/(src="\/js\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+        .replace(/(href="\/favicon\.[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+        .replace(/(href="\/icon-[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+        .replace(/(src="(?:\/|https?:\/\/j-jg\.cc\/)favicon\.[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
+        .replace(/(src="(?:\/|https?:\/\/j-jg\.cc\/)icon-[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
+}
+
 function sendHtml(res, fileName) {
     const filePath = path.join(__dirname, 'public', fileName);
     try {
@@ -170,9 +182,7 @@ function sendHtml(res, fileName) {
         } else {
             html = fs.readFileSync(filePath, 'utf8');
         }
-        // 정적 자원(/css/, /js/) 링크에 서버 동적 버전 자동 주입 (HTML 파일 자체는 항상 100% 클린한 상태 유지)
-        html = html.replace(/(href="\/css\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
-                   .replace(/(src="\/js\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
+        html = injectAssetVersions(html);
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -186,8 +196,7 @@ function sendErrorPage(res, statusCode = 404, reqPath = '', customMessage = '') 
     const filePath = path.join(__dirname, 'public', 'error.html');
     try {
         let html = fs.readFileSync(filePath, 'utf8');
-        html = html.replace(/(href="\/css\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`)
-                   .replace(/(src="\/js\/[^"?]+)(\?v=[^"']*)?"/g, `$1?v=${STATIC_ASSET_VERSION}"`);
+        html = injectAssetVersions(html);
         const codeNum = parseInt(statusCode, 10) || 404;
         html = html.replace('__INITIAL_CODE__', String(codeNum))
                    .replace('__INITIAL_PATH__', (reqPath || '').replace(/"/g, '&quot;'))
@@ -238,7 +247,12 @@ app.get('/offline.html', (req, res) => {
     sendHtml(res, 'offline.html');
 });
 
-// 1-5. 통합 에러 화면 (403, 404, 500 등)
+// 1-5. 전 사이트 공통 상단 내비게이션 컴포넌트 (동적 자원 버전 자동 주입)
+app.get('/components/unified-nav.html', (req, res) => {
+    sendHtml(res, 'components/unified-nav.html');
+});
+
+// 1-6. 통합 에러 화면 (403, 404, 500 등)
 app.get(['/error', '/error.html'], (req, res) => {
     const code = parseInt(req.query.code, 10) || 404;
     const reqPath = req.query.path || '';
@@ -297,7 +311,13 @@ app.use(express.static(path.join(__dirname, 'public'), {
             // 웹폰트는 항상 불변 캐시 적용 (Pretendard 등 폰트 렌더링 0ms 보장)
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         } else if (filePath.match(/\.(png|jpg|jpeg|gif|svg|ico)$/i)) {
-            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+            if (hasVersionQuery) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            } else {
+                // 버전 쿼리가 없는 이미지는 즉시 재검증하여 캐시 고착 차단 (규칙 4 준수)
+                res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
+                res.setHeader('Pragma', 'no-cache');
+            }
         }
     }
 }));
