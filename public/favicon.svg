@@ -1,45 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="24" height="24">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
   <defs>
-    <!-- 다크 프리미엄 배경 그라데이션 -->
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#1e293b" />
+    <!-- 퓨어 세라믹 화이트 베이스 그라데이션 -->
+    <linearGradient id="bgWhite" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F1F5F9" />
     </linearGradient>
 
-    <!-- JG 레터마크 3색 통합 그라데이션 (🩸 혈압 로즈레드 -> 📰 뉴스 로얄블루 -> 💰 자산 에메랄드그린) -->
-    <linearGradient id="jgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f43f5e" />
-      <stop offset="50%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#10b981" />
+    <!-- 지붕 (뉴스 스카이블루 -> AI 바이올렛 -> 가족앨범 핑크) -->
+    <linearGradient id="roofGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="50%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#DB2777" />
     </linearGradient>
 
-    <!-- 텍스트 미세 글로우 효과 -->
-    <filter id="subtleGlow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#38bdf8" flood-opacity="0.25"/>
-    </filter>
+    <!-- 좌측 기둥 J (건강 로즈레드 -> 가족위키 앰버골드) -->
+    <linearGradient id="jGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <!-- 우측 기둥 G (가계자산 에메랄드 -> 뉴스 블루) -->
+    <linearGradient id="gGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
   </defs>
 
   <!-- 라운드 스퀘어 베이스 -->
-  <rect x="20" y="20" width="472" height="472" rx="112" fill="url(#bgGrad)" stroke="#334155" stroke-width="8" />
+  <rect x="24" y="24" width="464" height="464" rx="120" fill="url(#bgWhite)" stroke="#E2E8F0" stroke-width="6" />
 
-  <!-- 상단 서비스 상징 3색 인디케이터 (혈압·뉴스·자산) -->
-  <g transform="translate(0, -10)">
-    <circle cx="206" cy="118" r="14" fill="#f43f5e" />
-    <circle cx="256" cy="118" r="14" fill="#38bdf8" />
-    <circle cx="306" cy="118" r="14" fill="#10b981" />
-  </g>
+  <!-- 지붕 (가족의 집 지붕 - 중심 X=256 대칭) -->
+  <path d="M 104 210 L 256 95 L 408 210" fill="none" stroke="url(#roofGrad)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- 지붕 상단 AI 스마트 스타 (✦) -->
+  <path d="M 256 122 Q 256 142 270 142 Q 256 142 256 162 Q 256 142 242 142 Q 256 142 256 122 Z" fill="#EAB308" />
 
-  <!-- 중앙 JG 볼드 타이포그래피 -->
-  <text x="256" y="342" 
-        font-family="-apple-system, BlinkMacSystemFont, 'Pretendard', 'Segoe UI', system-ui, sans-serif" 
-        font-size="220" 
-        font-weight="900" 
-        letter-spacing="-12"
-        text-anchor="middle" 
-        fill="url(#jgGrad)"
-        filter="url(#subtleGlow)">JG</text>
+  <!-- 좌측 기둥 J (완벽 대칭 그리드: X=136~232, 폭 96, 높이 170) -->
+  <path d="M 160 230 L 232 230 L 232 340 A 48 48 0 0 1 136 340 L 136 310" 
+        fill="none" stroke="url(#jGrad)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
 
-  <!-- 하단 3색 통합 언더바 -->
-  <rect x="136" y="385" width="240" height="14" rx="7" fill="url(#jgGrad)" opacity="0.9" />
+  <!-- 우측 기둥 G (완벽 대칭 그리드: X=280~376, 폭 96, 높이 170) -->
+  <path d="M 352 230 L 280 230 L 280 340 A 48 48 0 0 0 376 340 L 376 310 L 320 310" 
+        fill="none" stroke="url(#gGrad)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- 중심 온기 코어 (가족의 하트 점) -->
+  <circle cx="256" cy="310" r="12" fill="#E11D48" />
 </svg>
-
