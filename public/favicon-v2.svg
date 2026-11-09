@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- 퓨어 세라믹 화이트 베이스 그라데이션 -->
+    <linearGradient id="bgWhite" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#F1F5F9" />
+    </linearGradient>
+
+    <!-- 지붕 (뉴스 스카이블루 -> AI 바이올렛 -> 가족앨범 핑크) -->
+    <linearGradient id="roofGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0284C7" />
+      <stop offset="50%" stop-color="#7C3AED" />
+      <stop offset="100%" stop-color="#DB2777" />
+    </linearGradient>
+
+    <!-- 좌측 기둥 J (건강 로즈레드 -> 가족위키 앰버골드) -->
+    <linearGradient id="jGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#E11D48" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+
+    <!-- 우측 기둥 G (가계자산 에메랄드 -> 뉴스 블루) -->
+    <linearGradient id="gGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+  </defs>
+
+  <!-- 라운드 스퀘어 베이스 -->
+  <rect x="24" y="24" width="464" height="464" rx="120" fill="url(#bgWhite)" stroke="#E2E8F0" stroke-width="6" />
+
+  <!-- 지붕 (가족의 집 지붕 - 중심 X=256 대칭) -->
+  <path d="M 104 210 L 256 95 L 408 210" fill="none" stroke="url(#roofGrad)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- 지붕 상단 AI 스마트 스타 (✦) -->
+  <path d="M 256 122 Q 256 142 270 142 Q 256 142 256 162 Q 256 142 242 142 Q 256 142 256 122 Z" fill="#EAB308" />
+
+  <!-- 좌측 기둥 J (완벽 대칭 그리드: X=136~232, 폭 96, 높이 170) -->
+  <path d="M 160 230 L 232 230 L 232 340 A 48 48 0 0 1 136 340 L 136 310" 
+        fill="none" stroke="url(#jGrad)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- 우측 기둥 G (완벽 대칭 그리드: X=280~376, 폭 96, 높이 170) -->
+  <path d="M 352 230 L 280 230 L 280 340 A 48 48 0 0 0 376 340 L 376 310 L 320 310" 
+        fill="none" stroke="url(#gGrad)" stroke-width="32" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- 중심 온기 코어 (가족의 하트 점) -->
+  <circle cx="256" cy="310" r="12" fill="#E11D48" />
+</svg>

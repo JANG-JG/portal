@@ -260,6 +260,15 @@ app.get(['/error', '/error.html'], (req, res) => {
     sendErrorPage(res, code, reqPath, msg);
 });
 
+// 1-7. PWA 매니페스트 즉시 최신화 라우트 (경로/내용 변조 없이 항상 최신 원본 제공)
+app.get('/manifest.json', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.type('application/manifest+json');
+    res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+});
+
 // 1-8. PWA 서비스 워커 즉시 최신화 라우트 (항상 네트워크 재검증 보장)
 app.get('/sw.js', (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');

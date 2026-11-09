@@ -116,19 +116,15 @@
             alert('🚫 브라우저에서 알림 권한이 차단되어 있습니다.\n브라우저 주소창의 자물쇠(🔒) 또는 사이트 설정에서 [알림]을 [허용]으로 변경해 주세요.');
             return;
         }
-        if (Notification.permission === 'granted') {
-            const ok = await window.registerWebPushSubscription(false);
-            window.updateBrowserPermissionUI();
-            if (ok) alert('🎉 현재 기기의 푸시 알림 연결이 최신 상태로 확인되었습니다!');
-            else alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
-            return;
-        }
+        const wasGranted = (Notification.permission === 'granted');
         try {
             const perm = await Notification.requestPermission();
+            try { localStorage.setItem('jg_pwa_os_perm_v2', '1'); } catch (e) {}
             window.updateBrowserPermissionUI();
             if (perm === 'granted') {
-                await window.registerWebPushSubscription(false);
-                alert('🎉 알림 권한 허용 및 기기 등록이 완료되었습니다!');
+                const ok = await window.registerWebPushSubscription(false);
+                if (ok) alert(wasGranted ? '🎉 현재 기기의 푸시 알림 연결이 최신 상태로 확인되었습니다!' : '🎉 알림 권한 허용 및 기기 등록이 완료되었습니다!');
+                else alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
             } else {
                 alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
             }
@@ -261,8 +257,9 @@
     window.sendTestNotification = async function() {
         try {
             if (isPortalPushOrigin()) {
-                if ('Notification' in window && Notification.permission === 'default') {
+                if ('Notification' in window && Notification.permission !== 'denied') {
                     const perm = await Notification.requestPermission();
+                    try { localStorage.setItem('jg_pwa_os_perm_v2', '1'); } catch (e) {}
                     window.updateBrowserPermissionUI();
                     if (perm !== 'granted') {
                         return alert('알림 권한이 허용되지 않았습니다. 권한을 허용한 뒤 다시 시도해 주세요.');

@@ -11,9 +11,13 @@ const PRECACHE_ASSETS = [
     '/fonts/Pretendard-Bold.subset.woff2',
     '/favicon.ico',
     '/favicon.svg',
+    '/favicon-v2.svg',
     '/favicon.png',
+    '/favicon-v2.png',
     '/icon-192.png',
+    '/icon-v2-192.png',
     '/icon-512.png',
+    '/icon-v2-512.png',
     '/icon-monochrome.png',
     '/badge-monochrome.png',
     '/manifest.json'
@@ -224,7 +228,17 @@ self.addEventListener('push', (event) => {
     const finalTitle = data.title || '🔔 알림';
 
     event.waitUntil(
-        self.registration.showNotification(finalTitle, options)
+        (async () => {
+            try {
+                const oldList = await self.registration.getNotifications();
+                if (Array.isArray(oldList) && oldList.length >= 6) {
+                    oldList.slice(0, oldList.length - 5).forEach((n) => {
+                        try { n.close(); } catch (e) {}
+                    });
+                }
+            } catch (e) {}
+            return self.registration.showNotification(finalTitle, options);
+        })()
             .then(async () => {
                 let activeCount = -1;
                 try {
@@ -245,7 +259,7 @@ self.addEventListener('push', (event) => {
                 }).catch(() => {});
                 return self.registration.showNotification(finalTitle, {
                     body: data.body || '',
-                    icon: '/icon-192.png',
+                    icon: '/icon-v2-192.png',
                     tag: safeTag
                 }).catch(() => {});
             })

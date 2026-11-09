@@ -345,14 +345,9 @@
         };
         if (window.location.hostname !== 'album.j-jg.cc') {
             ensureIconLink('shortcut icon', '', '', '/favicon.ico');
-            ensureIconLink('icon', 'image/svg+xml', '', '/favicon.svg');
-            ensureIconLink('icon', 'image/png', '192x192', '/icon-192.png');
-            ensureIconLink('apple-touch-icon', '', '', '/icon-192.png');
-        }
-        const manifestLink = head.querySelector('link[rel="manifest"]');
-        if (manifestLink && manifestLink.getAttribute('href') && !manifestLink.getAttribute('href').includes('?v=')) {
-            const rawManifest = manifestLink.getAttribute('href').split('?')[0];
-            manifestLink.setAttribute('href', `${rawManifest}?v=${JG_UI_VERSION}`);
+            ensureIconLink('icon', 'image/svg+xml', '', '/favicon-v2.svg');
+            ensureIconLink('icon', 'image/png', '192x192', '/icon-v2-192.png');
+            ensureIconLink('apple-touch-icon', '', '', '/icon-v2-192.png');
         }
     })();
 

@@ -144,33 +144,22 @@
         if (Notification.permission === 'denied') {
             return alert('🚫 브라우저에서 알림 권한이 차단되어 있습니다.\n브라우저 주소창의 자물쇠(🔒) 또는 사이트 설정에서 [알림]을 [허용]으로 변경해 주세요.');
         }
-        if (Notification.permission === 'granted') {
-            const ok = await window.registerWebPushSubscription(false);
-            window.updateBrowserPermissionUI();
-            if (ok) {
-                try {
-                    const reg = await navigator.serviceWorker.ready;
-                    await reg.showNotification('✅ 알림 기기 연결 완료', {
-                        body: '현재 기기에서 실시간 푸시 알림을 정상적으로 수신할 수 있습니다.',
-                        icon: '/icon-monochrome.png',
-                        badge: '/badge-monochrome.png',
-                        tag: 'jg-connect-check',
-                        renotify: true
-                    });
-                } catch (e) {}
-                alert('🎉 현재 기기의 푸시 알림 연결이 최신 상태로 확인되었습니다!');
-            } else {
-                alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
-            }
-            return;
-        }
-        const perm = await Notification.requestPermission();
+        const wasGranted = (Notification.permission === 'granted');
+        let perm = Notification.permission;
+        try {
+            perm = await Notification.requestPermission();
+            try { localStorage.setItem('jg_pwa_os_perm_v2', '1'); } catch (e) {}
+        } catch (e) {}
         window.updateBrowserPermissionUI();
         if (perm === 'granted') {
-            await window.registerWebPushSubscription(false);
+            const ok = await window.registerWebPushSubscription(false);
             try {
                 const reg = await navigator.serviceWorker.ready;
-                await reg.showNotification('✅ 알림 기기 등록 완료', {
+                const oldList = await reg.getNotifications();
+                if (Array.isArray(oldList) && oldList.length >= 4) {
+                    oldList.forEach((n) => { try { n.close(); } catch (e) {} });
+                }
+                await reg.showNotification(wasGranted ? '✅ 알림 기기 연결 완료' : '✅ 알림 기기 등록 완료', {
                     body: '현재 기기에서 실시간 푸시 알림을 정상적으로 수신할 수 있습니다.',
                     icon: '/icon-monochrome.png',
                     badge: '/badge-monochrome.png',
@@ -178,9 +167,13 @@
                     renotify: true
                 });
             } catch (e) {}
-            alert('🎉 알림 권한 허용 및 기기 등록이 완료되었습니다!');
+            if (ok) {
+                alert(wasGranted ? '🎉 현재 기기의 푸시 알림 연결이 최신 상태로 확인되었습니다!' : '🎉 알림 권한 허용 및 기기 등록이 완료되었습니다!');
+            } else {
+                alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+            }
         } else {
-            alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
+            alert('알림 권한이 허용되지 않았습니다. 브라우저 또는 휴대폰 앱 설정에서 확인해 주세요.');
         }
     };
 
@@ -349,8 +342,9 @@
     };
     window.sendTestNotification = async function() {
         try {
-            if ('Notification' in window && Notification.permission === 'default') {
+            if ('Notification' in window && Notification.permission !== 'denied') {
                 const perm = await Notification.requestPermission();
+                try { localStorage.setItem('jg_pwa_os_perm_v2', '1'); } catch (e) {}
                 window.updateBrowserPermissionUI();
                 if (perm !== 'granted') {
                     return alert('알림 권한이 허용되지 않았습니다. 권한을 허용한 뒤 다시 시도해 주세요.');
@@ -560,13 +554,17 @@
         if ('Notification' in window) {
             if (Notification.permission === 'granted') {
                 setTimeout(() => window.registerWebPushSubscription(false), 600);
-            } else if (Notification.permission === 'default') {
-                // 모바일 브라우저는 반드시 사용자 클릭 제스처 안에서만 requestPermission 팝업을 허용함
+            }
+            const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            const needsStandalonePrompt = isStandaloneMode && !localStorage.getItem('jg_pwa_os_perm_v2');
+            if (Notification.permission === 'default' || (needsStandalonePrompt && Notification.permission !== 'denied')) {
+                // 모바일 브라우저 및 새로 설치된 안드로이드 웹앱(WebAPK)은 사용자 클릭 제스처 안에서만 OS 알림 권한 팝업을 허용함
                 const onFirstUserClick = async (e) => {
                     if (e && e.target && e.target.closest && e.target.closest('#notificationModal')) return;
-                    if (Notification.permission === 'default') {
+                    if (Notification.permission !== 'denied') {
                         try {
                             const perm = await Notification.requestPermission();
+                            try { localStorage.setItem('jg_pwa_os_perm_v2', '1'); } catch (err) {}
                             window.updateBrowserPermissionUI();
                             if (perm === 'granted') {
                                 await window.registerWebPushSubscription(false);
