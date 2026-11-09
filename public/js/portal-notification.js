@@ -119,22 +119,42 @@
             if (tEl) tEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
             if (bEl) bEl.style.display = 'none';
         } else if (Notification.permission === 'denied') {
-            if (tEl) tEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
-            if (bEl) bEl.style.display = 'none';
+            if (tEl) tEl.textContent = '🚫 알림이 차단되어 있습니다. 사이트 설정에서 허용해 주세요.';
+            if (bEl) {
+                bEl.style.display = 'inline-block';
+                bEl.textContent = '해제 방법';
+            }
         } else {
             if (tEl) tEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
-            if (bEl) bEl.style.display = 'inline-block';
+            if (bEl) {
+                bEl.style.display = 'inline-block';
+                bEl.textContent = '권한 허용';
+            }
         }
     };
     window.requestBrowserNotificationPermission = async function() {
         if (!('Notification' in window)) return alert('현재 브라우저에서는 알림 권한을 지원하지 않습니다.');
-        const perm = await Notification.requestPermission();
-        window.updateBrowserPermissionUI();
-        if (perm === 'granted') {
-            await window.registerWebPushSubscription();
-            alert('🎉 알림 권한이 성공적으로 허용되었습니다!');
-        } else {
-            alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
+        if (Notification.permission === 'denied') {
+            return alert('🚫 브라우저 알림이 차단되어 있습니다.\n\n[해결 방법]\n1. 브라우저 주소창 좌측(또는 우측)의 자물쇠/설정 아이콘을 터치하세요.\n2. [사이트 설정] -> [알림] -> [허용]으로 변경해 주세요.\n(스마트폰의 경우: [설정] -> [애플리케이션] -> [웹앱 또는 브라우저] -> [알림 허용])');
+        }
+        try {
+            const perm = await Notification.requestPermission();
+            window.updateBrowserPermissionUI();
+            if (perm === 'granted') {
+                const regRes = await window.registerWebPushSubscription();
+                if (regRes && regRes.success) {
+                    alert('🎉 알림 권한 및 기기 등록이 성공적으로 완료되었습니다!');
+                } else if (regRes && regRes.message) {
+                    alert('알림 권한은 허용되었으나 기기 등록 실패: ' + regRes.message);
+                } else {
+                    alert('🎉 알림 권한이 허용되었습니다.');
+                }
+            } else {
+                alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
+            }
+        } catch (e) {
+            console.error('권한 요청 실패:', e);
+            alert('알림 권한 요청 중 오류 발생: ' + (e.message || e));
         }
     };
 
@@ -364,30 +384,62 @@
         } catch (e) { deviceId = 'unknown'; }
         return { clientType, deviceType, deviceId, userAgent: navigator.userAgent };
     }
+    function urlBase64ToUint8Array(base64String) {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const out = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
+        return out;
+    }
+
     window.registerWebPushSubscription = async function() {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            return { success: false, message: '브라우저가 웹 푸시를 지원하지 않습니다.' };
+        }
         try {
             const meta = getDevicePushMetadata();
-            if (Notification.permission === 'default') {
-                const requested = await Notification.requestPermission();
-                if (requested !== 'granted') return;
-            } else if (Notification.permission !== 'granted') return;
+            if (Notification.permission !== 'granted') {
+                return { success: false, message: '브라우저 알림 권한이 허용되지 않았습니다.' };
+            }
 
             const keyRes = await fetch('/api/notification/vapid-key', { credentials: 'include' });
+            if (!keyRes.ok) return { success: false, message: 'VAPID 키 조회 실패' };
             const { publicKey } = await keyRes.json();
-            if (!publicKey) return;
+            if (!publicKey) return { success: false, message: '유효한 VAPID 키가 없습니다.' };
+
             const reg = await navigator.serviceWorker.ready;
             let sub = await reg.pushManager.getSubscription();
-            if (!sub) {
-                const padding = '='.repeat((4 - publicKey.length % 4) % 4);
-                const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
-                const rawData = window.atob(base64);
-                const out = new Uint8Array(rawData.length);
-                for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
-                sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: out });
+            const convertedKey = urlBase64ToUint8Array(publicKey);
+
+            if (sub && sub.options && sub.options.applicationServerKey) {
+                const currentKey = new Uint8Array(sub.options.applicationServerKey);
+                let isMatch = currentKey.length === convertedKey.length;
+                if (isMatch) {
+                    for (let i = 0; i < currentKey.length; i++) {
+                        if (currentKey[i] !== convertedKey[i]) {
+                            isMatch = false;
+                            break;
+                        }
+                    }
+                }
+                if (!isMatch) {
+                    console.log('🔄 [VAPID Key Changed] 새 VAPID 키 감지: 기존 푸시 구독 취소 후 재구독');
+                    try { await sub.unsubscribe(); } catch (unsubErr) {}
+                    sub = null;
+                }
             }
+
+            if (!sub) {
+                sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedKey
+                });
+            }
+
             const subRes = await fetch('/api/notification/subscribe', {
-                method: 'POST', credentials: 'include',
+                method: 'POST',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     subscription: sub,
@@ -397,13 +449,23 @@
                     userAgent: meta.userAgent
                 })
             });
+
+            if (subRes.status === 401) {
+                return { success: false, message: '로그인이 필요합니다. 먼저 로그인해 주세요.' };
+            }
+
             const subData = await subRes.json().catch(() => ({}));
             if (subData && subData.skippedBrowser && sub) {
                 try { await sub.unsubscribe(); } catch (e) {}
                 console.log('🧹 [WebPush Guard] 전용 웹앱(PWA) 구독이 활성화되어 있어 일반 브라우저 중복 구독을 자동 해제했습니다.');
-                return;
+                return { success: true, skippedBrowser: true };
             }
-        } catch (e) { console.error('[WebPush] 구독 오류:', e); }
+            console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
+            return { success: true };
+        } catch (e) {
+            console.error('[WebPush] 구독 오류:', e);
+            return { success: false, message: e.message || '푸시 서비스 등록 중 오류가 발생했습니다.' };
+        }
     };
     window.unsubscribeWebPushSubscription = async function() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -460,7 +522,7 @@
         handleNotifIdFromUrl();
         initUnreadBadge();
         setInterval(initUnreadBadge, 60000);
-        if ('Notification' in window) {
+        if ('Notification' in window && Notification.permission === 'granted') {
             const meta = getDevicePushMetadata();
             if (meta.deviceType !== 'mobile' || meta.clientType === 'pwa' || meta.clientType === 'apk') {
                 setTimeout(() => window.registerWebPushSubscription(), 1000);
