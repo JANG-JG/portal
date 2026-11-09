@@ -53,6 +53,8 @@ router.post('/subscribe', authenticateToken, (req, res) => {
 
     const { endpoint, keys } = subscription;
 
+    console.log(`📥 [WebPush] 구독 요청 수신: 유저=${userId}, 타입=${clientType}/${deviceType}, 기기ID=${deviceId || 'none'}, 엔드포인트=${endpoint.slice(0, 35)}...`);
+
     // 🌟 모바일 일반 브라우저에서 포털 구독 요청 시에만 PWA 중복 차단 (가족앨범 등 서브 서비스는 정상 등록 허용)
     const isSubService = Boolean(deviceId && deviceId.startsWith('album_'));
     if (!isSubService && isMobile && clientType === 'browser') {
@@ -96,6 +98,7 @@ router.post('/subscribe', authenticateToken, (req, res) => {
                 console.error('[WebPush] 포털 구독 토큰 저장 실패:', err);
                 return res.status(500).json({ success: false, message: '구독 토큰 저장 실패' });
             }
+            console.log(`✅ [WebPush] 유저(${userId}) 푸시 구독 토큰 저장 완료 (타입: ${clientType}/${deviceType})`);
 
             // 🌟 [중복 방지 스마트 정리]
             // 1) 모바일 PWA 또는 APK 전용 앱으로 등록된 경우 동일 서비스의 이전 모바일 토큰만 스마트 정리 (포털과 가족앨범 상호 보존)

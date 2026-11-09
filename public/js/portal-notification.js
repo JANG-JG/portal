@@ -165,12 +165,12 @@
             }
             window.updateBrowserPermissionUI();
             if (perm === 'granted') {
-                const regRes = await window.registerWebPushSubscription();
+                const regRes = await window.registerWebPushSubscription(true);
                 window.updateBrowserPermissionUI();
                 if (regRes && regRes.success) {
                     alert('🎉 현재 기기가 푸시 알림 수신 대상으로 성공적으로 등록되었습니다!');
                 } else if (regRes && regRes.message) {
-                    alert('알림 권한은 허용되었으나 기기 등록 실패: ' + regRes.message);
+                    alert('알림 권한은 허용되었으나 기기 등록 실패:\n' + regRes.message);
                 } else {
                     alert('🎉 알림 권한이 허용되었습니다.');
                 }
@@ -435,9 +435,9 @@
         return out;
     }
 
-    window.registerWebPushSubscription = async function() {
+    window.registerWebPushSubscription = async function(forceResubscribe = false) {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-            return { success: false, message: '브라우저가 웹 푸시를 지원하지 않습니다.' };
+            return { success: false, message: '현재 브라우저가 웹 푸시를 지원하지 않습니다.' };
         }
         try {
             const meta = getDevicePushMetadata();
@@ -446,15 +446,22 @@
             }
 
             const keyRes = await fetch('/api/notification/vapid-key', { credentials: 'include' });
-            if (!keyRes.ok) return { success: false, message: 'VAPID 키 조회 실패' };
+            if (!keyRes.ok) return { success: false, message: '서버 VAPID 공개키 조회에 실패했습니다.' };
             const { publicKey } = await keyRes.json();
-            if (!publicKey) return { success: false, message: '유효한 VAPID 키가 없습니다.' };
+            if (!publicKey) return { success: false, message: '유효한 VAPID 키가 서버에 설정되어 있지 않습니다.' };
 
             const reg = await navigator.serviceWorker.ready;
-            let sub = await reg.pushManager.getSubscription();
+            if (!reg) return { success: false, message: '서비스 워커가 아직 준비되지 않았습니다. 새로고침 후 다시 시도해 주세요.' };
+
+            let sub = await reg.pushManager.getSubscription().catch(() => null);
             const convertedKey = urlBase64ToUint8Array(publicKey);
 
-            if (sub && sub.options && sub.options.applicationServerKey) {
+            // 1. 강제 재구독 모드이거나 VAPID 키가 변경된 경우 기존 만료 토큰 깨끗하게 정리 (FCM 충돌 원천 차단)
+            if (sub && forceResubscribe) {
+                console.log('🔄 [WebPush] 강제 재구독 요청: 기존 구독 토큰 초기화 후 재발급 진행');
+                try { await sub.unsubscribe(); } catch (unsubErr) {}
+                sub = null;
+            } else if (sub && sub.options && sub.options.applicationServerKey) {
                 const currentKey = new Uint8Array(sub.options.applicationServerKey);
                 let isMatch = currentKey.length === convertedKey.length;
                 if (isMatch) {
@@ -466,19 +473,50 @@
                     }
                 }
                 if (!isMatch) {
-                    console.log('🔄 [VAPID Key Changed] 새 VAPID 키 감지: 기존 푸시 구독 취소 후 재구독');
+                    console.log('🔄 [WebPush] 서버 VAPID 키 변경 감지: 기존 푸시 구독 취소 후 재구독');
                     try { await sub.unsubscribe(); } catch (unsubErr) {}
                     sub = null;
                 }
             }
 
+            // 2. 신규 구독 발급 시도 (실패 시 FCM 충돌 해제 후 2차 폴백 자동 재시도)
             if (!sub) {
-                sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: convertedKey
-                });
+                try {
+                    sub = await reg.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: convertedKey
+                    });
+                } catch (subErr) {
+                    console.warn('⚠️ [WebPush] 1차 구독 시도 실패, 자동 클린업 및 2차 재시도...', subErr);
+                    try {
+                        const leftover = await reg.pushManager.getSubscription();
+                        if (leftover) await leftover.unsubscribe();
+                    } catch (e) {}
+                    await new Promise(r => setTimeout(r, 400));
+                    try {
+                        sub = await reg.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: convertedKey.buffer || convertedKey
+                        });
+                    } catch (secondErr) {
+                        console.error('❌ [WebPush] 2차 구독 시도 최종 실패:', secondErr);
+                        let errMsg = secondErr.message || '';
+                        if (errMsg.includes('push service error') || errMsg.includes('Registration failed')) {
+                            return { success: false, message: '구글 푸시 서비스(FCM) 연결 일시 지연입니다.\n스마트폰의 네트워크 연결 상태를 확인하시고, 1~2초 후 [기기 연결 갱신]을 다시 눌러주세요.' };
+                        }
+                        if (secondErr.name === 'NotAllowedError') {
+                            return { success: false, message: '알림 권한이 차단되어 있습니다. 사이트 설정에서 알림을 허용해 주세요.' };
+                        }
+                        return { success: false, message: '푸시 토큰 발급 실패: ' + (secondErr.message || secondErr) };
+                    }
+                }
             }
 
+            if (!sub || !sub.endpoint) {
+                return { success: false, message: '유효한 푸시 구독 토큰을 생성하지 못했습니다.' };
+            }
+
+            // 3. 서버에 구독 토큰 동기화 저장
             const subRes = await fetch('/api/notification/subscribe', {
                 method: 'POST',
                 credentials: 'include',
@@ -493,20 +531,29 @@
             });
 
             if (subRes.status === 401) {
-                return { success: false, message: '로그인이 필요합니다. 먼저 로그인해 주세요.' };
+                return { success: false, message: '로그인 세션이 만료되었습니다. 다시 로그인해 주세요.' };
             }
 
             const subData = await subRes.json().catch(() => ({}));
-            if (subData && subData.skippedBrowser && sub) {
+            if (!subRes.ok || subData.success === false) {
+                return { success: false, message: subData.message || ('서버 저장 오류 (HTTP ' + subRes.status + ')') };
+            }
+
+            if (subData.skippedBrowser && sub) {
                 try { await sub.unsubscribe(); } catch (e) {}
                 console.log('🧹 [WebPush Guard] 전용 웹앱(PWA) 구독이 활성화되어 있어 일반 브라우저 중복 구독을 자동 해제했습니다.');
                 return { success: true, skippedBrowser: true };
             }
+
             console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
             return { success: true };
         } catch (e) {
             console.error('[WebPush] 구독 오류:', e);
-            return { success: false, message: e.message || '푸시 서비스 등록 중 오류가 발생했습니다.' };
+            let userMsg = e.message || '푸시 서비스 등록 중 오류가 발생했습니다.';
+            if (userMsg.includes('push service error')) {
+                userMsg = '구글 푸시 서비스(FCM) 연결 지연입니다. 1~2초 후 [기기 연결 갱신]을 다시 눌러주세요.';
+            }
+            return { success: false, message: userMsg };
         }
     };
     window.unsubscribeWebPushSubscription = async function() {
