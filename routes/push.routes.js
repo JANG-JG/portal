@@ -76,6 +76,7 @@ router.post('/subscribe', authenticateToken, (req, res) => {
                 console.error('[WebPush] 포털 구독 토큰 저장 실패:', err);
                 return res.status(500).json({ success: false, message: '구독 토큰 저장 실패' });
             }
+            console.log(`📥 [WebPush] 구독 등록 완료: 유저=${userId}, 타입=${clientType}/${deviceType}, 기기ID=${deviceId || '-'}, 엔드포인트=${endpoint.slice(0, 48)}...`);
 
             // 🌟 [중복 방지 스마트 정리]
             // 1) 모바일에서 신규 구독 등록 시 동일 서비스의 이전 만료/중복 모바일 토큰 자동 정리 (포털과 가족앨범 상호 보존)

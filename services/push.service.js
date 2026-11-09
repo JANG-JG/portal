@@ -145,11 +145,11 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
         db.all(query, [], (err, rows) => {
             if (err || !rows || rows.length === 0) {
                 console.log(`[UnifiedPush] 발송 대상 구독 기기 없음 (type: ${type}, user: ${userId || 'all'})`);
-                // 단일 사용자 대상 알림이고 사용자가 알림을 끄지 않은 경우에만 내역 보존 (꺼둔 사용자에게 내역 적재 원천 차단)
+                if (!shouldSaveHistory) {
+                    return resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
+                }
+                // 1) 단일 사용자 대상 알림이고 사용자가 알림을 끄지 않은 경우에만 내역 보존
                 if (userId && typeof userId === 'string' && !Array.isArray(userId)) {
-                    if (!shouldSaveHistory) {
-                        return resolve({ success: true, count: 0, targetCount: 0 });
-                    }
                     const checkSql = `
                         SELECT COALESCE(ns.enabled, 1) as enabled,
                                COALESCE(u.role, 'family') as role,
@@ -161,9 +161,8 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                     db.get(checkSql, [userId], (cErr, userCheck) => {
                         if (!cErr && userCheck && userCheck.enabled === 1) {
                             const isUserAdmin = (userId === 'admin' || userCheck.role === 'admin' || userCheck.u_rowid === 1);
-                            // 가족 계정인데 관리자 전용 알림(속보/날씨/증시/시스템 등)인 경우 저장 제외
                             if (!isUserAdmin && (type === 'system' || type === 'breaking' || type === 'weather' || type === 'asset' || type === 'economy' || type === 'finance' || type === 'stock' || type === 'hospital' || type === 'blood_pressure')) {
-                                return resolve({ success: true, count: 0, targetCount: 0 });
+                                return resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
                             }
                             saveNotificationHistory({
                                 userId,
@@ -174,11 +173,37 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                                 url: targetUrl
                             });
                         }
-                        resolve({ success: true, count: 0, targetCount: 0 });
+                        resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
                     });
                     return;
                 }
-                return resolve({ success: true, count: 0, targetCount: 0 });
+                // 2) 브로드캐스트 알림 (가족앨범 등): 푸시 구독 토큰이 없더라도 알림을 켜둔 대상자(관리자 포함) 알림함에 보존
+                if (!userId && type === 'album') {
+                    const targetUsersSql = `
+                        SELECT u.username, COALESCE(ns.enabled, 1) as enabled, COALESCE(ns.album_push_enabled, 1) as album_push_enabled
+                        FROM users u
+                        LEFT JOIN notification_settings ns ON u.username = ns.user_id
+                        WHERE COALESCE(ns.enabled, 1) = 1 AND COALESCE(ns.album_push_enabled, 1) = 1
+                        ${excludeUserId ? `AND u.username != '${String(excludeUserId).replace(/'/g, "''")}'` : ''}
+                    `;
+                    db.all(targetUsersSql, [], (tErr, userList) => {
+                        if (!tErr && Array.isArray(userList)) {
+                            userList.forEach(u => {
+                                saveNotificationHistory({
+                                    userId: u.username,
+                                    type,
+                                    title: cleanTitle,
+                                    body: cleanBody,
+                                    icon: 'https://j-jg.cc/icon-monochrome.png',
+                                    url: targetUrl
+                                });
+                            });
+                        }
+                        resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
+                    });
+                    return;
+                }
+                return resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
             }
 
             // 🌟 [기기별 스마트 토큰 발송 알고리즘: 서로 다른 기기(아이폰 vs 안드로이드 등) 독립 발송 보장]
@@ -319,6 +344,31 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                             body: cleanBody,
                             icon: 'https://j-jg.cc/icon-monochrome.png',
                             url: targetUrl
+                        });
+                    }
+                    if (!userId && type === 'album') {
+                        const extraSql = `
+                            SELECT u.username
+                            FROM users u
+                            LEFT JOIN notification_settings ns ON u.username = ns.user_id
+                            WHERE COALESCE(ns.enabled, 1) = 1 AND COALESCE(ns.album_push_enabled, 1) = 1
+                            ${excludeUserId ? `AND u.username != '${String(excludeUserId).replace(/'/g, "''")}'` : ''}
+                        `;
+                        db.all(extraSql, [], (eErr, extraUsers) => {
+                            if (!eErr && Array.isArray(extraUsers)) {
+                                extraUsers.forEach(eu => {
+                                    if (eu.username && !recipientUserIds.includes(eu.username)) {
+                                        saveNotificationHistory({
+                                            userId: eu.username,
+                                            type,
+                                            title: cleanTitle,
+                                            body: cleanBody,
+                                            icon: 'https://j-jg.cc/icon-monochrome.png',
+                                            url: targetUrl
+                                        });
+                                    }
+                                });
+                            }
                         });
                     }
                     sendPushMessages(notifId);

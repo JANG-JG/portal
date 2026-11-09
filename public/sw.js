@@ -9,6 +9,7 @@ const PRECACHE_ASSETS = [
     '/fonts/Pretendard-Medium.subset.woff2',
     '/fonts/Pretendard-SemiBold.subset.woff2',
     '/fonts/Pretendard-Bold.subset.woff2',
+    '/favicon.ico',
     '/favicon.svg',
     '/favicon.png',
     '/icon-192.png',
@@ -55,8 +56,13 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 1-1. 중앙 UI 런처 및 공통 내비게이션/티커: 항상 실시간 네트워크 직통 우선 (Network-First)
-    if (url.pathname.endsWith('/js/jg-ui.js') || url.pathname.includes('unified-nav') || url.pathname.includes('news-ticker')) {
+    // 1-1. 중앙 UI 런처, 공통 내비게이션/티커, 매니페스트 및 파비콘/앱 아이콘: 항상 실시간 네트워크 직통 우선 (Network-First)
+    if (url.pathname.endsWith('/js/jg-ui.js') ||
+        url.pathname.includes('unified-nav') ||
+        url.pathname.includes('news-ticker') ||
+        url.pathname.includes('manifest.json') ||
+        url.pathname.includes('favicon') ||
+        url.pathname.includes('icon-')) {
         event.respondWith(
             fetch(req)
                 .then((res) => {

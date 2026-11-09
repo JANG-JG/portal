@@ -69,33 +69,36 @@
         if (!('Notification' in window)) {
             if (textEl) textEl.textContent = '❌ 이 브라우저는 웹 푸시를 지원하지 않습니다.';
             if (btnEl) btnEl.style.display = 'none';
-            if (bannerEl) bannerEl.style.display = isSettingsTab ? 'flex' : 'none';
+            if (bannerEl) bannerEl.style.setProperty('display', isSettingsTab ? 'flex' : 'none', 'important');
             return;
         }
         if (!isPortalPushOrigin()) {
-            if (textEl) textEl.textContent = '🔔 푸시 알림 권한 등록은 메인 포털(j-jg.cc)에서 통합 관리됩니다.';
+            if (textEl) textEl.textContent = '🔔 푸시 알림 권한 및 기기 등록은 메인 포털(j-jg.cc)에서 통합 관리됩니다.';
             if (btnEl) {
                 btnEl.textContent = '포털에서 권한 설정';
                 btnEl.style.display = 'inline-block';
             }
-            if (bannerEl) bannerEl.style.display = isSettingsTab ? 'flex' : 'none';
+            if (bannerEl) bannerEl.style.setProperty('display', isSettingsTab ? 'flex' : 'none', 'important');
             return;
         }
         if (Notification.permission === 'granted') {
             if (textEl) textEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
-            if (btnEl) btnEl.style.display = 'none';
-            if (bannerEl) bannerEl.style.display = isSettingsTab ? 'flex' : 'none';
+            if (btnEl) {
+                btnEl.textContent = '🔄 기기 재연결';
+                btnEl.style.display = isSettingsTab ? 'inline-block' : 'none';
+            }
+            if (bannerEl) bannerEl.style.setProperty('display', isSettingsTab ? 'flex' : 'none', 'important');
         } else if (Notification.permission === 'denied') {
-            if (textEl) textEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
+            if (textEl) textEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 주소창 자물쇠(🔒) 설정에서 허용해 주세요.';
             if (btnEl) btnEl.style.display = 'none';
-            if (bannerEl) bannerEl.style.display = 'flex';
+            if (bannerEl) bannerEl.style.setProperty('display', 'flex', 'important');
         } else {
             if (textEl) textEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
             if (btnEl) {
                 btnEl.textContent = '권한 허용';
                 btnEl.style.display = 'inline-block';
             }
-            if (bannerEl) bannerEl.style.display = 'flex';
+            if (bannerEl) bannerEl.style.setProperty('display', 'flex', 'important');
         }
     };
 
@@ -109,12 +112,23 @@
             alert('현재 브라우저에서는 알림 권한을 지원하지 않습니다.');
             return;
         }
+        if (Notification.permission === 'denied') {
+            alert('🚫 브라우저에서 알림 권한이 차단되어 있습니다.\n브라우저 주소창의 자물쇠(🔒) 또는 사이트 설정에서 [알림]을 [허용]으로 변경해 주세요.');
+            return;
+        }
+        if (Notification.permission === 'granted') {
+            const ok = await window.registerWebPushSubscription(true);
+            window.updateBrowserPermissionUI();
+            if (ok) alert('🎉 현재 기기의 푸시 알림 연결이 최신 상태로 갱신되었습니다!');
+            else alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+            return;
+        }
         try {
             const perm = await Notification.requestPermission();
             window.updateBrowserPermissionUI();
             if (perm === 'granted') {
-                await window.registerWebPushSubscription();
-                alert('🎉 알림 권한이 성공적으로 허용되었습니다!');
+                await window.registerWebPushSubscription(true);
+                alert('🎉 알림 권한 허용 및 기기 등록이 완료되었습니다!');
             } else {
                 alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
             }
@@ -124,8 +138,8 @@
     };
 
     // VAPID 키 및 푸시 매니저 구독 등록 (API) - 오직 메인 포털(j-jg.cc) 오리진에서만 수행
-    window.registerWebPushSubscription = async function() {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    window.registerWebPushSubscription = async function(forceResubscribe = false) {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
 
         // 🛡️ 서브도메인(blood.j-jg.cc, asset.j-jg.cc 등)에서는 알림 권한 요청 및 구독 생성을 원천 차단하고, 잔존 서브도메인 구독만 자동 정리
         if (!isPortalPushOrigin()) {
@@ -145,28 +159,23 @@
                     }
                 }
             } catch (e) {}
-            return;
+            return false;
         }
+
+        if (!('Notification' in window) || Notification.permission !== 'granted') return false;
 
         try {
             const meta = window.getDevicePushMetadata();
-
-            if (Notification.permission === 'default') {
-                const requested = await Notification.requestPermission();
-                window.updateBrowserPermissionUI();
-                if (requested !== 'granted') {
-                    console.log('[WebPush] 알림 권한 미허용');
-                    return;
-                }
-            } else if (Notification.permission !== 'granted') {
-                return;
-            }
-
             const keyRes = await fetch(`${NOTIF_BASE_URL}/api/notification/vapid-key`, { credentials: 'include' });
+            if (!keyRes.ok) return false;
             const { publicKey } = await keyRes.json();
-            if (!publicKey) return;
+            if (!publicKey) return false;
 
-            const reg = await navigator.serviceWorker.ready;
+            let reg = await navigator.serviceWorker.getRegistration('/');
+            if (!reg) {
+                reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+            }
+            reg = await navigator.serviceWorker.ready;
             let sub = await reg.pushManager.getSubscription();
             const convertedKey = urlBase64ToUint8Array(publicKey);
 
@@ -183,9 +192,13 @@
                 }
                 if (!isMatch) {
                     console.log('🔄 [VAPID Key Changed] 새 VAPID 키 감지: 기존 푸시 구독 취소 후 재구독');
-                    try { await sub.unsubscribe(); } catch (unsubErr) {}
-                    sub = null;
+                    forceResubscribe = true;
                 }
+            }
+
+            if (sub && forceResubscribe === true) {
+                try { await sub.unsubscribe(); } catch (unsubErr) {}
+                sub = null;
             }
 
             if (!sub) {
@@ -195,7 +208,7 @@
                 });
             }
 
-            await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
+            const subRes = await fetch(`${NOTIF_BASE_URL}/api/notification/subscribe`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -208,8 +221,10 @@
                 })
             });
             console.log(`✅ 포털 웹 푸시 구독 등록 완료 (${meta.deviceType} / ${meta.clientType.toUpperCase()})`);
+            return subRes.ok;
         } catch (e) {
             console.error('[푸시 구독 등록 실패]:', e);
+            return false;
         }
     };
 
@@ -238,18 +253,42 @@
     // 테스트 알림 발송 (API)
     window.sendTestNotification = async function() {
         try {
-            const res = await fetch(`${NOTIF_BASE_URL}/api/notification/test`, {
+            if (isPortalPushOrigin()) {
+                if ('Notification' in window && Notification.permission === 'default') {
+                    const perm = await Notification.requestPermission();
+                    window.updateBrowserPermissionUI();
+                    if (perm !== 'granted') {
+                        return alert('알림 권한이 허용되지 않았습니다. 권한을 허용한 뒤 다시 시도해 주세요.');
+                    }
+                }
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    await window.registerWebPushSubscription();
+                }
+            }
+            let res = await fetch(`${NOTIF_BASE_URL}/api/notification/test`, {
                 method: 'POST',
                 credentials: 'include'
             });
-            const data = await res.json();
-            if (data.success) {
+            let data = await res.json();
+            if (isPortalPushOrigin() && data.success && (data.successCount === 0 || data.targetCount === 0) && 'Notification' in window && Notification.permission === 'granted') {
+                await window.registerWebPushSubscription(true);
+                res = await fetch(`${NOTIF_BASE_URL}/api/notification/test`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                data = await res.json();
+            }
+            if (data.success && data.successCount > 0) {
                 alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n수신 내역 탭에서도 확인하실 수 있습니다.');
                 if (typeof window.fetchNotificationHistory === 'function') {
                     setTimeout(() => window.fetchNotificationHistory(false), 500);
                 }
+            } else if (!isPortalPushOrigin()) {
+                if (confirm('⚠️ 현재 등록된 푸시 수신 기기가 없습니다.\n메인 포털(j-jg.cc)로 이동하여 알림 권한을 등록하시겠습니까?')) {
+                    window.location.href = 'https://j-jg.cc/?open=notification';
+                }
             } else {
-                alert('테스트 알림 발송 실패: ' + (data.message || '서버 응답 오류'));
+                alert('⚠️ 푸시 발송 대상 기기가 없거나 브라우저 알림 권한이 꺼져 있습니다.\n상단 [권한 허용 / 기기 재연결] 버튼 또는 브라우저 주소창 자물쇠(🔒) 설정에서 알림 권한을 확인해 주세요.');
             }
         } catch (e) {
             alert('테스트 알림 요청 중 오류 발생: ' + e.message);

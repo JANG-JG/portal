@@ -116,30 +116,46 @@
         if (!('Notification' in window)) {
             if (tEl) tEl.textContent = '❌ 이 브라우저는 웹 푸시를 지원하지 않습니다.';
             if (bEl) bEl.style.display = 'none';
-            if (bannerEl) bannerEl.style.display = isSet ? 'flex' : 'none';
+            if (bannerEl) bannerEl.style.setProperty('display', isSet ? 'flex' : 'none', 'important');
             return;
         }
         if (Notification.permission === 'granted') {
             if (tEl) tEl.textContent = '✅ 브라우저 푸시 알림 수신이 활성화되어 있습니다.';
-            if (bEl) bEl.style.display = 'none';
-            if (bannerEl) bannerEl.style.display = isSet ? 'flex' : 'none';
+            if (bEl) {
+                bEl.textContent = '🔄 기기 재연결';
+                bEl.style.display = isSet ? 'inline-block' : 'none';
+            }
+            if (bannerEl) bannerEl.style.setProperty('display', isSet ? 'flex' : 'none', 'important');
         } else if (Notification.permission === 'denied') {
-            if (tEl) tEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 사이트 설정에서 허용해 주세요.';
+            if (tEl) tEl.textContent = '🚫 브라우저에서 알림이 차단되었습니다. 주소창 자물쇠(🔒) 설정에서 허용해 주세요.';
             if (bEl) bEl.style.display = 'none';
-            if (bannerEl) bannerEl.style.display = 'flex';
+            if (bannerEl) bannerEl.style.setProperty('display', 'flex', 'important');
         } else {
             if (tEl) tEl.textContent = '⚠️ 푸시 알림 권한이 필요합니다. [권한 허용]을 눌러주세요.';
-            if (bEl) bEl.style.display = 'inline-block';
-            if (bannerEl) bannerEl.style.display = 'flex';
+            if (bEl) {
+                bEl.textContent = '권한 허용';
+                bEl.style.display = 'inline-block';
+            }
+            if (bannerEl) bannerEl.style.setProperty('display', 'flex', 'important');
         }
     };
     window.requestBrowserNotificationPermission = async function() {
         if (!('Notification' in window)) return alert('현재 브라우저에서는 알림 권한을 지원하지 않습니다.');
+        if (Notification.permission === 'denied') {
+            return alert('🚫 브라우저에서 알림 권한이 차단되어 있습니다.\n브라우저 주소창의 자물쇠(🔒) 또는 사이트 설정에서 [알림]을 [허용]으로 변경해 주세요.');
+        }
+        if (Notification.permission === 'granted') {
+            const ok = await window.registerWebPushSubscription(true);
+            window.updateBrowserPermissionUI();
+            if (ok) alert('🎉 현재 기기의 푸시 알림 연결이 최신 상태로 갱신되었습니다!');
+            else alert('⚠️ 푸시 기기 등록 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.');
+            return;
+        }
         const perm = await Notification.requestPermission();
         window.updateBrowserPermissionUI();
         if (perm === 'granted') {
-            await window.registerWebPushSubscription();
-            alert('🎉 알림 권한이 성공적으로 허용되었습니다!');
+            await window.registerWebPushSubscription(true);
+            alert('🎉 알림 권한 허용 및 기기 등록이 완료되었습니다!');
         } else {
             alert('알림 권한이 허용되지 않았습니다. 브라우저 설정에서 확인해 주세요.');
         }
@@ -202,6 +218,10 @@
     window.toggleNotifMaster = async function(checked) {
         portalNotifSettings.enabled = checked ? 1 : 0;
         try {
+            if (checked && 'Notification' in window && Notification.permission === 'default') {
+                try { await Notification.requestPermission(); } catch (e) {}
+                window.updateBrowserPermissionUI();
+            }
             await fetch('/api/notification/settings', {
                 method: 'POST', credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
@@ -282,13 +302,20 @@
         portalNotifSettings.hospital_push_enabled = getC('notifHospitalPushEnabled');
         portalNotifSettings.system_alert_enabled = getC('notifSystemAlertEnabled');
         try {
+            // 🛡️ 모바일 브라우저 User Gesture 소멸 방지를 위해 네트워크 fetch 전에 권한 팝업을 즉시 요청
+            if (portalNotifSettings.enabled && 'Notification' in window && Notification.permission === 'default') {
+                try { await Notification.requestPermission(); } catch (e) {}
+                window.updateBrowserPermissionUI();
+            }
             const res = await fetch('/api/notification/settings', {
                 method: 'POST', credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(portalNotifSettings)
             });
             const result = await res.json();
-            if (portalNotifSettings.enabled) await window.registerWebPushSubscription();
+            if (portalNotifSettings.enabled && 'Notification' in window && Notification.permission === 'granted') {
+                await window.registerWebPushSubscription();
+            }
             window.updateBrowserPermissionUI();
             alert(result.message || '알림 설정이 성공적으로 저장되었습니다.');
             window.closeNotificationModal();
@@ -300,24 +327,27 @@
     window.sendTestNotification = async function() {
         try {
             if ('Notification' in window && Notification.permission === 'default') {
-                await window.requestBrowserNotificationPermission();
-                if (Notification.permission !== 'granted') return;
+                const perm = await Notification.requestPermission();
+                window.updateBrowserPermissionUI();
+                if (perm !== 'granted') {
+                    return alert('알림 권한이 허용되지 않았습니다. 권한을 허용한 뒤 다시 시도해 주세요.');
+                }
             }
             if ('Notification' in window && Notification.permission === 'granted') {
                 await window.registerWebPushSubscription();
             }
             let res = await fetch('/api/notification/test', { method: 'POST', credentials: 'include' });
             let data = await res.json();
-            if (data.success && data.successCount === 0 && 'Notification' in window && Notification.permission === 'granted') {
+            if (data.success && (data.successCount === 0 || data.targetCount === 0) && 'Notification' in window && Notification.permission === 'granted') {
                 await window.registerWebPushSubscription(true);
                 res = await fetch('/api/notification/test', { method: 'POST', credentials: 'include' });
                 data = await res.json();
             }
-            if (data.success && (data.successCount === undefined || data.successCount > 0)) {
+            if (data.success && data.successCount > 0) {
                 alert('🎉 기기로 테스트 푸시 알림이 발송되었습니다!\n수신 내역 탭에서도 확인하실 수 있습니다.');
                 setTimeout(() => window.fetchNotificationHistory(false), 500);
             } else {
-                alert('⚠️ 푸시 발송 대상 기기가 없거나 브라우저 알림 권한이 꺼져 있습니다.\n브라우저 주소창 자물쇠(🔒) 설정에서 알림 권한을 확인해 주세요.');
+                alert('⚠️ 푸시 발송 대상 기기가 없거나 브라우저 알림 권한이 꺼져 있습니다.\n상단 [권한 허용 / 기기 재연결] 버튼 또는 브라우저 주소창 자물쇠(🔒) 설정에서 알림 권한을 확인해 주세요.');
             }
         } catch (e) { alert('테스트 알림 요청 오류: ' + e.message); }
     };
@@ -384,33 +414,46 @@
         return { clientType, deviceType, deviceId, userAgent: navigator.userAgent };
     }
     window.registerWebPushSubscription = async function(forceResubscribe = false) {
-        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+        if (!('Notification' in window) || Notification.permission !== 'granted') return false;
         try {
             const meta = getDevicePushMetadata();
-            if (Notification.permission === 'default') {
-                const requested = await Notification.requestPermission();
-                window.updateBrowserPermissionUI();
-                if (requested !== 'granted') return;
-            } else if (Notification.permission !== 'granted') return;
-
             const keyRes = await fetch('/api/notification/vapid-key', { credentials: 'include' });
+            if (!keyRes.ok) return false;
             const { publicKey } = await keyRes.json();
-            if (!publicKey) return;
-            const reg = await navigator.serviceWorker.ready;
+            if (!publicKey) return false;
+
+            let reg = await navigator.serviceWorker.getRegistration('/');
+            if (!reg) {
+                reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+            }
+            reg = await navigator.serviceWorker.ready;
+
+            const padding = '='.repeat((4 - publicKey.length % 4) % 4);
+            const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const out = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
+
             let sub = await reg.pushManager.getSubscription();
+            if (sub && sub.options && sub.options.applicationServerKey) {
+                const curKey = new Uint8Array(sub.options.applicationServerKey);
+                let isMatch = curKey.length === out.length;
+                if (isMatch) {
+                    for (let i = 0; i < curKey.length; i++) {
+                        if (curKey[i] !== out[i]) { isMatch = false; break; }
+                    }
+                }
+                if (!isMatch) forceResubscribe = true;
+            }
             if (sub && forceResubscribe === true) {
                 try { await sub.unsubscribe(); } catch (e) {}
                 sub = null;
             }
             if (!sub) {
-                const padding = '='.repeat((4 - publicKey.length % 4) % 4);
-                const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
-                const rawData = window.atob(base64);
-                const out = new Uint8Array(rawData.length);
-                for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
                 sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: out });
             }
-            await fetch('/api/notification/subscribe', {
+            const subRes = await fetch('/api/notification/subscribe', {
                 method: 'POST', credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -421,7 +464,11 @@
                     userAgent: meta.userAgent
                 })
             });
-        } catch (e) { console.error('[WebPush] 구독 오류:', e); }
+            return subRes.ok;
+        } catch (e) {
+            console.error('[WebPush] 구독 오류:', e);
+            return false;
+        }
     };
     window.unsubscribeWebPushSubscription = async function() {
         if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -473,21 +520,30 @@
     }
     const init = () => {
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(() => {});
+            navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                .then((reg) => { try { reg.update(); } catch (e) {} })
+                .catch(() => {});
         }
         handleNotifIdFromUrl();
         initUnreadBadge();
         setInterval(initUnreadBadge, 60000);
         if ('Notification' in window) {
-            setTimeout(() => window.registerWebPushSubscription(), 800);
-            // 모바일 브라우저(삼성 인터넷/크롬)는 사용자 터치 제스처가 있어야 권한 허용 창을 띄우므로 첫 클릭 시 1회 자동 요청
-            if (Notification.permission === 'default') {
-                const onFirstGesture = () => {
+            if (Notification.permission === 'granted') {
+                setTimeout(() => window.registerWebPushSubscription(), 600);
+            } else if (Notification.permission === 'default') {
+                // 모바일 브라우저는 반드시 사용자 클릭 제스처 안에서만 requestPermission 팝업을 허용함
+                const onFirstUserClick = async () => {
                     if (Notification.permission === 'default') {
-                        window.registerWebPushSubscription();
+                        try {
+                            const perm = await Notification.requestPermission();
+                            window.updateBrowserPermissionUI();
+                            if (perm === 'granted') {
+                                await window.registerWebPushSubscription(true);
+                            }
+                        } catch (e) {}
                     }
                 };
-                document.addEventListener('click', onFirstGesture, { once: true, capture: true });
+                document.addEventListener('click', onFirstUserClick, { once: true });
             }
         }
     };

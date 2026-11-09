@@ -339,6 +339,13 @@
         window.portalNotifSettings.system_alert_enabled = getCheck('notifSystemAlertEnabled');
 
         try {
+            const h = window.location.hostname;
+            const isPortalOrigin = (h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.'));
+            if (isPortalOrigin && window.portalNotifSettings.enabled && 'Notification' in window && Notification.permission === 'default') {
+                try { await Notification.requestPermission(); } catch (e) {}
+                if (typeof window.updateBrowserPermissionUI === 'function') window.updateBrowserPermissionUI();
+            }
+
             const saveRes = await fetch(`${NOTIF_BASE_URL}/api/notification/settings`, {
                 method: 'POST',
                 credentials: 'include',
@@ -366,6 +373,12 @@
     window.toggleNotifMaster = async function(checked) {
         window.portalNotifSettings.enabled = checked ? 1 : 0;
         try {
+            const h = window.location.hostname;
+            const isPortalOrigin = (h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.'));
+            if (checked && isPortalOrigin && 'Notification' in window && Notification.permission === 'default') {
+                try { await Notification.requestPermission(); } catch (e) {}
+                if (typeof window.updateBrowserPermissionUI === 'function') window.updateBrowserPermissionUI();
+            }
             await fetch(`${NOTIF_BASE_URL}/api/notification/settings`, {
                 method: 'POST',
                 credentials: 'include',
