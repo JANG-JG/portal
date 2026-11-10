@@ -259,7 +259,7 @@ router.post('/settings', authenticateToken, (req, res) => {
             system_alert_enabled = excluded.system_alert_enabled, telegram_briefing_times = excluded.telegram_briefing_times,
             weekday_med_times = excluded.weekday_med_times, weekday_bp_times = excluded.weekday_bp_times,
             weekend_med_times = excluded.weekend_med_times, weekend_bp_times = excluded.weekend_bp_times,
-            updated_at = CURRENT_TIMESTAMP
+            updated_at = datetime('now', 'localtime')
     `;
 
     const albumPushVal = album_push_enabled !== undefined ? (album_push_enabled ? 1 : 0) : 1;

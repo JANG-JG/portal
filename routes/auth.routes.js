@@ -220,7 +220,7 @@ router.post('/api/auth/family-login', async (req, res) => {
                 const newAttempts = (user.failed_pin_attempts || 0) + 1;
                 if (newAttempts >= 5) {
                     db.run(
-                        "UPDATE users SET failed_pin_attempts = 5, locked_until = datetime('now', '+30 minutes') WHERE username = ?",
+                        "UPDATE users SET failed_pin_attempts = 5, locked_until = datetime('now', 'localtime', '+30 minutes') WHERE username = ?",
                         [username]
                     );
                     recordLoginLog(username, clientIp, 'LOCKED_PIN_LIMIT');

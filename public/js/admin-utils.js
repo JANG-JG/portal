@@ -273,3 +273,41 @@ if (typeof MutationObserver !== 'undefined') {
         attachModalWatcher();
     }
 }
+
+// 🕒 대한민국 표준시(KST, Asia/Seoul) 통합 시각 포맷 유틸리티
+const _adminKstFmt = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+});
+
+function formatAdminKst(raw, mode = 'full') {
+    if (raw === null || raw === undefined || raw === '') return '-';
+    let kstStr = '';
+    if (typeof raw === 'number' || raw instanceof Date) {
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return String(raw);
+        kstStr = _adminKstFmt.format(d);
+    } else {
+        const s = String(raw).trim();
+        if (!s || s === '-') return '-';
+        // ISO-8601 UTC(Z) 또는 명시적 오프셋(±HH:MM) 문자열은 Asia/Seoul 표준시로 변환
+        if (/(?:Z|[+-]\d{2}:?\d{2})$/i.test(s)) {
+            const d = new Date(s);
+            kstStr = Number.isNaN(d.getTime()) ? s.replace('T', ' ') : _adminKstFmt.format(d);
+        } else {
+            kstStr = s.replace('T', ' ');
+        }
+    }
+    if (mode === 'minute') return kstStr.slice(0, 16);
+    if (mode === 'short') return kstStr.length >= 19 ? kstStr.slice(5, 19) : kstStr.slice(5);
+    if (mode === 'short-min') return kstStr.slice(5, 16);
+    if (mode === 'compact') return kstStr.replace(/[-:\s]/g, '').slice(0, 14);
+    return kstStr.slice(0, 19);
+}
+window.formatAdminKst = formatAdminKst;

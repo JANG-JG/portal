@@ -54,7 +54,7 @@ async function loadAlbumAdminPhotos() {
         container.innerHTML = data.photos.map(p => {
             const author = p.author_name || '가족';
             const emoji = p.avatar_emoji || '😊';
-            const dateStr = p.created_at ? p.created_at.slice(0, 16) : '-';
+            const dateStr = p.created_at ? (typeof formatAdminKst === 'function' ? formatAdminKst(p.created_at, 'minute') : p.created_at.slice(0, 16)) : '-';
             const thumbUrl = `https://album.j-jg.cc/uploads/thumbnails/${p.thumbnail_filename}`;
             const origUrl = `https://album.j-jg.cc/uploads/originals/${p.storage_filename}`;
             const caption = p.caption ? escapeHtml(p.caption) : '설명 없음';
@@ -208,7 +208,7 @@ async function loadAlbumAiLogs() {
                 const photoLabel = log.photo_id ? `#${log.photo_id}번 게시물` : (log.original_name || '미등록');
                 const durationSec = log.duration_ms ? (log.duration_ms / 1000).toFixed(1) + '초' : '-';
                 const models = log.models_used || '-';
-                const dateStr = log.created_at ? log.created_at.slice(0, 16) : '-';
+                const dateStr = log.created_at ? (typeof formatAdminKst === 'function' ? formatAdminKst(log.created_at, 'minute') : log.created_at.slice(0, 16)) : '-';
                 const summaryText = log.caption_result ? escapeHtml(log.caption_result) : (log.error_message ? `<span style="color:#ef4444;">${escapeHtml(log.error_message)}</span>` : '-');
 
                 return `
@@ -278,7 +278,7 @@ function openAdminAiLogDetail(logId) {
     content.innerHTML = `
         <div style="background:#f1f5f9; padding:0.75rem 1rem; border-radius:0.5rem; font-size:0.82rem; display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
             <div><strong>작업 ID:</strong> <span style="font-family:monospace;">${escapeHtml(log.task_id || String(log.id))}</span></div>
-            <div><strong>분석 일시:</strong> ${escapeHtml(log.created_at || '-')}</div>
+            <div><strong>분석 일시:</strong> ${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(log.created_at) : (log.created_at || '-'))}</div>
             <div><strong>사용 모델:</strong> ${escapeHtml(log.models_used || '-')}</div>
             <div><strong>소요 시간:</strong> ${log.duration_ms ? (log.duration_ms / 1000).toFixed(1) + '초' : '-'}</div>
             <div><strong>작업 유형:</strong> ${log.task_type === 'existing_photo' ? '등록 사진' : '신규 업로드'}</div>
@@ -386,7 +386,7 @@ async function loadBackupAdminStatus() {
             if (tbody) {
                 if (Array.isArray(data.archives) && data.archives.length > 0) {
                     tbody.innerHTML = data.archives.map(a => {
-                        const dateStr = a.created_at ? new Date(a.created_at).toLocaleString('ko-KR') : '-';
+                        const dateStr = a.created_at ? (typeof formatAdminKst === 'function' ? formatAdminKst(a.created_at) : new Date(a.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })) : '-';
                         return `
                             <tr>
                                 <td class="font-mono" style="font-weight:600; color:#1e293b;">${escapeHtml(a.filename)}</td>

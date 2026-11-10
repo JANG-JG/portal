@@ -281,7 +281,7 @@ async function loadAssetEvents() {
                         else if (p.reason) summary = String(p.reason).slice(0, 50);
                     } catch (_) {}
                     return `<tr>
-                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(l.created_at || '-')}</td>
+                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(l.created_at) : (l.created_at || '-'))}</td>
                         <td><strong>${escapeHtml(l.sender || '-')}</strong></td>
                         <td><span style="background:${bg}; color:${fg}; padding:2px 7px; border-radius:999px; font-size:0.74rem; font-weight:700; white-space:nowrap;">${escapeHtml(label)}</span></td>
                         <td style="max-width:260px; word-break:break-word; font-size:0.82rem;">
@@ -310,7 +310,7 @@ async function loadAssetEvents() {
                         else if (s.reason) detail = s.reason;
                     } catch (_) {}
                     return `<tr>
-                        <td style="white-space:nowrap; font-size:0.78rem; color:#64748b;">${escapeHtml(o.created_at || '-')}</td>
+                        <td style="white-space:nowrap; font-size:0.78rem; color:#64748b;">${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(o.created_at) : (o.created_at || '-'))}</td>
                         <td style="font-size:0.82rem;">${escapeHtml(typeTxt)}</td>
                         <td><span style="background:${isOk ? '#dcfce7' : '#fee2e2'}; color:${isOk ? '#166534' : '#991b1b'}; padding:2px 6px; border-radius:999px; font-size:0.73rem; font-weight:700;">${isOk ? '성공' : '실패'}</span></td>
                         <td style="font-size:0.8rem;">${o.duration_ms ? (o.duration_ms / 1000).toFixed(2) + '초' : '-'}</td>
@@ -371,7 +371,7 @@ async function loadBloodEvents() {
                         ? `${l.systolic ?? '-'} / ${l.diastolic ?? '-'} mmHg${l.pulse ? ` (${l.pulse}회)` : ''}`
                         : '-';
                     return `<tr>
-                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(l.created_at || '-')}</td>
+                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(l.created_at) : (l.created_at || '-'))}</td>
                         <td><strong>${escapeHtml(l.username || 'admin')}</strong></td>
                         <td><span style="background:${isOk ? '#dcfce7' : '#fee2e2'}; color:${isOk ? '#166534' : '#991b1b'}; padding:2px 7px; border-radius:999px; font-size:0.74rem; font-weight:700;">${isOk ? '인식 성공' : '재촬영 안내'}</span></td>
                         <td style="font-weight:700; color:#1e293b;">${escapeHtml(bpTxt)}</td>
@@ -396,7 +396,7 @@ async function loadBloodEvents() {
                 notifBody.innerHTML = nLogs.map(n => {
                     const [label, bg, fg] = typeMap[n.type] || ['🔔 건강 알림', '#f1f5f9', '#334155'];
                     return `<tr>
-                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(n.created_at || '-')}</td>
+                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(n.created_at) : (n.created_at || '-'))}</td>
                         <td><span style="background:${bg}; color:${fg}; padding:2px 7px; border-radius:999px; font-size:0.74rem; font-weight:700; white-space:nowrap;">${escapeHtml(label)}</span></td>
                         <td><strong>${escapeHtml(n.user_id || 'admin')}</strong></td>
                         <td style="max-width:280px; word-break:break-word; font-size:0.82rem;">

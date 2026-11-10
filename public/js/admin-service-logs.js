@@ -160,7 +160,7 @@ async function fetchServiceLogs(serviceKey, silent = false) {
             state.loaded = true;
             filterServiceLogs(serviceKey);
             if (updatedEl) {
-                const nowStr = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+                const nowStr = new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false });
                 updatedEl.textContent = `최근 갱신 ${nowStr}`;
             }
         } else {

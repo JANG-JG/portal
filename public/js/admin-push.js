@@ -32,16 +32,19 @@
                 devBody.innerHTML = devices.map((d) => {
                     const modeTxt = d.clientType === 'pwa' ? '📲 설치형 웹앱' : '🌐 브라우저';
                     const devTxt = d.deviceType === 'mobile' ? '모바일' : 'PC';
+                    const fmt = typeof window.formatAdminKst === 'function'
+                        ? window.formatAdminKst
+                        : (v, m) => String(v || '').replace('T', ' ').slice(m === 'short-min' ? 5 : 0, 16);
                     const statusHtml = d.lastError
                         ? `<span style="color:#dc2626; font-weight:600; font-size:0.78rem;">⚠️ ${esc(d.lastError)}</span>`
                         : (d.lastSuccessAt
-                            ? `<span style="color:#059669; font-weight:600; font-size:0.78rem;">✅ 성공 (${esc(d.lastSuccessAt.slice(5, 16))})</span>`
+                            ? `<span style="color:#059669; font-weight:600; font-size:0.78rem;">✅ 성공 (${esc(fmt(d.lastSuccessAt, 'short-min'))})</span>`
                             : '<span style="color:#64748b; font-size:0.78rem;">대기 중 (발송 전)</span>');
                     return `
                         <tr>
                             <td style="font-weight:700;">${esc(d.userId)}</td>
                             <td>${modeTxt} · ${esc(d.browserName)} <span style="color:#64748b; font-size:0.76rem;">(${devTxt})</span></td>
-                            <td style="font-size:0.78rem; color:#475569;">${esc((d.updatedAt || '').slice(0, 16))}</td>
+                            <td style="font-size:0.78rem; color:#475569;">${esc(fmt(d.updatedAt, 'minute'))}</td>
                             <td>${statusHtml}</td>
                             <td style="font-family:monospace; font-size:0.74rem; color:#64748b;">${esc(d.endpointShort)}</td>
                             <td style="text-align:right; white-space:nowrap;">
@@ -57,8 +60,11 @@
                 if (events.length === 0) {
                     evtBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.2rem; color:#94a3b8;">서버 재시작 이후 기록된 실시간 발송·수신 로그가 없습니다.</td></tr>';
                 } else {
+                    const fmtEvt = typeof window.formatAdminKst === 'function'
+                        ? (v) => window.formatAdminKst(v, 'short')
+                        : (v) => String(v || '').replace('T', ' ').slice(5, 19);
                     evtBody.innerHTML = events.slice(0, 20).map((ev) => {
-                        const timeTxt = (ev.timestamp || '').replace('T', ' ').slice(5, 19);
+                        const timeTxt = fmtEvt(ev.timestamp);
                         let kindBadge = '📨 발송';
                         let detail = '';
                         if (ev.kind === 'send') {

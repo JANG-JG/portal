@@ -111,7 +111,7 @@ async function loadNewsLogs() {
 
             return `
                 <tr>
-                    <td><small>${log.run_at || '-'}</small></td>
+                    <td><small>${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(log.run_at) : (log.run_at || '-'))}</small></td>
                     <td>${badge}</td>
                     <td style="text-align:center;"><strong>${log.total_collected || 0}</strong>건 / <strong>${log.saved_count || 0}</strong>건</td>
                     <td style="text-align:center;">${teleBadge}</td>
@@ -138,7 +138,7 @@ async function fetchNewsFileLogs() {
         titleEl.textContent = `tail -n 120 news-dashboard/logs/${logFileName}`;
     }
 
-    consoleEl.textContent = `[${new Date().toLocaleTimeString()}] ${logFileName} 최신 로그를 불러오는 중입니다...`;
+    consoleEl.textContent = `[${new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul', hour12: false })}] ${logFileName} 최신 로그를 불러오는 중입니다...`;
 
     try {
         const res = await fetch(`/api/admin/news/file-logs?type=${logType}&lines=120`);
@@ -233,7 +233,7 @@ async function loadSecurityLogs() {
                                         <strong>${userLabel}</strong>
                                         <span class="${isSuccess ? 'badge-online' : 'badge-stopped'}" style="font-size:0.7rem; padding:1px 6px;">${statusText}</span>
                                     </span>
-                                    <span class="admin-timeline-time">${log.attempted_at || '-'}</span>
+                                    <span class="admin-timeline-time">${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(log.attempted_at) : (log.attempted_at || '-'))}</span>
                                 </div>
                                 <div class="admin-timeline-desc">
                                     접속 IP: <code style="font-size:0.78rem; background:#e2e8f0; padding:1px 5px; border-radius:3px; color:#0f172a;">${escapeHtml(log.ip || '-')}</code>
@@ -267,7 +267,7 @@ async function loadSecurityLogs() {
                     : `${memoText}<strong>${escapeHtml(log.username || '-')}</strong>`;
                 return `
                     <tr>
-                        <td><small>${log.attempted_at || '-'}</small></td>
+                        <td><small>${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(log.attempted_at) : (log.attempted_at || '-'))}</small></td>
                         <td>${userLabel}</td>
                         <td><code>${escapeHtml(log.ip || '-')}</code></td>
                         <td>${badge}</td>

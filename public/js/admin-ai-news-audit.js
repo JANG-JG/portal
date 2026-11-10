@@ -63,6 +63,9 @@
             setTxt('newsStatGeminiQuotaDate', q.date && q.date !== '-' ? `기준일: ${q.date}` : '오늘 호출 없음');
 
             // 텔레그램 발송 이력
+            const fmtKst = typeof window.formatAdminKst === 'function'
+                ? window.formatAdminKst
+                : (v, m) => String(v || '-').replace('T', ' ').slice(m === 'short' ? 5 : 0, m === 'short' ? 19 : 16);
             const tgBody = document.getElementById('newsTelegramHistoryBody');
             if (tgBody) {
                 const tgRows = Array.isArray(data.telegramHistory) ? data.telegramHistory : [];
@@ -73,7 +76,7 @@
                         const statusLabel = r.status === 'TELEGRAM_TEST' ? '수동 점검' : (r.status === 'TELEGRAM_FAIL' ? '점검 실패' : '정기·수동 브리핑');
                         return `
                             <tr>
-                                <td style="font-size:0.78rem; color:#64748b; white-space:nowrap;">${safeEsc((r.run_at || '').slice(0, 16))}</td>
+                                <td style="font-size:0.78rem; color:#64748b; white-space:nowrap;">${safeEsc(fmtKst(r.run_at, 'minute'))}</td>
                                 <td style="font-size:0.8rem; font-weight:600;">${safeEsc(statusLabel)}</td>
                                 <td>${ok ? '<span class="badge badge-success">발송 성공 ✅</span>' : '<span class="badge badge-danger" style="background:#fee2e2; color:#b91c1c;">실패</span>'}</td>
                                 <td style="font-size:0.8rem; color:#334155; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${safeEsc(r.details)}">${safeEsc(r.details || '-')}</td>
@@ -113,7 +116,7 @@
                     ? '<tr><td colspan="2" style="text-align:center; padding:1rem; color:#94a3b8;">최근 48시간 내 발송된 속보 웹 푸시가 없습니다.</td></tr>'
                     : pushes.map(p => `
                         <tr>
-                            <td style="font-size:0.76rem; color:#64748b; white-space:nowrap;">${safeEsc((p.pushed_at || '').slice(0, 16))}</td>
+                            <td style="font-size:0.76rem; color:#64748b; white-space:nowrap;">${safeEsc(fmtKst(p.pushed_at, 'minute'))}</td>
                             <td style="font-size:0.82rem; color:#1e293b; max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${safeEsc(p.title)}">${safeEsc(p.title)}</td>
                         </tr>
                     `).join('');
@@ -135,7 +138,7 @@
                         const secText = l.duration_ms ? `${(l.duration_ms / 1000).toFixed(2)}초` : '0.01초';
                         return `
                             <tr>
-                                <td style="font-size:0.77rem; color:#64748b; white-space:nowrap;">${safeEsc((l.created_at || '').slice(5, 19))}</td>
+                                <td style="font-size:0.77rem; color:#64748b; white-space:nowrap;">${safeEsc(fmtKst(l.created_at, 'short'))}</td>
                                 <td>${engineBadge}</td>
                                 <td style="font-size:0.78rem; font-weight:600; color:#334155; white-space:nowrap;">${safeEsc(l.model || '-')}</td>
                                 <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.83rem;" title="${safeEsc(l.article_title)}">${safeEsc(l.article_title || '-')}</td>
@@ -202,6 +205,9 @@
                 policy: '<span style="background:#fee2e2; color:#991b1b; padding:2px 7px; border-radius:999px; font-size:0.72rem; font-weight:700;">🛡️ 권한 보호</span>'
             };
 
+            const fmtAudit = typeof window.formatAdminKst === 'function'
+                ? (v) => window.formatAdminKst(v, 'short')
+                : (v) => String(v || '-').replace('T', ' ').slice(5, 19);
             tbody.innerHTML = rows.map(r => {
                 const modeBadge = modeBadgeMap[r.routed_mode] || `<span class="badge">${safeEsc(r.routed_mode)}</span>`;
                 const durText = r.duration_ms ? `${(r.duration_ms / 1000).toFixed(1)}초` : '-';
@@ -212,7 +218,7 @@
                         : '<span style="background:#fee2e2; color:#b91c1c; padding:2px 6px; border-radius:4px; font-size:0.72rem; font-weight:700;">오류</span>');
                 return `
                     <tr>
-                        <td style="font-size:0.77rem; color:#64748b; white-space:nowrap;">${safeEsc((r.created_at || '').slice(5, 19))}</td>
+                        <td style="font-size:0.77rem; color:#64748b; white-space:nowrap;">${safeEsc(fmtAudit(r.created_at))}</td>
                         <td style="font-size:0.8rem; font-weight:600; white-space:nowrap;">${safeEsc(r.actor_label || '가족')}</td>
                         <td style="white-space:nowrap;">${modeBadge} <span style="font-size:0.75rem; color:#475569; margin-left:3px;">${safeEsc(r.model || '')}</span></td>
                         <td>${formatToolLabels(r.tools_used)}</td>

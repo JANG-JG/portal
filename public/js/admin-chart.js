@@ -34,6 +34,7 @@ function initUPlotChart() {
     const opts = {
         width: Math.max(240, container.clientWidth || 320),
         height: 140,
+        tzDate: typeof uPlot.tzDate === 'function' ? (ts) => uPlot.tzDate(new Date(ts * 1000), 'Asia/Seoul') : undefined,
         scales: {
             x: { time: true },
             y: { range: [0, 100] }

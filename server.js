@@ -1,4 +1,5 @@
 require('dotenv').config();
+process.env.TZ = 'Asia/Seoul';
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const compression = require('compression');
@@ -7,7 +8,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261110_130934';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261110_150942';
 const {
     PORT,
     JWT_SECRET,

@@ -26,7 +26,8 @@ router.get('/export-csv', (req, res) => {
                 csvContent += `${v.id},${v.visit_date || ''},"${hospName}","${dept}","${memo}",${v.prescription_days || ''},${v.next_visit_date || ''},"${v.reservation_open_date || ''}","${v.notification_email || ''}",${v.send_notification ? '켜짐' : '꺼짐'}\n`;
             });
 
-            const exportFilename = `health_data_export_${new Date().toISOString().split('T')[0]}.csv`;
+            const kstToday = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
+            const exportFilename = `health_data_export_${kstToday}.csv`;
             res.setHeader('Content-Type', 'text/csv; charset=utf-8');
             res.setHeader('Content-Disposition', `attachment; filename="${exportFilename}"`);
             res.status(200).send(csvContent);
@@ -91,7 +92,7 @@ router.get('/recent', (req, res) => {
 // 4. 혈압 알림 메일 (SMTP) 전송 테스트
 router.post('/test-email', (req, res) => {
     const bloodEnvPath = path.join(BLOOD_DIR, '.env');
-    const testScript = `require('dotenv').config({ path: '${bloodEnvPath}' }); const nodemailer = require('nodemailer'); if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) { console.error('MISSING_ENV'); process.exit(1); } const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } }); transporter.sendMail({ from: process.env.EMAIL_USER, to: process.env.EMAIL_USER, subject: '🩸 JG 포털 통합 관리자 - 구글 SMTP 연결 테스트', text: '통합 관리자 센터에서 요청하신 Gmail SMTP 알림 메일 발송 테스트가 성공하였습니다! 일시: ' + new Date().toLocaleString() }).then(() => { process.exit(0); }).catch(e => { console.error(e.message); process.exit(2); });`;
+    const testScript = `require('dotenv').config({ path: '${bloodEnvPath}' }); const nodemailer = require('nodemailer'); if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) { console.error('MISSING_ENV'); process.exit(1); } const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } }); transporter.sendMail({ from: process.env.EMAIL_USER, to: process.env.EMAIL_USER, subject: '🩸 JG 포털 통합 관리자 - 구글 SMTP 연결 테스트', text: '통합 관리자 센터에서 요청하신 Gmail SMTP 알림 메일 발송 테스트가 성공하였습니다! 일시: ' + new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) }).then(() => { process.exit(0); }).catch(e => { console.error(e.message); process.exit(2); });`;
 
     exec(`node -e "${testScript}"`, { cwd: BLOOD_DIR }, (err, stdout, stderr) => {
         if (err) {

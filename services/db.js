@@ -129,7 +129,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
                 user_agent TEXT DEFAULT '',
                 last_success_at DATETIME DEFAULT NULL,
                 last_error TEXT DEFAULT '',
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
             )`);
             db.run(`CREATE TABLE IF NOT EXISTS notification_settings (
                 user_id TEXT PRIMARY KEY,
@@ -153,7 +153,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
                 weekday_bp_times TEXT DEFAULT '["07:30","21:30"]',
                 weekend_med_times TEXT DEFAULT '["09:00","19:30"]',
                 weekend_bp_times TEXT DEFAULT '["08:30","22:00"]',
-                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
             )`);
             db.run(`CREATE TABLE IF NOT EXISTS notification_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -223,7 +223,7 @@ const assetDb = new sqlite3.Database(ASSET_DB_PATH, (err) => {
                 status TEXT DEFAULT 'completed',
                 duration_ms INTEGER DEFAULT 0,
                 summary_json TEXT,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
             )`);
             assetDb.run(`CREATE INDEX IF NOT EXISTS idx_ocr_logs_date ON ocr_logs (created_at DESC)`);
         });

@@ -87,7 +87,7 @@ router.post('/briefing-times', (req, res) => {
     const userId = req.user.username || 'admin';
     db.run(`
         UPDATE notification_settings 
-        SET telegram_briefing_times = ?, updated_at = CURRENT_TIMESTAMP
+        SET telegram_briefing_times = ?, updated_at = datetime('now', 'localtime')
         WHERE user_id = ? OR user_id = 'admin'
     `, [jsonStr, userId], () => {});
 

@@ -477,7 +477,7 @@ async function downloadAllDatabases() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        const nowStr = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+        const nowStr = typeof window.formatAdminKst === 'function' ? window.formatAdminKst(new Date(), 'compact') : new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).replace(/[-:\s]/g, '');
         a.download = `jg_all_databases_${nowStr}.zip`;
         document.body.appendChild(a);
         a.click();

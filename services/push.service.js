@@ -11,11 +11,21 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     console.warn('⚠️ [WebPush] VAPID 키가 환경변수에 설정되지 않았습니다.');
 }
 
-// 실시간 운영 진단용 최근 발송·수신(SW-ACK) 이벤트 링버퍼 (최대 40건)
+// 실시간 운영 진단용 최근 발송·수신(SW-ACK) 이벤트 링버퍼 (최대 40건, 대한민국 표준시 KST 기록)
+const kstDiagFormatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+});
 const recentPushEvents = [];
 function recordPushDiagEvent(evt) {
     recentPushEvents.unshift(Object.assign({
-        timestamp: new Date().toISOString()
+        timestamp: kstDiagFormatter.format(new Date())
     }, evt));
     if (recentPushEvents.length > 40) recentPushEvents.length = 40;
 }

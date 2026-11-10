@@ -214,7 +214,7 @@ function renderWikiRevisionRows(tbody, revisions) {
 
         return `
             <tr>
-                <td style="font-size:0.76rem; color:#64748b; white-space:nowrap;">${escapeHtml(r.created_at || '-')}</td>
+                <td style="font-size:0.76rem; color:#64748b; white-space:nowrap;">${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(r.created_at) : (r.created_at || '-'))}</td>
                 <td>
                     <div style="font-weight:700; color:#1e293b; font-size:0.84rem;">${escapeHtml(r.title || '-')}</div>
                     <div style="font-size:0.72rem; color:#64748b;">[${escapeHtml(r.category || '생활')}] <code>${escapeHtml(r.slug || '')}</code></div>
@@ -256,7 +256,7 @@ function renderWikiAiLogRows(tbody, logs) {
 
         return `
             <tr>
-                <td style="font-size:0.76rem; color:#64748b; white-space:nowrap;">${escapeHtml(item.created_at || '-')}</td>
+                <td style="font-size:0.76rem; color:#64748b; white-space:nowrap;">${escapeHtml(typeof formatAdminKst === 'function' ? formatAdminKst(item.created_at) : (item.created_at || '-'))}</td>
                 <td style="font-size:0.8rem; font-weight:600; color:#1e293b; white-space:nowrap;">${srcBadge} ${label}</td>
                 <td style="font-size:0.76rem; color:#475569;"><code>${escapeHtml(item.model || item.engine || '-')}</code></td>
                 <td style="font-size:0.8rem; color:#334155; max-width:240px; word-break:break-word;">${escapeHtml(item.target_title || '-')}</td>

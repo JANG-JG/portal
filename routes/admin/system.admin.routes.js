@@ -278,6 +278,31 @@ router.post('/pm2/restart', (req, res) => {
     });
 });
 
+const kstLogFormatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+});
+
+function formatDateKst(date = new Date()) {
+    return kstLogFormatter.format(date);
+}
+
+function normalizeUtcTimestampsToKst(line) {
+    if (!line) return line;
+    // cloudflared 등 외부 데몬의 RFC3339/ISO-8601 UTC 타임스탬프(예: 2026-11-10T05:05:54Z)를 대한민국 표준시(KST)로 변환
+    return line.replace(/\b(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})\b/g, (full) => {
+        const parsed = new Date(full);
+        if (Number.isNaN(parsed.getTime())) return full;
+        return `[${formatDateKst(parsed)}]`;
+    });
+}
+
 function stripAnsi(str) {
     if (!str) return '';
     return str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
@@ -296,7 +321,7 @@ function cleanPm2Logs(raw, procName) {
         if (t.includes('memory, and will not scale past a single process.')) return false;
         if (t.startsWith('◇ injected env')) return false;
         return true;
-    });
+    }).map(normalizeUtcTimestampsToKst);
 
     if (contentLines.length === 0) {
         if (procName === 'cloudflared') {
@@ -393,7 +418,7 @@ router.get('/logs/news', (req, res) => {
 
 // 3. 전체 DB 일괄 압축 백업 다운로드 (모듈 레지스트리 기반 100% 동적 수집)
 router.get('/backup/all', (req, res) => {
-    const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+    const timestamp = formatDateKst().replace(/[-:\s]/g, '');
     const tmpZip = path.join('/tmp', `jg_all_databases_${timestamp}.zip`);
 
     const dbFiles = [];
@@ -440,7 +465,7 @@ zf.close()
 // 4. 개별 데이터베이스 백업 다운로드 (모듈 레지스트리 기반 100% 동적 처리)
 router.get('/backup/:type', (req, res) => {
     const type = req.params.type;
-    const now = new Date().toISOString().slice(0, 10);
+    const now = formatDateKst().slice(0, 10);
     if (type === 'all') {
         return res.redirect('/api/admin/backup/all');
     }
