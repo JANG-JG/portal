@@ -262,8 +262,19 @@ router.post('/api/ai/extract-routine', authenticateToken, async (req, res) => {
         }
 
         activeAiRequests++;
+        const routineStartMs = Date.now();
         try {
             const result = await extractRoutineAndTodos({ title, content });
+            recordAiAuditLog({
+                user: req.user,
+                requestType: 'extract_routine',
+                routedMode: 'chat',
+                model: result?.model || '',
+                toolsUsed: ['extract_routine'],
+                prompt: title || content.slice(0, 60),
+                durationMs: Date.now() - routineStartMs,
+                status: result?.success === false ? 'ERROR' : 'SUCCESS'
+            });
             res.json(result);
         } finally {
             activeAiRequests = Math.max(0, activeAiRequests - 1);
@@ -287,8 +298,19 @@ router.post('/api/ai/summarize', authenticateToken, async (req, res) => {
         }
 
         activeAiRequests++;
+        const sumStartMs = Date.now();
         try {
             const result = await summarizeText({ text, maxLines });
+            recordAiAuditLog({
+                user: req.user,
+                requestType: 'wiki_summarize',
+                routedMode: 'chat',
+                model: result?.model || '',
+                toolsUsed: ['wiki_summarize'],
+                prompt: text.slice(0, 60),
+                durationMs: Date.now() - sumStartMs,
+                status: result?.success === false ? 'ERROR' : 'SUCCESS'
+            });
             res.json(result);
         } finally {
             activeAiRequests = Math.max(0, activeAiRequests - 1);
@@ -312,8 +334,19 @@ router.post('/api/ai/wiki-draft', authenticateToken, async (req, res) => {
         }
 
         activeAiRequests++;
+        const draftStartMs = Date.now();
         try {
             const result = await generateWikiDraft({ prompt, category });
+            recordAiAuditLog({
+                user: req.user,
+                requestType: 'wiki_draft',
+                routedMode: 'chat',
+                model: result?.model || '',
+                toolsUsed: ['wiki_draft'],
+                prompt: result?.title || prompt.slice(0, 60),
+                durationMs: Date.now() - draftStartMs,
+                status: result?.success === false ? 'ERROR' : 'SUCCESS'
+            });
             res.json(result);
         } finally {
             activeAiRequests = Math.max(0, activeAiRequests - 1);
@@ -337,6 +370,7 @@ router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
         }
 
         activeAiRequests++;
+        const pubStartMs = Date.now();
         try {
             const userName = resolveUserName(req.user);
             const cleanContent = content.trim();
@@ -370,6 +404,16 @@ router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
                     change_summary: processed.merge_summary || 'AI 지능형 보강',
                     author: userName || '가족'
                 });
+                recordAiAuditLog({
+                    user: req.user,
+                    requestType: 'publish_wiki_merge',
+                    routedMode: 'chat',
+                    model: processed?.model || '',
+                    toolsUsed: ['smart_merge_wiki'],
+                    prompt: processed.title || title || cleanContent.slice(0, 60),
+                    durationMs: Date.now() - pubStartMs,
+                    status: 'SUCCESS'
+                });
 
                 return res.json({
                     success: true,
@@ -388,6 +432,16 @@ router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
                 title: processed.title,
                 content_md: processed.content_md,
                 slug: processed.slug
+            });
+            recordAiAuditLog({
+                user: req.user,
+                requestType: 'publish_wiki_create',
+                routedMode: 'chat',
+                model: processed?.model || '',
+                toolsUsed: ['publish_wiki'],
+                prompt: saveRes.title || processed.title || title || cleanContent.slice(0, 60),
+                durationMs: Date.now() - pubStartMs,
+                status: 'SUCCESS'
             });
 
             res.json({

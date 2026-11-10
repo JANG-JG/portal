@@ -43,6 +43,7 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-wiki-ddays', label: 'D-Day & 소모품 주기', icon: '⏳' },
         { id: 'subpane-wiki-configs', label: 'Wi-Fi & 비상 의료', icon: '📶' },
         { id: 'subpane-wiki-pages', label: '위키 문서 보관함', icon: '📖' },
+        { id: 'subpane-wiki-governance', label: '수정 이력·AI 로그', icon: '📜' },
         { id: 'subpane-wiki-logs', label: '런타임 로그 콘솔', icon: '💻' }
     ],
     'tab-backup': [
@@ -265,7 +266,8 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
         'subpane-asset-events': 'loadAssetEvents',
         'subpane-news-ai': 'loadNewsAiGovernance',
         'subpane-ai-status': 'checkAdminAiHealth',
-        'subpane-ai-audit': 'loadAdminAiAuditLogs'
+        'subpane-ai-audit': 'loadAdminAiAuditLogs',
+        'subpane-wiki-governance': 'loadWikiGovernance'
     };
     if (subLoaderMap[subId] && typeof window[subLoaderMap[subId]] === 'function') {
         window[subLoaderMap[subId]]();
