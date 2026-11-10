@@ -115,6 +115,57 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
                     }
                 });
             });
+            // 🔔 통합 알림 설정·내역·구독 표준 스키마 보장
+            db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT 'admin',
+                endpoint TEXT NOT NULL UNIQUE,
+                keys_p256dh TEXT NOT NULL,
+                keys_auth TEXT NOT NULL,
+                client_type TEXT DEFAULT 'browser',
+                device_type TEXT DEFAULT 'desktop',
+                device_id TEXT DEFAULT '',
+                browser_name TEXT DEFAULT '',
+                user_agent TEXT DEFAULT '',
+                last_success_at DATETIME DEFAULT NULL,
+                last_error TEXT DEFAULT '',
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`);
+            db.run(`CREATE TABLE IF NOT EXISTS notification_settings (
+                user_id TEXT PRIMARY KEY,
+                enabled INTEGER DEFAULT 1,
+                album_push_enabled INTEGER DEFAULT 1,
+                album_new_photo_enabled INTEGER DEFAULT 1,
+                album_comment_enabled INTEGER DEFAULT 1,
+                album_mention_enabled INTEGER DEFAULT 1,
+                hospital_push_enabled INTEGER DEFAULT 1,
+                breaking_news_enabled INTEGER DEFAULT 1,
+                weather_morning_enabled INTEGER DEFAULT 1,
+                weather_morning_time TEXT DEFAULT '07:00',
+                asset_report_enabled INTEGER DEFAULT 1,
+                asset_open_enabled INTEGER DEFAULT 1,
+                asset_close_enabled INTEGER DEFAULT 1,
+                bp_reminder_enabled INTEGER DEFAULT 1,
+                bp_reminder_time TEXT DEFAULT '21:00',
+                system_alert_enabled INTEGER DEFAULT 1,
+                telegram_briefing_times TEXT DEFAULT '["07:30"]',
+                weekday_med_times TEXT DEFAULT '["08:00","19:00"]',
+                weekday_bp_times TEXT DEFAULT '["07:30","21:30"]',
+                weekend_med_times TEXT DEFAULT '["09:00","19:30"]',
+                weekend_bp_times TEXT DEFAULT '["08:30","22:00"]',
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`);
+            db.run(`CREATE TABLE IF NOT EXISTS notification_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL DEFAULT 'admin',
+                type TEXT DEFAULT 'general',
+                title TEXT,
+                body TEXT,
+                icon TEXT,
+                url TEXT,
+                is_read INTEGER DEFAULT 0,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
             db.run(`ALTER TABLE notification_settings ADD COLUMN asset_open_enabled INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE notification_settings ADD COLUMN asset_close_enabled INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE notification_settings ADD COLUMN telegram_briefing_times TEXT DEFAULT '["07:30"]'`, () => {});
@@ -122,15 +173,14 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`ALTER TABLE notification_settings ADD COLUMN album_new_photo_enabled INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE notification_settings ADD COLUMN album_comment_enabled INTEGER DEFAULT 1`, () => {});
             db.run(`ALTER TABLE notification_settings ADD COLUMN album_mention_enabled INTEGER DEFAULT 1`, () => {});
-            // 🔔 푸시 알림 중복 방지용 디바이스/클라이언트 메타데이터 컬럼
+            // 🔔 푸시 구독 기기 진단용 메타데이터 컬럼
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN client_type TEXT DEFAULT 'browser'`, () => {});
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN device_type TEXT DEFAULT 'desktop'`, () => {});
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN device_id TEXT DEFAULT ''`, () => {});
+            db.run(`ALTER TABLE push_subscriptions ADD COLUMN browser_name TEXT DEFAULT ''`, () => {});
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN user_agent TEXT DEFAULT ''`, () => {});
-            // 7일 이상 미갱신된 오래된 과거 비표준 중복 토큰 안전 정리
-            db.run(`DELETE FROM push_subscriptions WHERE updated_at < datetime('now', '-7 days')`, () => {});
-            // 기기 식별자(device_id)가 없는 과거 레거시 브라우저 중복 토큰 안전 정리
-            db.run(`DELETE FROM push_subscriptions WHERE (device_id = '' OR device_id IS NULL) AND client_type = 'browser'`, () => {});
+            db.run(`ALTER TABLE push_subscriptions ADD COLUMN last_success_at DATETIME DEFAULT NULL`, () => {});
+            db.run(`ALTER TABLE push_subscriptions ADD COLUMN last_error TEXT DEFAULT ''`, () => {});
             // 성능 인덱스 생성
             db.run(`CREATE INDEX IF NOT EXISTS idx_records_measured_at ON records (measured_at DESC)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_user_created ON notification_history (user_id, created_at DESC)`);

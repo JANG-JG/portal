@@ -75,6 +75,59 @@
                 </div>
             </div>
 
+            <!-- 서브 1-2: 웹 푸시 구독 기기 & 실시간 발송·수신 현황 -->
+            <div id="subpane-security-push" class="admin-sub-pane hidden-pane">
+                <div class="admin-card">
+                    <div class="admin-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <h3>🔔 통합 웹 푸시 등록 기기 현황</h3>
+                            <span id="adminPushDeviceCountBadge" class="badge-online">등록 기기 0대</span>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="window.loadAdminPushSubscriptions && window.loadAdminPushSubscriptions()">🔄 새로고침</button>
+                    </div>
+                    <p style="margin:0 0 0.85rem; font-size:0.83rem; color:#64748b;">
+                        계정별 등록된 설치형 웹앱 및 브라우저 푸시 토큰 목록입니다. 만료된 토큰(404/410)은 발송 시 자동 삭제되며, 불필요한 기기는 직접 삭제할 수 있습니다.
+                    </p>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>계정</th>
+                                    <th>실행 환경 · 브라우저</th>
+                                    <th>최근 등록/갱신</th>
+                                    <th>마지막 발송 결과</th>
+                                    <th>엔드포인트 요약</th>
+                                    <th style="text-align:right;">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminPushDevicesTbody">
+                                <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">데이터를 불러오는 중입니다...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="admin-card" style="margin-top: 1rem;">
+                    <div class="admin-card-header">
+                        <h3>📲 실시간 발송 및 기기 수신 확인(SW-ACK) 로그</h3>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:140px;">시각</th>
+                                    <th style="width:130px;">구분</th>
+                                    <th colspan="2">상세 내역</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminPushEventsTbody">
+                                <tr><td colspan="4" style="text-align:center; padding:1.2rem; color:#64748b;">로그를 불러오는 중입니다...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- 서브 2: SSO 보안 및 시스템 기술 스택 -->
             <div id="subpane-security-stack" class="admin-sub-pane hidden-pane">
                 <!-- 1. 포털 SSO 보안 정책 정보 -->

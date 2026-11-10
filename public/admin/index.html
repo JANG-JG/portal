@@ -223,6 +223,9 @@
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-family" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-family')">
                         <span>👨‍👩‍👧‍👦</span> 우리 가족 및 권한 관리
                     </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-push" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-push')">
+                        <span>🔔</span> 웹 푸시 기기 & 발송 현황
+                    </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-security" data-sub="subpane-security-logs" onclick="switchAdminTabAndSub('tab-security', 'subpane-security-logs')">
                         <span>🔒</span> 최근 로그인 시도 이력
                     </button>
@@ -388,6 +391,7 @@
     <script src="/js/admin-metrics-renderer.js"></script>
     <script src="/js/admin-dashboard-config.js"></script>
     <script src="/js/admin-ai.js"></script>
+    <script src="/js/admin-push.js"></script>
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>

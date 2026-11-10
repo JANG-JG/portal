@@ -6,44 +6,35 @@ const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || (process.env.EMAIL_USER ? `mailto:${process.env.EMAIL_USER}` : 'mailto:admin@j-jg.cc');
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-    webPush.setVapidDetails(
-        VAPID_SUBJECT,
-        VAPID_PUBLIC_KEY,
-        VAPID_PRIVATE_KEY
-    );
+    webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 } else {
-    console.warn('⚠️ [VAPID] VAPID keys not configured in process.env!');
+    console.warn('⚠️ [WebPush] VAPID 키가 환경변수에 설정되지 않았습니다.');
 }
 
-// 알림 수신 내역 DB 보관 헬퍼 함수
-function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon, url = 'https://j-jg.cc/' }, callback) {
-    const typeIconMap = {
-        'album': '📸',
-        'breaking': '🚨',
-        'weather': '🌤️',
-        'asset': '💰',
-        'economy': '💰',
-        'finance': '💰',
-        'stock': '💰',
-        'blood_pressure': '🩸',
-        'medication': '💊',
-        'hospital': '🏥',
-        'system': '🖥️',
-        'test': '🔔'
-    };
-    const finalIcon = (!icon || icon.startsWith('http') || icon.startsWith('/')) ? (typeIconMap[type] || '🔔') : icon;
+// 실시간 운영 진단용 최근 발송·수신(SW-ACK) 이벤트 링버퍼 (최대 40건)
+const recentPushEvents = [];
+function recordPushDiagEvent(evt) {
+    recentPushEvents.unshift(Object.assign({
+        timestamp: new Date().toISOString()
+    }, evt));
+    if (recentPushEvents.length > 40) recentPushEvents.length = 40;
+}
+function getRecentPushDiagEvents() {
+    return recentPushEvents.slice();
+}
 
-    const query = `
-        INSERT INTO notification_history (user_id, type, title, body, icon, url, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
-    `;
-    db.run(query, [userId, type, title, body, finalIcon, url], function(err) {
-        if (err) console.error('[알림 내역 DB 저장 실패]:', err.message);
-        const insertedId = this ? this.lastID : null;
-        if (callback && typeof callback === 'function') {
-            callback(insertedId);
-        }
-    });
+// 브라우저/플랫폼 식별 헬퍼 (한국어 친화 라벨)
+function detectBrowserName(userAgent = '', endpoint = '') {
+    const ua = String(userAgent || '');
+    const ep = String(endpoint || '');
+    if (/SamsungBrowser/i.test(ua)) return '삼성 인터넷';
+    if (/EdgA?\//i.test(ua)) return '엣지(Edge)';
+    if (/Firefox|FxiOS/i.test(ua)) return '파이어폭스';
+    if (ep.includes('push.apple.com') || (/iPhone|iPad|Macintosh/i.test(ua) && !/Chrome|CriOS|SamsungBrowser|Edg/i.test(ua))) {
+        return '사파리(Safari)';
+    }
+    if (/Chrome|CriOS/i.test(ua)) return '크롬(Chrome)';
+    return '기타 브라우저';
 }
 
 // 푸시 알림 텍스트 정제 헬퍼
@@ -65,55 +56,78 @@ function sanitizePushText(text) {
         .trim();
 }
 
-// 🌟 [통합 포털 단일 WebPush 발송 엔진]
-function sendUnifiedPushNotification({ title, body, url, type = 'general', subtype = null, tag, userId = null, excludeUserId = null, adminOnly = false, image = null, icon = null, badge = null, saveHistory = null }) {
-    return new Promise((resolve) => {
-        // 🌟 뉴스 속보(breaking)는 알림센터에 누적하지 않고 실시간 웹 푸시만 발송
-        const shouldSaveHistory = (saveHistory !== null) ? Boolean(saveHistory) : (type !== 'breaking');
+// 알림 수신 내역 DB 보관 헬퍼
+function saveNotificationHistory({ userId = 'admin', type = 'general', title, body, icon, url = 'https://j-jg.cc/' }, callback) {
+    const typeIconMap = {
+        album: '📸', breaking: '🚨', weather: '🌤️',
+        asset: '💰', economy: '💰', finance: '💰', stock: '💰',
+        blood_pressure: '🩸', medication: '💊', hospital: '🏥',
+        calendar: '📅', dday: '📅', system: '🖥️', test: '🔔'
+    };
+    const finalIcon = (!icon || icon.startsWith('http') || icon.startsWith('/'))
+        ? (typeIconMap[type] || '🔔')
+        : icon;
 
-        let cleanTitle = sanitizePushText(title || '알림')
+    const sql = `
+        INSERT INTO notification_history (user_id, type, title, body, icon, url, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime'))
+    `;
+    db.run(sql, [userId, type, title, body, finalIcon, url], function(err) {
+        if (err) console.error('[WebPush] 알림 내역 DB 저장 실패:', err.message);
+        if (typeof callback === 'function') callback(this ? this.lastID : null);
+    });
+}
+
+// 상대 URL을 서비스별 절대 URL로 보정
+function normalizeTargetUrl(rawUrl) {
+    const u = rawUrl || 'https://j-jg.cc/';
+    if (!u.startsWith('/')) return u;
+    if (u.includes('dashboard') || u.includes('hospital')) return `https://blood.j-jg.cc${u}`;
+    if (u.includes('album') || u.startsWith('/photos')) return `https://album.j-jg.cc${u}`;
+    return `https://j-jg.cc${u}`;
+}
+
+// 🌟 순정 웹 표준 단일 Web Push 발송 엔진 (Clean-Slate v2)
+function sendUnifiedPushNotification({
+    title, body, url, type = 'general', subtype = null, tag,
+    userId = null, excludeUserId = null, adminOnly = false,
+    image = null, icon = null, saveHistory = null
+}) {
+    return new Promise((resolve) => {
+        const shouldSaveHistory = (saveHistory !== null) ? Boolean(saveHistory) : (type !== 'breaking');
+        const cleanTitle = sanitizePushText(title || '알림')
             .replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '')
             .replace(/^\[?JG\s*포털\]?\s*/i, '')
             .trim();
-
         const cleanBody = sanitizePushText(body);
+        const targetUrl = normalizeTargetUrl(url);
 
-        let targetUrl = url || 'https://j-jg.cc/';
-        if (targetUrl.startsWith('/')) {
-            if (targetUrl.includes('dashboard') || targetUrl.includes('hospital')) {
-                targetUrl = `https://blood.j-jg.cc${targetUrl}`;
-            } else if (targetUrl.includes('album') || targetUrl.startsWith('/photos') || targetUrl.startsWith('/album')) {
-                targetUrl = `https://album.j-jg.cc${targetUrl}`;
-            } else {
-                targetUrl = `https://j-jg.cc${targetUrl}`;
-            }
-        }
-
-        // 수신 대상 필터 구성
+        const params = [];
         let userCondition = '';
         if (userId) {
-            if (Array.isArray(userId)) {
-                userCondition = `AND ps.user_id IN (${userId.map(u => `'${String(u).replace(/'/g, "''")}'`).join(',')})`;
-            } else {
-                userCondition = `AND ps.user_id = '${String(userId).replace(/'/g, "''")}'`;
+            if (Array.isArray(userId) && userId.length > 0) {
+                userCondition = `AND ps.user_id IN (${userId.map(() => '?').join(',')})`;
+                userId.forEach(u => params.push(String(u)));
+            } else if (typeof userId === 'string') {
+                userCondition = 'AND ps.user_id = ?';
+                params.push(userId);
             }
         } else if (adminOnly) {
             userCondition = "AND (ps.user_id = 'admin' OR u.role = 'admin' OR u.rowid = 1)";
         }
         if (excludeUserId) {
-            userCondition += ` AND ps.user_id != '${String(excludeUserId).replace(/'/g, "''")}'`;
+            userCondition += ' AND ps.user_id != ?';
+            params.push(String(excludeUserId));
         }
 
-        // 🌟 [가족 계정 기본 정책] 관리자는 전체 알림 기본 ON, 가족 계정은 오직 앨범(album) 알림만 기본 ON!
-        // 그 외 모든 알림(속보, 날씨, 증시, 혈압, 병원, 시스템 등)은 가족 계정 기본 OFF (설정값이 1일 때만 수신)
+        // 가족 계정 기본 정책: 관리자는 전체 기본 ON, 가족 계정은 가족앨범(album)만 기본 ON
         const isAdminExpr = "(ps.user_id = 'admin' OR u.role = 'admin' OR u.rowid = 1)";
-
         let categoryCondition = '';
         if (type === 'breaking') {
             categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.breaking_news_enabled, 1) ELSE COALESCE(ns.breaking_news_enabled, 0) END = 1)`;
         } else if (type === 'weather') {
             categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.weather_morning_enabled, 1) ELSE COALESCE(ns.weather_morning_enabled, 0) END = 1)`;
-        } else if (type === 'asset' || type === 'economy' || type === 'finance' || type === 'stock') {
+        } else if (['asset', 'economy', 'finance', 'stock'].includes(type)) {
             categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.asset_report_enabled, 1) ELSE COALESCE(ns.asset_report_enabled, 0) END = 1)`;
         } else if (type === 'system') {
             categoryCondition = `AND (${isAdminExpr} AND COALESCE(ns.system_alert_enabled, 1) = 1)`;
@@ -123,13 +137,9 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
             categoryCondition = `AND (CASE WHEN ${isAdminExpr} THEN COALESCE(ns.hospital_push_enabled, 1) ELSE COALESCE(ns.hospital_push_enabled, 0) END = 1)`;
         } else if (type === 'album') {
             categoryCondition = 'AND COALESCE(ns.album_push_enabled, 1) = 1';
-            if (subtype === 'album_new_photo') {
-                categoryCondition += ' AND COALESCE(ns.album_new_photo_enabled, 1) = 1';
-            } else if (subtype === 'album_comment') {
-                categoryCondition += ' AND COALESCE(ns.album_comment_enabled, 1) = 1';
-            } else if (subtype === 'album_mention') {
-                categoryCondition += ' AND COALESCE(ns.album_mention_enabled, 1) = 1';
-            }
+            if (subtype === 'album_new_photo') categoryCondition += ' AND COALESCE(ns.album_new_photo_enabled, 1) = 1';
+            else if (subtype === 'album_comment') categoryCondition += ' AND COALESCE(ns.album_comment_enabled, 1) = 1';
+            else if (subtype === 'album_mention') categoryCondition += ' AND COALESCE(ns.album_mention_enabled, 1) = 1';
         }
 
         const query = `
@@ -140,64 +150,44 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
             WHERE COALESCE(ns.enabled, 1) = 1
             ${categoryCondition}
             ${userCondition}
+            ORDER BY ps.updated_at DESC, ps.id DESC
         `;
 
-        db.all(query, [], (err, rows) => {
+        db.all(query, params, (err, rows) => {
+            // 1) 구독된 기기가 없더라도 알림 센터 수신 내역(history)은 대상자에게 정상 기록
             if (err || !rows || rows.length === 0) {
-                console.log(`[UnifiedPush] 발송 대상 구독 기기 없음 (type: ${type}, user: ${userId || 'all'})`);
                 if (!shouldSaveHistory) {
                     return resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
                 }
-                // 1) 단일 사용자 대상 알림이고 사용자가 알림을 끄지 않은 경우에만 내역 보존
-                if (userId && typeof userId === 'string' && !Array.isArray(userId)) {
+                if (userId && typeof userId === 'string') {
                     const checkSql = `
-                        SELECT COALESCE(ns.enabled, 1) as enabled,
-                               COALESCE(u.role, 'family') as role,
-                               u.rowid as u_rowid
-                        FROM users u
-                        LEFT JOIN notification_settings ns ON u.username = ns.user_id
+                        SELECT COALESCE(ns.enabled, 1) as enabled, COALESCE(u.role, 'family') as role, u.rowid as u_rowid
+                        FROM users u LEFT JOIN notification_settings ns ON u.username = ns.user_id
                         WHERE u.username = ?
                     `;
-                    db.get(checkSql, [userId], (cErr, userCheck) => {
-                        if (!cErr && userCheck && userCheck.enabled === 1) {
-                            const isUserAdmin = (userId === 'admin' || userCheck.role === 'admin' || userCheck.u_rowid === 1);
-                            if (!isUserAdmin && (type === 'system' || type === 'breaking' || type === 'weather' || type === 'asset' || type === 'economy' || type === 'finance' || type === 'stock' || type === 'hospital' || type === 'blood_pressure')) {
-                                return resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
+                    db.get(checkSql, [userId], (cErr, uc) => {
+                        if (!cErr && uc && uc.enabled === 1) {
+                            const isAdm = (userId === 'admin' || uc.role === 'admin' || uc.u_rowid === 1);
+                            const adminDefaultTypes = ['system', 'breaking', 'weather', 'asset', 'economy', 'finance', 'stock', 'hospital', 'blood_pressure'];
+                            if (isAdm || !adminDefaultTypes.includes(type)) {
+                                saveNotificationHistory({ userId, type, title: cleanTitle, body: cleanBody, url: targetUrl });
                             }
-                            saveNotificationHistory({
-                                userId,
-                                type,
-                                title: cleanTitle,
-                                body: cleanBody,
-                                icon: 'https://j-jg.cc/icon-monochrome.png',
-                                url: targetUrl
-                            });
                         }
                         resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
                     });
                     return;
                 }
-                // 2) 브로드캐스트 알림 (가족앨범 등): 푸시 구독 토큰이 없더라도 알림을 켜둔 대상자(관리자 포함) 알림함에 보존
                 if (!userId && type === 'album') {
-                    const targetUsersSql = `
-                        SELECT u.username, COALESCE(ns.enabled, 1) as enabled, COALESCE(ns.album_push_enabled, 1) as album_push_enabled
-                        FROM users u
+                    const exParams = excludeUserId ? [String(excludeUserId)] : [];
+                    const targetSql = `
+                        SELECT u.username FROM users u
                         LEFT JOIN notification_settings ns ON u.username = ns.user_id
                         WHERE COALESCE(ns.enabled, 1) = 1 AND COALESCE(ns.album_push_enabled, 1) = 1
-                        ${excludeUserId ? `AND u.username != '${String(excludeUserId).replace(/'/g, "''")}'` : ''}
+                        ${excludeUserId ? 'AND u.username != ?' : ''}
                     `;
-                    db.all(targetUsersSql, [], (tErr, userList) => {
-                        if (!tErr && Array.isArray(userList)) {
-                            userList.forEach(u => {
-                                saveNotificationHistory({
-                                    userId: u.username,
-                                    type,
-                                    title: cleanTitle,
-                                    body: cleanBody,
-                                    icon: 'https://j-jg.cc/icon-monochrome.png',
-                                    url: targetUrl
-                                });
-                            });
+                    db.all(targetSql, exParams, (tErr, list) => {
+                        if (!tErr && Array.isArray(list)) {
+                            list.forEach(u => saveNotificationHistory({ userId: u.username, type, title: cleanTitle, body: cleanBody, url: targetUrl }));
                         }
                         resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
                     });
@@ -206,114 +196,91 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                 return resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
             }
 
-            // 🌟 [기기별 스마트 토큰 발송 알고리즘: 서로 다른 기기(아이폰 vs 안드로이드 등) 독립 발송 보장]
-            const deviceGroupMap = new Map();
-            rows.forEach(r => {
-                const uid = r.user_id || 'admin';
-                const ep = String(r.endpoint || '');
-                // 물리적 기기 플랫폼 식별 (애플 APNs vs 구글 FCM vs 기타)
-                let platform = 'android';
-                if (ep.includes('push.apple.com')) platform = 'apple';
-                else if (ep.includes('windows.com')) platform = 'windows';
-                else if (ep.includes('mozilla.com')) platform = 'firefox';
-
-                const deviceKey = `${uid}__${platform}__${r.client_type || 'browser'}__${r.device_id || 'default'}`;
-                if (!deviceGroupMap.has(deviceKey)) {
-                    deviceGroupMap.set(deviceKey, []);
-                }
-                deviceGroupMap.get(deviceKey).push(r);
-            });
-
+            // 2) 순정 표준 엔드포인트 단위 중복 제거 (서로 다른 브라우저/웹앱을 임의로 누락시키지 않음)
             const sendRows = [];
             const seenEndpoints = new Set();
-            deviceGroupMap.forEach((tokens) => {
-                tokens.sort((a, b) => {
-                    const aTime = new Date(a.updated_at || 0).getTime();
-                    const bTime = new Date(b.updated_at || 0).getTime();
-                    if (aTime !== bTime) return bTime - aTime;
-                    return (b.id || 0) - (a.id || 0);
-                });
-                const chosen = tokens[0];
-                if (chosen && chosen.endpoint && !seenEndpoints.has(chosen.endpoint)) {
-                    seenEndpoints.add(chosen.endpoint);
-                    sendRows.push(chosen);
+            rows.forEach((r) => {
+                if (r && r.endpoint && r.keys_p256dh && r.keys_auth && !seenEndpoints.has(r.endpoint)) {
+                    seenEndpoints.add(r.endpoint);
+                    sendRows.push(r);
                 }
             });
 
             const recipientUserIds = Array.from(new Set(sendRows.map(r => r.user_id).filter(Boolean)));
-            if (recipientUserIds.length === 0 && userId && typeof userId === 'string') recipientUserIds.push(userId);
+            if (recipientUserIds.length === 0 && typeof userId === 'string') recipientUserIds.push(userId);
             if (recipientUserIds.length === 0) {
-                return resolve({ success: true, count: 0, targetCount: 0 });
+                return resolve({ success: true, count: 0, targetCount: 0, successCount: 0 });
             }
 
-            const sendPushMessages = (notifId) => {
+            const dispatchWebPush = (notifId) => {
                 const sep = targetUrl.includes('?') ? '&' : '?';
                 const linkWithId = notifId ? `${targetUrl}${sep}notif_id=${notifId}` : targetUrl;
-
-                const uniqueTag = tag && tag.includes('-') && !tag.endsWith(type)
+                const uniqueTag = (tag && tag.includes('-') && !tag.endsWith(type))
                     ? tag
-                    : `jg-${type}-${notifId || Date.now()}-${Math.floor(Math.random() * 10000)}`;
+                    : `jg-${type}-${notifId || Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-                const notifIcon = icon || ((type === 'album') ? 'https://album.j-jg.cc/icons/icon-192.png' : 'https://j-jg.cc/icon-monochrome.png');
-                const notifBadge = badge || ((type === 'album') ? 'https://album.j-jg.cc/icons/badge-72.png' : 'https://j-jg.cc/badge-monochrome.png');
+                // 호환성 100% 정적 PNG 아이콘 표준 적용 (모노크롬/커스텀 배지 제거로 WebAPK 충돌 원천 차단)
+                const stdIcon = icon || (type === 'album' ? 'https://album.j-jg.cc/icons/icon-192.png' : 'https://j-jg.cc/icon-v2-192.png');
 
-                const pushPayloadObj = {
+                const payloadObj = {
                     title: cleanTitle,
                     body: cleanBody,
-                    icon: notifIcon,
-                    badge: notifBadge,
+                    icon: stdIcon,
                     tag: uniqueTag,
-                    renotify: true,
-                    requireInteraction: true,
                     data: {
                         url: linkWithId,
-                        notifId: notifId || null
+                        notifId: notifId || null,
+                        type
                     }
                 };
-
-                if (image) {
-                    pushPayloadObj.image = image;
-                }
-
-                const payload = JSON.stringify(pushPayloadObj);
+                if (image) payloadObj.image = image;
+                const payload = JSON.stringify(payloadObj);
 
                 let successCount = 0;
                 let failCount = 0;
 
-                const promises = sendRows.map(subRow => {
-                    const isApplePush = Boolean(subRow.endpoint && subRow.endpoint.includes('push.apple.com'));
-                    const pushHeaders = { 'Urgency': 'high' };
-                    // 🍎 Apple APNs는 임의의 Topic 헤더 전송 시 400 BadWebPushTopic 에러를 반환하므로 제외
-                    if (!isApplePush && type) {
-                        pushHeaders['Topic'] = (type || 'general').replace(/[^a-zA-Z0-9_-]/g, '');
-                    }
-
+                const tasks = sendRows.map((subRow) => {
                     const pushOptions = {
-                        headers: pushHeaders,
-                        TTL: 86400
+                        TTL: 86400,
+                        headers: { Urgency: 'high' }
                     };
-
-                    const pushSubscription = {
+                    const sub = {
                         endpoint: subRow.endpoint,
-                        keys: {
-                            p256dh: subRow.keys_p256dh,
-                            auth: subRow.keys_auth
-                        }
+                        keys: { p256dh: subRow.keys_p256dh, auth: subRow.keys_auth }
                     };
 
-                    return webPush.sendNotification(pushSubscription, payload, pushOptions)
-                        .then(() => { successCount++; })
-                        .catch(pErr => {
+                    return webPush.sendNotification(sub, payload, pushOptions)
+                        .then(() => {
+                            successCount++;
+                            db.run(
+                                `UPDATE push_subscriptions SET last_success_at = datetime('now', 'localtime'), last_error = '' WHERE endpoint = ?`,
+                                [subRow.endpoint]
+                            );
+                        })
+                        .catch((pErr) => {
                             failCount++;
-                            console.error(`❌ [WebPush Error] (${subRow.user_id}, ${subRow.endpoint.slice(0, 45)}...): Status ${pErr.statusCode}`, pErr.body || pErr.message);
-                            if (pErr.statusCode === 410 || pErr.statusCode === 404) {
+                            const code = pErr && pErr.statusCode ? pErr.statusCode : 0;
+                            const errMsg = `HTTP ${code}: ${String((pErr && (pErr.body || pErr.message)) || '발송 오류').slice(0, 120)}`;
+                            console.error(`❌ [WebPush 발송 오류] (${subRow.user_id}, ${subRow.browser_name || '-'}):`, errMsg);
+                            if (code === 404 || code === 410) {
                                 db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [subRow.endpoint]);
+                            } else {
+                                db.run('UPDATE push_subscriptions SET last_error = ? WHERE endpoint = ?', [errMsg, subRow.endpoint]);
                             }
                         });
                 });
 
-                Promise.all(promises).then(() => {
-                    console.log(`[UnifiedPush 완료] ${cleanTitle} (성공: ${successCount}/${sendRows.length})`);
+                Promise.all(tasks).then(() => {
+                    console.log(`📨 [WebPush 발송 완료] "${cleanTitle}" (성공: ${successCount}/${sendRows.length})`);
+                    recordPushDiagEvent({
+                        kind: 'send',
+                        type,
+                        title: cleanTitle,
+                        targetCount: sendRows.length,
+                        successCount,
+                        failCount,
+                        tag: uniqueTag
+                    });
                     resolve({
                         success: true,
                         targetCount: sendRows.length,
@@ -325,61 +292,55 @@ function sendUnifiedPushNotification({ title, body, url, type = 'general', subty
                 });
             };
 
-            if (shouldSaveHistory) {
-                saveNotificationHistory({
-                    userId: recipientUserIds[0],
-                    type,
-                    title: cleanTitle,
-                    body: cleanBody,
-                    icon: 'https://j-jg.cc/icon-monochrome.png',
-                    url: targetUrl
-                }, (notifId) => {
-                    for (let i = 1; i < recipientUserIds.length; i++) {
-                        saveNotificationHistory({
-                            userId: recipientUserIds[i],
-                            type,
-                            title: cleanTitle,
-                            body: cleanBody,
-                            icon: 'https://j-jg.cc/icon-monochrome.png',
-                            url: targetUrl
-                        });
-                    }
-                    if (!userId && type === 'album') {
-                        const extraSql = `
-                            SELECT u.username
-                            FROM users u
-                            LEFT JOIN notification_settings ns ON u.username = ns.user_id
-                            WHERE COALESCE(ns.enabled, 1) = 1 AND COALESCE(ns.album_push_enabled, 1) = 1
-                            ${excludeUserId ? `AND u.username != '${String(excludeUserId).replace(/'/g, "''")}'` : ''}
-                        `;
-                        db.all(extraSql, [], (eErr, extraUsers) => {
-                            if (!eErr && Array.isArray(extraUsers)) {
-                                extraUsers.forEach(eu => {
-                                    if (eu.username && !recipientUserIds.includes(eu.username)) {
-                                        saveNotificationHistory({
-                                            userId: eu.username,
-                                            type,
-                                            title: cleanTitle,
-                                            body: cleanBody,
-                                            icon: 'https://j-jg.cc/icon-monochrome.png',
-                                            url: targetUrl
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                    }
-                    sendPushMessages(notifId);
-                });
-            } else {
-                sendPushMessages(null);
+            if (!shouldSaveHistory) {
+                return dispatchWebPush(null);
             }
+
+            saveNotificationHistory({
+                userId: recipientUserIds[0],
+                type,
+                title: cleanTitle,
+                body: cleanBody,
+                url: targetUrl
+            }, (notifId) => {
+                for (let i = 1; i < recipientUserIds.length; i++) {
+                    saveNotificationHistory({
+                        userId: recipientUserIds[i],
+                        type,
+                        title: cleanTitle,
+                        body: cleanBody,
+                        url: targetUrl
+                    });
+                }
+                if (!userId && type === 'album') {
+                    const exParams = excludeUserId ? [String(excludeUserId)] : [];
+                    const extraSql = `
+                        SELECT u.username FROM users u
+                        LEFT JOIN notification_settings ns ON u.username = ns.user_id
+                        WHERE COALESCE(ns.enabled, 1) = 1 AND COALESCE(ns.album_push_enabled, 1) = 1
+                        ${excludeUserId ? 'AND u.username != ?' : ''}
+                    `;
+                    db.all(extraSql, exParams, (eErr, extraUsers) => {
+                        if (!eErr && Array.isArray(extraUsers)) {
+                            extraUsers.forEach(eu => {
+                                if (eu.username && !recipientUserIds.includes(eu.username)) {
+                                    saveNotificationHistory({ userId: eu.username, type, title: cleanTitle, body: cleanBody, url: targetUrl });
+                                }
+                            });
+                        }
+                    });
+                }
+                dispatchWebPush(notifId);
+            });
         });
     });
 }
 
 module.exports = {
     VAPID_PUBLIC_KEY,
+    detectBrowserName,
+    recordPushDiagEvent,
+    getRecentPushDiagEvents,
     saveNotificationHistory,
     sanitizePushText,
     sendUnifiedPushNotification

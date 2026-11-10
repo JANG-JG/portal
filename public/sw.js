@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261110_073558';
+const CACHE_NAME = 'jg-portal-v20261110_clean1';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -10,45 +10,30 @@ const PRECACHE_ASSETS = [
     '/fonts/Pretendard-SemiBold.subset.woff2',
     '/fonts/Pretendard-Bold.subset.woff2',
     '/favicon.ico',
-    '/favicon.svg',
     '/favicon-v2.svg',
-    '/favicon.png',
     '/favicon-v2.png',
-    '/icon-192.png',
     '/icon-v2-192.png',
-    '/icon-512.png',
     '/icon-v2-512.png',
-    '/icon-monochrome.png',
-    '/badge-monochrome.png',
     '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return Promise.all(
-                PRECACHE_ASSETS.map((assetUrl) =>
-                    fetch(new Request(assetUrl, { cache: 'reload' }))
-                        .then((res) => (res && res.status === 200) ? cache.put(assetUrl, res) : null)
-                        .catch((err) => console.warn('[Portal SW] Precache item error:', assetUrl, err))
-                )
-            );
-        }).then(() => self.skipWaiting())
+        caches.open(CACHE_NAME).then((cache) => Promise.all(
+            PRECACHE_ASSETS.map((assetUrl) =>
+                fetch(new Request(assetUrl, { cache: 'reload' }))
+                    .then((res) => (res && res.status === 200) ? cache.put(assetUrl, res) : null)
+                    .catch(() => null)
+            )
+        )).then(() => self.skipWaiting())
     );
 });
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) => {
-            return Promise.all(
-                keys.map((key) => {
-                    if (key !== CACHE_NAME) {
-                        console.log('[Portal SW] Removing old cache:', key);
-                        return caches.delete(key);
-                    }
-                })
-            );
-        }).then(() => self.clients.claim())
+        caches.keys().then((keys) => Promise.all(
+            keys.map((key) => (key !== CACHE_NAME ? caches.delete(key) : null))
+        )).then(() => self.clients.claim())
     );
 });
 
@@ -56,32 +41,16 @@ self.addEventListener('fetch', (event) => {
     const req = event.request;
     const url = new URL(req.url);
 
-    // 1. GET 이외의 요청이나 API, SSO 리다이렉트, 소켓 요청은 캐싱 완전 제외
-    if (req.method !== 'GET' || 
-        url.pathname.startsWith('/api') || 
-        url.pathname.startsWith('/go') || 
+    // 1. GET 이외 요청 및 API, SSO 리다이렉트, 소켓 요청은 캐싱 제외
+    if (req.method !== 'GET' ||
+        url.pathname.startsWith('/api') ||
+        url.pathname.startsWith('/go') ||
         url.pathname.startsWith('/socket.io')) {
         return;
     }
 
-    // 1-1. 중앙 UI 런처 및 공통 내비게이션/티커: 항상 실시간 네트워크 직통 우선 (Network-First)
-    if (url.pathname.endsWith('/js/jg-ui.js') || url.pathname.includes('unified-nav') || url.pathname.includes('news-ticker')) {
-        event.respondWith(
-            fetch(req)
-                .then((res) => {
-                    if (res && res.status === 200) {
-                        const clone = res.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-                    }
-                    return res;
-                })
-                .catch(() => caches.match(req))
-        );
-        return;
-    }
-
-    // 2. HTML 문서 탐색 및 CSS/JS 코드 요청: Network-First (항상 최신 버전 우선, 오프라인 시에만 캐시 폴백)
-    if (req.mode === 'navigate' || url.pathname.match(/\.(css|js)$/i) || url.pathname.includes('unified-nav')) {
+    // 2. HTML 문서 및 CSS/JS 코드: 항상 최신 버전 우선 (Network-First)
+    if (req.mode === 'navigate' || url.pathname.match(/\.(css|js)$/i) || url.pathname.includes('unified-nav') || url.pathname.includes('news-ticker')) {
         event.respondWith(
             fetch(req)
                 .then((res) => {
@@ -101,227 +70,142 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 3. 정적 미디어 에셋 (이미지, 폰트, 아이콘): Stale-While-Revalidate (0ms 응답 + 백그라운드 갱신)
-    const isStaticAsset = (
-        url.pathname.match(/\.(png|svg|jpg|jpeg|webp|woff2?|ico)$/i) ||
-        PRECACHE_ASSETS.includes(url.pathname)
-    );
-
+    // 3. 정적 미디어 에셋 (이미지, 폰트, 아이콘): Stale-While-Revalidate
+    const isStaticAsset = url.pathname.match(/\.(png|svg|jpg|jpeg|webp|woff2?|ico)$/i) || PRECACHE_ASSETS.includes(url.pathname);
     if (isStaticAsset) {
         event.respondWith(
             caches.open(CACHE_NAME).then(async (cache) => {
                 const cachedRes = await cache.match(req);
                 const fetchPromise = fetch(req)
                     .then((networkRes) => {
-                        if (networkRes && networkRes.status === 200) {
-                            cache.put(req, networkRes.clone());
-                        }
+                        if (networkRes && networkRes.status === 200) cache.put(req, networkRes.clone());
                         return networkRes;
                     })
                     .catch(() => cachedRes);
-
-                // 캐시가 있으면 즉시 반환, 없으면 네트워크 응답 대기
                 return cachedRes || fetchPromise;
             })
         );
         return;
     }
 
-    // 4. 기타 리소스 기본 처리
-    event.respondWith(
-        fetch(req).catch(() => caches.match(req))
-    );
+    event.respondWith(fetch(req).catch(() => caches.match(req)));
 });
 
-// 🔔 [Web Push] 실시간 속보 및 시스템 알림 수신 처리
+// 🔔 [순정 웹 표준 Web Push 수신 핸들러]
+// 모든 브라우저 및 설치형 웹앱(WebAPK/PWA)에서 100% 호환되는 최소 표준 옵션만 사용합니다.
 self.addEventListener('push', (event) => {
-    let data = {
-        title: '🚨 알림',
-        body: '새로운 알림이 도착했습니다.',
-        icon: 'https://j-jg.cc/icon-192.png',
-        badge: 'https://j-jg.cc/icon-192.png',
-        data: { url: 'https://news.j-jg.cc/breaking' }
-    };
-
+    let payload = {};
     if (event.data) {
         try {
-            data = event.data.json();
+            payload = event.data.json() || {};
         } catch (e) {
-            data.body = event.data.text();
+            payload = { title: '🔔 알림', body: event.data.text() };
         }
     }
 
-    if (data.title) {
-        data.title = data.title
-            .replace(/&nbsp;/gi, ' ')
-            .replace(/\u00a0/g, ' ')
-            .replace(/&amp;/gi, '&')
-            .replace(/&quot;/gi, '"')
-            .replace(/&#39;/gi, "'")
-            .replace(/^\[?JG\s*통합\s*포털\]?\s*/i, '')
-            .replace(/^\[?JG\s*포털\]?\s*/i, '')
-            .trim();
+    const title = String(payload.title || '🔔 알림').trim();
+    const body = String(payload.body || '새로운 알림이 도착했습니다.').trim();
+    const safeTag = payload.tag ? String(payload.tag) : ('jg-push-' + Date.now());
+    const payloadData = (payload.data && typeof payload.data === 'object') ? payload.data : {};
+    const targetUrl = payloadData.url || 'https://j-jg.cc/';
+    const notifId = payloadData.notifId || null;
+
+    // 모노크롬/구버전 아이콘 배제, 검증된 정적 PNG 아이콘 표준 적용
+    let iconUrl = '/icon-v2-192.png';
+    if (payload.icon && typeof payload.icon === 'string' && !payload.icon.includes('monochrome') && !payload.icon.includes('/icon-192.png')) {
+        iconUrl = payload.icon;
     }
 
-    if (data.body) {
-        data.body = String(data.body)
-            .replace(/&nbsp;/gi, ' ')
-            .replace(/\u00a0/g, ' ')
-            .replace(/&amp;/gi, '&')
-            .replace(/&quot;/gi, '"')
-            .replace(/&#39;/gi, "'")
-            .replace(/<[^>]+>/g, '')
-            .replace(/[^\S\r\n]+/g, ' ')
-            .replace(/\n\s+/g, '\n')
-            .replace(/\s+\n/g, '\n')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
-    }
-
-    // 알림 성격에 맞춘 동적 액션 버튼 라벨 지정
-    let actionTitle = '자세히 보기';
-    const notifTitle = data.title || '';
-    if (notifTitle.includes('속보')) {
-        actionTitle = '속보 확인하기';
-    } else if (notifTitle.includes('날씨')) {
-        actionTitle = '날씨 확인하기';
-    } else if (notifTitle.includes('증시') || notifTitle.includes('환율')) {
-        actionTitle = '증시 확인하기';
-    } else if (notifTitle.includes('혈압') || notifTitle.includes('복약') || notifTitle.includes('약')) {
-        actionTitle = '혈압앱 열기';
-    } else if (notifTitle.includes('서버') || notifTitle.includes('경보')) {
-        actionTitle = '관리센터 열기';
-    }
-
-    const defaultUrl = data.title?.includes('속보') ? 'https://news.j-jg.cc/breaking' : 'https://j-jg.cc/';
-
-    // 🌟 안드로이드(갤럭시) 텔레그램 스타일 단색 알림 적용
-    // badge: 상단 상태표시줄 및 알림 헤더용 투명 배경 순수 흰색 실루엣 (안드로이드 공식 Monochrome 사양)
-    // icon: 알림 본문 우측용 다크 슬레이트 단색 원형 심볼
-    let notifBadge = 'https://j-jg.cc/badge-monochrome.png';
-    let notifIcon = 'https://j-jg.cc/icon-monochrome.png';
-    if (data.badge && !data.badge.includes('icon-192') && !data.badge.includes('icon-512')) {
-        notifBadge = data.badge;
-    }
-    if (data.icon && !data.icon.includes('icon-192') && !data.icon.includes('icon-512')) {
-        notifIcon = data.icon;
-    }
-
-    const safeTag = (data && data.tag) ? String(data.tag) : ('jg-push-' + Date.now());
-
-    // 🌟 안드로이드 Heads-up (상단 배너 팝업)을 유도하고 알림이 덮어써지지 않도록 옵션 구성
     const options = {
-        body: data.body || '',
-        icon: notifIcon,
-        badge: notifBadge,
+        body,
+        icon: iconUrl,
         tag: safeTag,
         renotify: true,
-        requireInteraction: true,
-        vibrate: [300, 150, 300, 150, 300],
-        timestamp: Date.now(),
-        data: data.data || { url: defaultUrl },
-        actions: [
-            { action: 'open', title: actionTitle }
-        ]
+        data: {
+            url: targetUrl,
+            notifId
+        }
     };
-
-    const finalTitle = data.title || '🔔 알림';
+    if (payload.image && typeof payload.image === 'string') {
+        options.image = payload.image;
+    }
 
     event.waitUntil(
-        (async () => {
-            try {
-                const oldList = await self.registration.getNotifications();
-                if (Array.isArray(oldList) && oldList.length >= 6) {
-                    oldList.slice(0, oldList.length - 5).forEach((n) => {
-                        try { n.close(); } catch (e) {}
-                    });
-                }
-            } catch (e) {}
-            return self.registration.showNotification(finalTitle, options);
-        })()
-            .then(async () => {
-                let activeCount = -1;
-                try {
-                    const list = await self.registration.getNotifications();
-                    activeCount = Array.isArray(list) ? list.length : -1;
-                } catch (e) {}
-                return fetch('/api/notification/sw-ack', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: 'shown', title: finalTitle, tag: safeTag, activeCount })
-                }).catch(() => {});
-            })
+        self.registration.showNotification(title, options)
+            .then(() => fetch('/api/notification/sw-ack', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'shown', title, tag: safeTag })
+            }).catch(() => {}))
             .catch((err) => {
                 fetch('/api/notification/sw-ack', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: 'error', title: finalTitle, tag: safeTag, error: String((err && err.message) || err) })
+                    body: JSON.stringify({ status: 'error', title, tag: safeTag, error: String((err && err.message) || err) })
                 }).catch(() => {});
-                return self.registration.showNotification(finalTitle, {
-                    body: data.body || '',
+                return self.registration.showNotification(title, {
+                    body,
                     icon: '/icon-v2-192.png',
-                    tag: safeTag
+                    tag: safeTag,
+                    data: { url: targetUrl, notifId }
                 }).catch(() => {});
             })
     );
 });
 
-// 🔔 알림 클릭 시 읽음 처리 전송 및 해당 페이지로 이동
+// 🔔 알림 클릭 시 읽음 처리 및 대상 화면 열기
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
-    const notifData = (event.notification.data) || {};
-    let rawUrl = notifData.url || 'https://news.j-jg.cc/breaking';
+    const notifData = event.notification.data || {};
+    const rawUrl = notifData.url || 'https://j-jg.cc/';
     const notifId = notifData.notifId;
 
-    // 상대 경로가 전달된 경우 적절한 도메인으로 보정
     let targetUrl = rawUrl;
     if (rawUrl.startsWith('/')) {
         if (rawUrl.includes('dashboard') || rawUrl.includes('hospital')) {
             targetUrl = `https://blood.j-jg.cc${rawUrl}`;
+        } else if (rawUrl.includes('album') || rawUrl.startsWith('/photos')) {
+            targetUrl = `https://album.j-jg.cc${rawUrl}`;
         } else {
             targetUrl = `https://j-jg.cc${rawUrl}`;
         }
     }
 
-    // 🌟 알림 클릭 시 백그라운드에서 즉시 읽음 처리 API 호출
-    const markReadPromise = notifId ? fetch(`https://j-jg.cc/api/notification/history/${notifId}/read`, {
-        method: 'POST',
-        credentials: 'include',
-        keepalive: true
-    }).catch(() => {}) : Promise.resolve();
+    const markReadPromise = notifId
+        ? fetch(`https://j-jg.cc/api/notification/history/${notifId}/read`, {
+            method: 'POST',
+            credentials: 'include',
+            keepalive: true
+        }).catch(() => {})
+        : Promise.resolve();
 
     const openWindowPromise = clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-        const cleanTarget = targetUrl.split('?')[0];
-        
-        // 1순위: 대상 URL과 동일한 창이 이미 열려있는 경우 해당 창 포커스 및 최신화
-        for (const client of clientList) {
-            if (client.url && client.url.includes(cleanTarget) && 'focus' in client) {
-                if ('navigate' in client) {
-                    client.navigate(targetUrl);
-                }
-                return client.focus();
-            }
-        }
-
-        // 2순위: 대상 도메인과 일치하는 창이 열려있는 경우 (예: blood.j-jg.cc 타겟이면 blood 창)
         try {
             const targetOrigin = new URL(targetUrl).origin;
             for (const client of clientList) {
                 if (client.url && client.url.startsWith(targetOrigin) && 'focus' in client) {
-                    if ('navigate' in client) {
-                        client.navigate(targetUrl);
-                    }
+                    if ('navigate' in client) client.navigate(targetUrl);
                     return client.focus();
                 }
             }
         } catch (e) {}
 
-        // 3순위: 열려있는 적합한 창이 없는 경우 새 창 열기
         if (clients.openWindow) {
             return clients.openWindow(targetUrl);
         }
     });
 
     event.waitUntil(Promise.all([markReadPromise, openWindowPromise]));
+});
+
+// 브라우저/OS가 백그라운드에서 푸시 토큰을 갱신했을 때 열려 있는 탭에 동기화 요청
+self.addEventListener('pushsubscriptionchange', (event) => {
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+            list.forEach((client) => {
+                try { client.postMessage({ type: 'JG_PUSH_RESUBSCRIBE_NEEDED' }); } catch (e) {}
+            });
+        })
+    );
 });

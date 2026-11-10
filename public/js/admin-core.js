@@ -50,6 +50,7 @@ const SUBTABS_CONFIG = {
     ],
     'tab-security': [
         { id: 'subpane-security-family', label: '우리 가족 및 권한 관리', icon: '👨‍👩‍👧‍👦' },
+        { id: 'subpane-security-push', label: '웹 푸시 기기 & 발송 현황', icon: '🔔' },
         { id: 'subpane-security-logs', label: '최근 로그인 시도 이력', icon: '🔒' },
         { id: 'subpane-security-stack', label: 'SSO & 기술 스택 명세', icon: '🛡️' },
         { id: 'action-password-modal', label: '마스터 비밀번호 변경 (팝업)', icon: '🔑', isModal: true }
@@ -252,6 +253,9 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
     // 대시보드 위젯 배치 탭 진입 시 실시간 데이터 로드
     if (subId === 'subpane-modules-widgets' && typeof window.loadDashboardWidgetsList === 'function') {
         window.loadDashboardWidgetsList();
+    }
+    if (subId === 'subpane-security-push' && typeof window.loadAdminPushSubscriptions === 'function') {
+        window.loadAdminPushSubscriptions();
     }
 }
 

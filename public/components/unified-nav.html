@@ -623,12 +623,13 @@
                     </label>
                 </div>
 
-                <!-- 💾 [알림 맞춤 설정 전용] 설정 저장 및 테스트 발송 액션 버튼 -->
-                <div class="notif-settings-actions" style="margin-top: 1.25rem; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem;">
-                    <div style="font-size: 0.82rem; color: #64748b; font-weight: 600;">⚙️ 맞춤 설정 적용 & 푸시 발송 확인</div>
+                <!-- 💾 [알림 맞춤 설정 전용] 설정 저장, 테스트 발송 및 기기 연결 초기화 -->
+                <div class="notif-settings-actions" style="margin-top: 1.25rem; padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; display: flex; flex-direction: column; gap: 0.6rem; box-sizing: border-box;">
+                    <div style="font-size: 0.82rem; color: #64748b; font-weight: 600;">⚙️ 맞춤 설정 저장 & 내 기기 연결 점검</div>
+                    <button type="button" onclick="saveNotificationSettings()" class="btn-notif-save" style="width: 100%; min-height: 42px;">💾 알림 설정 저장</button>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <button type="button" onclick="saveNotificationSettings()" class="btn-notif-save" style="flex: 2; min-width: 160px;">💾 설정 저장 및 권한 등록</button>
-                        <button type="button" onclick="sendTestNotification()" class="btn-notif-test" style="flex: 1; min-width: 120px;">🔔 테스트 발송</button>
+                        <button type="button" onclick="sendTestNotification()" class="btn-notif-test" style="flex: 1; min-width: 130px; min-height: 40px;">🔔 테스트 발송</button>
+                        <button type="button" onclick="window.resetMyPushDevices && window.resetMyPushDevices()" class="btn-notif-test" style="flex: 1; min-width: 130px; min-height: 40px;">🔄 기기 연결 초기화</button>
                     </div>
                 </div>
             </div>

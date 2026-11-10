@@ -686,26 +686,37 @@
 }
 .notif-perm-banner {
     font-size: 0.82rem !important;
-    padding: 0.55rem 0.8rem !important;
+    padding: 0.6rem 0.85rem !important;
     border-radius: 8px !important;
     margin-bottom: 0.85rem !important;
     background: #eff6ff !important;
     border: 1px solid #bfdbfe !important;
     display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
     justify-content: space-between !important;
     align-items: center !important;
     color: #1e40af !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+}
+.notif-perm-banner > span {
+    flex: 1 1 190px !important;
+    min-width: 0 !important;
+    word-break: keep-all !important;
+    line-height: 1.45 !important;
 }
 .notif-perm-banner button {
     background: #2563eb !important;
     color: white !important;
     border: none !important;
-    border-radius: 5px !important;
-    padding: 0.3rem 0.6rem !important;
+    border-radius: 6px !important;
+    padding: 0.4rem 0.75rem !important;
     font-size: 0.78rem !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     cursor: pointer !important;
     width: auto !important;
+    flex-shrink: 0 !important;
 }
 .notif-card-group {
     background: #ffffff !important;
