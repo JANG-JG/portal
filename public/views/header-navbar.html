@@ -42,8 +42,10 @@
             <div class="cmd-nav-right">
                 <div class="weather-nav-container">
                     <a href="/go/news?path=/weather" class="cmd-nav-weather font-mono" id="welcomeWeatherBadge" title="실시간 날씨 & 레이더 바로가기">
-                        <span class="weather-pin-icon" style="font-size:0.8rem; line-height:1;">📍</span>
-                        <span id="welcomeWeatherCity" style="font-weight:700; color:#38bdf8;">서울</span>
+                        <span onclick="openWeatherCityModal(event); return false;" title="내 현재 위치 날씨 감지 및 지역 변경" style="display:inline-flex; align-items:center; gap:2px; cursor:pointer;">
+                            <span class="weather-pin-icon" id="welcomeWeatherPin" style="font-size:0.8rem; line-height:1;">📍</span>
+                            <span id="welcomeWeatherCity" style="font-weight:700; color:#38bdf8;">서울</span>
+                        </span>
                         <span id="welcomeWeatherIcon">🌤️</span>
                         <span id="welcomeWeatherTemp" class="weather-compact-temp font-mono">-</span>
                         <span id="welcomeWeatherDesc" style="display:none;">-</span>

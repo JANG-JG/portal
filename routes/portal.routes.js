@@ -6,6 +6,7 @@ const { JWT_SECRET } = require('../config/constants');
 const { db, newsDb, albumDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { getLiveWeatherData, CITY_LIST, normalizeCityCode, getDefaultWeatherCity } = require('../services/weather.service');
+const { findNearestCityByCoords } = require('../services/weather.coords');
 const { getPortalSummary, invalidateSummaryCache } = require('../services/portalSummary.service');
 const { getTickerData, invalidateTickerCache } = require('../services/portalTicker.service');
 const { getModuleById, isServiceAllowed } = require('../services/moduleRegistry.service');
@@ -248,14 +249,24 @@ router.get('/api/portal/user/weather-city', authenticateToken, async (req, res) 
     }
 });
 
-// 6. 사용자 날씨 지역 변경 저장 API (포털, 하단 뉴스바, 날씨 브리핑 100% 자동 연동)
+// 6. 사용자 날씨 지역 변경 저장 API (수동 도시 선택 및 현재 위치 위경도 메모리 매칭 지원 - 좌표 DB 미저장)
 router.post('/api/portal/user/weather-city', authenticateToken, async (req, res) => {
     try {
         const username = req.user ? req.user.username : 'admin';
-        const rawCity = (req.body && req.body.city) ? req.body.city : 'Seoul';
-        const cityCode = normalizeCityCode(rawCity);
+        let cityCode = 'Seoul';
+        let isGps = false;
 
-        // 1) health.db users 테이블에 저장
+        if (req.body && req.body.lat !== undefined && req.body.lon !== undefined) {
+            // 위경도는 서버 DB나 로그에 저장하지 않고 메모리에서만 가장 가까운 시·군·구 코드로 즉시 변환 후 폐기
+            const nearest = findNearestCityByCoords(req.body.lat, req.body.lon);
+            cityCode = nearest.cityCode;
+            isGps = true;
+        } else {
+            const rawCity = (req.body && req.body.city) ? req.body.city : 'Seoul';
+            cityCode = normalizeCityCode(rawCity);
+        }
+
+        // 1) health.db users 테이블에 일반 지역 코드만 저장
         db.run("UPDATE users SET weather_city = ? WHERE username = ?", [cityCode, username], async function(err) {
             if (err) {
                 console.error('날씨 지역 변경 실패:', err);
@@ -283,6 +294,7 @@ router.post('/api/portal/user/weather-city', authenticateToken, async (req, res)
                 success: true,
                 message: '날씨 지역이 성공적으로 변경되었습니다.',
                 current_city: cityCode,
+                is_gps: isGps,
                 weather: updatedWeather
             });
         });

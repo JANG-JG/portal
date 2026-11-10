@@ -338,6 +338,7 @@ window.clearWeatherCitySearch = clearWeatherCitySearch;
 
 function selectWeatherCity(cityCode, buttonEl) {
     currentSelectedWeatherCity = cityCode;
+    try { localStorage.setItem('jg_weather_gps_mode', 'manual'); } catch (e) {}
     renderQuickCityChips();
 
     const grid = document.getElementById('weatherCityGrid');
@@ -360,6 +361,9 @@ function selectWeatherCity(cityCode, buttonEl) {
             currentSelectedWeatherCity = cityCode;
             if (data.weather && typeof window.updateWeatherBadge === 'function') {
                 window.updateWeatherBadge(data.weather);
+            }
+            if (typeof window.loadSummary === 'function') {
+                window.loadSummary();
             }
 
             // 하단 뉴스바 날씨도 즉시 동기화
@@ -384,4 +388,77 @@ function selectWeatherCity(cityCode, buttonEl) {
 }
 window.selectWeatherCity = selectWeatherCity;
 
+// 📍 브라우저 Geolocation API 기반 현재 위치 날씨 자동 매칭 (위경도 서버 DB 미저장)
+function detectPortalLocationWeather(isExplicitClick = false) {
+    if (!navigator.geolocation) {
+        if (isExplicitClick && typeof showToast === 'function') {
+            showToast('이 브라우저에서는 위치 확인 기능을 지원하지 않습니다.');
+        }
+        return;
+    }
 
+    const btnText = document.getElementById('btnPortalGpsWeatherText');
+    if (isExplicitClick && btnText) {
+        btnText.textContent = '현재 위치 확인 중...';
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            try {
+                localStorage.setItem('jg_weather_gps_mode', 'auto');
+                sessionStorage.setItem('jg_gps_weather_ts', String(Date.now()));
+            } catch (e) {}
+
+            fetch('/api/portal/user/weather-city', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat, lon })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (btnText) btnText.textContent = '내 현재 위치로 날씨 자동 설정';
+                if (data && data.success) {
+                    const prevCity = currentSelectedWeatherCity;
+                    currentSelectedWeatherCity = data.current_city || currentSelectedWeatherCity;
+                    if (data.weather && typeof window.updateWeatherBadge === 'function') {
+                        window.updateWeatherBadge(data.weather);
+                    }
+                    if (prevCity !== currentSelectedWeatherCity && typeof window.loadSummary === 'function') {
+                        window.loadSummary();
+                    }
+                    if (isExplicitClick) {
+                        const cityName = (data.weather && data.weather.city) ? data.weather.city : currentSelectedWeatherCity;
+                        if (typeof showToast === 'function') {
+                            showToast(`📍 현재 위치('${cityName}') 기준 날씨로 자동 설정되었습니다.`);
+                        }
+                        setTimeout(() => closeWeatherCityModal(), 250);
+                    }
+                }
+            })
+            .catch(() => {
+                if (btnText) btnText.textContent = '내 현재 위치로 날씨 자동 설정';
+            });
+        },
+        () => {
+            if (btnText) btnText.textContent = '내 현재 위치로 날씨 자동 설정';
+            if (isExplicitClick && typeof showToast === 'function') {
+                showToast('위치 권한이 허용되지 않아 기본 설정 지역의 날씨를 표시합니다.');
+            }
+        },
+        { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
+    );
+}
+window.detectPortalLocationWeather = detectPortalLocationWeather;
+
+// 포털 접속 시 자동 위치 모드인 경우 15분 주기로 백그라운드 현위치 날씨 동기화 (권한 거부 시 무소음 폴백)
+setTimeout(() => {
+    try {
+        const mode = localStorage.getItem('jg_weather_gps_mode') || 'auto';
+        const lastTs = parseInt(sessionStorage.getItem('jg_gps_weather_ts') || '0', 10);
+        if (mode === 'auto' && (Date.now() - lastTs > 15 * 60 * 1000)) {
+            detectPortalLocationWeather(false);
+        }
+    } catch (e) {}
+}, 1200);

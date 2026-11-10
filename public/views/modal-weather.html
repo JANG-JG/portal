@@ -9,6 +9,17 @@
             </div>
             <p class="weather-modal-desc">포털 상단과 하단 뉴스바에 연동할 지역을 검색하거나 선택하세요.</p>
 
+            <!-- 📍 내 현재 위치로 자동 설정 버튼 및 개인정보 안심 안내 -->
+            <div style="margin-bottom: 10px;">
+                <button type="button" id="btnPortalGpsWeather" onclick="detectPortalLocationWeather(true)" style="width: 100%; min-height: 40px; padding: 8px 12px; border-radius: 10px; background: linear-gradient(135deg, #0284c7, #2563eb); color: #ffffff; font-weight: 700; font-size: 0.85rem; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);">
+                    <span>📍</span>
+                    <span id="btnPortalGpsWeatherText">내 현재 위치로 날씨 자동 설정</span>
+                </button>
+                <div style="font-size: 0.72rem; color: #64748b; text-align: center; margin-top: 5px; line-height: 1.35;">
+                    🔒 현재 위치를 기반으로 날씨를 조회합니다. 위치 정보는 서버에 저장되지 않습니다.
+                </div>
+            </div>
+
             <!-- 🔍 실시간 지역 검색 입력창 -->
             <div class="weather-search-wrap">
                 <span class="weather-search-icon">🔍</span>

@@ -420,7 +420,42 @@ const CITY_COORDS = {
     'Hapcheon': { lat: 35.5666, lon: 128.1658 }
 };
 
+/**
+ * 📍 위경도(lat, lon) 기반 가장 가까운 대한민국 시·군·구 지역 코드 탐색 (서버 DB 미저장 메모리 연산)
+ */
+function findNearestCityByCoords(lat, lon) {
+    const numLat = parseFloat(lat);
+    const numLon = parseFloat(lon);
+    if (isNaN(numLat) || isNaN(numLon)) return { cityCode: 'Seoul', cityName: '서울', distanceKm: 0 };
+
+    const toRad = (deg) => (deg * Math.PI) / 180;
+    let bestCode = 'Seoul';
+    let minDistanceKm = Infinity;
+
+    for (const [code, coord] of Object.entries(CITY_COORDS)) {
+        // 서울은 25개 자치구(Seoul-*)가 모두 세분화되어 있으므로 대표점('Seoul')보다 정밀 자치구 우선 매칭
+        if (code === 'Seoul') continue;
+        const dLat = toRad(coord.lat - numLat);
+        const dLon = toRad(coord.lon - numLon);
+        const a = Math.sin(dLat / 2) ** 2 +
+                  Math.cos(toRad(numLat)) * Math.cos(toRad(coord.lat)) * Math.sin(dLon / 2) ** 2;
+        const distKm = 6371 * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        if (distKm < minDistanceKm) {
+            minDistanceKm = distKm;
+            bestCode = code;
+        }
+    }
+
+    return {
+        cityCode: bestCode,
+        cityName: CITY_KO_MAP[bestCode] || bestCode,
+        distanceKm: Math.round(minDistanceKm * 10) / 10
+    };
+}
+
 module.exports = {
     CITY_KO_MAP,
-    CITY_COORDS
+    CITY_COORDS,
+    findNearestCityByCoords
 };
+
