@@ -176,9 +176,23 @@
             const usd = market.usd_krw || { price: '1,350.0', direction: 'up' };
 
             const rawCity = weather.city || '계룡';
-            const cityName = (rawCity === 'Gyeryong' || rawCity.includes('계룡'))
-                ? '계룡'
-                : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
+            let cityName = rawCity;
+            if (cityName === 'Gyeryong' || cityName.includes('계룡')) {
+                cityName = '계룡';
+            } else {
+                if (/^도\s+/.test(cityName)) cityName = cityName.replace(/^도\s+양주/, '경기 양주').replace(/^도\s+/, '');
+                cityName = cityName.replace(/^경기도\s*/, '경기 ')
+                    .replace(/^서울특별시\s*/, '서울 ')
+                    .replace(/^충청남도\s*/, '충남 ')
+                    .replace(/^충청북도\s*/, '충북 ')
+                    .replace(/^강원(?:특별자치)?도\s*/, '강원 ')
+                    .replace(/^전라남도\s*/, '전남 ')
+                    .replace(/^전(?:라)?북(?:특별자치)?도\s*/, '전북 ')
+                    .replace(/^경상남도\s*/, '경남 ')
+                    .replace(/^경상북도\s*/, '경북 ')
+                    .replace(/^제주(?:특별자치)?도\s*/, '제주 ')
+                    .trim();
+            }
             const usdPrice = usd.price ? (String(usd.price).includes('원') ? String(usd.price) : `${usd.price}원`) : '-';
 
             const slides = [];

@@ -43,6 +43,20 @@ function updateWeatherBadge(w) {
     let displayName = rawCity;
     if (displayName === 'Gyeryong' || displayName.includes('계룡')) displayName = '계룡';
     else if (displayName === 'Seoul') displayName = '서울';
+    else {
+        if (/^도\s+/.test(displayName)) displayName = displayName.replace(/^도\s+양주/, '경기 양주').replace(/^도\s+/, '');
+        displayName = displayName.replace(/^경기도\s*/, '경기 ')
+            .replace(/^서울특별시\s*/, '서울 ')
+            .replace(/^충청남도\s*/, '충남 ')
+            .replace(/^충청북도\s*/, '충북 ')
+            .replace(/^강원(?:특별자치)?도\s*/, '강원 ')
+            .replace(/^전라남도\s*/, '전남 ')
+            .replace(/^전(?:라)?북(?:특별자치)?도\s*/, '전북 ')
+            .replace(/^경상남도\s*/, '경남 ')
+            .replace(/^경상북도\s*/, '경북 ')
+            .replace(/^제주(?:특별자치)?도\s*/, '제주 ')
+            .trim();
+    }
 
     if (cityEl) {
         cityEl.textContent = displayName;

@@ -87,6 +87,25 @@ const KO_CITY_MAP = Object.entries(CITY_KO_MAP).reduce((acc, [code, name]) => {
     return acc;
 }, {});
 
+// 시·도 및 시·군·구 지역명 정규화 (예: "경기도 양주시" -> "경기 양주시", "도 양주시" 보정)
+function formatCityDisplayName(rawCity) {
+    if (!rawCity || typeof rawCity !== 'string') return '서울';
+    let s = rawCity.split('(')[0].trim();
+    if (s === 'Gyeryong' || s.includes('계룡')) return '계룡';
+    if (/^도\s+/.test(s)) s = s.replace(/^도\s+양주/, '경기 양주').replace(/^도\s+/, '');
+    return s.replace(/^경기도\s*/, '경기 ')
+        .replace(/^서울특별시\s*/, '서울 ')
+        .replace(/^충청남도\s*/, '충남 ')
+        .replace(/^충청북도\s*/, '충북 ')
+        .replace(/^강원(?:특별자치)?도\s*/, '강원 ')
+        .replace(/^전라남도\s*/, '전남 ')
+        .replace(/^전(?:라)?북(?:특별자치)?도\s*/, '전북 ')
+        .replace(/^경상남도\s*/, '경남 ')
+        .replace(/^경상북도\s*/, '경북 ')
+        .replace(/^제주(?:특별자치)?도\s*/, '제주 ')
+        .trim();
+}
+
 // 도시별 메모리 날씨 캐시 (TTL: 10분)
 const weatherCacheMap = new Map();
 const inFlightWeatherFetches = new Map();
@@ -200,7 +219,7 @@ function getSavedKmaWeather(cityKey) {
                     const maxTemp = curr.max_temp ? `${String(curr.max_temp).replace('°C', '').trim()}°C` : (parsedText.max_temp || '');
 
                     const rawCity = details.city_display || CITY_KO_MAP[dbCityKey] || details.city || '계룡';
-                    const displayName = (rawCity === 'Gyeryong' || rawCity.includes('계룡')) ? '계룡' : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
+                    const displayName = formatCityDisplayName(rawCity);
                     const guideText = (lifestyle && lifestyle.summary_sentence) || details.summary_text || parsedText.guide || row.weather_info || '상쾌하고 쾌적한 하루 보내세요.';
 
                     resolve({
@@ -296,7 +315,7 @@ async function refreshWeatherInBackground(rawCity, korCityName) {
                     const conditionKo = WMO_CODE_KO[weatherCode] || '맑음';
                     const icon = getWeatherIcon(conditionKo, isDay);
                     const iconSlug = getWeatherIconSlug(conditionKo, isDay);
-                    const displayName = korCityName || CITY_KO_MAP[cityKey] || cityKey;
+                    const displayName = formatCityDisplayName(korCityName || CITY_KO_MAP[cityKey] || cityKey);
 
                     const weatherData = {
                         city: displayName,
