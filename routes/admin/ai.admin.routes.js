@@ -84,13 +84,25 @@ router.post('/', async (req, res) => {
     }
 });
 
-// 3. AI 노드 상태 및 진단 (관리자)
+// 3. AI 노드 상태, 적재 모델 및 VRAM/메모리 점유 진단 (관리자)
 router.get('/health', async (req, res) => {
     try {
-        const health = await checkAiHealth();
+        const { getOllamaRuntimeDetails } = require('../../services/aiAuditLog.service');
+        const health = await getOllamaRuntimeDetails();
         res.json({ success: true, health });
     } catch (err) {
         res.status(500).json({ success: false, message: 'AI 헬스체크 실패', error: err.message });
+    }
+});
+
+// 3-1. 포털 AI 비서 대화·라우팅 비식별 감사 로그 조회 (관리자)
+router.get('/audit-logs', async (req, res) => {
+    try {
+        const { getAiAuditSummary } = require('../../services/aiAuditLog.service');
+        const summary = await getAiAuditSummary(req.query.limit || 60);
+        res.json({ success: true, ...summary });
+    } catch (err) {
+        res.status(500).json({ success: false, message: 'AI 감사 로그 조회 실패: ' + err.message });
     }
 });
 

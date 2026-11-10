@@ -200,4 +200,139 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 서브 4: AI 요약 추론 · 속보 군집화 · 텔레그램 브리핑 점검 -->
+            <div id="subpane-news-ai" class="admin-sub-pane hidden-pane">
+                <!-- 1. AI 요약 엔진 통계 & 텔레그램 브리핑 점검 -->
+                <div class="admin-card">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3>🤖 AI 3줄 요약 추론 현황 & 텔레그램 브리핑 점검</h3>
+                            <p style="font-size:0.8rem; color:#64748b; margin:0.2rem 0 0;">로컬 AI(Ollama) 우선 요약 및 외부 Gemini 폴백 통계와 뉴스 브리핑 채널 연결 상태를 확인합니다.</p>
+                        </div>
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="testNewsTelegramBriefing()">📨 뉴스 텔레그램 연결 테스트</button>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadNewsAiGovernance()">🔄 새로고침</button>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap:0.6rem; margin-bottom:1rem;">
+                        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                            <div style="font-size:0.73rem; color:#166534; font-weight:700;">로컬 Ollama 요약</div>
+                            <div id="newsStatOllamaCount" style="font-size:1.15rem; font-weight:800; color:#15803d; margin-top:0.2rem;">-</div>
+                            <div id="newsStatOllamaAvg" style="font-size:0.7rem; color:#16a34a; margin-top:0.1rem;">평균 -</div>
+                        </div>
+                        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                            <div style="font-size:0.73rem; color:#1e40af; font-weight:700;">Gemini 백업 요약</div>
+                            <div id="newsStatGeminiCount" style="font-size:1.15rem; font-weight:800; color:#1d4ed8; margin-top:0.2rem;">-</div>
+                            <div id="newsStatGeminiAvg" style="font-size:0.7rem; color:#2563eb; margin-top:0.1rem;">평균 -</div>
+                        </div>
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                            <div style="font-size:0.73rem; color:#475569; font-weight:700;">오프라인 알고리즘</div>
+                            <div id="newsStatTextrankCount" style="font-size:1.15rem; font-weight:800; color:#334155; margin-top:0.2rem;">-</div>
+                            <div style="font-size:0.7rem; color:#64748b; margin-top:0.1rem;">TextRank 3줄</div>
+                        </div>
+                        <div style="background:#fefce8; border:1px solid #fde68a; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                            <div style="font-size:0.73rem; color:#854d0e; font-weight:700;">오늘 Gemini 사용량</div>
+                            <div id="newsStatGeminiQuota" style="font-size:1.05rem; font-weight:800; color:#a16207; margin-top:0.2rem;">-</div>
+                            <div id="newsStatGeminiQuotaDate" style="font-size:0.7rem; color:#ca8a04; margin-top:0.1rem;">일일 한도 2,000회</div>
+                        </div>
+                    </div>
+
+                    <!-- 최근 텔레그램 브리핑 발송 내역 -->
+                    <div style="border-top:1px solid #e2e8f0; padding-top:0.85rem;">
+                        <strong style="font-size:0.86rem; color:#1e293b;">📬 최근 텔레그램 브리핑·점검 발송 이력</strong>
+                        <div class="admin-table-container admin-table-scroll" style="margin-top:0.5rem;">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>발송 시각</th>
+                                        <th>유형 / 상태</th>
+                                        <th>전송 여부</th>
+                                        <th>상세 내용</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="newsTelegramHistoryBody">
+                                    <tr><td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">발송 이력을 불러오는 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 속보 클러스터링 가중치 & 집중 보도 이슈 현황 -->
+                <div class="admin-card">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <h3>🚨 실시간 속보 알림 & 주요 이슈 묶기(클러스터링) 현황</h3>
+                        <span id="newsActiveBreakingBadge" class="badge badge-success">활성 속보 조회 중</span>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.85rem; padding:0.6rem 0.75rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; font-size:0.78rem; color:#334155;">
+                        <strong>⚖️ 대표 기사 선정 가중치:</strong>
+                        <span>🖼️ 대표 이미지 보유 <b>+50점</b></span> ·
+                        <span>🤖 AI 요약 완료 <b>+40점</b></span> ·
+                        <span>📡 주요 통신·방송사 <b>+20점</b></span> ·
+                        <span>📏 적정 제목 길이(25~55자) <b>+10점</b></span>
+                    </div>
+
+                    <div class="admin-grid-2">
+                        <div style="min-width:0;">
+                            <strong style="font-size:0.85rem; color:#0f172a;">🔥 오늘 집중 보도된 주요 이슈 묶음 (Top 8)</strong>
+                            <div class="admin-table-container admin-table-scroll" style="margin-top:0.45rem;">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>분야</th>
+                                            <th>대표 선정 기사</th>
+                                            <th>묶음</th>
+                                            <th>점수</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="newsTopClustersBody">
+                                        <tr><td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">클러스터링 분석 중...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div style="min-width:0;">
+                            <strong style="font-size:0.85rem; color:#0f172a;">🔔 최근 속보 웹 푸시 발송 이력 (48시간 중복 방지)</strong>
+                            <div class="admin-table-container admin-table-scroll" style="margin-top:0.45rem;">
+                                <table class="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>발송 시각</th>
+                                            <th>속보 제목</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="newsBreakingPushBody">
+                                        <tr><td colspan="2" style="text-align:center; padding:1rem; color:#64748b;">속보 발송 이력 조회 중...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 최근 AI 3줄 요약 추론 상세 로그 -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h3>📋 최근 AI 3줄 요약 추론 상세 이력 (최근 40건)</h3>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>일시</th>
+                                    <th>요약 엔진</th>
+                                    <th>모델명</th>
+                                    <th>대상 기사 제목</th>
+                                    <th>소요 시간</th>
+                                </tr>
+                            </thead>
+                            <tbody id="newsAiSummaryLogsBody">
+                                <tr><td colspan="5" style="text-align:center; padding:1.25rem; color:#64748b;">AI 요약 이력을 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>

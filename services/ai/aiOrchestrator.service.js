@@ -11,6 +11,7 @@ const { isAdmin } = require('./aiDataFetchers.service');
 const { buildSystemPrompt, formatToolDataToContext } = require('./aiPromptBuilder.service');
 const { streamChatToClient } = require('./aiStreamClient.service');
 const { getChatModel, selectChatModel, ensureModelSlot } = require('../aiModelRouter.service');
+const { recordAiAuditLog } = require('../aiAuditLog.service');
 
 /** 🔍 사용자 질문에서 필요한 도구 목록 지능형 선별 */
 function resolveNeededTools(prompt, user) {
@@ -116,9 +117,20 @@ function checkUnauthorizedAdminQuery(prompt, user) {
  * 🚀 전체 대화 요청 오케스트레이션 메인 함수
  */
 async function orchestrateChatRequest({ req, res, prompt, history = [], user, preference = 'auto' }) {
+    const reqStartMs = Date.now();
     // 1. 비인가 관리자 데이터 질의 사전 차단
     const unauthorizedMsg = checkUnauthorizedAdminQuery(prompt, user);
     if (unauthorizedMsg) {
+        recordAiAuditLog({
+            user,
+            requestType: 'policy_blocked',
+            routedMode: 'policy',
+            model: 'policy-guard',
+            toolsUsed: [],
+            prompt,
+            durationMs: Date.now() - reqStartMs,
+            status: 'BLOCKED'
+        });
         if (!res.headersSent) {
             res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
             res.setHeader('Cache-Control', 'no-cache');
@@ -239,6 +251,28 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
             keepAlive: picked.keepAlive || '24h',
             isReasoningMode: isReasoning
         });
+        recordAiAuditLog({
+            user,
+            requestType: 'stream_chat',
+            routedMode: picked.mode || 'balanced',
+            model: activeModel,
+            toolsUsed: neededTools,
+            prompt,
+            durationMs: Date.now() - reqStartMs,
+            status: 'SUCCESS'
+        });
+    } catch (streamErr) {
+        recordAiAuditLog({
+            user,
+            requestType: 'stream_chat',
+            routedMode: picked.mode || 'balanced',
+            model: activeModel,
+            toolsUsed: neededTools,
+            prompt,
+            durationMs: Date.now() - reqStartMs,
+            status: 'ERROR'
+        });
+        throw streamErr;
     } finally {
         clearInterval(heartbeatTimer);
     }

@@ -224,13 +224,42 @@
             const latency = Date.now() - startTime;
             const data = await res.json();
 
-            if (res.ok && data.success && data.health && data.health.healthy) {
+            const vramEl = document.getElementById('adminAiVramSummary');
+            const loadedSubEl = document.getElementById('adminAiLoadedModelSub');
+            const loadedBox = document.getElementById('adminAiLoadedModelsBox');
+            const installedBox = document.getElementById('adminAiInstalledModelsBox');
+
+            if (res.ok && data.success && data.health && (data.health.healthy || data.health.online)) {
+                const h = data.health;
                 if (statusBadge) {
                     statusBadge.textContent = '🟢 정상 가동 중 (온라인)';
                     statusBadge.style.color = '#10b981';
                 }
                 if (latencyEl) {
-                    latencyEl.textContent = `지연 시간: ${latency}ms (응답 양호)`;
+                    latencyEl.textContent = `지연 시간: ${h.latencyMs || latency}ms (응답 양호)`;
+                }
+                const loaded = Array.isArray(h.loadedModels) ? h.loadedModels : [];
+                const installed = Array.isArray(h.installedModels) ? h.installedModels : [];
+                if (vramEl) {
+                    vramEl.textContent = loaded.length > 0
+                        ? `적재 ${loaded.length}개 · 메모리 ${(h.totalLoadedMb || 0).toLocaleString()}MB`
+                        : '대기 상태 (0MB)';
+                }
+                if (loadedSubEl) {
+                    loadedSubEl.textContent = loaded.length > 0
+                        ? `VRAM 점유: ${(h.totalVramMb || 0).toLocaleString()}MB · 상주 모델: ${loaded.map(m => m.name).join(', ')}`
+                        : '질문 유입 시 즉시 메모리에 자동 적재됩니다.';
+                }
+                const esc = (s) => (typeof window.escapeHtml === 'function' ? window.escapeHtml(String(s || '')) : String(s || '').replace(/[&<>"']/g, ''));
+                if (loadedBox) {
+                    loadedBox.innerHTML = loaded.length > 0
+                        ? loaded.map(m => `<div style="display:flex; justify-content:space-between; gap:0.5rem; padding:0.35rem 0; border-bottom:1px dashed #e2e8f0; flex-wrap:wrap;"><strong>${esc(m.name)}</strong><span style="color:#2563eb; font-weight:600;">메모리 ${m.sizeMb.toLocaleString()}MB (VRAM ${m.vramMb.toLocaleString()}MB${m.contextLength ? ` · 컨텍스트 ${m.contextLength.toLocaleString()}` : ''})</span></div>`).join('')
+                        : '<span style="color:#64748b;">현재 메모리에 올라와 있는 모델이 없습니다 (유휴 절전).</span>';
+                }
+                if (installedBox) {
+                    installedBox.innerHTML = installed.length > 0
+                        ? installed.map(m => `<span style="display:inline-block; background:#fff; border:1px solid #cbd5e1; border-radius:999px; padding:0.2rem 0.6rem; margin:0.15rem; font-size:0.76rem; color:#1e293b;"><strong>${esc(m.name)}</strong> (${m.sizeMb.toLocaleString()}MB${m.parameterSize ? ` · ${esc(m.parameterSize)}` : ''})</span>`).join('')
+                        : '<span style="color:#64748b;">설치된 모델 정보가 없습니다.</span>';
                 }
             } else {
                 if (statusBadge) {
@@ -240,6 +269,7 @@
                 if (latencyEl) {
                     latencyEl.textContent = `확인 필요: 로컬 PC Ollama 데몬 상태를 점검하세요.`;
                 }
+                if (vramEl) vramEl.textContent = '오프라인';
             }
         } catch (err) {
             if (statusBadge) {

@@ -22,6 +22,7 @@ const { getPortalSummary } = require('../services/portalSummary.service');
 const { getAiConfig } = require('../services/aiConfig.service');
 const { handleSseChatStream } = require('../services/aiStream.service');
 const { orchestrateChatRequest } = require('../services/ai/aiOrchestrator.service');
+const { recordAiAuditLog } = require('../services/aiAuditLog.service');
 
 // 🛡️ [보안 강화] AI 채팅 레이트 리미터 & 동시성 제어 (로컬 PC 과부하 및 DoS 방어)
 const chatRateLimitMap = new Map(); // key(user/ip) -> [timestamp]
@@ -176,12 +177,23 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
                 return;
             }
 
+            const chatStartMs = Date.now();
             const result = await askAiAssistant({
                 prompt: message.trim(),
                 history: safeHistory,
                 summaryContext: summary,
                 userName,
                 user: req.user
+            });
+            recordAiAuditLog({
+                user: req.user,
+                requestType: result?.action || 'chat',
+                routedMode: result?.modelMode || 'balanced',
+                model: result?.model || '',
+                toolsUsed: [],
+                prompt: message.trim(),
+                durationMs: Date.now() - chatStartMs,
+                status: result?.success === false ? 'ERROR' : 'SUCCESS'
             });
 
             res.json(result);
@@ -213,9 +225,20 @@ router.post('/api/ai/memo-to-wiki', authenticateToken, async (req, res) => {
         }
 
         activeAiRequests++;
+        const memoStartMs = Date.now();
         try {
             const userName = resolveUserName(req.user);
             const result = await refineMemoToWiki({ title, content, userName });
+            recordAiAuditLog({
+                user: req.user,
+                requestType: 'memo_wiki',
+                routedMode: 'chat',
+                model: result?.model || '',
+                toolsUsed: ['memo_to_wiki'],
+                prompt: title || content.slice(0, 60),
+                durationMs: Date.now() - memoStartMs,
+                status: result?.success === false ? 'ERROR' : 'SUCCESS'
+            });
             res.json(result);
         } finally {
             activeAiRequests = Math.max(0, activeAiRequests - 1);

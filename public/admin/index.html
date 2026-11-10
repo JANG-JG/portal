@@ -123,6 +123,9 @@
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-news" data-sub="subpane-news-history" onclick="switchAdminTabAndSub('tab-news', 'subpane-news-history')">
                         <span>📋</span> 수집 이력 & 로그 콘솔
                     </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-news" data-sub="subpane-news-ai" onclick="switchAdminTabAndSub('tab-news', 'subpane-news-ai')">
+                        <span>🤖</span> AI 요약·속보 관제
+                    </button>
                 </div>
             </div>
 
@@ -294,6 +297,9 @@
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-ai" data-sub="subpane-ai-status" onclick="switchAdminTabAndSub('tab-ai', 'subpane-ai-status')">
                         <span>🤖</span> AI 엔진 상태 및 점검
                     </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-ai" data-sub="subpane-ai-audit" onclick="switchAdminTabAndSub('tab-ai', 'subpane-ai-audit')">
+                        <span>🛡️</span> 대화·라우팅 감사 이력
+                    </button>
                 </div>
             </div>
         </nav>
@@ -411,6 +417,7 @@
     <script src="/js/admin-ai.js"></script>
     <script src="/js/admin-push.js"></script>
     <script src="/js/admin-service-logs.js"></script>
+    <script src="/js/admin-ai-news-audit.js"></script>
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>

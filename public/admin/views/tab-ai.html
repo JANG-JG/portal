@@ -279,14 +279,90 @@
                     <div id="adminAiStatusLatency" style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">지연 시간: 측정 대기 중</div>
                 </div>
                 <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1rem;">
+                    <div style="font-size:0.75rem; color:#64748b; font-weight:700;">실시간 메모리(VRAM) 적재</div>
+                    <div id="adminAiVramSummary" style="font-size:1.05rem; font-weight:700; color:#2563eb; margin-top:0.25rem;">진단 대기 중</div>
+                    <div id="adminAiLoadedModelSub" style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">우측 상단 [실시간 진단 실행] 클릭</div>
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:1rem;">
                     <div style="font-size:0.75rem; color:#64748b; font-weight:700;">보안 및 동시성 가드</div>
                     <div style="font-size:0.95rem; font-weight:700; color:#334155; margin-top:0.25rem;">최대 2건 동시 추론</div>
                     <div style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">1분당 최대 12회 질문 제한</div>
                 </div>
             </div>
 
+            <!-- 실시간 적재 모델 & 설치된 로컬 모델 목록 -->
+            <div class="admin-grid-2" style="margin-top:1rem;">
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.9rem; min-width:0;">
+                    <div style="font-size:0.82rem; font-weight:700; color:#0f172a; margin-bottom:0.45rem;">🔥 현재 메모리(VRAM/RAM)에 상주 중인 모델</div>
+                    <div id="adminAiLoadedModelsBox" style="font-size:0.82rem; color:#64748b;">진단을 실행하면 현재 적재된 모델과 메모리 점유량을 표시합니다.</div>
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.9rem; min-width:0;">
+                    <div style="font-size:0.82rem; font-weight:700; color:#0f172a; margin-bottom:0.45rem;">📦 보조 서버에 설치된 전체 모델 목록</div>
+                    <div id="adminAiInstalledModelsBox" style="font-size:0.82rem; color:#64748b;">진단을 실행하면 설치된 모델 목록과 용량을 표시합니다.</div>
+                </div>
+            </div>
+
             <div style="margin-top:1rem; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:0.75rem; padding:0.85rem 1rem; font-size:0.83rem; color:#166534; line-height:1.5;">
                 🔒 <strong>완전 독립 프라이빗 보안:</strong> 대화 데이터 및 가족 정보는 외부 상용 클라우드(OpenAI 등)로 유출되지 않으며, 가정 내부 로컬 PC에서 100% 암호화 및 자체 추론 처리됩니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- 서브 3: 포털 AI 비서 대화·라우팅 비식별 감사 로그 -->
+    <div id="subpane-ai-audit" class="admin-sub-pane hidden-pane">
+        <div class="admin-card">
+            <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                    <h3>🛡️ 포털 AI 비서 대화·라우팅 비식별 감사 이력</h3>
+                    <p style="font-size:0.8rem; color:#64748b; margin:0.2rem 0 0;">질문 의도별 모델 자동 분기(빠른 1B · 균형 4B · 깊은 생각 EXAONE) 현황과 응답 시간을 확인합니다.</p>
+                </div>
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminAiAuditLogs()">🔄 새로고침</button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(125px, 100%), 1fr)); gap:0.6rem; margin-bottom:0.9rem;">
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                    <div style="font-size:0.72rem; color:#64748b; font-weight:700;">누적 요청 (오늘)</div>
+                    <div id="aiAuditTotalCount" style="font-size:1.1rem; font-weight:800; color:#0f172a; margin-top:0.2rem;">-</div>
+                </div>
+                <div style="background:#ecfdf5; border:1px solid #a7f3d0; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                    <div style="font-size:0.72rem; color:#065f46; font-weight:700;">⚡ 빠른 대화 (1B)</div>
+                    <div id="aiAuditChatCount" style="font-size:1.1rem; font-weight:800; color:#059669; margin-top:0.2rem;">-</div>
+                </div>
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                    <div style="font-size:0.72rem; color:#1e40af; font-weight:700;">⚖️ 균형 대화 (4B)</div>
+                    <div id="aiAuditBalancedCount" style="font-size:1.1rem; font-weight:800; color:#2563eb; margin-top:0.2rem;">-</div>
+                </div>
+                <div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                    <div style="font-size:0.72rem; color:#5b21b6; font-weight:700;">🧠 깊은 생각</div>
+                    <div id="aiAuditReasoningCount" style="font-size:1.1rem; font-weight:800; color:#7c3aed; margin-top:0.2rem;">-</div>
+                </div>
+                <div style="background:#fefce8; border:1px solid #fde68a; border-radius:0.5rem; padding:0.65rem; text-align:center; min-width:0;">
+                    <div style="font-size:0.72rem; color:#854d0e; font-weight:700;">평균 응답 시간</div>
+                    <div id="aiAuditAvgDuration" style="font-size:1.1rem; font-weight:800; color:#a16207; margin-top:0.2rem;">-</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom:0.85rem; padding:0.6rem 0.85rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; font-size:0.78rem; color:#475569;">
+                🔒 <strong>비식별 보호 정책 적용 중:</strong> 가족 구성원 이름, 연락처, 주민번호, 계좌번호, 5자리 이상 연속 숫자는 DB 저장 전 자동 마스킹(<code>***</code>)되며 앞부분 요약만 기록됩니다.
+            </div>
+
+            <div class="admin-table-container admin-table-scroll">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>일시</th>
+                            <th>요청자</th>
+                            <th>라우팅 모드 · 모델</th>
+                            <th>호출 도구</th>
+                            <th>비식별 질문 요약 (글자수)</th>
+                            <th>소요 시간</th>
+                            <th>상태</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminAiAuditTableBody">
+                        <tr><td colspan="7" style="text-align:center; padding:1.25rem; color:#64748b;">감사 이력을 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

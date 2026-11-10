@@ -27,7 +27,8 @@ const SUBTABS_CONFIG = {
     'tab-news': [
         { id: 'subpane-news-collect', label: '즉시 수집 & DB현황', icon: '🚀' },
         { id: 'subpane-news-articles', label: '최근 수집 기사 (10선)', icon: '📑' },
-        { id: 'subpane-news-history', label: '수집 이력 & 로그 콘솔', icon: '📋' }
+        { id: 'subpane-news-history', label: '수집 이력 & 로그 콘솔', icon: '📋' },
+        { id: 'subpane-news-ai', label: 'AI 요약·속보 관제', icon: '🤖' }
     ],
     'tab-album': [
         { id: 'subpane-album-summary', label: '사진첩 통계 & 스토리지', icon: '📊' },
@@ -45,7 +46,6 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-wiki-logs', label: '런타임 로그 콘솔', icon: '💻' }
     ],
     'tab-backup': [
-
         { id: 'subpane-backup-status', label: '정기 백업 & 즉시 실행', icon: '📦' },
         { id: 'subpane-backup-logs', label: '실시간 백업 로그 콘솔', icon: '📋' }
     ],
@@ -68,7 +68,8 @@ const SUBTABS_CONFIG = {
     ],
     'tab-ai': [
         { id: 'subpane-ai-config', label: 'AI 비서 운영 설정', icon: '⚙️' },
-        { id: 'subpane-ai-status', label: 'AI 엔진 상태 및 점검', icon: '🤖' }
+        { id: 'subpane-ai-status', label: 'AI 엔진 상태 및 점검', icon: '🤖' },
+        { id: 'subpane-ai-audit', label: '대화·라우팅 감사 이력', icon: '🛡️' }
     ]
 };
 
@@ -256,18 +257,18 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
         localStorage.setItem('admin_last_sub', subId);
     } catch (e) {}
 
-    // 대시보드 위젯 배치 탭 진입 시 실시간 데이터 로드
-    if (subId === 'subpane-modules-widgets' && typeof window.loadDashboardWidgetsList === 'function') {
-        window.loadDashboardWidgetsList();
-    }
-    if (subId === 'subpane-security-push' && typeof window.loadAdminPushSubscriptions === 'function') {
-        window.loadAdminPushSubscriptions();
-    }
-    if (subId === 'subpane-blood-events' && typeof window.loadBloodEvents === 'function') {
-        window.loadBloodEvents();
-    }
-    if (subId === 'subpane-asset-events' && typeof window.loadAssetEvents === 'function') {
-        window.loadAssetEvents();
+    // 서브패널 진입 시 실시간 데이터 로더 자동 호출
+    const subLoaderMap = {
+        'subpane-modules-widgets': 'loadDashboardWidgetsList',
+        'subpane-security-push': 'loadAdminPushSubscriptions',
+        'subpane-blood-events': 'loadBloodEvents',
+        'subpane-asset-events': 'loadAssetEvents',
+        'subpane-news-ai': 'loadNewsAiGovernance',
+        'subpane-ai-status': 'checkAdminAiHealth',
+        'subpane-ai-audit': 'loadAdminAiAuditLogs'
+    };
+    if (subLoaderMap[subId] && typeof window[subLoaderMap[subId]] === 'function') {
+        window[subLoaderMap[subId]]();
     }
     const svcLogSubMap = {
         'subpane-blood-logs': 'blood',
