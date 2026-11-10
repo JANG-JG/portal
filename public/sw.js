@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261110_clean1';
+const CACHE_NAME = 'jg-portal-v20261110_092120';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
