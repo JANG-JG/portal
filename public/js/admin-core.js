@@ -13,12 +13,14 @@ const SUBTABS_CONFIG = {
     'tab-blood': [
         { id: 'subpane-blood-backup', label: '데이터 백업 & CSV 복구', icon: '💾' },
         { id: 'subpane-blood-threshold', label: '위험 기준치 설정', icon: '⚙️' },
-        { id: 'subpane-blood-records', label: '최근 혈압 측정 기록', icon: '🩸' }
+        { id: 'subpane-blood-records', label: '최근 혈압 측정 기록', icon: '🩸' },
+        { id: 'subpane-blood-logs', label: '런타임 로그 콘솔', icon: '💻' }
     ],
     'tab-asset': [
         { id: 'subpane-asset-summary', label: '포트폴리오 & 백업', icon: '📊' },
         { id: 'subpane-asset-accounts', label: '증권 계좌별 현황', icon: '📂' },
-        { id: 'subpane-asset-holdings', label: '보유 종목 상세', icon: '💼' }
+        { id: 'subpane-asset-holdings', label: '보유 종목 상세', icon: '💼' },
+        { id: 'subpane-asset-logs', label: '런타임 로그 콘솔', icon: '💻' }
     ],
     'tab-news': [
         { id: 'subpane-news-collect', label: '즉시 수집 & DB현황', icon: '🚀' },
@@ -29,14 +31,16 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-album-summary', label: '사진첩 통계 & 스토리지', icon: '📊' },
         { id: 'subpane-album-photos', label: '최근 업로드 사진 관리', icon: '🖼️' },
         { id: 'subpane-album-members', label: '가족 구성원 활동 현황', icon: '👥' },
-        { id: 'subpane-album-ai-logs', label: 'AI 분석 이력 & 로그', icon: '🤖' }
+        { id: 'subpane-album-ai-logs', label: 'AI 분석 이력 & 로그', icon: '🤖' },
+        { id: 'subpane-album-logs', label: '서버 런타임 로그', icon: '💻' }
     ],
     'tab-wiki': [
         { id: 'subpane-wiki-overview', label: '위키 현황 & 퀵카드', icon: '📊' },
         { id: 'subpane-wiki-routines', label: '요일별 루틴 & 할 일', icon: '📅' },
         { id: 'subpane-wiki-ddays', label: 'D-Day & 소모품 주기', icon: '⏳' },
         { id: 'subpane-wiki-configs', label: 'Wi-Fi & 비상 의료', icon: '📶' },
-        { id: 'subpane-wiki-pages', label: '위키 문서 보관함', icon: '📖' }
+        { id: 'subpane-wiki-pages', label: '위키 문서 보관함', icon: '📖' },
+        { id: 'subpane-wiki-logs', label: '런타임 로그 콘솔', icon: '💻' }
     ],
     'tab-backup': [
 
@@ -256,6 +260,15 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
     }
     if (subId === 'subpane-security-push' && typeof window.loadAdminPushSubscriptions === 'function') {
         window.loadAdminPushSubscriptions();
+    }
+    const svcLogSubMap = {
+        'subpane-blood-logs': 'blood',
+        'subpane-asset-logs': 'asset',
+        'subpane-album-logs': 'album',
+        'subpane-wiki-logs': 'wiki'
+    };
+    if (svcLogSubMap[subId] && typeof window.fetchServiceLogs === 'function') {
+        window.fetchServiceLogs(svcLogSubMap[subId], true);
     }
 }
 

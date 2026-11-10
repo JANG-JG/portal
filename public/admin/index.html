@@ -67,6 +67,9 @@
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-blood" data-sub="subpane-blood-records" onclick="switchAdminTabAndSub('tab-blood', 'subpane-blood-records')">
                         <span>🩸</span> 최근 혈압 측정 기록
                     </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-blood" data-sub="subpane-blood-logs" onclick="switchAdminTabAndSub('tab-blood', 'subpane-blood-logs')">
+                        <span>💻</span> 런타임 로그 콘솔
+                    </button>
                 </div>
             </div>
 
@@ -88,6 +91,9 @@
                     </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-asset" data-sub="subpane-asset-holdings" onclick="switchAdminTabAndSub('tab-asset', 'subpane-asset-holdings')">
                         <span>💼</span> 보유 종목 상세 (한글명)
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-asset" data-sub="subpane-asset-logs" onclick="switchAdminTabAndSub('tab-asset', 'subpane-asset-logs')">
+                        <span>💻</span> 런타임 로그 콘솔
                     </button>
                 </div>
             </div>
@@ -136,6 +142,9 @@
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-album" data-sub="subpane-album-ai-logs" onclick="switchAdminTabAndSub('tab-album', 'subpane-album-ai-logs')">
                         <span>🤖</span> AI 사진 분석 이력 & 로그
                     </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-album" data-sub="subpane-album-logs" onclick="switchAdminTabAndSub('tab-album', 'subpane-album-logs')">
+                        <span>💻</span> 서버 런타임 로그
+                    </button>
                 </div>
             </div>
 
@@ -163,6 +172,9 @@
                     </button>
                     <button type="button" class="admin-sidebar-sublink" data-tab="tab-wiki" data-sub="subpane-wiki-pages" onclick="switchAdminTabAndSub('tab-wiki', 'subpane-wiki-pages')">
                         <span>📖</span> 위키 문서 보관함
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-wiki" data-sub="subpane-wiki-logs" onclick="switchAdminTabAndSub('tab-wiki', 'subpane-wiki-logs')">
+                        <span>💻</span> 런타임 로그 콘솔
                     </button>
                 </div>
             </div>
@@ -392,6 +404,7 @@
     <script src="/js/admin-dashboard-config.js"></script>
     <script src="/js/admin-ai.js"></script>
     <script src="/js/admin-push.js"></script>
+    <script src="/js/admin-service-logs.js"></script>
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>

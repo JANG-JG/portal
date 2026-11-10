@@ -380,7 +380,7 @@ function filterPm2ConsoleLogs() {
     });
 
     if (currentPm2LogOrder === 'top') {
-        filtered = filtered.reverse();
+        filtered.reverse();
     }
 
     if (filtered.length === 0) {

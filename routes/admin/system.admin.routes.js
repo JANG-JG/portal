@@ -11,6 +11,7 @@ const {
 } = require('../../services/adminDbInspector.service');
 
 const { db, newsDb } = require('../../services/db');
+const { WORKSPACE_ROOT, SECONDARY_HOST } = require('../../config/constants');
 const { sendServerTelegram } = require('../../services/unifiedNotificationScheduler');
 const {
     getCurrentCpuPercent,
@@ -219,6 +220,24 @@ router.post('/secondary/backup-now', (req, res) => {
     });
 });
 
+// 보조 서버(family-wiki) 및 메인 서버 로컬 PM2 통합 실행 헬퍼
+const SECONDARY_PM2_PROCS = new Set(['family-wiki']);
+
+function runPm2TargetCommand(procName, pm2Cmd, options, callback) {
+    if (typeof options === 'function') {
+        callback = options;
+        options = {};
+    }
+    if (procName && SECONDARY_PM2_PROCS.has(procName)) {
+        const sshUser = process.env.SECONDARY_USER || os.userInfo().username;
+        const remoteEnv = 'export PATH=$PATH:$HOME/.npm-global/bin:/usr/local/bin:/usr/bin; [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh" >/dev/null 2>&1 || true;';
+        const escaped = pm2Cmd.replace(/"/g, '\\"');
+        const sshCmd = `ssh -p 22 -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=accept-new ${sshUser}@${SECONDARY_HOST} "${remoteEnv} ${escaped}"`;
+        return exec(sshCmd, { timeout: 10000, ...options }, callback);
+    }
+    return exec(pm2Cmd, options, callback);
+}
+
 // 2. PM2 개별 프로세스 제어
 router.post('/pm2/action', (req, res) => {
     const { action, processName } = req.body;
@@ -239,7 +258,7 @@ router.post('/pm2/action', (req, res) => {
     };
     const label = actionLabels[action] || action;
 
-    exec(`pm2 ${action} ${processName}`, (err) => {
+    runPm2TargetCommand(processName, `pm2 ${action} ${processName}`, (err) => {
         if (err) return res.status(500).json({ success: false, message: `[${processName}] ${label} 실패: ${err.message}` });
         res.json({ success: true, message: `[${processName}] 프로세스가 정상적으로 ${label}되었습니다.` });
     });
@@ -253,7 +272,7 @@ router.post('/pm2/restart', (req, res) => {
         return res.status(400).json({ success: false, message: '올바르지 않은 프로세스 이름입니다.' });
     }
 
-    exec(`pm2 restart ${processName}`, (err) => {
+    runPm2TargetCommand(processName, `pm2 restart ${processName}`, (err) => {
         if (err) return res.status(500).json({ success: false, message: `재기동 실패: ${err.message}` });
         res.json({ success: true, message: `[${processName}] 프로세스가 정상적으로 재기동되었습니다.` });
     });
@@ -295,10 +314,20 @@ router.get('/pm2/logs', (req, res) => {
     const lines = Math.min(Math.max(parseInt(req.query.lines, 10) || 50, 10), 200);
 
     const target = (proc && validNameRegex.test(proc)) ? proc : '';
-    const cmd = target ? `pm2 logs ${target} --lines ${lines} --raw --nostream` : `pm2 logs --lines ${lines} --raw --nostream`;
+    const cmd = target
+        ? (SECONDARY_PM2_PROCS.has(target)
+            ? `pm2 logs ${target} --lines ${lines} --raw --nostream 2>&1 || tail -n ${lines} ~/.pm2/logs/${target}-*.log 2>/dev/null`
+            : `pm2 logs ${target} --lines ${lines} --raw --nostream`)
+        : `pm2 logs --lines ${lines} --raw --nostream`;
 
-    exec(cmd, { timeout: 10000 }, (err, stdout, stderr) => {
+    runPm2TargetCommand(target, cmd, { timeout: 10000 }, (err, stdout, stderr) => {
         if (err && !stdout && !stderr) {
+            if (target && SECONDARY_PM2_PROCS.has(target)) {
+                return res.json({
+                    success: true,
+                    logs: `⚠️ 보조 서버(${SECONDARY_HOST})가 현재 대기 상태이거나 SSH 연결이 지연되어 [${target}] 실시간 로그를 불러오지 못했습니다.\n(보조 서버 전원 및 네트워크 연결 상태를 확인해 주세요.)`
+                });
+            }
             return res.json({ success: false, logs: '로그를 불러오는 중 오류가 발생했거나 PM2가 준비되지 않았습니다. (' + err.message + ')' });
         }
         const outText = (stdout || '').trim();
@@ -323,7 +352,7 @@ router.post('/pm2/flush', (req, res) => {
     const target = (processName && validNameRegex.test(processName)) ? processName : '';
     const cmd = target ? `pm2 flush ${target}` : `pm2 flush`;
 
-    exec(cmd, (err) => {
+    runPm2TargetCommand(target, cmd, (err) => {
         if (err) return res.status(500).json({ success: false, message: '로그 비우기 실패: ' + err.message });
         res.json({ success: true, message: target ? `[${target}] 로그를 깨끗이 비웠습니다.` : '전체 PM2 로그를 깨끗이 비웠습니다.' });
     });
