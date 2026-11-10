@@ -6,6 +6,7 @@ const { exec } = require('child_process');
 const { NEWS_DIR, NEWS_DB_PATH } = require('../../config/constants');
 const { db, newsDb } = require('../../services/db');
 const { getLiveWeatherData } = require('../../services/weather.service');
+const { getChatModel } = require('../../services/aiModelRouter.service');
 
 // 1. 뉴스 브리핑 현황 통계
 router.get('/stats', async (req, res) => {
@@ -53,6 +54,7 @@ router.get('/stats', async (req, res) => {
             telegramBriefingTimes: briefingTimes,
             excludeKeywords,
             summaryModel,
+            ollamaModel: getChatModel(),
             recentArticles,
             weather
         });

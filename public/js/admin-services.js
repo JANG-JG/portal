@@ -68,6 +68,11 @@ async function loadNewsData() {
             renderAdminExcludeChips();
         }
 
+        if (data.ollamaModel) {
+            const ollamaBadgeEl = document.getElementById('adminCurrentOllamaModelBadge');
+            if (ollamaBadgeEl) ollamaBadgeEl.textContent = data.ollamaModel;
+        }
+
         if (data.summaryModel) {
             const selectEl = document.getElementById('adminSelectNewsSummaryModel');
             const badgeEl = document.getElementById('adminCurrentNewsModelBadge');
