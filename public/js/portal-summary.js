@@ -6,6 +6,25 @@
 // ==============================================================================
 
 // 🌤️ 상단 날씨 뱃지 UI 렌더링 헬퍼 (기상청 공식 저장 데이터 완벽 지원)
+function fitWeatherCityFont(el, text) {
+    if (!el) return;
+    const len = (text || '').length;
+    if (len <= 2) {
+        el.style.fontSize = '';
+        el.style.letterSpacing = '-0.2px';
+    } else if (len <= 4) {
+        el.style.fontSize = '0.73rem';
+        el.style.letterSpacing = '-0.3px';
+    } else if (len <= 6) {
+        el.style.fontSize = '0.67rem';
+        el.style.letterSpacing = '-0.4px';
+    } else {
+        el.style.fontSize = '0.61rem';
+        el.style.letterSpacing = '-0.5px';
+    }
+}
+window.fitWeatherCityFont = fitWeatherCityFont;
+
 function updateWeatherBadge(w) {
     if (!w) return;
     const iconEl = document.getElementById('welcomeWeatherIcon');
@@ -21,17 +40,25 @@ function updateWeatherBadge(w) {
         }
     }
     const rawCity = w.city || '계룡';
-    const displayName = (rawCity === 'Gyeryong' || rawCity.includes('계룡'))
-        ? '계룡'
-        : rawCity.replace(/^(충남|충북|경기|강원|전남|전북|경남|경북|서울|제주)\s*/, '');
-    if (cityEl) cityEl.textContent = displayName;
+    let displayName = rawCity;
+    if (displayName === 'Gyeryong' || displayName.includes('계룡')) displayName = '계룡';
+    else if (displayName === 'Seoul') displayName = '서울';
+
+    if (cityEl) {
+        cityEl.textContent = displayName;
+        fitWeatherCityFont(cityEl, displayName);
+    }
     if (tempEl && w.temp) tempEl.textContent = w.temp;
-    if (badgeEl && w.condition) {
+    if (badgeEl) {
         const isKma = w.data_source === 'kma' || w.source_label === '기상청 공식';
         const kmaPrefix = isKma ? '[기상청 공식] ' : '';
         const minMaxText = (w.min_temp && w.max_temp) ? ` (최저 ${w.min_temp} / 최고 ${w.max_temp})` : '';
         const airText = (w.air_quality && w.air_quality.pm10_status) ? ` • 미세 ${w.air_quality.pm10_status}` : '';
-        badgeEl.title = `${kmaPrefix}실시간 날씨: ${displayName} ${w.temp || ''} (${w.condition})${minMaxText}${airText} - 클릭 시 상세 날씨 브리핑 이동`;
+        badgeEl.title = `${kmaPrefix}실시간 날씨: ${displayName} ${w.temp || ''} (${w.condition || ''})${minMaxText}${airText} - 클릭 시 상세 날씨 브리핑 이동`;
+
+        badgeEl.classList.remove('weather-badge-pulse');
+        void badgeEl.offsetWidth;
+        badgeEl.classList.add('weather-badge-pulse');
     }
 }
 window.updateWeatherBadge = updateWeatherBadge;

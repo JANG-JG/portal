@@ -182,10 +182,10 @@
                 }
             } catch (e) {}
 
-            // 백그라운드 최신 데이터 갱신
+            // 백그라운드 최신 데이터 갱신 및 위치 변경 즉시 동적 연동
             fetchTickerData();
-            // 45초 주기 자동 갱신
             setInterval(fetchTickerData, 45000);
+            window.addEventListener('jg:weather-updated', () => fetchTickerData());
         } else {
             window.addEventListener('DOMContentLoaded', injectBars);
         }
@@ -332,7 +332,7 @@
                 const topTempEl = document.getElementById('welcomeWeatherTemp');
                 const topIconEl = document.getElementById('welcomeWeatherIcon');
                 const topBadgeEl = document.getElementById('welcomeWeatherBadge');
-                if (topCityEl) topCityEl.textContent = cityName;
+                if (topCityEl) { topCityEl.textContent = cityName; if (typeof window.fitWeatherCityFont === 'function') window.fitWeatherCityFont(topCityEl, cityName); }
                 if (topTempEl) topTempEl.textContent = weather.temp;
                 if (topBadgeEl) topBadgeEl.title = weatherTitle;
                 if (topIconEl && weatherSlug) topIconEl.innerHTML = `<img src="https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${weatherSlug}.svg" alt="${weather.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${weather.icon || '🌤️'}';">`;

@@ -271,6 +271,18 @@ html.role-pending [data-service="ops"] {
 .cmd-nav-weather #welcomeWeatherCity {
     font-weight: 700;
     color: #38bdf8;
+    white-space: nowrap;
+    transition: font-size 0.2s ease, opacity 0.2s ease;
+}
+
+@keyframes jgWeatherPulse {
+    0% { opacity: 0.5; transform: scale(0.97); }
+    50% { opacity: 1; transform: scale(1.03); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.weather-badge-pulse {
+    animation: jgWeatherPulse 0.4s ease-out;
 }
 
 .weather-nav-container {
@@ -827,10 +839,10 @@ html.role-pending [data-service="ops"] {
         display: inline-block !important; /* 모바일에서도 지역명 상시 노출 */
         font-weight: 700 !important;
         color: #38bdf8 !important;
-        max-width: 48px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        max-width: 100px !important;
+        overflow: visible !important;
+        white-space: nowrap !important;
+        line-height: 1.2;
     }
     .cmd-nav-right {
         gap: 2px !important;

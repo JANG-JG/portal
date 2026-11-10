@@ -201,7 +201,7 @@
                 const topTempEl = document.getElementById('welcomeWeatherTemp');
                 const topIconEl = document.getElementById('welcomeWeatherIcon');
                 const topBadgeEl = document.getElementById('welcomeWeatherBadge');
-                if (topCityEl) topCityEl.textContent = cityName;
+                if (topCityEl) { topCityEl.textContent = cityName; if (typeof window.fitWeatherCityFont === 'function') window.fitWeatherCityFont(topCityEl, cityName); }
                 if (topTempEl) topTempEl.textContent = weather.temp;
                 if (topBadgeEl) topBadgeEl.title = weatherTitle;
                 if (topIconEl && weatherIconUrl) {
@@ -384,6 +384,7 @@
 
             fetchTicker();
             setInterval(fetchTicker, 45000);
+            window.addEventListener('jg:weather-updated', () => fetchTicker());
         } else {
             window.addEventListener('DOMContentLoaded', mount);
         }

@@ -420,18 +420,28 @@ function detectPortalLocationWeather(isExplicitClick = false) {
             .then(data => {
                 if (btnText) btnText.textContent = '내 현재 위치로 날씨 자동 설정';
                 if (data && data.success) {
-                    const prevCity = currentSelectedWeatherCity;
                     currentSelectedWeatherCity = data.current_city || currentSelectedWeatherCity;
+                    // 1) 상단 내비게이션 바 배지 즉시 실시간 변환 (펄스 피드백)
                     if (data.weather && typeof window.updateWeatherBadge === 'function') {
                         window.updateWeatherBadge(data.weather);
                     }
-                    if (prevCity !== currentSelectedWeatherCity && typeof window.loadSummary === 'function') {
+                    // 2) 메인 대시보드 데일리 브리핑 카드 실시간 동적 재로딩
+                    if (typeof window.loadSummary === 'function') {
                         window.loadSummary();
                     }
+                    // 3) 전 사이트 및 하단 뉴스 티커 실시간 동기화 이벤트 브로드캐스트
+                    try {
+                        window.dispatchEvent(new CustomEvent('jg:weather-updated', { detail: data.weather }));
+                    } catch (e) {}
+
+                    // 4) 모달 내 선택 라디오 실시간 갱신
+                    const radio = document.querySelector(`input[name="portalWeatherCityRadio"][value="${currentSelectedWeatherCity}"]`);
+                    if (radio) radio.checked = true;
+
                     if (isExplicitClick) {
                         const cityName = (data.weather && data.weather.city) ? data.weather.city : currentSelectedWeatherCity;
                         if (typeof showToast === 'function') {
-                            showToast(`📍 현재 위치('${cityName}') 기준 날씨로 자동 설정되었습니다.`);
+                            showToast(`현재 위치('${cityName}') 기준 날씨로 자동 설정되었습니다.`);
                         }
                         setTimeout(() => closeWeatherCityModal(), 250);
                     }
@@ -447,18 +457,25 @@ function detectPortalLocationWeather(isExplicitClick = false) {
                 showToast('위치 권한이 허용되지 않아 기본 설정 지역의 날씨를 표시합니다.');
             }
         },
-        { enableHighAccuracy: false, timeout: 6000, maximumAge: 300000 }
+        { enableHighAccuracy: false, timeout: 6000, maximumAge: 180000 }
     );
 }
 window.detectPortalLocationWeather = detectPortalLocationWeather;
 
-// 포털 접속 시 자동 위치 모드인 경우 15분 주기로 백그라운드 현위치 날씨 동기화 (권한 거부 시 무소음 폴백)
-setTimeout(() => {
+// ⚡ 브라우저 Geolocation 권한 상태 실시간 감지 및 자동 동적 변환
+(function initReactiveLocationWeather() {
+    if (!navigator.geolocation) return;
+    const runAuto = () => setTimeout(() => detectPortalLocationWeather(false), 450);
     try {
-        const mode = localStorage.getItem('jg_weather_gps_mode') || 'auto';
-        const lastTs = parseInt(sessionStorage.getItem('jg_gps_weather_ts') || '0', 10);
-        if (mode === 'auto' && (Date.now() - lastTs > 15 * 60 * 1000)) {
-            detectPortalLocationWeather(false);
+        if (navigator.permissions && navigator.permissions.query) {
+            navigator.permissions.query({ name: 'geolocation' }).then(result => {
+                if (result.state === 'granted') runAuto();
+                result.onchange = () => { if (result.state === 'granted') runAuto(); };
+            }).catch(() => { if (localStorage.getItem('jg_weather_gps_mode') === 'auto') runAuto(); });
+        } else if (localStorage.getItem('jg_weather_gps_mode') === 'auto') {
+            runAuto();
         }
-    } catch (e) {}
-}, 1200);
+    } catch (e) {
+        if (localStorage.getItem('jg_weather_gps_mode') === 'auto') runAuto();
+    }
+})();
