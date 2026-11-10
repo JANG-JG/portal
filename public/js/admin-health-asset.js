@@ -166,8 +166,13 @@ async function loadAssetData() {
 
         const totalEl = document.getElementById('assetAdminTotalKrw');
         const countEl = document.getElementById('assetAdminAccountCount');
+        const cacheEl = document.getElementById('assetAdminCacheInfo');
         if (totalEl) totalEl.textContent = data.totalKrw;
         if (countEl) countEl.textContent = `${data.accounts.length}개`;
+        if (cacheEl && data.cacheStatus) {
+            const rateTxt = data.cacheStatus.exchangeRate ? `₩${Math.round(data.cacheStatus.exchangeRate).toLocaleString()}` : '-';
+            cacheEl.textContent = `${rateTxt} · ${data.cacheStatus.quoteCacheCount || 0}종목 캐시`;
+        }
 
         // 계좌 목록
         const accTbody = document.getElementById('assetAccountsTableBody');
@@ -200,3 +205,214 @@ async function loadAssetData() {
         console.error('자산 데이터 로드 오류:', err);
     }
 }
+
+// 2-2. 시세 및 환율 캐시 즉시 새로고침
+async function refreshAssetQuotesCache() {
+    const btn = document.getElementById('btnRefreshAssetQuotes');
+    const origText = btn ? btn.textContent : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ 실시간 시세·환율 불러오는 중...';
+    }
+    try {
+        const res = await fetch('/api/admin/asset/refresh-quotes', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            if (typeof window.showToast === 'function') window.showToast(data.message || '시세 캐시가 새로고침되었습니다.');
+            loadAssetData();
+            if (document.getElementById('subpane-asset-events') && !document.getElementById('subpane-asset-events').classList.contains('hidden-pane')) {
+                loadAssetEvents();
+            }
+        } else if (typeof window.showToast === 'function') {
+            window.showToast(data.message || '시세 갱신 실패', true);
+        }
+    } catch (err) {
+        if (typeof window.showToast === 'function') window.showToast('시세 갱신 오류: ' + err.message, true);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = origText || '🔄 실시간 시세·환율 즉시 새로고침';
+        }
+    }
+}
+
+// 2-3. 자산 웹훅·OCR·배당 이벤트 이력 로드
+async function loadAssetEvents() {
+    try {
+        const res = await fetch('/api/admin/asset/events');
+        const data = await res.json();
+        if (!data.success) return;
+
+        const whStat = data.webhookStats || {};
+        const ocrStat = data.ocrStats || {};
+        const divStat = data.dividendStats || {};
+        const cs = data.cacheStatus || {};
+
+        const setEl = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+        setEl('assetEvtWebhookStat', `${whStat.totalCount || 0}건 (반영 ${whStat.successCount || 0})`);
+        setEl('assetEvtOcrStat', `${ocrStat.totalCount || 0}건 (${ocrStat.avgDurationMs ? (ocrStat.avgDurationMs / 1000).toFixed(1) + '초' : '0초'})`);
+        setEl('assetEvtDivYearStat', `₩${(divStat.thisYearKrw || 0).toLocaleString()}`);
+        setEl('assetEvtCacheStat', `₩${Math.round(cs.exchangeRate || 0).toLocaleString()} · ${cs.quoteCacheCount || 0}종목`);
+        setEl('assetEvtDivMonthBadge', `이번 달 ₩${(divStat.thisMonthKrw || 0).toLocaleString()}`);
+
+        const whBody = document.getElementById('assetWebhookLogsBody');
+        if (whBody) {
+            const logs = data.webhookLogs || [];
+            if (logs.length === 0) {
+                whBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">아직 수신된 증권사 알림 내역이 없습니다.</td></tr>';
+            } else {
+                const badgeMap = {
+                    BUY: ['매수 반영', '#dcfce7', '#166534'],
+                    SELL: ['매도 반영', '#dbeafe', '#1e40af'],
+                    DIVIDEND: ['배당 반영', '#fef3c7', '#92400e'],
+                    TEST_SUCCESS: ['점검 성공', '#e0e7ff', '#3730a3'],
+                    UNPARSED: ['미분류', '#f1f5f9', '#475569'],
+                    TEMPLATE_ERROR: ['변수 점검', '#fef3c7', '#b45309'],
+                    AUTH_ERROR: ['인증 차단', '#fee2e2', '#991b1b'],
+                    ERROR: ['오류', '#fee2e2', '#991b1b']
+                };
+                whBody.innerHTML = logs.map(l => {
+                    const [label, bg, fg] = badgeMap[l.parsed_status] || [l.parsed_status || '수신', '#f1f5f9', '#334155'];
+                    let summary = '-';
+                    try {
+                        const pd = JSON.parse(l.parsed_data || '{}');
+                        const p = pd.parse || pd;
+                        if (p.symbol) summary = `${p.symbol}${p.quantity ? ' · ' + p.quantity + '주' : ''}${pd.targetAccId ? ' (계좌 #' + pd.targetAccId + ')' : ''}`;
+                        else if (p.reason) summary = String(p.reason).slice(0, 50);
+                    } catch (_) {}
+                    return `<tr>
+                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(l.created_at || '-')}</td>
+                        <td><strong>${escapeHtml(l.sender || '-')}</strong></td>
+                        <td><span style="background:${bg}; color:${fg}; padding:2px 7px; border-radius:999px; font-size:0.74rem; font-weight:700; white-space:nowrap;">${escapeHtml(label)}</span></td>
+                        <td style="max-width:260px; word-break:break-word; font-size:0.82rem;">
+                            ${l.title ? `<div style="font-weight:700; color:#1e293b;">${escapeHtml(l.title)}</div>` : ''}
+                            <div style="color:#475569;">${escapeHtml((l.body || '').slice(0, 90))}</div>
+                        </td>
+                        <td style="font-size:0.8rem; color:#334155;">${escapeHtml(summary)}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        const ocrBody = document.getElementById('assetOcrLogsBody');
+        if (ocrBody) {
+            const oLogs = data.ocrLogs || [];
+            if (oLogs.length === 0) {
+                ocrBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">아직 계좌 사진·알림톡 판독 기록이 없습니다.</td></tr>';
+            } else {
+                ocrBody.innerHTML = oLogs.map(o => {
+                    const isOk = o.status === 'completed' || o.status === 'partial';
+                    const typeTxt = o.scan_type === 'quick_talk' ? '문자 붙여넣기' : `사진 OCR (${o.file_count || 1}장)`;
+                    let detail = `${o.parsed_count || 0}건 추출`;
+                    try {
+                        const s = JSON.parse(o.summary_json || '{}');
+                        if (Array.isArray(s.symbols) && s.symbols.length > 0) detail = s.symbols.join(', ');
+                        else if (s.reason) detail = s.reason;
+                    } catch (_) {}
+                    return `<tr>
+                        <td style="white-space:nowrap; font-size:0.78rem; color:#64748b;">${escapeHtml(o.created_at || '-')}</td>
+                        <td style="font-size:0.82rem;">${escapeHtml(typeTxt)}</td>
+                        <td><span style="background:${isOk ? '#dcfce7' : '#fee2e2'}; color:${isOk ? '#166534' : '#991b1b'}; padding:2px 6px; border-radius:999px; font-size:0.73rem; font-weight:700;">${isOk ? '성공' : '실패'}</span></td>
+                        <td style="font-size:0.8rem;">${o.duration_ms ? (o.duration_ms / 1000).toFixed(2) + '초' : '-'}</td>
+                        <td style="font-size:0.8rem; color:#334155;">${escapeHtml(detail)}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        const divBody = document.getElementById('assetDividendsBody');
+        if (divBody) {
+            const divs = data.dividends || [];
+            if (divs.length === 0) {
+                divBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#94a3b8;">등록된 배당금 입금 내역이 없습니다.</td></tr>';
+            } else {
+                divBody.innerHTML = divs.map(d => {
+                    const isUsd = String(d.currency || 'KRW').toUpperCase() === 'USD';
+                    const amtTxt = isUsd ? `$${Number(d.net_amount || 0).toFixed(2)}` : `₩${Math.round(Number(d.net_amount || 0)).toLocaleString()}`;
+                    return `<tr>
+                        <td style="white-space:nowrap; font-size:0.8rem;">${escapeHtml(d.dividend_date || '-')}</td>
+                        <td><strong>${escapeHtml(d.koreanName || d.symbol)}</strong></td>
+                        <td style="font-weight:700; color:#059669;">${escapeHtml(amtTxt)}</td>
+                        <td style="font-size:0.8rem; color:#475569;">${escapeHtml(d.account_name || '-')}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+    } catch (err) {
+        console.error('자산 이벤트 이력 로드 오류:', err);
+    }
+}
+
+// 1-6. 혈압계 사진 판독(OCR) 및 약 챙겨먹기·병원 일정 알림 발송 이력 로드
+async function loadBloodEvents() {
+    try {
+        const res = await fetch('/api/admin/blood/events');
+        const data = await res.json();
+        if (!data.success) return;
+
+        const os = data.ocrStats || {};
+        const ns = data.notifStats || {};
+        const setEl = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+        setEl('bloodEvtOcrTotal', `${os.totalCount || 0}건`);
+        setEl('bloodEvtOcrRate', `${os.successRate ?? 100}%`);
+        setEl('bloodEvtOcrAvgMs', os.avgDurationMs ? `${(os.avgDurationMs / 1000).toFixed(2)}초` : '0초');
+        setEl('bloodEvtNotifTotal', `${ns.totalCount || 0}건`);
+        setEl('bloodNotifSubSummary', `약 챙겨먹기 ${ns.medCount || 0}건 · 병원 일정 ${ns.hospCount || 0}건 · 혈압 재기 ${ns.bpCount || 0}건`);
+
+        const ocrBody = document.getElementById('bloodOcrLogsBody');
+        if (ocrBody) {
+            const logs = data.ocrLogs || [];
+            if (logs.length === 0) {
+                ocrBody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#94a3b8;">아직 혈압계 사진 판독 기록이 없습니다.</td></tr>';
+            } else {
+                ocrBody.innerHTML = logs.map(l => {
+                    const isOk = l.status === 'completed';
+                    const bpTxt = (l.systolic || l.diastolic)
+                        ? `${l.systolic ?? '-'} / ${l.diastolic ?? '-'} mmHg${l.pulse ? ` (${l.pulse}회)` : ''}`
+                        : '-';
+                    return `<tr>
+                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(l.created_at || '-')}</td>
+                        <td><strong>${escapeHtml(l.username || 'admin')}</strong></td>
+                        <td><span style="background:${isOk ? '#dcfce7' : '#fee2e2'}; color:${isOk ? '#166534' : '#991b1b'}; padding:2px 7px; border-radius:999px; font-size:0.74rem; font-weight:700;">${isOk ? '인식 성공' : '재촬영 안내'}</span></td>
+                        <td style="font-weight:700; color:#1e293b;">${escapeHtml(bpTxt)}</td>
+                        <td style="font-size:0.8rem;">${l.duration_ms ? (l.duration_ms / 1000).toFixed(2) + '초' : '-'}</td>
+                        <td style="font-size:0.8rem; color:#475569;">${escapeHtml(l.message || '-')}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+
+        const notifBody = document.getElementById('bloodNotifLogsBody');
+        if (notifBody) {
+            const nLogs = data.notificationLogs || [];
+            if (nLogs.length === 0) {
+                notifBody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#94a3b8;">발송된 건강·병원 일정 알림 기록이 없습니다.</td></tr>';
+            } else {
+                const typeMap = {
+                    medication: ['💊 약 챙겨먹기', '#e0e7ff', '#3730a3'],
+                    hospital: ['🏥 병원 일정', '#dcfce7', '#166534'],
+                    blood_pressure: ['🩸 혈압 재기', '#fce7f3', '#9d174d']
+                };
+                notifBody.innerHTML = nLogs.map(n => {
+                    const [label, bg, fg] = typeMap[n.type] || ['🔔 건강 알림', '#f1f5f9', '#334155'];
+                    return `<tr>
+                        <td style="white-space:nowrap; font-size:0.8rem; color:#64748b;">${escapeHtml(n.created_at || '-')}</td>
+                        <td><span style="background:${bg}; color:${fg}; padding:2px 7px; border-radius:999px; font-size:0.74rem; font-weight:700; white-space:nowrap;">${escapeHtml(label)}</span></td>
+                        <td><strong>${escapeHtml(n.user_id || 'admin')}</strong></td>
+                        <td style="max-width:280px; word-break:break-word; font-size:0.82rem;">
+                            <div style="font-weight:700; color:#1e293b;">${escapeHtml(n.title || '-')}</div>
+                            <div style="color:#475569;">${escapeHtml((n.body || '').slice(0, 90))}</div>
+                        </td>
+                        <td style="font-size:0.78rem;">${n.is_read ? '<span style="color:#059669; font-weight:600;">확인함</span>' : '<span style="color:#94a3b8;">발송됨</span>'}</td>
+                    </tr>`;
+                }).join('');
+            }
+        }
+    } catch (err) {
+        console.error('건강 이벤트 이력 로드 오류:', err);
+    }
+}
+
+window.loadBloodEvents = loadBloodEvents;
+window.loadAssetEvents = loadAssetEvents;
+window.refreshAssetQuotesCache = refreshAssetQuotesCache;

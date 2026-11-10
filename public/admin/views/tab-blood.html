@@ -124,7 +124,95 @@
                 </div>
             </div>
 
-            <!-- 서브 4: 혈압·건강 관리 전용 런타임 로그 콘솔 -->
+            <!-- 서브 4: 혈압계 사진 판독(OCR) 및 약 챙겨먹기·병원 일정 알림 이력 -->
+            <div id="subpane-blood-events" class="admin-sub-pane hidden-pane">
+                <div class="admin-overview-grid" style="margin-bottom:1.25rem;">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#e0e7ff; color:#4338ca;">📸</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">혈압계 사진 판독</div>
+                            <div class="admin-stat-val" id="bloodEvtOcrTotal">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#ecfdf5; color:#059669;">🎯</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">사진 판독 성공률</div>
+                            <div class="admin-stat-val" id="bloodEvtOcrRate">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#fef3c7; color:#d97706;">⏱️</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">평균 판독 소요시간</div>
+                            <div class="admin-stat-val" id="bloodEvtOcrAvgMs">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#fce7f3; color:#be185d;">🔔</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">건강·병원 알림 발송</div>
+                            <div class="admin-stat-val" id="bloodEvtNotifTotal">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. 혈압계 사진 OCR 판독 로그 -->
+                <div class="admin-card" style="margin-bottom:1.25rem;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">📸 혈압계 화면 사진 판독(OCR) 이력</h3>
+                            <p style="font-size:0.78rem; color:#64748b; margin:0.2rem 0 0;">혈압계 촬영 사진의 숫자 인식 결과와 소요 시간입니다. (원본 사진은 분석 즉시 자동 파기됨)</p>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadBloodEvents()">🔄 새로고침</button>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>판독 시각</th>
+                                    <th>계정</th>
+                                    <th>상태</th>
+                                    <th>인식 수치 (최고/최저/맥박)</th>
+                                    <th>소요시간</th>
+                                    <th>안내 메모</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bloodOcrLogsBody">
+                                <tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#64748b;">사진 판독 이력을 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. 약 챙겨먹기 & 병원 일정 알림 발송 이력 -->
+                <div class="admin-card">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">💊 약 챙겨먹기 & 병원 일정 알림 발송 내역</h3>
+                            <p style="font-size:0.78rem; color:#64748b; margin:0.2rem 0 0;" id="bloodNotifSubSummary">혈압 재기, 약 챙겨먹기, 병원 예약 일정 알림 발송 기록입니다.</p>
+                        </div>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>발송 시각</th>
+                                    <th>구분</th>
+                                    <th>대상 계정</th>
+                                    <th>알림 제목 및 내용</th>
+                                    <th>확인 여부</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bloodNotifLogsBody">
+                                <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">알림 발송 내역을 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 5: 혈압·건강 관리 전용 런타임 로그 콘솔 -->
             <div id="subpane-blood-logs" class="admin-sub-pane hidden-pane">
                 <div class="admin-card" style="padding: 1.25rem;">
                     <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.6rem;">

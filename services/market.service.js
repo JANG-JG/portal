@@ -462,11 +462,33 @@ async function getLiveMarketData() {
     return marketCache.data;
 }
 
+function getMarketCacheStatus() {
+    return {
+        quoteCacheCount: quotesCache.size,
+        exchangeRate: cachedExchangeRate.rate,
+        exchangeUpdatedAt: cachedExchangeRate.timestamp || null,
+        marketUpdatedAt: marketCache.timestamp || null
+    };
+}
+
+async function flushMarketCache() {
+    quotesCache.clear();
+    cachedExchangeRate.timestamp = 0;
+    marketCache.timestamp = 0;
+    await Promise.all([
+        getExchangeRate().catch(() => null),
+        refreshMarketInBackground().catch(() => null)
+    ]);
+    return getMarketCacheStatus();
+}
+
 module.exports = {
     KOREAN_STOCK_MAP,
     getKoreanStockName,
     getLiveMarketData,
     refreshMarketInBackground,
     getExchangeRate,
-    enrichAssetsWithQuotes
+    enrichAssetsWithQuotes,
+    getMarketCacheStatus,
+    flushMarketCache
 };

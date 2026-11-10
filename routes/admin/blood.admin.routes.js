@@ -97,6 +97,11 @@ router.post('/test-email', (req, res) => {
         if (err) {
             return res.status(500).json({ success: false, message: `발송 실패: ${stderr || err.message}` });
         }
+        db.run(
+            `INSERT INTO notification_history (user_id, type, title, body, icon, url, created_at)
+             VALUES ('admin', 'hospital', '📧 구글 SMTP 알림 메일 점검', '관리자 센터에서 발송한 알림 메일 연결 테스트가 완료되었습니다.', '📧', '/admin#tab-blood', datetime('now', 'localtime'))`,
+            () => {}
+        );
         res.json({ success: true, message: '구글 알림 메일이 관리자 계정으로 정상 발송되었습니다!' });
     });
 });
@@ -145,6 +150,53 @@ router.post('/configs', (req, res) => {
             }
             res.json({ success: true, message: '대시보드 환경설정이 성공적으로 저장되었습니다.' });
         });
+    });
+});
+
+// 7. 혈압계 사진 OCR 판독 로그 및 약 챙겨먹기·병원 일정 알림 발송 이력 조회
+router.get('/events', (req, res) => {
+    const dbAll = (sql, params = []) => new Promise(r => db.all(sql, params, (e, rows) => r(e ? [] : (rows || []))));
+    const dbGet = (sql, params = []) => new Promise(r => db.get(sql, params, (e, row) => r(e ? null : row)));
+
+    Promise.all([
+        dbAll(`SELECT id, username, status, systolic, diastolic, pulse, duration_ms, message, created_at
+               FROM bp_ocr_logs ORDER BY id DESC LIMIT 30`),
+        dbGet(`SELECT COUNT(*) as total_count,
+                      COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) as ok_count,
+                      COALESCE(AVG(duration_ms), 0) as avg_ms
+               FROM bp_ocr_logs`),
+        dbAll(`SELECT id, user_id, type, title, body, icon, is_read, created_at
+               FROM notification_history
+               WHERE type IN ('blood_pressure', 'medication', 'hospital')
+               ORDER BY id DESC LIMIT 40`),
+        dbGet(`SELECT COUNT(*) as total_count,
+                      COALESCE(SUM(CASE WHEN type = 'medication' THEN 1 ELSE 0 END), 0) as med_count,
+                      COALESCE(SUM(CASE WHEN type = 'hospital' THEN 1 ELSE 0 END), 0) as hosp_count,
+                      COALESCE(SUM(CASE WHEN type = 'blood_pressure' THEN 1 ELSE 0 END), 0) as bp_count
+               FROM notification_history
+               WHERE type IN ('blood_pressure', 'medication', 'hospital')`)
+    ]).then(([ocrLogs, ocrStat, notificationLogs, notifStat]) => {
+        const totalOcr = ocrStat ? ocrStat.total_count : 0;
+        const okOcr = ocrStat ? ocrStat.ok_count : 0;
+        res.json({
+            success: true,
+            ocrLogs,
+            ocrStats: {
+                totalCount: totalOcr,
+                successCount: okOcr,
+                successRate: totalOcr > 0 ? Math.round((okOcr / totalOcr) * 100) : 100,
+                avgDurationMs: ocrStat ? Math.round(ocrStat.avg_ms) : 0
+            },
+            notificationLogs,
+            notifStats: {
+                totalCount: notifStat ? notifStat.total_count : 0,
+                medCount: notifStat ? notifStat.med_count : 0,
+                hospCount: notifStat ? notifStat.hosp_count : 0,
+                bpCount: notifStat ? notifStat.bp_count : 0
+            }
+        });
+    }).catch(e => {
+        res.status(500).json({ success: false, message: '건강 이벤트 로그 조회 실패: ' + e.message });
     });
 });
 

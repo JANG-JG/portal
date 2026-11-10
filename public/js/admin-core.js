@@ -14,12 +14,14 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-blood-backup', label: '데이터 백업 & CSV 복구', icon: '💾' },
         { id: 'subpane-blood-threshold', label: '위험 기준치 설정', icon: '⚙️' },
         { id: 'subpane-blood-records', label: '최근 혈압 측정 기록', icon: '🩸' },
+        { id: 'subpane-blood-events', label: '사진 판독·알림 이력', icon: '📋' },
         { id: 'subpane-blood-logs', label: '런타임 로그 콘솔', icon: '💻' }
     ],
     'tab-asset': [
         { id: 'subpane-asset-summary', label: '포트폴리오 & 백업', icon: '📊' },
         { id: 'subpane-asset-accounts', label: '증권 계좌별 현황', icon: '📂' },
         { id: 'subpane-asset-holdings', label: '보유 종목 상세', icon: '💼' },
+        { id: 'subpane-asset-events', label: '알림·OCR·배당 내역', icon: '📡' },
         { id: 'subpane-asset-logs', label: '런타임 로그 콘솔', icon: '💻' }
     ],
     'tab-news': [
@@ -260,6 +262,12 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
     }
     if (subId === 'subpane-security-push' && typeof window.loadAdminPushSubscriptions === 'function') {
         window.loadAdminPushSubscriptions();
+    }
+    if (subId === 'subpane-blood-events' && typeof window.loadBloodEvents === 'function') {
+        window.loadBloodEvents();
+    }
+    if (subId === 'subpane-asset-events' && typeof window.loadAssetEvents === 'function') {
+        window.loadAssetEvents();
     }
     const svcLogSubMap = {
         'subpane-blood-logs': 'blood',

@@ -181,6 +181,17 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN user_agent TEXT DEFAULT ''`, () => {});
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN last_success_at DATETIME DEFAULT NULL`, () => {});
             db.run(`ALTER TABLE push_subscriptions ADD COLUMN last_error TEXT DEFAULT ''`, () => {});
+            db.run(`CREATE TABLE IF NOT EXISTS bp_ocr_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT DEFAULT 'admin',
+                status TEXT DEFAULT 'completed',
+                systolic INTEGER,
+                diastolic INTEGER,
+                pulse INTEGER,
+                duration_ms INTEGER DEFAULT 0,
+                message TEXT,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
             // 성능 인덱스 생성
             db.run(`CREATE INDEX IF NOT EXISTS idx_records_measured_at ON records (measured_at DESC)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_notif_hist_user_created ON notification_history (user_id, created_at DESC)`);
@@ -188,6 +199,7 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`CREATE INDEX IF NOT EXISTS idx_user_memos_user ON user_memos (user_id, is_pinned DESC, updated_at DESC)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_cal_user_date ON calendar_events (user_id, event_date)`);
             db.run(`CREATE INDEX IF NOT EXISTS idx_login_logs_attempted_at ON login_logs (attempted_at DESC)`);
+            db.run(`CREATE INDEX IF NOT EXISTS idx_bp_ocr_logs_created ON bp_ocr_logs (created_at DESC)`);
         });
     }
 });
@@ -197,11 +209,24 @@ const assetDb = new sqlite3.Database(ASSET_DB_PATH, (err) => {
     if (err) console.error('❌ 자산 DB 연결 실패:', err);
     else {
         console.log('✅ 자산 DB 로드 완료:', ASSET_DB_PATH);
-        assetDb.run('PRAGMA journal_mode = WAL;');
-        assetDb.run('PRAGMA synchronous = NORMAL;');
-        assetDb.run('PRAGMA busy_timeout = 5000;');
-        assetDb.run('PRAGMA temp_store = MEMORY;');
-        assetDb.run('PRAGMA cache_size = -8000;');
+        assetDb.serialize(() => {
+            assetDb.run('PRAGMA journal_mode = WAL;');
+            assetDb.run('PRAGMA synchronous = NORMAL;');
+            assetDb.run('PRAGMA busy_timeout = 5000;');
+            assetDb.run('PRAGMA temp_store = MEMORY;');
+            assetDb.run('PRAGMA cache_size = -8000;');
+            assetDb.run(`CREATE TABLE IF NOT EXISTS ocr_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                scan_type TEXT DEFAULT 'image_ocr',
+                file_count INTEGER DEFAULT 1,
+                parsed_count INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'completed',
+                duration_ms INTEGER DEFAULT 0,
+                summary_json TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )`);
+            assetDb.run(`CREATE INDEX IF NOT EXISTS idx_ocr_logs_date ON ocr_logs (created_at DESC)`);
+        });
     }
 });
 

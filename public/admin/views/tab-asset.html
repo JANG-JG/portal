@@ -19,20 +19,27 @@
                         </a>
                     </div>
 
-                    <!-- 2. 자산 요약 요약 카드 -->
+                    <!-- 2. 자산 요약 & 시세 캐시 제어 카드 -->
                     <div class="admin-card">
                         <div class="admin-card-header">
-                            <h3>📊 포트폴리오 요약</h3>
+                            <h3>📊 포트폴리오 요약 & 시세 갱신</h3>
                             <a href="/go/asset" class="btn-admin btn-admin-outline btn-admin-sm">자산 앱 열기 →</a>
                         </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.65rem;">
                             <span style="color:#64748b;">원화 환산 총 자산</span>
                             <strong style="color:#059669; font-size:1.25rem;" id="assetAdminTotalKrw">-</strong>
                         </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem; margin-bottom:0.65rem;">
                             <span style="color:#64748b;">등록된 증권 계좌</span>
                             <strong id="assetAdminAccountCount">-</strong>
                         </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; margin-bottom:0.85rem; padding-top:0.6rem; border-top:1px dashed #e2e8f0;">
+                            <span style="color:#64748b;">적용 환율 · 시세 캐시</span>
+                            <span id="assetAdminCacheInfo" style="font-weight:600; color:#334155;">조회 중...</span>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline" id="btnRefreshAssetQuotes" onclick="refreshAssetQuotesCache()" style="width:100%; justify-content:center; min-height:42px; box-sizing:border-box;">
+                            🔄 실시간 시세·환율 즉시 새로고침
+                        </button>
                     </div>
                 </div>
             </div>
@@ -87,7 +94,118 @@
                 </div>
             </div>
 
-            <!-- 서브 4: 자산 관리 전용 런타임 로그 콘솔 -->
+            <!-- 서브 4: 증권사 알림(웹훅) · 사진 OCR · 배당 내역 관제 -->
+            <div id="subpane-asset-events" class="admin-sub-pane hidden-pane">
+                <div class="admin-overview-grid" style="margin-bottom:1.25rem;">
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#e0e7ff; color:#4338ca;">📡</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">증권사 알림 수신</div>
+                            <div class="admin-stat-val" id="assetEvtWebhookStat">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#ecfdf5; color:#059669;">📸</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">계좌·알림톡 판독</div>
+                            <div class="admin-stat-val" id="assetEvtOcrStat">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#fef3c7; color:#d97706;">💵</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">올해 누적 배당금</div>
+                            <div class="admin-stat-val" id="assetEvtDivYearStat">-</div>
+                        </div>
+                    </div>
+                    <div class="admin-stat-card">
+                        <div class="admin-stat-icon" style="background:#f3e8ff; color:#7e22ce;">💱</div>
+                        <div class="admin-stat-info">
+                            <div class="admin-stat-label">적용 환율 · 캐시 종목</div>
+                            <div class="admin-stat-val" style="font-size:0.95rem;" id="assetEvtCacheStat">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. 증권사 웹훅 알림 수신 로그 -->
+                <div class="admin-card" style="margin-bottom:1.25rem;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">📡 증권사 체결·배당 알림 자동 수신 이력</h3>
+                            <p style="font-size:0.78rem; color:#64748b; margin:0.2rem 0 0;">스마트폰 증권사 앱에서 전달된 실시간 체결·배당 알림 및 계좌 반영 결과입니다.</p>
+                        </div>
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="refreshAssetQuotesCache()">💱 시세 캐시 갱신</button>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAssetEvents()">🔄 새로고침</button>
+                        </div>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>수신 시각</th>
+                                    <th>증권사·앱</th>
+                                    <th>상태</th>
+                                    <th>알림 제목 및 본문</th>
+                                    <th>반영 요약</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assetWebhookLogsBody">
+                                <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">알림 수신 내역을 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. 계좌 사진 OCR 판독 & 배당금 내역 2단 구성 -->
+                <div class="admin-grid-2">
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>📸 계좌 사진 OCR · 빠른 문자 판독 로그</h3>
+                        </div>
+                        <div class="admin-table-container admin-table-scroll">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>판독 시각</th>
+                                        <th>방식</th>
+                                        <th>상태</th>
+                                        <th>소요시간</th>
+                                        <th>추출 결과</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="assetOcrLogsBody">
+                                    <tr><td colspan="5" style="text-align:center; padding:1.5rem; color:#64748b;">판독 이력을 불러오는 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="admin-card">
+                        <div class="admin-card-header">
+                            <h3>💵 최근 배당금 입금 내역</h3>
+                            <span id="assetEvtDivMonthBadge" style="font-size:0.78rem; color:#059669; font-weight:700;">이번 달 ₩0</span>
+                        </div>
+                        <div class="admin-table-container admin-table-scroll">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>입금일</th>
+                                        <th>종목명</th>
+                                        <th>세후 수령액</th>
+                                        <th>입금 계좌</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="assetDividendsBody">
+                                    <tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">배당 내역을 불러오는 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 5: 자산 관리 전용 런타임 로그 콘솔 -->
             <div id="subpane-asset-logs" class="admin-sub-pane hidden-pane">
                 <div class="admin-card" style="padding: 1.25rem;">
                     <div class="admin-card-header" style="margin-bottom:0.75rem; flex-wrap:wrap; gap:0.6rem;">
