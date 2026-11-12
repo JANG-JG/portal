@@ -110,6 +110,7 @@ function formatCityDisplayName(rawCity) {
 const weatherCacheMap = new Map();
 const inFlightWeatherFetches = new Map();
 const WEATHER_CACHE_TTL_MS = 10 * 60 * 1000;
+const { kickNewsWeatherRefreshIfStale } = require('./weatherRefreshKick.service');
 
 // Open-Meteo daily 응답 → [{ date, label, condition, min, max, rain }] (오늘/내일/모레 예보)
 function buildDailyForecast(daily) {
@@ -375,6 +376,7 @@ async function getLiveWeatherData(requestedCity) {
 
         const savedKma = await getSavedKmaWeather(cityKey);
         if (savedKma) {
+            kickNewsWeatherRefreshIfStale(savedKma.updated_at);
             // 기존 캐시의 주간 예보(forecast)가 있다면 보존 및 백그라운드 갱신
             if (cached && cached.data && Array.isArray(cached.data.forecast) && cached.data.forecast.length > 0) {
                 savedKma.forecast = cached.data.forecast;
