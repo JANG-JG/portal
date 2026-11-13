@@ -101,7 +101,7 @@ function normalizeTargetUrl(rawUrl) {
 function sendUnifiedPushNotification({
     title, body, url, type = 'general', subtype = null, tag,
     userId = null, excludeUserId = null, adminOnly = false,
-    image = null, icon = null, saveHistory = null
+    image = null, icon = null, badge = null, saveHistory = null
 }) {
     return new Promise((resolve) => {
         const shouldSaveHistory = (saveHistory !== null) ? Boolean(saveHistory) : (type !== 'breaking');
@@ -229,13 +229,15 @@ function sendUnifiedPushNotification({
                     ? tag
                     : `jg-${type}-${notifId || Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-                // 호환성 100% 정적 PNG 아이콘 표준 적용 (모노크롬/커스텀 배지 제거로 WebAPK 충돌 원천 차단)
+                // 호환성 100% 정적 PNG 아이콘 + 모노크롬 배지(상태바 아이콘) 적용
                 const stdIcon = icon || (type === 'album' ? 'https://album.j-jg.cc/icons/icon-192.png' : 'https://j-jg.cc/icon-v2-192.png');
+                const stdBadge = badge || (type === 'album' ? 'https://album.j-jg.cc/icons/badge-72.png' : 'https://j-jg.cc/badge-monochrome.png');
 
                 const payloadObj = {
                     title: cleanTitle,
                     body: cleanBody,
                     icon: stdIcon,
+                    badge: stdBadge,
                     tag: uniqueTag,
                     data: {
                         url: linkWithId,

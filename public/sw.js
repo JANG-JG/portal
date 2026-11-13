@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261112_194056';
+const CACHE_NAME = 'jg-portal-v20261113_115538';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -14,6 +14,7 @@ const PRECACHE_ASSETS = [
     '/favicon-v2.png',
     '/icon-v2-192.png',
     '/icon-v2-512.png',
+    '/badge-monochrome.png',
     '/manifest.json'
 ];
 
@@ -110,15 +111,17 @@ self.addEventListener('push', (event) => {
     const targetUrl = payloadData.url || 'https://j-jg.cc/';
     const notifId = payloadData.notifId || null;
 
-    // 모노크롬/구버전 아이콘 배제, 검증된 정적 PNG 아이콘 표준 적용
+    // 모노크롬/구버전 아이콘 배제, 검증된 정적 PNG 아이콘 표준 적용 (배지는 모노크롬 PNG 사용)
     let iconUrl = '/icon-v2-192.png';
     if (payload.icon && typeof payload.icon === 'string' && !payload.icon.includes('monochrome') && !payload.icon.includes('/icon-192.png')) {
         iconUrl = payload.icon;
     }
+    const badgeUrl = (payload.badge && typeof payload.badge === 'string') ? payload.badge : '/badge-monochrome.png';
 
     const options = {
         body,
         icon: iconUrl,
+        badge: badgeUrl,
         tag: safeTag,
         renotify: true,
         data: {
@@ -146,6 +149,7 @@ self.addEventListener('push', (event) => {
                 return self.registration.showNotification(title, {
                     body,
                     icon: '/icon-v2-192.png',
+                    badge: '/badge-monochrome.png',
                     tag: safeTag,
                     data: { url: targetUrl, notifId }
                 }).catch(() => {});
