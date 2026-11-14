@@ -12,7 +12,7 @@
     window.__JG_UI_LOADER_INITIALIZED__ = true;
 
     // 🎯 중앙 집중 단일 버전 상수 (여기서 버전만 올리면 전 사이트 자동 갱신!)
-    const JG_UI_VERSION = '20261114_165809';
+    const JG_UI_VERSION = '20261114_171627';
     window.__JG_UI_VERSION__ = JG_UI_VERSION;
 
     // 0. 🛡️ [FOUC & 거대 로고 방지 동기 크리티컬 인라인 CSS 즉시 주입 (0ms 무지연 가드)]
@@ -309,33 +309,48 @@
         return null;
     })();
 
+    function isPrivateHostName(h) {
+        const host = String(h || '').split(':')[0].trim().toLowerCase();
+        if (!host) return false;
+        return (
+            host === 'localhost' ||
+            host === '127.0.0.1' ||
+            host === 'lan.j-jg.cc' ||
+            host.endsWith('.local') ||
+            /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)
+        );
+    }
+
+    const lanCfg = window.__JG_LAN_CONFIG__ || {};
+    const lanPortalPort = (lanCfg.ports && lanCfg.ports.portal) || 3443;
+    const isCurrentLan = isPrivateHostName(window.location.hostname);
+
     let origin = 'https://j-jg.cc';
     let enableNav = true;
     let enableTicker = true;
 
-    if (currentScript) {
+    if (isCurrentLan) {
+        origin = window.location.protocol === 'https:'
+            ? `https://${window.location.hostname}:${lanPortalPort}`
+            : window.location.origin;
+    } else if (currentScript) {
         try {
             if (currentScript.src) {
                 const url = new URL(currentScript.src);
-                const h = url.hostname;
-                // 로컬 호스트 및 내부 Wi-Fi(LAN) 직접 접속 환경 지원
-                if (
-                    h === 'localhost' ||
-                    h === '127.0.0.1' ||
-                    h === 'lan.j-jg.cc' ||
-                    h.endsWith('.local') ||
-                    /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)
-                ) {
+                if (isPrivateHostName(url.hostname)) {
                     origin = url.origin;
                 }
             }
         } catch (e) {}
-
-        if (currentScript.dataset) {
-            if (currentScript.dataset.nav === 'false') enableNav = false;
-            if (currentScript.dataset.ticker === 'false') enableTicker = false;
-        }
     }
+
+    if (currentScript && currentScript.dataset) {
+        if (currentScript.dataset.nav === 'false') enableNav = false;
+        if (currentScript.dataset.ticker === 'false') enableTicker = false;
+    }
+
+    window.__JG_IS_LAN__ = isCurrentLan;
+    window.__JG_PORTAL_ORIGIN__ = origin;
 
     // 2. 리소스 주입 헬퍼 함수
     function injectStylesheet(href) {
@@ -356,10 +371,13 @@
         (document.head || document.documentElement).appendChild(script);
     }
 
+    // 2-0. 내부 Wi-Fi 자동 감지 및 원클릭 SSO 브릿지 로더 주입
+    injectScript(`${origin}/js/lan-auto.js?v=${JG_UI_VERSION}`);
+
     // 2-1. 전 사이트 파비콘 및 애플 터치 아이콘 / 매니페스트 캐시 고착 원천 차단 (동적 버전 스탬핑)
     (function syncGlobalFavicons() {
         const host = window.location.hostname;
-        if (host === 'j-jg.cc' || host === 'album.j-jg.cc' || host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.')) return;
+        if (host === 'j-jg.cc' || host === 'album.j-jg.cc' || host === 'localhost' || host === '127.0.0.1' || isCurrentLan) return;
         const head = document.head || document.getElementsByTagName('head')[0];
         if (!head) return;
         const base = origin || 'https://j-jg.cc';
@@ -386,7 +404,7 @@
     })();
 
     // 3. 상단 내비게이션 바 주입 (메인 포털 홈은 자체 내비바 및 portal-notification.js 사용으로 중복 주입 제외)
-    const isPortalMain = (window.location.hostname === 'j-jg.cc' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.')) &&
+    const isPortalMain = (window.location.hostname === 'j-jg.cc' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || (isCurrentLan && (!window.location.port || String(window.location.port) === String(lanPortalPort) || String(window.location.port) === '3004'))) &&
         (window.location.pathname === '/' || window.location.pathname === '/index.html' || !!document.getElementById('portal-tab-bar'));
     if (enableNav && !isPortalMain) {
         // 스타일시트 동적 주입

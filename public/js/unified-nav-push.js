@@ -9,12 +9,14 @@
     window.__JG_PUSH_CLIENT_READY__ = true;
 
     function isPortalPushOrigin() {
+        const portalOrigin = window.__JG_PORTAL_ORIGIN__ || 'https://j-jg.cc';
+        if (window.location.origin === portalOrigin) return true;
         const h = window.location.hostname;
-        return h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.');
+        return h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1';
     }
     window.isPortalPushOrigin = isPortalPushOrigin;
 
-    const NOTIF_BASE_URL = isPortalPushOrigin() ? '' : 'https://j-jg.cc';
+    const NOTIF_BASE_URL = isPortalPushOrigin() ? '' : (window.__JG_PORTAL_ORIGIN__ || 'https://j-jg.cc');
     window.NOTIF_BASE_URL = NOTIF_BASE_URL;
 
     function detectClientBrowser(ua) {

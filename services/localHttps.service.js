@@ -13,10 +13,18 @@ const os = require('os');
 const path = require('path');
 const https = require('https');
 const { execFileSync } = require('child_process');
+const {
+    LAN_UPSTREAMS,
+    startLanProxyServers,
+    getLanProxyStatuses
+} = require('./lanProxy.service');
+
+const LAN_CONFIG_FILE = path.join(__dirname, '..', 'data', 'lan-config.json');
 
 const state = {
     enabled: process.env.LOCAL_HTTPS_ENABLED !== 'false',
     active: false,
+    autoRedirect: true,
     port: parseInt(process.env.LOCAL_HTTPS_PORT, 10) || 3443,
     lanIp: '',
     certPath: '',
@@ -27,6 +35,68 @@ const state = {
 };
 
 let httpsServerInstance = null;
+
+function loadLanRuntimeConfig() {
+    try {
+        if (fs.existsSync(LAN_CONFIG_FILE)) {
+            const parsed = JSON.parse(fs.readFileSync(LAN_CONFIG_FILE, 'utf8'));
+            if (typeof parsed.autoRedirect === 'boolean') {
+                state.autoRedirect = parsed.autoRedirect;
+            }
+        }
+    } catch (_) {}
+}
+
+function setAutoRedirectEnabled(enabled) {
+    state.autoRedirect = Boolean(enabled);
+    try {
+        fs.mkdirSync(path.dirname(LAN_CONFIG_FILE), { recursive: true });
+        fs.writeFileSync(LAN_CONFIG_FILE, JSON.stringify({ autoRedirect: state.autoRedirect }, null, 2));
+    } catch (err) {
+        console.warn('⚠️ [LAN Config] 설정 파일 저장 실패:', err.message);
+    }
+    return state.autoRedirect;
+}
+
+loadLanRuntimeConfig();
+
+function isPrivateLanHostname(rawHost = '') {
+    const h = String(rawHost || '').split(':')[0].trim().toLowerCase();
+    if (!h) return false;
+    if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === 'lan.j-jg.cc' || h.endsWith('.local')) {
+        return true;
+    }
+    return /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
+}
+
+function getSafeRequestHostname(req) {
+    const raw = (req && (req.headers['x-forwarded-host'] || req.hostname || req.headers.host)) || '';
+    const cleaned = String(raw).split(',')[0].split(':')[0].trim();
+    return /^[a-zA-Z0-9.-]+$/.test(cleaned) ? cleaned : '';
+}
+
+function isPrivateLanRequest(req) {
+    return isPrivateLanHostname(getSafeRequestHostname(req));
+}
+
+function getLanPortsMap() {
+    return {
+        portal: state.port,
+        asset: LAN_UPSTREAMS.asset.port,
+        blood: LAN_UPSTREAMS.blood.port,
+        album: LAN_UPSTREAMS.album.port,
+        news: LAN_UPSTREAMS.news.port
+    };
+}
+
+function getLanServiceBaseUrl(req, serviceKey) {
+    const ports = getLanPortsMap();
+    const targetPort = ports[serviceKey];
+    if (!targetPort) return '';
+    const reqHost = getSafeRequestHostname(req);
+    const host = isPrivateLanHostname(reqHost) ? reqHost : (state.lanIp || getLanIPv4());
+    return `https://${host}:${targetPort}`;
+}
 
 function getLanIPv4() {
     const envHost = String(process.env.LOCAL_HTTPS_HOST || '').trim();
@@ -204,8 +274,10 @@ function startLocalHttpsServer(app) {
         httpsServerInstance.listen(state.port, '0.0.0.0', () => {
             state.active = true;
             state.lastError = '';
-            console.log(`🔒 내부 Wi-Fi 고속 HTTPS 서버 구동 완료 (https://${state.lanIp}:${state.port}/study)`);
+            console.log(`🔒 내부 Wi-Fi 고속 HTTPS 서버 구동 완료 (https://${state.lanIp}:${state.port}/)`);
         });
+
+        startLanProxyServers(tlsOptions, state.lanIp, state.port);
         return httpsServerInstance;
     } catch (err) {
         state.active = false;
@@ -221,12 +293,50 @@ function getCaCertPath() {
     return fs.existsSync(fallbackPath) ? fallbackPath : '';
 }
 
-function getLocalHttpsStatus() {
+function getPublicLanConfig(req = null) {
     const lanIp = state.lanIp || getLanIPv4();
-    const origin = `https://${lanIp}:${state.port}`;
+    const ports = getLanPortsMap();
+    const host = (req && isPrivateLanRequest(req) ? getSafeRequestHostname(req) : '') || lanIp;
+    const origins = {
+        portal: `https://${host}:${ports.portal}`,
+        asset: `https://${host}:${ports.asset}`,
+        blood: `https://${host}:${ports.blood}`,
+        album: `https://${host}:${ports.album}`,
+        news: `https://${host}:${ports.news}`
+    };
     return {
         enabled: state.enabled,
         active: state.active,
+        autoRedirect: state.autoRedirect,
+        lanIp,
+        lanOrigin: origins.portal,
+        caDownloadPath: '/api/lan-ca.crt',
+        ports,
+        origins
+    };
+}
+
+function getLocalHttpsStatus() {
+    const lanIp = state.lanIp || getLanIPv4();
+    const origin = `https://${lanIp}:${state.port}`;
+    const proxyServices = getLanProxyStatuses(lanIp);
+    const services = [
+        {
+            key: 'portal',
+            label: 'JG 포털 · 학습실 · 위키',
+            port: state.port,
+            targetPort: process.env.PORT || 3004,
+            externalOrigin: 'https://j-jg.cc',
+            url: `${origin}/`,
+            active: state.active,
+            lastError: state.lastError
+        },
+        ...proxyServices
+    ];
+    return {
+        enabled: state.enabled,
+        active: state.active,
+        autoRedirect: state.autoRedirect,
         port: state.port,
         lanIp,
         origin,
@@ -236,7 +346,9 @@ function getLocalHttpsStatus() {
         caDownloadPath: '/api/lan-ca.crt',
         hasCustomCert: state.hasCustomCert,
         expiresAt: state.expiresAt,
-        lastError: state.lastError
+        lastError: state.lastError,
+        ports: getLanPortsMap(),
+        services
     };
 }
 
@@ -244,5 +356,12 @@ module.exports = {
     getLanIPv4,
     startLocalHttpsServer,
     getCaCertPath,
-    getLocalHttpsStatus
+    getLocalHttpsStatus,
+    getPublicLanConfig,
+    getLanPortsMap,
+    isPrivateLanHostname,
+    isPrivateLanRequest,
+    getSafeRequestHostname,
+    getLanServiceBaseUrl,
+    setAutoRedirectEnabled
 };

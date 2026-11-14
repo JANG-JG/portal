@@ -9,8 +9,10 @@
     window.__JG_NOTIF_MODAL_READY__ = true;
 
     function getBaseUrl() {
+        const portalOrigin = window.__JG_PORTAL_ORIGIN__ || 'https://j-jg.cc';
+        if (window.location.origin === portalOrigin) return '';
         const h = window.location.hostname;
-        return (h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.')) ? '' : 'https://j-jg.cc';
+        return (h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1') ? '' : portalOrigin;
     }
 
     window.portalNotifSettings = window.portalNotifSettings || {

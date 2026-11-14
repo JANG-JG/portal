@@ -140,6 +140,25 @@
                         </div>
                     </div>
 
+                    <!-- ⚡ 내부 Wi-Fi(LAN) 멀티 서비스 고속 HTTPS 게이트웨이 ([규칙 11] 관리자 가시성 & 제어) -->
+                    <div class="admin-card" id="adminLanGatewayCard" style="box-sizing:border-box; max-width:100%;">
+                        <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                            <div style="min-width:0; flex:1 1 200px;">
+                                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                                    <h3 style="margin:0;">⚡ 같은 Wi-Fi 초고속 내부 접속</h3>
+                                    <span id="adminLanAutoStateBadge" style="font-size:0.78rem; font-weight:800; color:#059669;">확인 중...</span>
+                                </div>
+                                <div id="adminLanHostSummary" style="font-size:0.78rem; color:#64748b; margin-top:0.2rem;">내부 HTTPS 게이트웨이 상태를 불러오는 중...</div>
+                            </div>
+                            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                                <button type="button" id="btnAdminLanAutoToggle" class="btn-admin btn-admin-outline btn-admin-sm" onclick="toggleAdminLanAutoRedirect()">⏸️ 자동 전환 끄기</button>
+                                <a href="/api/lan-ca.crt" download="jg-lan-ca.crt" class="btn-admin btn-admin-primary btn-admin-sm" style="text-decoration:none; display:inline-flex; align-items:center;">🔐 루트 인증서 받기</a>
+                            </div>
+                        </div>
+                        <div id="adminLanCertExpiryText" style="font-size:0.74rem; color:#475569; margin:0.45rem 0 0.65rem 0;">인증서 확인 중...</div>
+                        <div id="adminLanServicesGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.55rem;"></div>
+                    </div>
+
                     <!-- 전체 서비스 PM2 프로세스 목록 -->
                     <div class="admin-card">
                         <div class="admin-card-header">

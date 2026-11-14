@@ -22,7 +22,7 @@ const { getLiveWeatherData, initWeatherAutoRefresh } = require('./services/weath
 const { getLiveMarketData } = require('./services/market.service');
 const { sendUnifiedPushNotification } = require('./services/push.service');
 const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
-const { startLocalHttpsServer, getCaCertPath } = require('./services/localHttps.service');
+const { startLocalHttpsServer, getCaCertPath, getPublicLanConfig } = require('./services/localHttps.service');
 
 // 🛡️ 미들웨어
 const {
@@ -35,6 +35,7 @@ const {
 const authRoutes = require('./routes/auth.routes');
 const authResetRoutes = require('./routes/auth.reset.routes');
 const authRegisterRoutes = require('./routes/auth.register.routes');
+const lanRoutes = require('./routes/lan.routes');
 const portalRoutes = require('./routes/portal.routes');
 const calendarRoutes = require('./routes/calendar.routes');
 const memoRoutes = require('./routes/memo.routes');
@@ -97,7 +98,12 @@ app.get('/api/jg-ui', (req, res) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    res.sendFile(path.join(__dirname, 'public', 'js', 'jg-ui.js'));
+    const jgUiPath = path.join(__dirname, 'public', 'js', 'jg-ui.js');
+    fs.readFile(jgUiPath, 'utf8', (err, body) => {
+        if (err) return res.sendFile(jgUiPath);
+        const lanBanner = `window.__JG_LAN_CONFIG__ = ${JSON.stringify(getPublicLanConfig(req))};\n`;
+        res.send(lanBanner + body);
+    });
 });
 
 // ==========================================
@@ -386,6 +392,7 @@ app.use((req, res, next) => {
 app.use('/', authRoutes);
 app.use('/', authResetRoutes);
 app.use('/', authRegisterRoutes);
+app.use('/', lanRoutes);
 
 // 포털 메인 & 공통 대시보드 API (/api/summary, /api/ticker, /api/blood/quick-med, /go/:service)
 app.use('/', portalRoutes);
@@ -424,6 +431,8 @@ app.use('/', studyRoutes);
 
 // 헬스 체크
 app.get('/health', (req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     res.json({ status: 'ok', service: 'JG Portal' });
 });
 

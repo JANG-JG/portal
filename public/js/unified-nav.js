@@ -25,10 +25,11 @@
         }
     };
 
-    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261114_165809';
+    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261114_171627';
     const CACHE_KEY_HTML = 'jg_unav_html_v2', CACHE_KEY_VER = 'jg_unav_ver_v2', CACHE_KEY_TIME = 'jg_unav_time_v2';
     const STALE_CHECK_INTERVAL = 5 * 60 * 1000;
-    const NOTIF_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://j-jg.cc';
+    const PORTAL_ORIGIN = window.__JG_PORTAL_ORIGIN__ || 'https://j-jg.cc';
+    const NOTIF_BASE_URL = (window.location.origin === PORTAL_ORIGIN || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : PORTAL_ORIGIN;
 
     // 🛡️ [Android WebAPK / App Links 가로채기 방지 가드]
     (function initBrowserLinkIntentGuard() {
@@ -45,7 +46,7 @@
             let targetUrl;
             try { targetUrl = new URL(link.href, window.location.href); } catch (err) { return; }
 
-            const isFamilySite = targetUrl.hostname === 'j-jg.cc' || targetUrl.hostname.endsWith('.j-jg.cc') || targetUrl.hostname === 'localhost';
+            const isFamilySite = targetUrl.hostname === 'j-jg.cc' || targetUrl.hostname.endsWith('.j-jg.cc') || targetUrl.hostname === 'localhost' || /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(targetUrl.hostname);
             if (!isFamilySite) return;
 
             if (targetUrl.origin === window.location.origin && targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search && targetUrl.hash) return;
@@ -53,7 +54,9 @@
             e.preventDefault();
             if (typeof window.closeUnavDrawer === 'function') window.closeUnavDrawer();
 
-            const dest = targetUrl.href;
+            const dest = (window.__JG_IS_LAN__ && window.JGLanBridge && typeof window.JGLanBridge.toLanUrl === 'function')
+                ? window.JGLanBridge.toLanUrl(targetUrl.href)
+                : targetUrl.href;
             setTimeout(() => { window.location.href = dest; }, 10);
         }, true);
     })();
@@ -80,7 +83,7 @@
             `;
             (document.head || document.documentElement).appendChild(style);
         }
-        const baseUrl = isLocal ? '' : 'https://j-jg.cc';
+        const baseUrl = isLocal ? '' : PORTAL_ORIGIN;
         const addLink = (href) => {
             const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = href; document.head.appendChild(l);
         };
@@ -100,7 +103,9 @@
     function isPortalMainPage() {
         const host = window.location.hostname;
         const path = window.location.pathname;
-        const isPortalHost = (host === 'j-jg.cc' || host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.'));
+        const lanPorts = (window.__JG_LAN_CONFIG__ && window.__JG_LAN_CONFIG__.ports) || { portal: 3443 };
+        const isPortalLanPort = !window.location.port || String(window.location.port) === String(lanPorts.portal) || String(window.location.port) === '3004';
+        const isPortalHost = (host === 'j-jg.cc' || host === 'localhost' || host === '127.0.0.1' || (isPortalLanPort && /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)));
         return (isPortalHost && (path === '/' || path === '/index.html')) || !!document.getElementById('portal-tab-bar');
     }
 
@@ -130,7 +135,10 @@
             }
         } catch (e) {}
 
-        const applyHtml = (html) => {
+        const applyHtml = (rawHtml) => {
+            const html = (PORTAL_ORIGIN && PORTAL_ORIGIN !== 'https://j-jg.cc')
+                ? String(rawHtml).replace(/https:\/\/j-jg\.cc/g, PORTAL_ORIGIN)
+                : rawHtml;
             let target = document.getElementById('unified-nav-root') || document.getElementById('unavRoot') || document.querySelector('header.unav-header');
             if (target) {
                 const oldDrawer = document.getElementById('unavDrawer');
@@ -155,7 +163,7 @@
         if (isStale) {
             try {
                 const isLocal = window.location.hostname === 'localhost';
-                const compUrl = (isLocal ? '/components/unified-nav.html' : 'https://j-jg.cc/components/unified-nav.html') + '?v=' + UNAV_VERSION;
+                const compUrl = (isLocal ? '/components/unified-nav.html' : `${PORTAL_ORIGIN}/components/unified-nav.html`) + '?v=' + UNAV_VERSION;
                 const res = await fetch(compUrl);
                 if (res.ok) {
                     const html = await res.text();
@@ -182,14 +190,21 @@
         initUnifiedNav();
     }
 
+    function detectServiceByHostOrPort() {
+        const host = window.location.hostname.toLowerCase();
+        const port = String(window.location.port || '');
+        const lanPorts = (window.__JG_LAN_CONFIG__ && window.__JG_LAN_CONFIG__.ports) || { portal: 3443, asset: 3444, blood: 3445, album: 3446, news: 3447 };
+        if (host.includes('blood') || (port && port === String(lanPorts.blood))) return 'blood';
+        if (host.includes('asset') || (port && port === String(lanPorts.asset))) return 'asset';
+        if (host.includes('news') || (port && port === String(lanPorts.news))) return 'news';
+        if (host.includes('album') || (port && port === String(lanPorts.album))) return 'album';
+        return '';
+    }
+
     // 현재 접속 중인 서비스 내부 링크 최적화
     function optimizeInternalNavLinks() {
-        const host = window.location.hostname;
-        let currentService = '';
-        if (host.includes('blood')) currentService = 'blood';
-        else if (host.includes('asset')) currentService = 'asset';
-        else if (host.includes('news')) currentService = 'news';
-        if (!currentService) return;
+        const currentService = detectServiceByHostOrPort();
+        if (!currentService || currentService === 'album') return;
 
         document.querySelectorAll(`.unav-header a[href*="/go/${currentService}"]`).forEach(link => {
             try {
@@ -215,12 +230,13 @@
     // 현재 접속 페이지에 따른 메뉴 하이라이트
     function highlightActiveMenu() {
         const host = window.location.hostname, path = window.location.pathname;
+        const detectedSvc = detectServiceByHostOrPort();
         let activeKey = 'home';
 
-        if (host.includes('blood') || path.includes('/go/blood') || path.includes('hospital') || path.includes('report')) activeKey = 'blood';
-        else if (host.includes('asset') || path.includes('/go/asset')) activeKey = 'asset';
-        else if (host.includes('news') || path.includes('/go/news') || path.includes('weather') || path.includes('breaking') || path.includes('economy')) activeKey = 'news';
-        else if (host.includes('album') || path.includes('/go/album')) activeKey = 'album';
+        if (detectedSvc === 'blood' || path.includes('/go/blood') || path.includes('hospital') || path.includes('report')) activeKey = 'blood';
+        else if (detectedSvc === 'asset' || path.includes('/go/asset')) activeKey = 'asset';
+        else if (detectedSvc === 'news' || path.includes('/go/news') || path.includes('weather') || path.includes('breaking') || path.includes('economy')) activeKey = 'news';
+        else if (detectedSvc === 'album' || path.includes('/go/album')) activeKey = 'album';
         else if (path.startsWith('/wiki')) activeKey = 'wiki';
         else if (path.startsWith('/study')) activeKey = 'study';
         else if (path.startsWith('/kindergarten')) activeKey = 'kindergarten';
@@ -228,7 +244,7 @@
         else if (path.includes('admin')) activeKey = 'admin';
         else if (path.includes('calendar')) activeKey = 'calendar';
         else if (path.includes('memo')) activeKey = 'memo';
-        else if (host === 'j-jg.cc' || host === 'localhost') activeKey = 'home';
+        else if (host === 'j-jg.cc' || host === 'localhost' || window.__JG_IS_LAN__) activeKey = 'home';
 
         const lifeKeys = new Set(['calendar', 'memo', 'album', 'wiki', 'study', 'kindergarten']);
         document.querySelectorAll('.unav-link[data-nav]').forEach(el => {

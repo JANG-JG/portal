@@ -197,7 +197,7 @@
             <button type="button" class="btn btn-primary" id="retry-btn" onclick="handleRetry()">
                 🔄 다시 시도
             </button>
-            <a href="https://j-jg.cc/" class="btn btn-secondary">
+            <a id="externalFallbackBtn" href="https://j-jg.cc/" class="btn btn-secondary">
                 🏠 JG 포털 홈으로 이동
             </a>
             <button type="button" class="btn btn-secondary" onclick="window.history.back()" style="font-size: 0.85rem; padding: 0.65rem;">
@@ -211,16 +211,51 @@
     </div>
 
     <script>
+        const isLanHost = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(window.location.hostname || '');
+
         function updateOnlineStatus() {
             const badge = document.getElementById('status-badge');
             const text = document.getElementById('status-text');
             if (navigator.onLine) {
+                if (isLanHost) {
+                    checkExternalFallback();
+                    return;
+                }
                 badge.className = 'status-badge online';
                 text.innerHTML = '🟢 연결 복구됨! 페이지를 새로고침합니다...';
                 setTimeout(() => {
                     window.location.reload();
                 }, 1000);
             } else {
+                badge.className = 'status-badge offline';
+                text.innerHTML = '🔴 오프라인 대기 중 (네트워크 확인 필요)';
+            }
+        }
+
+        async function checkExternalFallback() {
+            const badge = document.getElementById('status-badge');
+            const text = document.getElementById('status-text');
+            const extBtn = document.getElementById('externalFallbackBtn');
+            try {
+                const res = await fetch('/favicon.svg?t=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
+                if (res.ok) {
+                    badge.className = 'status-badge online';
+                    text.innerHTML = '🟢 내부망 연결 복구됨! 새로고침합니다...';
+                    setTimeout(() => window.location.reload(), 800);
+                    return;
+                }
+            } catch (_) {}
+
+            try {
+                await fetch('https://j-jg.cc/health?t=' + Date.now(), { mode: 'no-cors', cache: 'no-store' });
+                badge.className = 'status-badge online';
+                text.innerHTML = '🌐 외부 인터넷이 연결되어 있습니다. 외부 주소로 전환합니다...';
+                if (extBtn) {
+                    extBtn.innerText = '🌐 외부 인터넷(j-jg.cc)으로 계속하기';
+                    extBtn.href = 'https://j-jg.cc/?stay_external=1';
+                }
+                setTimeout(() => { window.location.replace('https://j-jg.cc/?stay_external=1'); }, 900);
+            } catch (_) {
                 badge.className = 'status-badge offline';
                 text.innerHTML = '🔴 오프라인 대기 중 (네트워크 확인 필요)';
             }
@@ -240,6 +275,13 @@
                     return;
                 }
             } catch (e) {}
+            if (isLanHost) {
+                try {
+                    await fetch('https://j-jg.cc/health?t=' + Date.now(), { mode: 'no-cors', cache: 'no-store' });
+                    window.location.replace('https://j-jg.cc/?stay_external=1');
+                    return;
+                } catch (_) {}
+            }
             btn.disabled = false;
             btn.innerText = '🔄 다시 시도';
             alert('아직 서버에 연결되지 않았습니다. Wi-Fi 또는 모바일 데이터를 확인해 주세요.');

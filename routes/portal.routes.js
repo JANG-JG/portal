@@ -10,6 +10,7 @@ const { findNearestCityByCoords } = require('../services/weather.coords');
 const { getPortalSummary, invalidateSummaryCache } = require('../services/portalSummary.service');
 const { getTickerData, invalidateTickerCache } = require('../services/portalTicker.service');
 const { getModuleById, isServiceAllowed } = require('../services/moduleRegistry.service');
+const { isPrivateLanRequest, getLanServiceBaseUrl } = require('../services/localHttps.service');
 
 // 1. 요약 데이터 조회 API (메인 대시보드 카드용, SWR 60초 캐시 및 백그라운드 무기다림 갱신)
 router.get('/api/summary', authenticateToken, async (req, res) => {
@@ -46,6 +47,10 @@ router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
         ORDER BY pi.id DESC
         LIMIT 12
     `;
+    const albumThumbBase = isPrivateLanRequest(req)
+        ? (getLanServiceBaseUrl(req, 'album') || 'https://album.j-jg.cc')
+        : 'https://album.j-jg.cc';
+
     albumDb.all(query, [], (err, rows) => {
         if (!err && Array.isArray(rows) && rows.length > 0) {
             const photos = rows.map(r => ({
@@ -53,7 +58,7 @@ router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
                 imageId: r.image_id,
                 caption: r.caption || '',
                 thumbnailUrl: `/album-uploads/thumbnails/${r.thumbnail_filename}`,
-                externalThumbnailUrl: `https://album.j-jg.cc/uploads/thumbnails/${r.thumbnail_filename}`,
+                externalThumbnailUrl: `${albumThumbBase}/uploads/thumbnails/${r.thumbnail_filename}`,
                 author: r.author_nickname,
                 emoji: r.author_emoji,
                 createdAt: r.created_at,
@@ -85,7 +90,7 @@ router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
                 id: r.photo_id,
                 caption: r.caption || '',
                 thumbnailUrl: `/album-uploads/thumbnails/${r.thumbnail_filename}`,
-                externalThumbnailUrl: `https://album.j-jg.cc/uploads/thumbnails/${r.thumbnail_filename}`,
+                externalThumbnailUrl: `${albumThumbBase}/uploads/thumbnails/${r.thumbnail_filename}`,
                 author: r.author_nickname,
                 emoji: r.author_emoji,
                 createdAt: r.created_at,
@@ -171,12 +176,13 @@ router.get('/go/:service', authenticateToken, (req, res) => {
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
         res.setHeader('Pragma', 'no-cache');
 
+        const useLan = isPrivateLanRequest(req);
         let baseUrl = '';
-        if (service === 'news') baseUrl = 'https://news.j-jg.cc';
-        else if (service === 'economy') baseUrl = 'https://news.j-jg.cc/economy';
-        else if (service === 'asset') baseUrl = 'https://asset.j-jg.cc';
-        else if (service === 'blood') baseUrl = 'https://blood.j-jg.cc';
-        else if (service === 'album') baseUrl = 'https://album.j-jg.cc';
+        if (service === 'news') baseUrl = useLan ? getLanServiceBaseUrl(req, 'news') : 'https://news.j-jg.cc';
+        else if (service === 'economy') baseUrl = useLan ? `${getLanServiceBaseUrl(req, 'news')}/economy` : 'https://news.j-jg.cc/economy';
+        else if (service === 'asset') baseUrl = useLan ? getLanServiceBaseUrl(req, 'asset') : 'https://asset.j-jg.cc';
+        else if (service === 'blood') baseUrl = useLan ? getLanServiceBaseUrl(req, 'blood') : 'https://blood.j-jg.cc';
+        else if (service === 'album') baseUrl = useLan ? getLanServiceBaseUrl(req, 'album') : 'https://album.j-jg.cc';
         else {
             const mod = getModuleById(service);
             if (mod && mod.baseUrl) baseUrl = mod.baseUrl;
