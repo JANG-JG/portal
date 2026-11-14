@@ -415,7 +415,7 @@
         document.getElementById('page-title').innerText = `${preset.title} (${code}) - JG 포털`;
 
         if (customMsg) {
-            document.getElementById('error-desc').innerHTML = customMsg;
+            document.getElementById('error-desc').textContent = customMsg;
         } else {
             document.getElementById('error-desc').innerHTML = preset.desc;
         }

@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 
 const PORT = process.env.PORT || 3004;
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_174107';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_202106';
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     console.error('🚨 [보안 오류] JWT_SECRET 환경변수가 누락되었습니다. .env 설정을 확인하세요.');

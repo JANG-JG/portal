@@ -25,6 +25,9 @@ router.get('/api/summary', authenticateToken, async (req, res) => {
 
 // 1-1. 메인 대시보드용 최근 가족 앨범 사진 12선 조회 API (개별 슬라이드 사진 단위 전개)
 router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
+    if (!isServiceAllowed(req.user, 'album')) {
+        return res.status(403).json({ success: false, message: '앨범 접근 권한이 없습니다.', photos: [] });
+    }
     if (!albumDb) {
         return res.json({ success: true, photos: [] });
     }

@@ -49,6 +49,7 @@ const aiHistoryRoutes = require('./routes/ai-history.routes');
 const kindergartenRoutes = require('./routes/kindergarten.routes');
 
 const app = express();
+app.disable('x-powered-by');
 app.set('trust proxy', 1);
 // ⚡ SSE(text/event-stream) 스트리밍 버퍼링 방지를 위한 압축 예외 필터
 app.use(compression({
@@ -242,8 +243,8 @@ app.get(['/calendar', '/calendar.html'], authenticateToken, (req, res) => {
     sendHtml(res, 'calendar.html');
 });
 
-// 1-4. 유치원 사진 수집 관리 화면
-app.get(['/kindergarten', '/kindergarten.html'], authenticateToken, (req, res) => {
+// 1-4. 유치원 사진 수집 관리 화면 (관리자 전용)
+app.get(['/kindergarten', '/kindergarten.html'], authenticateToken, requireAdmin, (req, res) => {
     sendHtml(res, 'kindergarten.html');
 });
 
@@ -370,11 +371,14 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
 }));
 
-// 📸 가족 사진첩 썸네일 동일 오리진 초고속 서빙 (크로스 도메인 지연 방지)
+// 📸 가족 사진첩 썸네일 동일 오리진 초고속 서빙 (인증 필수 및 공유 캐싱 방지)
 const ALBUM_THUMBNAILS_DIR = path.resolve(__dirname, '..', 'family-album', 'uploads', 'thumbnails');
-app.use('/album-uploads/thumbnails', express.static(ALBUM_THUMBNAILS_DIR, {
+app.use('/album-uploads/thumbnails', authenticateToken, express.static(ALBUM_THUMBNAILS_DIR, {
     maxAge: '7d',
-    immutable: true
+    immutable: true,
+    setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+    }
 }));
 
 // 요청 로깅 미들웨어 (정적 자원 제외)

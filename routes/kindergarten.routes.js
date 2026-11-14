@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const kindergartenService = require('../services/kindergarten.service');
 
-// 1. 유치원 수집기 설정 조회 (비밀번호 마스킹)
-router.get('/config', authenticateToken, (req, res) => {
+// 1. 유치원 수집기 설정 조회 (비밀번호 마스킹, 관리자 전용)
+router.get('/config', authenticateToken, requireAdmin, (req, res) => {
     try {
         const config = kindergartenService.getPublicConfig();
         return res.json({ success: true, config });
@@ -13,8 +13,8 @@ router.get('/config', authenticateToken, (req, res) => {
     }
 });
 
-// 2. 유치원 수집기 설정 저장 (계정 암호화, 게시판 목록 업데이트)
-router.post('/config', authenticateToken, async (req, res) => {
+// 2. 유치원 수집기 설정 저장 (계정 암호화, 게시판 목록 업데이트, 관리자 전용)
+router.post('/config', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { userId, userPw, targetBoards, hddBasePath } = req.body;
         const result = await kindergartenService.saveCredentialsAndSettings({
@@ -32,8 +32,8 @@ router.post('/config', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. 사진 수집 프로세스 실행
-router.post('/run', authenticateToken, async (req, res) => {
+// 3. 사진 수집 프로세스 실행 (관리자 전용)
+router.post('/run', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const result = await kindergartenService.startCrawler();
         if (!result.success) {
@@ -45,8 +45,8 @@ router.post('/run', authenticateToken, async (req, res) => {
     }
 });
 
-// 4. 실시간 상태 및 최근 로그 조회
-router.get('/status', authenticateToken, async (req, res) => {
+// 4. 실시간 상태 및 최근 로그 조회 (관리자 전용)
+router.get('/status', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const status = await kindergartenService.getStatus();
         return res.json({ success: true, status });
@@ -55,8 +55,8 @@ router.get('/status', authenticateToken, async (req, res) => {
     }
 });
 
-// 5. 누적 로그 파일(collection_history.log) 조회
-router.get('/history-log', authenticateToken, async (req, res) => {
+// 5. 누적 로그 파일(collection_history.log) 조회 (관리자 전용)
+router.get('/history-log', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const logData = await kindergartenService.getCumulativeHistoryLog();
         return res.json({ success: true, log: logData });
