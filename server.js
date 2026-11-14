@@ -8,7 +8,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_103949';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_104155';
 const {
     PORT,
     JWT_SECRET,
@@ -310,9 +310,11 @@ app.get(['/login', '/login.html'], (req, res) => {
 });
 
 // 정적 파일 서빙 및 캐시 제어 (.well-known 디지털 자산 링크만 예외 허용하고 일반 dotfiles 차단)
+app.use('/study', authenticateToken);
 app.use('/.well-known', express.static(path.join(__dirname, 'public', '.well-known')));
 app.use(express.static(path.join(__dirname, 'public'), {
     index: false,
+    redirect: false,
     etag: true,
     lastModified: true,
     dotfiles: 'ignore',
