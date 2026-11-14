@@ -120,9 +120,18 @@
 
     function shouldSkipExternalProbe() {
         const p = window.location.pathname || '/';
+        const isStandalone = Boolean(
+            (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+            window.navigator.standalone === true
+        );
+        if (isStandalone && (p === '/study' || p.startsWith('/study/'))) {
+            return true;
+        }
         if (
             p.startsWith('/login') ||
             p.startsWith('/logout') ||
+            p.startsWith('/study/login') ||
+            p.startsWith('/study/logout') ||
             p.startsWith('/register') ||
             p.startsWith('/invite') ||
             p.startsWith('/auth/') ||

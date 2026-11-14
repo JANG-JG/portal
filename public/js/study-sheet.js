@@ -266,26 +266,25 @@
             const r = canvas.getBoundingClientRect();
             return { x: e.clientX - r.left, y: e.clientY - r.top };
         };
-        canvas.addEventListener('pointerdown', (e) => {
+        const beginStroke = (p) => {
             drawing = true;
             if (activeTool === 'pen') hasInk = true;
-            canvas.setPointerCapture(e.pointerId);
             applyToolStyle();
-            const p = getPos(e);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p.x + 0.01, p.y + 0.01);
             ctx.stroke();
-        });
-        canvas.addEventListener('pointermove', (e) => {
-            if (!drawing) return;
-            const p = getPos(e);
-            ctx.lineTo(p.x, p.y);
-            ctx.stroke();
-        });
+        };
+        const moveStroke = (p) => { if (drawing) { ctx.lineTo(p.x, p.y); ctx.stroke(); } };
         const endDraw = () => { drawing = false; };
-        canvas.addEventListener('pointerup', endDraw);
-        canvas.addEventListener('pointercancel', endDraw);
+        if (window.StudyTablet && window.StudyTablet.bindDrawingCanvas) {
+            window.StudyTablet.bindDrawingCanvas(canvas, { getPos, onStart: beginStroke, onMove: moveStroke, onEnd: endDraw, onResize: resizeCanvas });
+        } else {
+            canvas.addEventListener('pointerdown', (e) => { if (e.isPrimary !== false) { canvas.setPointerCapture(e.pointerId); beginStroke(getPos(e)); } });
+            canvas.addEventListener('pointermove', (e) => moveStroke(getPos(e)));
+            canvas.addEventListener('pointerup', endDraw);
+            canvas.addEventListener('pointercancel', endDraw);
+        }
 
         const toolBtns = Array.from(meta.querySelectorAll('[data-tool]'));
         toolBtns.forEach((btn) => btn.addEventListener('click', () => {

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>연결 확인 중 | 빨간패드공부</title>
+    <link rel="manifest" href="/study/manifest.json">
+    <link rel="icon" type="image/png" sizes="64x64" href="/study/icons/favicon-64.png">
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100dvh;
+            display: grid;
+            place-items: center;
+            padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+            background: linear-gradient(160deg, #fffdf7 0%, #fff1e6 100%);
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #1e293b;
+        }
+        .offline-card {
+            width: 100%;
+            max-width: 440px;
+            background: #ffffff;
+            border: 2px solid #fed7aa;
+            border-radius: 26px;
+            padding: 32px 24px;
+            text-align: center;
+            box-shadow: 0 14px 36px rgba(251, 146, 60, 0.14);
+        }
+        .offline-icon {
+            width: 88px;
+            height: 88px;
+            border-radius: 24px;
+            margin-bottom: 14px;
+            object-fit: cover;
+        }
+        h1 { margin: 0 0 8px; font-size: 1.35rem; font-weight: 800; }
+        p { margin: 0 0 22px; color: #64748b; font-weight: 600; line-height: 1.55; }
+        .retry-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-height: 54px;
+            border: none;
+            border-radius: 16px;
+            background: #ff7a45;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 1.05rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <main class="offline-card">
+        <img class="offline-icon" src="/study/icons/icon-192.png" alt="빨간패드공부 아이콘">
+        <h1>와이파이 연결을 찾고 있어요 📡</h1>
+        <p>태블릿이 인터넷에 잠시 끊어졌어요.<br>와이파이를 확인한 뒤 아래 버튼을 눌러 주세요!</p>
+        <button type="button" class="retry-btn" onclick="window.location.replace('/study')">🔄 다시 연결하기</button>
+    </main>
+</body>
+</html>

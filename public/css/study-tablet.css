@@ -1,0 +1,183 @@
+/**
+ * ==============================================================================
+ * 「빨간패드공부」 갤럭시 탭 가로·세로 반응형 & 터치 보호 스타일 (study-tablet.css)
+ * ------------------------------------------------------------------------------
+ * [규칙 3] 500줄 이하 모듈 분리 | [규칙 6] 360px~태블릿 무넘침·안전영역·터치 타겟
+ * ==============================================================================
+ */
+
+html,
+body {
+    overscroll-behavior-y: contain;
+}
+
+.study-shell {
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    padding-left: max(14px, env(safe-area-inset-left));
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.study-shell,
+.study-btn,
+.study-link-btn,
+.child-tab-btn,
+.subject-chip,
+.theme-pill,
+.coloring-tpl-pill,
+.trace-wrap,
+.coloring-stage,
+.dot-stage,
+.maze-grid {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.study-shell input,
+.study-shell textarea {
+    user-select: text;
+    -webkit-user-select: text;
+    -webkit-touch-callout: default;
+}
+
+.study-btn,
+.study-link-btn,
+.child-tab-btn,
+.subject-chip,
+.theme-pill,
+.coloring-tpl-pill,
+.choice-btn,
+.match-node,
+.count-item-btn {
+    touch-action: manipulation;
+}
+
+.study-btn[hidden],
+.study-link-btn[hidden],
+#studyInstallBanner[hidden] {
+    display: none !important;
+}
+
+.study-btn.study-btn-pill-active,
+.study-btn.is-active {
+    background: #fff7ed;
+    border-color: #fb923c;
+    color: #c2410c;
+    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.14);
+}
+
+/* 기본(360px ~ 태블릿 세로): 단일 컬럼 흐름 */
+.study-dashboard-main {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.study-dash-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.study-dash-col > .study-card {
+    margin-bottom: 0;
+}
+
+/* 태블릿(터치/Coarse Pointer): 아이 손가락 & S펜 친화 터치 면적 */
+@media (pointer: coarse) {
+    .study-btn,
+    .study-link-btn {
+        min-height: 48px;
+    }
+
+    .trace-tool-btn,
+    .color-mode-btn {
+        min-height: 46px;
+        padding-inline: 14px;
+    }
+
+    .color-swatch {
+        min-width: 48px;
+        min-height: 48px;
+    }
+}
+
+/* 태블릿 뷰포트(720px+): 따라쓰기·색칠 영역 여유 확대 */
+@media (min-width: 720px) {
+    .study-shell {
+        padding-right: max(22px, env(safe-area-inset-right));
+        padding-left: max(22px, env(safe-area-inset-left));
+    }
+
+    .coloring-canvas-wrap {
+        max-width: min(680px, 100%);
+    }
+
+    .trace-wrap.trace-wrap-roomy {
+        min-height: 220px;
+    }
+
+    .study-topbar-actions {
+        gap: 10px;
+    }
+}
+
+/* 갤럭시 탭 가로 모드(900px+): 좌우 2단 대시보드 + 넓은 학습지 뷰 */
+@media (min-width: 900px) {
+    .study-shell {
+        max-width: 1180px;
+    }
+
+    .study-dashboard-main {
+        display: grid;
+        grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+        gap: 18px;
+        align-items: start;
+    }
+
+    .study-dashboard-main > .child-tabs,
+    .study-dashboard-main > .balance-banner {
+        grid-column: 1 / -1;
+    }
+
+    .study-dash-col {
+        gap: 18px;
+    }
+
+    .coloring-canvas-wrap {
+        max-width: min(720px, 100%);
+    }
+}
+
+/* 태블릿 세로·소형 화면(360px~) 가로 스크롤 차단 */
+@media (max-width: 599px) {
+    .study-topbar-actions {
+        width: 100%;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .study-topbar-actions > * {
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+}
+
+@media print {
+    .study-shell {
+        max-width: none !important;
+        padding: 0 !important;
+    }
+
+    #studyInstallBanner,
+    #btnWakeLockToggle,
+    #btnPenOnlyToggle {
+        display: none !important;
+    }
+}

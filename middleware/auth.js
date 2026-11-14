@@ -17,6 +17,13 @@ setInterval(() => {
 
 function buildLoginRedirect(req) {
     const origUrl = req.originalUrl || req.path || '';
+    const cleanPath = origUrl.split('?')[0];
+    if (cleanPath === '/study' || cleanPath.startsWith('/study/')) {
+        const nextQuery = (cleanPath !== '/study' && cleanPath !== '/study/' && !cleanPath.startsWith('/study/login') && !cleanPath.startsWith('/study/logout'))
+            ? `?next=${encodeURIComponent(origUrl)}`
+            : '';
+        return `/study/login${nextQuery}`;
+    }
     const nextQuery = (origUrl.startsWith('/') && !origUrl.startsWith('//') && origUrl !== '/' && origUrl !== '/login')
         ? `?next=${encodeURIComponent(origUrl)}`
         : '';

@@ -1,0 +1,42 @@
+{
+  "id": "/study",
+  "name": "빨간패드공부",
+  "short_name": "빨간패드공부",
+  "description": "우리 아이 맞춤 학습지 · 한글·수학·영어·색칠놀이",
+  "lang": "ko-KR",
+  "dir": "ltr",
+  "start_url": "/study",
+  "scope": "/study/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fffdf7",
+  "theme_color": "#ff7a45",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/study/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/study/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/study/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/study/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["education", "kids"]
+}

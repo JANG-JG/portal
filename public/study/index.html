@@ -2,31 +2,52 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>우리 아이 학습실 | JG 포털</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg">
-    <link rel="apple-touch-icon" href="/icon-v2-192.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>빨간패드공부 | 우리 아이 학습실</title>
+    <link rel="manifest" href="/study/manifest.json">
+    <link rel="icon" type="image/png" sizes="64x64" href="/study/icons/favicon-64.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/study/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/study/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#ff7a45">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="빨간패드공부">
     <link rel="stylesheet" href="/css/pretendard.css">
     <link rel="stylesheet" href="/css/study.css">
     <link rel="stylesheet" href="/css/study-visuals.css">
+    <link rel="stylesheet" href="/css/study-tablet.css">
 </head>
 <body>
     <div class="study-shell">
         <header class="study-topbar">
             <div class="study-brand">
-                <span class="study-brand-icon" aria-hidden="true">🎒</span>
+                <img src="/study/icons/favicon-64.png" alt="" width="38" height="38" style="border-radius: 10px; object-fit: cover; flex-shrink: 0;" aria-hidden="true">
                 <div>
-                    <h1>우리 아이 학습실</h1>
+                    <h1>빨간패드공부</h1>
                     <small id="studyGreeting" style="color: #64748b; font-weight: 700;">오늘도 즐겁게 놀면서 배워보아요!</small>
                 </div>
             </div>
             <div class="study-topbar-actions">
+                <button type="button" id="btnWakeLockToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">💡 화면 유지 중</button>
                 <a id="portalBackLink" href="/" class="study-link-btn study-btn-outline" hidden>🏠 포털 홈</a>
-                <a href="/logout" class="study-link-btn study-btn-outline">🚪 나가기</a>
+                <a href="/study/logout" class="study-link-btn study-btn-outline">🚪 나가기</a>
             </div>
         </header>
 
-        <main>
+        <section id="studyInstallBanner" class="study-card" hidden style="background:#fff7ed; border-color:#fdba74;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="min-width:0; flex:1 1 220px;">
+                    <strong style="display:block; font-size:0.98rem; color:#9a3412;">📲 태블릿 홈 화면에 「빨간패드공부」 앱 설치</strong>
+                    <span style="font-size:0.84rem; color:#7c2d12; font-weight:600;">주소창 없이 전체 화면으로 바로 열고 가로·세로 회전을 지원해요.</span>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" id="btnStudyInstallApp" class="study-btn study-btn-primary">앱 설치하기</button>
+                    <button type="button" id="btnStudyInstallDismiss" class="study-btn study-btn-outline">닫기</button>
+                </div>
+            </div>
+        </section>
+
+        <main class="study-dashboard-main">
             <!-- 아이 프로필 전환 탭 (서버 데이터로 동적 렌더링) -->
             <nav aria-label="아이 선택" class="child-tabs" id="childTabsNav">
                 <button type="button" class="child-tab-btn active" data-child="first" id="tabChildFirst">
@@ -56,6 +77,7 @@
                 </a>
             </section>
 
+            <div class="study-dash-col study-dash-col--left">
             <!-- 영역별 현재 레벨 + 부모 잠금 해제 스테퍼 -->
             <section class="study-card">
                 <div class="study-card-head">
@@ -84,7 +106,9 @@
                     </button>
                 </div>
             </section>
+            </div>
 
+            <div class="study-dash-col study-dash-col--right">
             <!-- 오늘의 맞춤 학습지 즉시 생성 -->
             <section class="study-card">
                 <div class="study-card-head">
@@ -150,6 +174,7 @@
                     <p style="color: #64748b; margin: 0;">학습지를 불러오는 중이에요...</p>
                 </div>
             </section>
+            </div>
         </main>
     </div>
 
@@ -170,6 +195,8 @@
 
     <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
 
+    <script src="/js/study-pwa.js" defer></script>
+    <script src="/js/study-tablet.js" defer></script>
     <script src="/js/study-dashboard.js" defer></script>
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
 </body>

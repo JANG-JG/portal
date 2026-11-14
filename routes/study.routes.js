@@ -24,7 +24,8 @@ const {
     awardStamp,
     getWorksheetById,
     updateWorksheetContent,
-    verifyParentLockPin
+    verifyParentLockPin,
+    getSystemConfig
 } = require('../services/study/studyDb.service');
 const { generateAndSaveWorksheet } = require('../services/study/geminiWorksheet.service');
 const { regenerateSingleBlock } = require('../services/study/worksheetValidator.service');
@@ -87,6 +88,22 @@ router.get('/api/study/dashboard', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error('학습실 대시보드 조회 오류:', err);
         res.status(500).json({ success: false, message: '학습실 정보를 불러오지 못했습니다.' });
+    }
+});
+
+router.get('/api/study/tablet-config', authenticateToken, async (req, res) => {
+    try {
+        const wakeRaw = await getSystemConfig('study_tablet_wake_lock_default', '1');
+        const penRaw = await getSystemConfig('study_tablet_pen_only_default', '0');
+        res.json({
+            success: true,
+            config: {
+                wakeLockDefault: wakeRaw !== '0',
+                penOnlyDefault: penRaw === '1'
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '태블릿 설정을 불러오지 못했습니다.' });
     }
 });
 

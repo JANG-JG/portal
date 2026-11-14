@@ -238,31 +238,45 @@
             const r = canvas.getBoundingClientRect();
             return { x: e.clientX - r.left, y: e.clientY - r.top };
         };
-        canvas.addEventListener('pointerdown', (e) => {
-            if (!ctx || activeMode === 'fill') return;
+        const beginStroke = (p) => {
             drawing = true;
             if (activeMode === 'brush') {
                 hasCanvasInk = true;
                 strokeCount += 1;
                 if (strokeCount >= 4) triggerPraise();
             }
-            canvas.setPointerCapture(e.pointerId);
             applyCanvasStyle();
-            const p = getPos(e);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p.x + 0.01, p.y + 0.01);
             ctx.stroke();
-        });
-        canvas.addEventListener('pointermove', (e) => {
+        };
+        const moveStroke = (p) => {
             if (!drawing || !ctx) return;
-            const p = getPos(e);
             ctx.lineTo(p.x, p.y);
             ctx.stroke();
-        });
+        };
         const endDraw = () => { drawing = false; };
-        canvas.addEventListener('pointerup', endDraw);
-        canvas.addEventListener('pointercancel', endDraw);
+
+        if (window.StudyTablet && typeof window.StudyTablet.bindDrawingCanvas === 'function') {
+            window.StudyTablet.bindDrawingCanvas(canvas, {
+                canStart: () => Boolean(ctx) && activeMode !== 'fill',
+                getPos,
+                onStart: beginStroke,
+                onMove: moveStroke,
+                onEnd: endDraw,
+                onResize: resizeCanvas
+            });
+        } else {
+            canvas.addEventListener('pointerdown', (e) => {
+                if (!ctx || activeMode === 'fill' || e.isPrimary === false) return;
+                canvas.setPointerCapture(e.pointerId);
+                beginStroke(getPos(e));
+            });
+            canvas.addEventListener('pointermove', (e) => moveStroke(getPos(e)));
+            canvas.addEventListener('pointerup', endDraw);
+            canvas.addEventListener('pointercancel', endDraw);
+        }
 
         const parts = baseSvg ? baseSvg.querySelectorAll('[data-color-part]') : [];
         parts.forEach((part) => {

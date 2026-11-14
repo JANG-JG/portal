@@ -92,6 +92,44 @@
                         </div>
                         <div id="studyPreGenSlotGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.5rem; margin-top:0.65rem;"></div>
                     </div>
+
+                    <div id="studyTabletPwaPanel" style="margin-top:0.75rem; background:#fff7ed; border:1px solid #fdba74; border-radius:0.75rem; padding:0.85rem 0.9rem; box-sizing:border-box;">
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.5rem;">
+                            <div style="min-width:0; flex:1 1 240px;">
+                                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.45rem;">
+                                    <span style="font-size:0.85rem; font-weight:800; color:#9a3412;">📱 「빨간패드공부」 갤럭시 탭 전용 앱 (PWA)</span>
+                                    <span id="studyTabletStateBadge" style="font-size:0.76rem; font-weight:800; color:#c2410c;">확인 중...</span>
+                                </div>
+                                <div style="font-size:0.74rem; color:#7c2d12; margin-top:0.2rem; line-height:1.45;">
+                                    포털 웹 푸시 알림과 완전히 분리된 독립 앱입니다. 태블릿 브라우저에서 전용 주소로 로그인한 뒤 <strong>홈 화면에 추가 / 앱 설치</strong>를 누르면 주소창 없이 가로·세로 회전으로 실행됩니다.
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                                <button type="button" id="btnCopyStudyPwaExtUrl" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;" onclick="copyStudyTabletUrl('ext')">🔗 외부 전용 로그인 복사</button>
+                                <button type="button" id="btnCopyStudyPwaLanUrl" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;" onclick="copyStudyTabletUrl('lan')">⚡ 내부 빠른 로그인 복사</button>
+                                <a href="/study" target="_blank" rel="noopener" class="btn-admin btn-admin-primary btn-admin-sm">🚀 학습실 열기</a>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:0.85rem; margin-top:0.65rem; font-size:0.75rem; color:#7c2d12;">
+                            <span>외부: <strong id="studyTabletExtLoginText">https://j-jg.cc/study/login</strong></span>
+                            <span>내부: <strong id="studyTabletLanLoginText">확인 중...</strong></span>
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.75rem; margin-top:0.7rem; padding-top:0.65rem; border-top:1px dashed #fdba74;">
+                            <div style="display:flex; flex-wrap:wrap; gap:0.9rem; font-size:0.8rem; font-weight:700; color:#334155;">
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                    <input id="chkTabletWakeLockDefault" type="checkbox" checked>
+                                    공부 중 화면 꺼짐 방지 기본 켜기
+                                </label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                    <input id="chkTabletPenOnlyDefault" type="checkbox">
+                                    S펜 전용 모드 기본 켜기 (손바닥 터치 차단)
+                                </label>
+                            </div>
+                            <button type="button" id="btnSaveStudyTabletConfig" class="btn-admin btn-admin-primary btn-admin-sm" onclick="saveStudyTabletConfig()">💾 태블릿 앱 설정 저장</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">

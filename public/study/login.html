@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>입장하기 | 빨간패드공부</title>
+    <link rel="manifest" href="/study/manifest.json">
+    <link rel="icon" type="image/png" sizes="64x64" href="/study/icons/favicon-64.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/study/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/study/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#ff7a45">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="빨간패드공부">
+    <link rel="preload" href="/fonts/Pretendard-Regular.subset.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/Pretendard-Bold.subset.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="stylesheet" href="/css/study-login.css">
+</head>
+<body>
+    <div class="sl-viewport">
+        <main class="sl-shell">
+            <section class="sl-hero" aria-label="앱 소개">
+                <img
+                    class="sl-app-icon"
+                    src="/study/icons/icon-192.png"
+                    alt="빨간패드공부 캐릭터 아이콘"
+                    width="132"
+                    height="132"
+                    fetchpriority="high"
+                >
+                <h1>빨간패드공부</h1>
+                <p>한글 · 수학 · 영어 · 색칠놀이를<br>태블릿에서 재미있게 풀어요</p>
+                <div id="studyInstallBanner" hidden>
+                    <button type="button" id="btnStudyInstallApp" class="sl-install-chip">📲 태블릿 앱으로 설치하기</button>
+                    <button type="button" id="btnStudyInstallDismiss" hidden aria-label="설치 안내 닫기">닫기</button>
+                </div>
+            </section>
+
+            <section class="sl-panel" aria-label="로그인 선택">
+                <div id="slModeTabs" class="sl-tabs" hidden>
+                    <button type="button" id="tabStudyPin" class="sl-tab-btn active" aria-pressed="true">🔢 간편 PIN</button>
+                    <button type="button" id="tabStudyId" class="sl-tab-btn" aria-pressed="false">🔑 아이디</button>
+                </div>
+
+                <!-- 1. 등록된 태블릿 간편 6자리 PIN 입장 -->
+                <div id="studyPinSection" hidden>
+                    <div id="studyMemberGrid" class="sl-member-grid" role="group" aria-label="사용자 선택"></div>
+                    <p id="studyPinHint" style="margin:0; text-align:center; font-size:0.92rem; font-weight:700; color:#475569;">
+                        숫자 6자리 비밀번호를 눌러 주세요
+                    </p>
+                    <div class="sl-pin-dots" id="studyPinDots" aria-hidden="true">
+                        <span class="sl-pin-dot"></span>
+                        <span class="sl-pin-dot"></span>
+                        <span class="sl-pin-dot"></span>
+                        <span class="sl-pin-dot"></span>
+                        <span class="sl-pin-dot"></span>
+                        <span class="sl-pin-dot"></span>
+                    </div>
+                    <div class="sl-keypad" id="studyKeypad" role="group" aria-label="PIN 숫자 패드">
+                        <button type="button" class="sl-key-btn" data-key="1">1</button>
+                        <button type="button" class="sl-key-btn" data-key="2">2</button>
+                        <button type="button" class="sl-key-btn" data-key="3">3</button>
+                        <button type="button" class="sl-key-btn" data-key="4">4</button>
+                        <button type="button" class="sl-key-btn" data-key="5">5</button>
+                        <button type="button" class="sl-key-btn" data-key="6">6</button>
+                        <button type="button" class="sl-key-btn" data-key="7">7</button>
+                        <button type="button" class="sl-key-btn" data-key="8">8</button>
+                        <button type="button" class="sl-key-btn" data-key="9">9</button>
+                        <button type="button" class="sl-key-btn sl-key-sub" data-action="clear">비우기</button>
+                        <button type="button" class="sl-key-btn" data-key="0">0</button>
+                        <button type="button" class="sl-key-btn sl-key-sub" data-action="back" aria-label="한 글자 지우기">⌫</button>
+                    </div>
+                </div>
+
+                <!-- 2. 아이디 & 비밀번호 로그인 -->
+                <form id="studyIdForm" method="post" action="/api/login" aria-labelledby="tabStudyId">
+                    <div class="sl-field">
+                        <label for="studyUsername">아이디 <span aria-hidden="true">*</span></label>
+                        <input
+                            type="text"
+                            id="studyUsername"
+                            name="username"
+                            class="sl-input"
+                            autocomplete="username"
+                            autocorrect="off"
+                            autocapitalize="none"
+                            spellcheck="false"
+                            enterkeyhint="next"
+                            required
+                        >
+                    </div>
+                    <div class="sl-field">
+                        <label for="studyPassword">비밀번호 <span aria-hidden="true">*</span></label>
+                        <div class="sl-input-wrap">
+                            <input
+                                type="password"
+                                id="studyPassword"
+                                name="password"
+                                class="sl-input sl-input-pw"
+                                autocomplete="current-password"
+                                enterkeyhint="done"
+                                required
+                            >
+                            <button
+                                type="button"
+                                id="btnTogglePw"
+                                class="sl-pw-toggle"
+                                aria-pressed="false"
+                                aria-label="비밀번호 보기"
+                            >보기</button>
+                        </div>
+                    </div>
+                    <button type="submit" id="btnStudyLoginSubmit" class="sl-submit-btn">🎒 학습실 들어가기</button>
+                </form>
+
+                <p id="studyLoginStatus" class="sl-status" role="status" aria-live="polite"></p>
+            </section>
+        </main>
+    </div>
+
+    <dialog id="pinChangeDialog" class="sl-dialog" closedby="any" aria-labelledby="pinChangeTitle">
+        <h2 id="pinChangeTitle" style="margin:0 0 8px; font-size:1.15rem;">🔐 새 PIN 6자리 설정</h2>
+        <p style="margin:0 0 14px; font-size:0.9rem; color:#64748b;">앞으로 사용할 6자리 숫자 PIN을 입력해 주세요.</p>
+        <form id="pinChangeForm">
+            <div class="sl-field">
+                <label for="newPinInput">새 6자리 PIN</label>
+                <input type="password" id="newPinInput" name="newPin" class="sl-input" inputmode="numeric" pattern="\d{6}" maxlength="6" autocomplete="new-password" required>
+            </div>
+            <p id="pinChangeStatus" class="sl-status" role="status" aria-live="polite"></p>
+            <div style="display:flex; gap:8px; margin-top:14px;">
+                <button type="button" id="btnClosePinChange" class="sl-key-btn sl-key-sub" style="flex:1;">닫기</button>
+                <button type="submit" id="btnSaveNewPin" class="sl-submit-btn" style="flex:1.5;">저장하고 입장</button>
+            </div>
+        </form>
+    </dialog>
+
+    <script src="/js/study-pwa.js" defer></script>
+    <script src="/js/study-login.js" defer></script>
+</body>
+</html>

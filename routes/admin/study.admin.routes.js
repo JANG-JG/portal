@@ -376,4 +376,50 @@ router.post('/pregen/warmup', async (req, res) => {
     }
 });
 
+router.get('/tablet-config', async (req, res) => {
+    try {
+        const wakeRaw = await getSystemConfig('study_tablet_wake_lock_default', '1');
+        const penRaw = await getSystemConfig('study_tablet_pen_only_default', '0');
+        const lanInfo = getLocalHttpsStatus();
+        res.json({
+            success: true,
+            config: {
+                wakeLockDefault: wakeRaw !== '0',
+                penOnlyDefault: penRaw === '1'
+            },
+            urls: {
+                extLoginUrl: 'https://j-jg.cc/study/login',
+                lanLoginUrl: lanInfo && lanInfo.origin ? `${lanInfo.origin}/study/login` : '',
+                studyPath: '/study'
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '태블릿 앱 설정 조회에 실패했습니다.' });
+    }
+});
+
+router.post('/tablet-config', async (req, res) => {
+    try {
+        const { wakeLockDefault, penOnlyDefault } = req.body || {};
+        if (typeof wakeLockDefault === 'boolean') {
+            await setSystemConfig('study_tablet_wake_lock_default', wakeLockDefault ? '1' : '0');
+        }
+        if (typeof penOnlyDefault === 'boolean') {
+            await setSystemConfig('study_tablet_pen_only_default', penOnlyDefault ? '1' : '0');
+        }
+        const nextWake = (await getSystemConfig('study_tablet_wake_lock_default', '1')) !== '0';
+        const nextPen = (await getSystemConfig('study_tablet_pen_only_default', '0')) === '1';
+        res.json({
+            success: true,
+            message: '「빨간패드공부」 태블릿 앱 설정이 저장되었습니다.',
+            config: {
+                wakeLockDefault: nextWake,
+                penOnlyDefault: nextPen
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '태블릿 앱 설정 저장에 실패했습니다.' });
+    }
+});
+
 module.exports = router;

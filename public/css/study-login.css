@@ -1,0 +1,360 @@
+/**
+ * ==============================================================================
+ * 빨간패드공부 (/study/login) 태블릿·모바일 전용 로그인 스타일시트
+ * ------------------------------------------------------------------------------
+ * - 100dvh + safe-area-inset 적용, 360px~갤럭시 탭 가로 2단 분할 대응
+ * ==============================================================================
+ */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+:root {
+    --sl-bg-top: #fff6ed;
+    --sl-bg-bot: #ffe7d6;
+    --sl-card: #ffffff;
+    --sl-border: #fed7aa;
+    --sl-ink: #1e293b;
+    --sl-muted: #64748b;
+    --sl-primary: #ff5a36;
+    --sl-primary-dark: #dc3f1e;
+    --sl-accent: #ff7a45;
+    --sl-danger: #dc2626;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100dvh;
+    background: linear-gradient(155deg, var(--sl-bg-top) 0%, var(--sl-bg-bot) 100%);
+    color: var(--sl-ink);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+    line-height: 1.5;
+    overscroll-behavior: contain;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sl-viewport {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding:
+        max(16px, env(safe-area-inset-top, 0px))
+        max(16px, env(safe-area-inset-right, 0px))
+        max(16px, env(safe-area-inset-bottom, 0px))
+        max(16px, env(safe-area-inset-left, 0px));
+}
+
+.sl-shell {
+    width: 100%;
+    max-width: 460px;
+    background: var(--sl-card);
+    border: 2px solid var(--sl-border);
+    border-radius: 28px;
+    box-shadow: 0 20px 44px rgba(234, 88, 12, 0.14);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr;
+}
+
+.sl-hero {
+    background: linear-gradient(150deg, #ff6b4a 0%, #ff8c5a 55%, #ffd9b3 100%);
+    color: #ffffff;
+    padding: 24px 22px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.sl-app-icon {
+    width: 96px;
+    height: 96px;
+    border-radius: 24px;
+    object-fit: cover;
+    box-shadow: 0 10px 24px rgba(154, 52, 18, 0.25);
+    border: 3px solid rgba(255, 255, 255, 0.85);
+}
+
+.sl-hero h1 {
+    margin: 0;
+    font-size: clamp(1.35rem, 2.8vw, 1.85rem);
+    font-weight: 800;
+    text-wrap: balance;
+    text-shadow: 0 2px 6px rgba(124, 45, 18, 0.18);
+}
+
+.sl-hero p {
+    margin: 0;
+    font-size: 0.94rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.96);
+    text-wrap: pretty;
+}
+
+.sl-panel {
+    padding: 22px 20px 24px;
+    min-width: 0;
+}
+
+.sl-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 16px;
+    padding: 5px;
+    margin-bottom: 18px;
+}
+
+.sl-tab-btn {
+    min-block-size: 46px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: #64748b;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sl-tab-btn.active {
+    background: #ffffff;
+    color: var(--sl-primary-dark);
+    box-shadow: 0 3px 10px rgba(234, 88, 12, 0.14);
+}
+
+.sl-member-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.sl-member-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 10px;
+    min-block-size: 88px;
+    background: #fffaf5;
+    border: 2px solid #fed7aa;
+    border-radius: 18px;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--sl-ink);
+    cursor: pointer;
+}
+
+.sl-member-card.active {
+    background: #fff0e6;
+    border-color: var(--sl-primary);
+    color: var(--sl-primary-dark);
+}
+
+.sl-member-emoji {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.sl-pin-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin: 12px 0 14px;
+}
+
+.sl-pin-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid #fdba74;
+    background: #fffaf5;
+    transition: transform 0.12s ease, background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.sl-pin-dot.filled {
+    background: var(--sl-primary);
+    border-color: var(--sl-primary);
+    transform: scale(1.1);
+}
+
+.sl-keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-width: 320px;
+    margin: 0 auto;
+}
+
+.sl-key-btn {
+    min-block-size: 54px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+    color: var(--sl-ink);
+    font-family: inherit;
+    font-size: 1.25rem;
+    font-weight: 800;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+}
+
+.sl-key-btn:active {
+    background: #fff7ed;
+    border-color: var(--sl-primary);
+    transform: scale(0.97);
+}
+
+.sl-key-btn.sl-key-sub {
+    font-size: 0.92rem;
+    color: var(--sl-muted);
+    background: #f8fafc;
+}
+
+.sl-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-block-end: 14px;
+}
+
+.sl-field label {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #334155;
+}
+
+.sl-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.sl-input {
+    width: 100%;
+    min-block-size: 50px;
+    padding: 11px 14px;
+    border: 2px solid #cbd5e1;
+    border-radius: 14px;
+    font: inherit;
+    font-size: max(1rem, 1em);
+    background: #ffffff;
+    color: var(--sl-ink);
+}
+
+.sl-input-pw {
+    padding-inline-end: 58px;
+}
+
+.sl-pw-toggle {
+    position: absolute;
+    inset-inline-end: 6px;
+    min-inline-size: 46px;
+    min-block-size: 44px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--sl-muted);
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.sl-submit-btn {
+    width: 100%;
+    min-block-size: 54px;
+    border: none;
+    border-radius: 16px;
+    background: var(--sl-primary);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(255, 90, 54, 0.25);
+}
+
+.sl-submit-btn:disabled {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+.sl-status {
+    min-height: 1.4em;
+    margin: 12px 0 0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--sl-danger);
+    white-space: pre-line;
+}
+
+.sl-status.info {
+    color: #059669;
+}
+
+.sl-install-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-block-size: 44px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 0.88rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.sl-dialog {
+    width: min(92vw, 400px);
+    border: 2px solid var(--sl-border);
+    border-radius: 22px;
+    padding: 22px;
+    background: #ffffff;
+    color: var(--sl-ink);
+}
+
+.sl-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.45);
+}
+
+:is(button, input):focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+
+@media (min-width: 820px) {
+    .sl-shell {
+        max-width: 860px;
+        grid-template-columns: 0.92fr 1.08fr;
+    }
+
+    .sl-hero {
+        padding: 36px 28px;
+    }
+
+    .sl-app-icon {
+        width: 132px;
+        height: 132px;
+        border-radius: 32px;
+    }
+
+    .sl-panel {
+        padding: 32px 30px;
+    }
+}
