@@ -169,6 +169,123 @@ body {
     }
 }
 
+/* 모달 뒷배경 스크롤 전파 차단 (modern-web-guidance dialog) */
+.study-dialog:modal {
+    overscroll-behavior: contain;
+}
+
+.study-dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+/* 부모 확인 종이학습지 도장 & 도장판 수정 컨트롤 */
+.stamp-lock-notice {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1.5px dashed #cbd5e1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.stamp-lock-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #475569;
+    line-height: 1.45;
+}
+
+.stamp-parent-panel {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 16px;
+    background: #fffbeb;
+    border: 1.5px solid #fcd34d;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.stamp-parent-panel[hidden],
+.stamp-lock-notice[hidden] {
+    display: none;
+}
+
+.stamp-parent-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: #92400e;
+    font-size: 0.92rem;
+}
+
+.stamp-mini-btn {
+    min-height: 36px;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+}
+
+.stamp-parent-guide {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #78350f;
+    line-height: 1.4;
+}
+
+.stamp-note-row {
+    width: 100%;
+    min-width: 0;
+}
+
+.stamp-parent-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    width: 100%;
+}
+
+.stamp-parent-actions .study-btn {
+    width: 100%;
+    min-height: 44px;
+    font-size: 0.88rem;
+}
+
+.stamp-slot--editable {
+    position: relative;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 4px;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.stamp-slot--editable:hover,
+.stamp-slot--editable:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(217, 119, 6, 0.28);
+}
+
+.stamp-edit-badge {
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    font-size: 0.72rem;
+    line-height: 1;
+}
+
+.stamp-danger-btn {
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
 @media print {
     .study-shell {
         max-width: none !important;
@@ -177,7 +294,9 @@ body {
 
     #studyInstallBanner,
     #btnWakeLockToggle,
-    #btnPenOnlyToggle {
+    #btnPenOnlyToggle,
+    .stamp-lock-notice,
+    .stamp-parent-panel {
         display: none !important;
     }
 }

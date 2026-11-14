@@ -422,4 +422,6 @@ router.post('/tablet-config', async (req, res) => {
     }
 });
 
+router.use('/stamps', require('./studyStamps.admin.routes'));
+
 module.exports = router;

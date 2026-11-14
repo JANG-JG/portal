@@ -92,7 +92,7 @@
                 <div class="levels-grid" id="levelsGrid"></div>
             </section>
 
-            <!-- 10칸 칭찬 도장판 + 종이 학습지 수동 적립 -->
+            <!-- 10칸 칭찬 도장판 + 부모 확인 종이 학습지 스티커 & 도장판 수정 -->
             <section class="study-card">
                 <div class="study-card-head">
                     <h2 class="study-card-title">🌟 10칸 칭찬 도장판</h2>
@@ -101,9 +101,43 @@
                 <div class="stamp-grid" id="stampGrid"></div>
                 <div class="stamp-reward-bar">
                     <span id="targetRewardText" style="font-weight: 700; color: #b45309;">🎁 약속 선물: 로딩 중...</span>
-                    <button type="button" id="btnPaperStamp" class="study-btn study-btn-green" style="width: 100%; max-width: 320px;">
-                        📄 종이 학습지 다 풀었어요 (+도장 1개)
+                </div>
+
+                <!-- 잠금 상태: 아이가 눌러도 도장이 올라가지 않음 -->
+                <div id="stampLockNotice" class="stamp-lock-notice">
+                    <p class="stamp-lock-hint">
+                        🔒 종이 학습지 도장과 도장판 수정은 <strong>부모님 확인</strong> 후 이용할 수 있어요.
+                    </p>
+                    <button type="button" id="btnUnlockForStamp" class="study-btn study-btn-outline" style="width: 100%;">
+                        🔓 부모님 확인 후 종이학습지 도장 주기
                     </button>
+                </div>
+
+                <!-- 부모 잠금 해제 시 표시되는 스티커 부여 & 도장판 수정 패널 -->
+                <div id="stampParentPanel" class="stamp-parent-panel" hidden>
+                    <div class="stamp-parent-head">
+                        <strong>🔓 부모님 도장 관리</strong>
+                        <button type="button" id="btnRelockFromStamp" class="study-btn study-btn-outline stamp-mini-btn">🔒 다시 잠그기</button>
+                    </div>
+                    <p class="stamp-parent-guide">종이 학습지 스티커를 부여하거나, 채워진 도장 칸을 눌러 수정·삭제할 수 있어요.</p>
+                    <div class="stamp-note-row">
+                        <label for="paperStampNoteInput" class="visually-hidden">종이 학습지 칭찬 메모</label>
+                        <input type="text" id="paperStampNoteInput" class="study-input" maxlength="40" placeholder="칭찬 메모 예: 구몬 한글 1쪽 완료 (선택)">
+                    </div>
+                    <div class="stamp-parent-actions">
+                        <button type="button" id="btnPaperStamp" class="study-btn study-btn-green">
+                            📄 종이 학습지 도장 +1
+                        </button>
+                        <button type="button" id="btnParentAddOnlineStamp" class="study-btn study-btn-primary">
+                            🌟 일반 칭찬 도장 +1
+                        </button>
+                        <button type="button" id="btnStampUndoLast" class="study-btn study-btn-outline">
+                            ↩️ 마지막 도장 빼기
+                        </button>
+                        <button type="button" id="btnStampResetBoard" class="study-btn study-btn-outline stamp-danger-btn">
+                            🔄 이번 판 비우기
+                        </button>
+                    </div>
                 </div>
             </section>
             </div>
@@ -181,10 +215,10 @@
     <!-- 부모 잠금 PIN 모달 (Native dialog) -->
     <dialog id="parentPinDialog" class="study-dialog" closedby="any" aria-labelledby="parentPinTitle">
         <h2 id="parentPinTitle" style="margin: 0 0 8px; font-size: 1.15rem;">🔐 어른 확인 (부모 PIN)</h2>
-        <p style="margin: 0 0 14px; font-size: 0.9rem; color: #64748b;">레벨을 조절하려면 관리자 페이지에서 설정한 부모 PIN을 입력해 주세요.</p>
+        <p style="margin: 0 0 14px; font-size: 0.9rem; color: #64748b;">레벨 조절, 종이학습지 도장 부여, 도장판 수정을 위해 부모 PIN을 입력해 주세요.</p>
         <form method="dialog" id="parentPinForm">
-            <label for="parentPinInput" class="visually-hidden">부모 PIN 숫자 4~6자리</label>
-            <input type="password" id="parentPinInput" class="study-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="숫자 4~6자리 입력" autofocus>
+            <label for="parentPinInput" class="visually-hidden">부모 PIN 숫자 4~8자리</label>
+            <input type="password" id="parentPinInput" class="study-input" inputmode="numeric" pattern="[0-9]*" maxlength="8" placeholder="숫자 4~8자리 입력" autofocus>
             <p id="parentPinError" style="color: #dc2626; font-size: 0.85rem; margin: 8px 0 0; min-height: 1.2em;"></p>
             <div style="display: flex; gap: 8px; margin-top: 14px;">
                 <button type="submit" value="cancel" class="study-btn study-btn-outline" style="flex: 1;">닫기</button>
@@ -193,10 +227,45 @@
         </form>
     </dialog>
 
+    <!-- 개별 도장 수정/삭제 모달 (Native dialog) -->
+    <dialog id="stampEditDialog" class="study-dialog" closedby="any" aria-labelledby="stampEditTitle">
+        <h2 id="stampEditTitle" style="margin: 0 0 8px; font-size: 1.12rem;">✏️ 도장 칸 수정</h2>
+        <p id="stampEditSubtitle" style="margin: 0 0 12px; font-size: 0.88rem; color: #64748b;"></p>
+        <form method="dialog" id="stampEditForm">
+            <label for="stampEditTypeSelect" style="display: block; font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 4px;">도장 종류</label>
+            <select id="stampEditTypeSelect" class="study-input" style="margin-bottom: 10px;">
+                <option value="paper">📄 종이 학습지</option>
+                <option value="online">🌟 일반·태블릿 학습</option>
+            </select>
+            <label for="stampEditNoteInput" style="display: block; font-size: 0.82rem; font-weight: 700; color: #334155; margin-bottom: 4px;">칭찬 메모</label>
+            <input type="text" id="stampEditNoteInput" class="study-input" maxlength="60" placeholder="메모를 입력해 주세요" autofocus>
+            <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;">
+                <button type="button" id="btnDeleteOneStamp" class="study-btn study-btn-outline stamp-danger-btn" style="flex: 1;">🗑️ 삭제</button>
+                <button type="submit" value="cancel" class="study-btn study-btn-outline" style="flex: 1;">닫기</button>
+                <button type="button" id="btnSaveOneStamp" class="study-btn study-btn-primary" style="flex: 1.3;">💾 저장</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- 이번 도장판 비우기 확인 모달 (Native dialog) -->
+    <dialog id="stampConfirmDialog" class="study-dialog" closedby="any" aria-labelledby="stampConfirmTitle">
+        <h2 id="stampConfirmTitle" style="margin: 0 0 8px; font-size: 1.12rem;">🔄 이번 도장판을 비울까요?</h2>
+        <p id="stampConfirmBody" style="margin: 0 0 14px; font-size: 0.9rem; color: #475569; line-height: 1.45;">
+            현재 판에 찍힌 도장이 모두 지워져 0 / 10칸이 됩니다. 필요할 때 다시 도장을 채울 수 있어요.
+        </p>
+        <form method="dialog">
+            <div style="display: flex; gap: 8px;">
+                <button type="submit" value="confirm" class="study-btn study-btn-outline stamp-danger-btn" style="flex: 1;">비우기</button>
+                <button type="submit" value="cancel" class="study-btn study-btn-primary" style="flex: 1.3;" autofocus>취소 (유지)</button>
+            </div>
+        </form>
+    </dialog>
+
     <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
 
     <script src="/js/study-pwa.js" defer></script>
     <script src="/js/study-tablet.js" defer></script>
+    <script src="/js/study-stamps.js" defer></script>
     <script src="/js/study-dashboard.js" defer></script>
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
 </body>

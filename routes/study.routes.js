@@ -22,6 +22,11 @@ const {
     setChildLevel,
     adjustChildLevel,
     awardStamp,
+    deleteStampById,
+    removeLastStamp,
+    setStampBoardCount,
+    resetCurrentStampBoard,
+    updateStampEntry,
     getWorksheetById,
     updateWorksheetContent,
     verifyParentLockPin,
@@ -125,6 +130,58 @@ setInterval(() => {
     }
 }, 10 * 60 * 1000).unref();
 
+async function verifyStudyParentGate(req) {
+    const { parentPin, longPressVerified } = req.body || {};
+    const check = await verifyParentLockPin(parentPin);
+    if (check.configured) {
+        if (!parentPin || !check.valid) {
+            return {
+                ok: false,
+                status: 403,
+                requirePin: true,
+                configured: true,
+                message: '부모님 잠금 PIN 번호가 올바르지 않습니다.'
+            };
+        }
+        return { ok: true, configured: true };
+    }
+    if (longPressVerified !== true) {
+        return {
+            ok: false,
+            status: 403,
+            requireUnlock: true,
+            configured: false,
+            message: '어른 확인(부모 잠금 해제)을 먼저 진행해 주세요.'
+        };
+    }
+    return { ok: true, configured: false };
+}
+
+router.post('/api/study/parent/verify', authenticateToken, async (req, res) => {
+    try {
+        const pinKey = `pin:${req.user.username}`;
+        if (!checkStudyActionLimit(pinKey, 12, 5 * 60 * 1000)) {
+            return res.status(429).json({
+                success: false,
+                message: '잠금 해제 시도가 너무 많습니다. 5분 후 다시 시도해 주세요.'
+            });
+        }
+        const { parentPin } = req.body || {};
+        const check = await verifyParentLockPin(parentPin);
+        if (check.configured && (!parentPin || !check.valid)) {
+            return res.status(403).json({
+                success: false,
+                requirePin: true,
+                message: '부모님 잠금 PIN 번호가 올바르지 않습니다.'
+            });
+        }
+        return res.json({ success: true, configured: check.configured, valid: true });
+    } catch (err) {
+        console.error('부모 잠금 PIN 검증 오류:', err);
+        return res.status(500).json({ success: false, message: '잠금 확인 중 오류가 발생했습니다.' });
+    }
+});
+
 router.post('/api/study/levels/adjust', authenticateToken, async (req, res) => {
     try {
         const { childId, subject, delta, level, parentPin, longPressVerified } = req.body || {};
@@ -169,31 +226,94 @@ router.post('/api/study/levels/adjust', authenticateToken, async (req, res) => {
 
 router.post('/api/study/stamps/paper', authenticateToken, async (req, res) => {
     try {
-        const cid = normalizeChildId(req.body?.childId);
-        const stampKey = `paper:${req.user.username}:${cid}`;
-        if (!checkStudyActionLimit(stampKey, 5, 10 * 60 * 1000)) {
-            return res.status(429).json({
+        const gate = await verifyStudyParentGate(req);
+        if (!gate.ok) {
+            return res.status(gate.status).json({
                 success: false,
-                message: '종이 학습지 도장은 잠시 후 다시 찍을 수 있어요!'
+                requirePin: Boolean(gate.requirePin),
+                requireUnlock: Boolean(gate.requireUnlock),
+                message: gate.message
             });
         }
 
+        const cid = normalizeChildId(req.body?.childId);
         const { note } = req.body || {};
         const result = await awardStamp({
             childId: cid,
             sourceType: 'paper',
-            note: note || '종이 학습지 스스로 완료! 📄'
+            note: note || '',
+            byParent: true
         });
         res.json({
             success: true,
             message: result.reachedTen
                 ? '와! 칭찬 도장 10칸을 모두 모았어요! 🎉'
-                : '종이 학습지 완료 칭찬 도장을 찍었어요! 🌟',
+                : '부모님 확인으로 종이 학습지 도장을 부여했어요! 🌟',
             ...result
         });
     } catch (err) {
-        console.error('종이 학습지 도장 적립 오류:', err);
-        res.status(500).json({ success: false, message: '도장 적립 중 오류가 발생했습니다.' });
+        console.error('종이 학습지 도장 부여 오류:', err);
+        res.status(500).json({ success: false, message: '도장 부여 중 오류가 발생했습니다.' });
+    }
+});
+
+router.post('/api/study/stamps/manage', authenticateToken, async (req, res) => {
+    try {
+        const gate = await verifyStudyParentGate(req);
+        if (!gate.ok) {
+            return res.status(gate.status).json({
+                success: false,
+                requirePin: Boolean(gate.requirePin),
+                requireUnlock: Boolean(gate.requireUnlock),
+                message: gate.message
+            });
+        }
+
+        const { childId, action, stampId, targetCount, sourceType, note } = req.body || {};
+        const cid = normalizeChildId(childId);
+
+        if (action === 'add_paper' || action === 'add_online') {
+            const out = await awardStamp({
+                childId: cid,
+                sourceType: action === 'add_paper' ? 'paper' : 'online',
+                note: note || '',
+                byParent: true
+            });
+            return res.json({
+                success: true,
+                message: out.reachedTen ? '와! 칭찬 도장 10칸을 모두 모았어요! 🎉' : '칭찬 도장을 1개 추가했어요! 🌟',
+                ...out
+            });
+        }
+        if (action === 'undo_last') {
+            const out = await removeLastStamp(cid);
+            return res.json({
+                success: true,
+                message: out.deletedStamp ? '마지막 도장 1개를 뺐어요.' : '뺄 수 있는 도장이 아직 없어요.',
+                ...out
+            });
+        }
+        if (action === 'delete_one') {
+            const out = await deleteStampById(cid, stampId);
+            return res.json({ success: true, message: '선택한 도장을 삭제했어요.', ...out });
+        }
+        if (action === 'update_note') {
+            const out = await updateStampEntry(cid, stampId, { sourceType, note });
+            return res.json({ success: true, message: '도장 메모를 수정했어요.', ...out });
+        }
+        if (action === 'set_count') {
+            const out = await setStampBoardCount(cid, targetCount, { sourceType, note });
+            return res.json({ success: true, message: `도장판을 ${out.currentCount}/10칸으로 수정했어요.`, ...out });
+        }
+        if (action === 'reset_board') {
+            const out = await resetCurrentStampBoard(cid);
+            return res.json({ success: true, message: '이번 도장판을 깨끗하게 비웠어요.', ...out });
+        }
+
+        return res.status(400).json({ success: false, message: '알 수 없는 도장판 작업입니다.' });
+    } catch (err) {
+        console.error('도장판 수정 오류:', err);
+        return res.status(400).json({ success: false, message: err.message || '도장판 수정 중 오류가 발생했습니다.' });
     }
 });
 

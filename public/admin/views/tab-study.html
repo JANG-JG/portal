@@ -169,6 +169,38 @@
                     </div>
                 </div>
 
+                <div id="studyStampManagerPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">🌟 도장판 수정 &amp; 종이 학습지 스티커 부여 (부모 전용)</h3>
+                            <p style="margin:0.2rem 0 0; font-size:0.78rem; color:#64748b;">
+                                태블릿의 종이 학습지 도장은 부모 잠금 해제 시에만 찍히며, 이곳에서도 아이별 도장판 칸 수·개별 기록을 바로 수정할 수 있습니다.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyStampsPanel()">🔄 도장판 새로고침</button>
+                    </div>
+                    <div id="adminStampBoardsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(270px, 1fr)); gap:0.85rem; margin-top:0.75rem;">
+                        <div style="padding:1rem; color:#64748b; font-size:0.85rem;">도장판 현황을 불러오는 중입니다...</div>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.9rem;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>아이</th>
+                                    <th>유형</th>
+                                    <th>판</th>
+                                    <th>메모</th>
+                                    <th>획득 시각</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminStudyStampLogsBody">
+                                <tr><td colspan="6" style="text-align:center; padding:1rem; color:#64748b;">도장 이력을 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="admin-card" style="box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header">
                         <h3>📄 최근 생성된 학습지 (최대 20건)</h3>

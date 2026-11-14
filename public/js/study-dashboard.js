@@ -181,35 +181,9 @@
     }
 
     function renderStampBoard(board, childProfile) {
-        const grid = document.getElementById('stampGrid');
-        const badge = document.getElementById('stampCycleBadge');
-        const rewardEl = document.getElementById('targetRewardText');
-        if (!grid || !board) return;
-
-        const count = Number(board.earnedCount || 0);
-        if (badge) badge.textContent = `${count} / 10칸 (${board.cycleNo}판째)`;
-        if (rewardEl) rewardEl.textContent = `🎁 약속 선물: ${childProfile?.target_reward || '칭찬 선물'}`;
-
-        const slots = [];
-        for (let i = 0; i < 10; i++) {
-            const stamp = board.stamps && board.stamps[i];
-            if (stamp) {
-                const icon = stamp.source_type === 'paper' ? '📄' : '🌟';
-                slots.push(`
-                    <div class="stamp-slot filled" title="${escapeHtml(stamp.note || '')}">
-                        <span class="stamp-slot-icon" aria-hidden="true">${icon}</span>
-                        <span>${i + 1}칸 완료</span>
-                    </div>
-                `);
-            } else {
-                slots.push(`
-                    <div class="stamp-slot">
-                        <span>${i + 1}</span>
-                    </div>
-                `);
-            }
+        if (window.StudyStamps && typeof window.StudyStamps.renderBoard === 'function') {
+            window.StudyStamps.renderBoard(board, childProfile);
         }
-        grid.innerHTML = slots.join('');
     }
 
     function renderArchive(sheets) {
@@ -290,24 +264,55 @@
             });
         });
 
-        // 부모 잠금 해제 (PIN 설정 시 다이얼로그, 미설정 시 1.5초 꾹 누르기)
+        // 부모 잠금 해제 상태 동기화 & 3분 미활동 자동 재잠금
+        let autoRelockTimer = null;
         const unlockBtn = document.getElementById('btnParentUnlock');
-        if (unlockBtn) {
-            const toggleUnlockState = () => {
-                state.parentUnlocked = !state.parentUnlocked;
-                unlockBtn.textContent = state.parentUnlocked ? '🔓 부모 잠금 해제됨 (잠그기)' : '🔒 부모 잠금 해제 (2초 꾹 / PIN)';
-                document.querySelectorAll('.level-stepper').forEach((el) => {
-                    el.hidden = !state.parentUnlocked;
-                });
-                if (state.parentUnlocked) showToast('어른 잠금이 해제되었어요! 레벨을 조절할 수 있습니다.');
-            };
 
+        function applyParentLockState(unlocked, notifyMsg = '') {
+            state.parentUnlocked = Boolean(unlocked);
+            clearTimeout(autoRelockTimer);
+            if (!state.parentUnlocked) {
+                state.parentPinValue = '';
+            } else {
+                autoRelockTimer = setTimeout(() => {
+                    applyParentLockState(false, '시간이 지나 안전을 위해 부모 잠금이 다시 잠겼어요.');
+                }, 3 * 60 * 1000);
+            }
+            if (unlockBtn) {
+                unlockBtn.textContent = state.parentUnlocked
+                    ? '🔓 부모 잠금 해제됨 (잠그기)'
+                    : '🔒 부모 잠금 해제 (2초 꾹 / PIN)';
+            }
+            document.querySelectorAll('.level-stepper').forEach((el) => {
+                el.hidden = !state.parentUnlocked;
+            });
+            if (window.StudyStamps && typeof window.StudyStamps.syncLockUi === 'function') {
+                window.StudyStamps.syncLockUi(state.parentUnlocked);
+            }
+            if (notifyMsg) showToast(notifyMsg);
+        }
+
+        function touchParentActivity() {
+            if (!state.parentUnlocked) return;
+            clearTimeout(autoRelockTimer);
+            autoRelockTimer = setTimeout(() => {
+                applyParentLockState(false, '시간이 지나 안전을 위해 부모 잠금이 다시 잠겼어요.');
+            }, 3 * 60 * 1000);
+        }
+
+        function openParentPinDialog() {
+            if (!pinDialog) return;
+            if (pinError) pinError.textContent = '';
+            if (pinInput) pinInput.value = '';
+            pinDialog.showModal();
+        }
+
+        if (unlockBtn) {
             const startHold = () => {
-                if (state.parentUnlocked) return;
-                if (state.hasParentPin) return;
+                if (state.parentUnlocked || state.hasParentPin) return;
                 clearTimeout(state.holdTimer);
                 state.holdTimer = setTimeout(() => {
-                    toggleUnlockState();
+                    applyParentLockState(true, '어른 잠금이 해제되었어요! 레벨 조절 및 도장판 관리가 가능해요.');
                 }, 1400);
             };
             const cancelHold = () => clearTimeout(state.holdTimer);
@@ -319,19 +324,22 @@
 
             unlockBtn.addEventListener('click', () => {
                 if (state.parentUnlocked) {
-                    toggleUnlockState();
+                    applyParentLockState(false, '부모 잠금이 다시 잠겼어요.');
                     return;
                 }
                 if (state.hasParentPin && pinDialog) {
-                    if (pinError) pinError.textContent = '';
-                    if (pinInput) pinInput.value = '';
-                    pinDialog.showModal();
+                    openParentPinDialog();
                 } else {
                     showToast('버튼을 1.5초간 꾹 누르면 어른 잠금이 해제돼요!');
                 }
             });
         }
 
+        if (pinDialog) {
+            pinDialog.addEventListener('close', () => {
+                pinDialog.returnValue = '';
+            });
+        }
         // closedby="any" Safari/구형 브라우저 라이트 디스미스 폴백 (modern-web-guidance)
         if (pinDialog && !('closedBy' in HTMLDialogElement.prototype)) {
             const isOutside = (e) => {
@@ -343,43 +351,59 @@
             pinDialog.addEventListener('pointerup', (e) => { if (pressedOutside && isOutside(e)) pinDialog.close(); });
         }
 
-        const btnConfirmPin = document.getElementById('btnConfirmParentPin');
-        if (btnConfirmPin) {
-            btnConfirmPin.addEventListener('click', () => {
-                const entered = (pinInput?.value || '').trim();
-                if (!/^\d{4,6}$/.test(entered)) {
-                    if (pinError) pinError.textContent = '숫자 4~6자리 PIN을 입력해 주세요.';
+        async function verifyAndUnlockParentPin() {
+            const entered = (pinInput?.value || '').trim();
+            if (!/^\d{4,8}$/.test(entered)) {
+                if (pinError) pinError.textContent = '숫자 4~8자리 PIN을 입력해 주세요.';
+                return;
+            }
+            const btnConfirmPin = document.getElementById('btnConfirmParentPin');
+            if (btnConfirmPin) btnConfirmPin.disabled = true;
+            try {
+                const res = await fetch('/api/study/parent/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ parentPin: entered })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    if (pinError) pinError.textContent = data.message || '부모님 잠금 PIN 번호가 올바르지 않습니다.';
                     return;
                 }
                 state.parentPinValue = entered;
-                state.parentUnlocked = true;
-                pinDialog.close();
-                document.getElementById('btnParentUnlock').textContent = '🔓 부모 잠금 해제됨 (잠그기)';
-                document.querySelectorAll('.level-stepper').forEach((el) => { el.hidden = false; });
-                showToast('어른 잠금이 해제되었어요!');
+                if (pinDialog) pinDialog.close();
+                applyParentLockState(true, '어른 잠금이 해제되었어요! 레벨과 도장판을 관리할 수 있습니다.');
+            } catch (_) {
+                if (pinError) pinError.textContent = '서버 확인 중 오류가 발생했어요.';
+            } finally {
+                if (btnConfirmPin) btnConfirmPin.disabled = false;
+            }
+        }
+
+        const btnConfirmPin = document.getElementById('btnConfirmParentPin');
+        if (btnConfirmPin) {
+            btnConfirmPin.addEventListener('click', verifyAndUnlockParentPin);
+        }
+        const pinForm = document.getElementById('parentPinForm');
+        if (pinForm) {
+            pinForm.addEventListener('submit', (e) => {
+                if (e.submitter && e.submitter.value === 'cancel') return;
+                e.preventDefault();
+                verifyAndUnlockParentPin();
             });
         }
 
-        // 종이 학습지 수동 도장 적립
-        const btnPaper = document.getElementById('btnPaperStamp');
-        if (btnPaper) {
-            btnPaper.addEventListener('click', async () => {
-                btnPaper.disabled = true;
-                try {
-                    const res = await fetch('/api/study/stamps/paper', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ childId: state.childId })
-                    });
-                    const data = await res.json();
-                    showToast(data.message || '도장을 찍었어요!');
-                    await loadDashboard();
-                } catch (e) {
-                    showToast('도장 적립에 실패했어요.');
-                } finally {
-                    btnPaper.disabled = false;
-                }
+        // 도장판 & 부모 확인 종이 학습지 모듈 바인딩
+        if (window.StudyStamps && typeof window.StudyStamps.bindEvents === 'function') {
+            window.StudyStamps.bindEvents({
+                state,
+                showToast,
+                escapeHtml,
+                reloadDashboard: loadDashboard,
+                openParentPinDialog,
+                touchParentActivity,
+                lockParentMode: (notify) => applyParentLockState(false, notify ? '부모 잠금이 다시 잠겼어요.' : '')
             });
         }
 

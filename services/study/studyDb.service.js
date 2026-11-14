@@ -9,7 +9,16 @@
 
 const crypto = require('crypto');
 const { portalDb } = require('../db');
-const { sendServerTelegram } = require('../telegramAlert.service');
+const {
+    getActiveStampBoard,
+    awardStamp,
+    deleteStampById,
+    removeLastStamp,
+    setStampBoardCount,
+    resetCurrentStampBoard,
+    updateStampEntry,
+    listRecentStamps
+} = require('./studyStamps.service');
 
 const VALID_CHILDREN = new Set(['first', 'second']);
 const VALID_SUBJECTS = new Set(['korean', 'math', 'english']);
@@ -24,10 +33,6 @@ const SUBJECT_NAMES = {
 function getKstDateString(offsetDays = 0) {
     const now = new Date(Date.now() + 9 * 60 * 60 * 1000 + offsetDays * 86400000);
     return now.toISOString().slice(0, 10);
-}
-
-function escapeTelegramMarkdown(text) {
-    return String(text || '').replace(/([_*`\[])/g, '\\$1');
 }
 
 function dbGet(sql, params = []) {
@@ -218,94 +223,6 @@ async function adjustChildLevel(childId, subject, delta) {
     return setChildLevel(childId, subj, next);
 }
 
-async function getActiveStampBoard(childId) {
-    const cid = normalizeChildId(childId);
-    const maxRow = await dbGet('SELECT MAX(cycle_no) as maxCycle, COUNT(*) as totalEarned FROM study_stamps WHERE child_id = ?', [cid]);
-    const totalEarned = maxRow?.totalEarned || 0;
-    let currentCycle = maxRow?.maxCycle || 1;
-    let stamps = await dbAll(
-        'SELECT id, source_type, sheet_id, note, earned_at FROM study_stamps WHERE child_id = ? AND cycle_no = ? ORDER BY id ASC',
-        [cid, currentCycle]
-    );
-    if (stamps.length >= 10) {
-        // 직전 사이클이 10칸 완성 상태이면 요약 정보로 표시하되, 새 도장 적립 시 cycle + 1
-        return {
-            cycleNo: currentCycle,
-            earnedCount: stamps.length,
-            totalEarned,
-            completedCycles: Math.floor(totalEarned / 10),
-            isFull: true,
-            stamps
-        };
-    }
-    return {
-        cycleNo: currentCycle,
-        earnedCount: stamps.length,
-        totalEarned,
-        completedCycles: Math.floor(totalEarned / 10),
-        isFull: false,
-        stamps
-    };
-}
-
-async function awardStamp({ childId, sourceType = 'online', sheetId = null, note = '' }) {
-    const cid = normalizeChildId(childId);
-    const cleanSource = sourceType === 'paper' ? 'paper' : 'online';
-
-    if (sheetId) {
-        const already = await dbGet(
-            'SELECT id FROM study_stamps WHERE child_id = ? AND sheet_id = ?',
-            [cid, Number(sheetId)]
-        );
-        if (already) {
-            await dbRun(
-                "UPDATE study_sheets SET completed_at = COALESCE(completed_at, datetime('now', 'localtime')) WHERE id = ?",
-                [Number(sheetId)]
-            );
-            const board = await getActiveStampBoard(cid);
-            return { alreadyAwarded: true, reachedTen: false, board };
-        }
-    }
-
-    const boardBefore = await getActiveStampBoard(cid);
-    const targetCycle = boardBefore.isFull ? boardBefore.cycleNo + 1 : boardBefore.cycleNo;
-
-    const cleanNote = note
-        ? String(note).slice(0, 80)
-        : (cleanSource === 'paper' ? '종이 학습지 스스로 완료' : '태블릿 학습지 완료');
-
-    await dbRun(
-        'INSERT INTO study_stamps (child_id, cycle_no, source_type, sheet_id, note) VALUES (?, ?, ?, ?, ?)',
-        [cid, targetCycle, cleanSource, sheetId ? Number(sheetId) : null, cleanNote]
-    );
-
-    if (sheetId) {
-        await dbRun(
-            "UPDATE study_sheets SET completed_at = datetime('now', 'localtime') WHERE id = ?",
-            [Number(sheetId)]
-        );
-    }
-
-    const boardAfter = await getActiveStampBoard(cid);
-    const reachedTen = boardAfter.earnedCount === 10;
-
-    if (reachedTen) {
-        const profile = await dbGet('SELECT display_name, target_reward FROM study_profiles WHERE id = ?', [cid]);
-        const childLabel = profile?.display_name || (cid === 'first' ? '첫째' : '둘째');
-        const reward = profile?.target_reward || '칭찬 선물';
-        const safeChildLabel = escapeTelegramMarkdown(childLabel);
-        const safeReward = escapeTelegramMarkdown(reward);
-        sendServerTelegram(
-            `🎉 *[어린이 학습실] ${safeChildLabel} 칭찬 도장판 10칸 완성!*\n\n` +
-            `• 총 누적 도장: *${boardAfter.totalEarned}개* (${boardAfter.completedCycles}번째 도장판 달성)\n` +
-            `• 약속한 보상: *${safeReward}*\n` +
-            `아이에게 크게 칭찬하고 선물을 챙겨주세요! 🌟`
-        ).catch(() => {});
-    }
-
-    return { alreadyAwarded: false, reachedTen, board: boardAfter };
-}
-
 async function getWeeklyBalanceRecommendation(childId) {
     const cid = normalizeChildId(childId);
     const sinceDate = getKstDateString(-6);
@@ -471,8 +388,8 @@ async function setParentLockPin(newPin) {
         await setSystemConfig('study_parent_pin', '');
         return { configured: false };
     }
-    if (!/^\d{4,6}$/.test(clean)) {
-        throw new Error('부모 잠금 PIN은 숫자 4~6자리로 입력해 주세요.');
+    if (!/^\d{4,8}$/.test(clean)) {
+        throw new Error('부모 잠금 PIN은 숫자 4~8자리로 입력해 주세요.');
     }
     await setSystemConfig('study_parent_pin', hashPin(clean));
     return { configured: true };
@@ -485,7 +402,9 @@ module.exports = {
     getSystemConfig, setSystemConfig,
     getProfiles, resolveChildProfileId, createStudyProfile, deleteStudyProfile,
     getChildLevels, setChildLevel, adjustChildLevel,
-    getActiveStampBoard, awardStamp, getWeeklyBalanceRecommendation,
+    getActiveStampBoard, awardStamp, deleteStampById, removeLastStamp,
+    setStampBoardCount, resetCurrentStampBoard, updateStampEntry, listRecentStamps,
+    getWeeklyBalanceRecommendation,
     saveWorksheet, getWorksheetById, updateWorksheetContent, listRecentWorksheets,
     getChildDashboardState, getDailyQuotaStatus, tryConsumeGeminiQuota, recordFallbackUsage,
     verifyParentLockPin, setParentLockPin
