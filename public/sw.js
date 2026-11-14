@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261114_164529';
+const CACHE_NAME = 'jg-portal-v20261114_165809';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -38,6 +38,22 @@ self.addEventListener('activate', (event) => {
     );
 });
 
+function respondCacheFirst(event, cacheName, req) {
+    event.respondWith(
+        caches.open(cacheName).then((cache) =>
+            cache.match(req).then((cached) => {
+                if (cached) return cached;
+                return fetch(req).then((networkRes) => {
+                    if (networkRes && networkRes.status === 200) {
+                        cache.put(req, networkRes.clone()).catch(() => {});
+                    }
+                    return networkRes;
+                });
+            })
+        )
+    );
+}
+
 self.addEventListener('fetch', (event) => {
     const req = event.request;
     const url = new URL(req.url);
@@ -50,8 +66,8 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // 2. HTML 문서 및 CSS/JS 코드: 항상 최신 버전 우선 (Network-First)
-    if (req.mode === 'navigate' || url.pathname.match(/\.(css|js)$/i) || url.pathname.includes('unified-nav') || url.pathname.includes('news-ticker')) {
+    // 2. HTML 문서: 항상 최신 버전 우선 (Network-First)
+    if (req.mode === 'navigate') {
         event.respondWith(
             fetch(req)
                 .then((res) => {
@@ -64,14 +80,43 @@ self.addEventListener('fetch', (event) => {
                 .catch(async () => {
                     const cached = await caches.match(req);
                     if (cached) return cached;
-                    if (req.mode === 'navigate') return caches.match('/offline.html');
+                    return caches.match('/offline.html');
+                })
+        );
+        return;
+    }
+
+    // 3. 버전(?v=) 정적 에셋 및 웹폰트: Cache-First (0ms 로컬 캐시 즉시 응답, Cloudflare 왕복 제거)
+    const isVersionedAsset = url.origin === self.location.origin && (
+        (url.searchParams.has('v') && url.pathname.match(/\.(css|js|png|svg|jpg|jpeg|webp|ico|woff2?|ttf|otf)$/i)) ||
+        url.pathname.match(/\/fonts\/.*\.(woff2?|ttf|otf)$/i)
+    );
+    if (isVersionedAsset) {
+        respondCacheFirst(event, CACHE_NAME, req);
+        return;
+    }
+
+    // 4. 버전 없는 CSS/JS 코드: 항상 최신 버전 우선 (Network-First)
+    if (url.pathname.match(/\.(css|js)$/i) || url.pathname.includes('unified-nav') || url.pathname.includes('news-ticker')) {
+        event.respondWith(
+            fetch(req)
+                .then((res) => {
+                    if (res && res.status === 200) {
+                        const clone = res.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+                    }
+                    return res;
+                })
+                .catch(async () => {
+                    const cached = await caches.match(req);
+                    if (cached) return cached;
                     return new Response('', { status: 408 });
                 })
         );
         return;
     }
 
-    // 3. 정적 미디어 에셋 (이미지, 폰트, 아이콘): Stale-While-Revalidate
+    // 5. 기타 버전 없는 정적 미디어 에셋 (이미지, 아이콘): Stale-While-Revalidate
     const isStaticAsset = url.pathname.match(/\.(png|svg|jpg|jpeg|webp|woff2?|ico)$/i) || PRECACHE_ASSETS.includes(url.pathname);
     if (isStaticAsset) {
         event.respondWith(

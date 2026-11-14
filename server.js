@@ -8,9 +8,9 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_164529';
 const {
     PORT,
+    STATIC_ASSET_VERSION,
     JWT_SECRET,
     COOKIE_DOMAIN,
     isOriginAllowed
@@ -345,15 +345,20 @@ app.use(express.static(path.join(__dirname, 'public'), {
                 // 🚀 배포 버전 쿼리가 있는 에셋은 1년 불변 캐시 -> 0ms 로컬 캐시 즉시 렌더링
                 res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
             } else {
-                // 버전 쿼리가 없는 에셋은 ETag 기반 재검증
-                res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
+                // 버전 쿼리가 없는 정적 에셋은 캐시 고착 원천 차단 (규칙 4)
+                res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
                 res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
             }
         } else if (filePath.match(/\.(woff2?|ttf|eot|otf)$/i)) {
             // 웹폰트는 항상 불변 캐시 적용 (Pretendard 등 폰트 렌더링 0ms 보장)
             res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         } else if (filePath.match(/\.(png|jpg|jpeg|gif|svg|ico)$/i)) {
-            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+            if (hasVersionQuery) {
+                res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+            } else {
+                res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+            }
         }
     }
 }));
