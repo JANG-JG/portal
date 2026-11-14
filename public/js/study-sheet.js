@@ -166,6 +166,9 @@
         if (sheet.completed_at && compBtn) {
             compBtn.textContent = '✅ 이미 완료해서 칭찬 도장을 받았어요!';
         }
+        if (window.StudyTTS && typeof window.StudyTTS.prefetch === 'function') {
+            window.StudyTTS.prefetch(blocks.map((b) => ({ text: b.ttsText || b.prompt, lang: b.ttsLang || 'ko-KR' })));
+        }
     }
 
     function blockTypeLabel(type) {

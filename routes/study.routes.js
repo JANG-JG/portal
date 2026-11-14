@@ -30,6 +30,11 @@ const { generateAndSaveWorksheet } = require('../services/study/geminiWorksheet.
 const { regenerateSingleBlock } = require('../services/study/worksheetValidator.service');
 const { startLevelTest, submitLevelTestAnswer } = require('../services/study/adaptiveLevel.service');
 const { synthesizeStudySpeech } = require('../services/study/studyTts.service');
+const {
+    consumePregeneratedWorksheet,
+    scheduleReplenish,
+    warmWorksheetTts
+} = require('../services/study/studyPreGen.service');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -111,6 +116,7 @@ router.post('/api/study/levels/adjust', authenticateToken, async (req, res) => {
             ? await setChildLevel(cid, subj, level)
             : await adjustChildLevel(cid, subj, delta || 0);
 
+        scheduleReplenish(cid, subj);
         res.json({ success: true, childId: cid, subject: subj, level: nextLevel });
     } catch (err) {
         console.error('학습 레벨 조정 오류:', err);
@@ -145,14 +151,23 @@ router.post('/api/study/stamps/paper', authenticateToken, async (req, res) => {
 router.post('/api/study/sheets/generate', authenticateToken, async (req, res) => {
     try {
         const { childId, subject, theme, includePlayBlock, coloringMode } = req.body || {};
-        const sheet = await generateAndSaveWorksheet({
+        const opts = {
             childId: normalizeChildId(childId),
             subject: normalizeSubject(subject),
             theme: theme || '동물 친구',
             createdBy: req.user.username || 'web',
             includePlayBlock: includePlayBlock !== false,
             coloringMode: coloringMode || 'auto_3'
-        });
+        };
+
+        let sheet = await consumePregeneratedWorksheet(opts);
+        if (!sheet) {
+            sheet = await generateAndSaveWorksheet(opts);
+            setImmediate(() => {
+                warmWorksheetTts(sheet.content).catch(() => {});
+                scheduleReplenish(opts.childId, opts.subject);
+            });
+        }
         res.json({ success: true, sheet });
     } catch (err) {
         console.error('학습지 생성 오류:', err);
@@ -189,6 +204,10 @@ router.post('/api/study/sheets/:id/regenerate-block', authenticateToken, async (
             theme: sheet.theme
         });
         await updateWorksheetContent(sheet.id, updatedContent);
+        const swappedBlk = updatedContent?.blocks?.[blockIndex];
+        if (swappedBlk) {
+            setImmediate(() => { warmWorksheetTts({ blocks: [swappedBlk] }).catch(() => {}); });
+        }
         res.json({ success: true, content: updatedContent });
     } catch (err) {
         console.error('학습지 문제 부분 교체 오류:', err);
@@ -208,6 +227,7 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
             sheetId: sheet.id,
             note: `${sheet.title} 완료 🌟`
         });
+        scheduleReplenish(sheet.child_id, sheet.subject);
         res.json({
             success: true,
             message: result.reachedTen

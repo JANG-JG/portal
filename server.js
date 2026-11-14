@@ -8,7 +8,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_153343';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_164529';
 const {
     PORT,
     JWT_SECRET,
@@ -450,11 +450,13 @@ app.use((err, req, res, next) => {
 // ⏰ [통합 포털 단일 알림 스케줄러 & 텔레그램 봇 기동]
 // ==========================================
 const { initTelegramBotPolling } = require('./services/telegram/telegramBot.service');
+const { initStudyPreGenScheduler } = require('./services/study/studyPreGen.service');
 const isDevInstance = PORT == 3005 || process.env.IS_DEV === 'true';
 const isPrimaryWorker = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
 if (!isDevInstance && isPrimaryWorker) {
     initUnifiedNotificationScheduler(db, sendUnifiedPushNotification, getLiveWeatherData, getLiveMarketData);
     initTelegramBotPolling();
+    initStudyPreGenScheduler();
 } else {
     console.log('🧪 [portal] 보조 워커 또는 테스트 인스턴스: 알림 중복 발송 방지를 위해 백그라운드 푸시 스케줄러 비활성화');
 }

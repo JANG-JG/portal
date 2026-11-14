@@ -17,6 +17,7 @@ const {
     saveWorksheet,
     tryConsumeGeminiQuota,
     recordFallbackUsage,
+    getDailyQuotaStatus,
     getSystemConfig
 } = require('./studyDb.service');
 const {
@@ -200,25 +201,23 @@ async function callGeminiStructuredJson(opts) {
     return { ok: false, reason: 'gemini_request_failed' };
 }
 
-async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친구', createdBy = 'web', includePlayBlock = true, coloringMode = 'auto_3' }) {
+async function generateWorksheetPayload({
+    childId,
+    subject,
+    theme = '동물 친구',
+    includePlayBlock = true,
+    coloringMode = 'auto_3',
+    allowFallback = true,
+    reserveQuota = 0
+}) {
     const cid = normalizeChildId(childId);
     const subj = normalizeSubject(subject);
     const cleanTheme = String(theme || '동물 친구').trim().slice(0, 24) || '동물 친구';
 
     if (subj === 'coloring') {
         const coloringSheet = buildColoringWorksheet({ theme: cleanTheme, coloringMode });
-        const sheetId = await saveWorksheet({
-            childId: cid,
-            subject: 'coloring',
-            level: 1,
-            theme: cleanTheme,
-            title: coloringSheet.title,
-            source: 'coloring_studio',
-            content: coloringSheet,
-            createdBy
-        });
         return {
-            id: sheetId,
+            ok: true,
             childId: cid,
             subject: 'coloring',
             level: 1,
@@ -238,7 +237,20 @@ async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친�
     let sourceLabel = 'fallback';
     let lastFailureReason = '';
 
-    const canUseGemini = await tryConsumeGeminiQuota();
+    const hasKey = Boolean(resolveGeminiApiKey());
+    if (!hasKey && !allowFallback) {
+        return { ok: false, reason: 'api_key_missing' };
+    }
+
+    if (reserveQuota > 0) {
+        const quota = await getDailyQuotaStatus();
+        if (quota.remaining <= reserveQuota) {
+            if (!allowFallback) return { ok: false, reason: 'quota_reserved' };
+            lastFailureReason = 'quota_reserved';
+        }
+    }
+
+    const canUseGemini = hasKey && lastFailureReason !== 'quota_reserved' ? await tryConsumeGeminiQuota() : false;
     if (canUseGemini) {
         // ③ 자동 재시도 (최대 2회 시도 후 검증 통과 시 채택)
         for (let attempt = 1; attempt <= 2; attempt++) {
@@ -266,8 +278,12 @@ async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친�
             }
             lastFailureReason = validated.reason || 'validation_failed';
         }
-    } else {
-        lastFailureReason = 'daily_quota_exceeded';
+    } else if (!lastFailureReason) {
+        lastFailureReason = hasKey ? 'daily_quota_exceeded' : 'api_key_missing';
+    }
+
+    if (!finalSheet && !allowFallback) {
+        return { ok: false, reason: lastFailureReason || 'gemini_unavailable' };
     }
 
     // ③ 실패/할당량 초과/API키 미설정 시 즉시 안전 오프라인 은행 폴백
@@ -282,19 +298,8 @@ async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친�
         sourceLabel = `fallback:${lastFailureReason || 'safe_bank'}`;
     }
 
-    const sheetId = await saveWorksheet({
-        childId: cid,
-        subject: subj,
-        level,
-        theme: cleanTheme,
-        title: finalSheet.title,
-        source: sourceLabel,
-        content: finalSheet,
-        createdBy
-    });
-
     return {
-        id: sheetId,
+        ok: true,
         childId: cid,
         subject: subj,
         level,
@@ -305,7 +310,42 @@ async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친�
     };
 }
 
+async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친구', createdBy = 'web', includePlayBlock = true, coloringMode = 'auto_3' }) {
+    const payload = await generateWorksheetPayload({
+        childId,
+        subject,
+        theme,
+        includePlayBlock,
+        coloringMode,
+        allowFallback: true,
+        reserveQuota: 0
+    });
+
+    const sheetId = await saveWorksheet({
+        childId: payload.childId,
+        subject: payload.subject,
+        level: payload.level,
+        theme: payload.theme,
+        title: payload.title,
+        source: payload.source,
+        content: payload.content,
+        createdBy
+    });
+
+    return {
+        id: sheetId,
+        childId: payload.childId,
+        subject: payload.subject,
+        level: payload.level,
+        theme: payload.theme,
+        title: payload.title,
+        source: payload.source,
+        content: payload.content
+    };
+}
+
 module.exports = {
     resolveGeminiApiKey,
+    generateWorksheetPayload,
     generateAndSaveWorksheet
 };

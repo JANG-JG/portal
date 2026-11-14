@@ -75,6 +75,23 @@
                             <a id="studyLanCaDownloadBtn" href="/api/lan-ca.crt" download="jg-lan-ca.crt" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;">🔐 루트 인증서 받기</a>
                         </div>
                     </div>
+
+                    <div id="studyPreGenPanel" style="margin-top:0.75rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:0.75rem; padding:0.85rem 0.9rem; box-sizing:border-box;">
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.5rem;">
+                            <div style="min-width:0; flex:1 1 220px;">
+                                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.45rem;">
+                                    <span style="font-size:0.84rem; font-weight:800; color:#0f172a;">⚡ AI 학습지 사전 생성 &amp; 음성 캐시 워밍</span>
+                                    <span id="studyPreGenStateBadge" style="font-size:0.78rem; font-weight:800; color:#059669;">확인 중...</span>
+                                </div>
+                                <div id="studyPreGenSummaryText" style="font-size:0.75rem; color:#475569; margin-top:0.2rem; word-break:break-word;">대기 현황을 불러오는 중...</div>
+                            </div>
+                            <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                                <button type="button" id="btnStudyPreGenToggle" class="btn-admin btn-admin-outline btn-admin-sm" onclick="toggleAdminStudyPreGen()">⏸️ 사전 생성 끄기</button>
+                                <button type="button" id="btnStudyPreGenWarmup" class="btn-admin btn-admin-primary btn-admin-sm" onclick="triggerAdminStudyWarmup()">🚀 지금 빈 슬롯 미리 채우기</button>
+                            </div>
+                        </div>
+                        <div id="studyPreGenSlotGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.5rem; margin-top:0.65rem;"></div>
+                    </div>
                 </div>
 
                 <div class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">

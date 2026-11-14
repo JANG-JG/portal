@@ -30,6 +30,11 @@ const {
 const { resolveGeminiApiKey } = require('../../services/study/geminiWorksheet.service');
 const { getLocalHttpsStatus } = require('../../services/localHttps.service');
 const {
+    getPreGenStatus,
+    setPreGenEnabled,
+    triggerWarmupAll
+} = require('../../services/study/studyPreGen.service');
+const {
     listAllowedTelegramUsers,
     addAllowedTelegramUser,
     toggleAllowedTelegramUser,
@@ -96,12 +101,14 @@ router.get('/overview', async (req, res) => {
         );
         const telegramUsers = await listAllowedTelegramUsers();
         const telegramLogs = await listRecentTelegramLogs(25);
+        const pregen = await getPreGenStatus();
 
         res.json({
             success: true,
             children,
             quota,
             lanInfo,
+            pregen,
             config: {
                 geminiModel,
                 dailyLimit: quota.dailyLimit,
@@ -317,6 +324,55 @@ router.post('/kid-account', async (req, res) => {
     } catch (err) {
         console.error('아이 전용 계정 발급 오류:', err);
         res.status(500).json({ success: false, message: '계정 발급 중 오류가 발생했습니다.' });
+    }
+});
+
+router.get('/pregen', async (req, res) => {
+    try {
+        const pregen = await getPreGenStatus();
+        res.json({ success: true, pregen });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '사전 생성 현황 조회에 실패했습니다.' });
+    }
+});
+
+router.post('/pregen/toggle', async (req, res) => {
+    try {
+        const current = await getPreGenStatus();
+        const nextEnabled = typeof req.body?.enabled === 'boolean' ? req.body.enabled : !current.enabled;
+        await setPreGenEnabled(nextEnabled);
+        if (nextEnabled) {
+            setImmediate(() => { triggerWarmupAll({ reason: '관리자 켜기' }).catch(() => {}); });
+        }
+        const pregen = await getPreGenStatus();
+        res.json({
+            success: true,
+            message: nextEnabled ? '학습지 사전 생성·음성 워밍을 켰습니다.' : '학습지 사전 생성을 일시 중지했습니다.',
+            pregen
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '사전 생성 설정 변경에 실패했습니다.' });
+    }
+});
+
+router.post('/pregen/warmup', async (req, res) => {
+    try {
+        const current = await getPreGenStatus();
+        if (!current.enabled) {
+            return res.status(400).json({ success: false, message: '먼저 사전 생성 기능을 켜 주세요.' });
+        }
+        if (current.running) {
+            return res.json({ success: true, alreadyRunning: true, message: '이미 사전 생성 작업이 진행 중입니다.', pregen: current });
+        }
+        setImmediate(() => { triggerWarmupAll({ reason: '관리자 수동' }).catch(() => {}); });
+        res.json({
+            success: true,
+            started: true,
+            message: '백그라운드에서 빈 학습지 슬롯 및 음성을 미리 채우기 시작했습니다.',
+            pregen: { ...current, running: true }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '사전 생성 실행에 실패했습니다.' });
     }
 });
 

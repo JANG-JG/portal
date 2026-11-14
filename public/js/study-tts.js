@@ -13,6 +13,11 @@
     'use strict';
 
     const MODE_STORAGE_KEY = 'jg_study_tts_mode'; // 'auto' | 'server' | 'device'
+    const MAX_PREFETCH_CACHE = 24;
+    const prefetchedUrls = new Map();
+    const inflightPrefetch = new Map();
+    let prefetchWorkerActive = false;
+    const prefetchPending = [];
     let sharedAudio = null;
     let activeUtterance = null;
     let cachedVoices = [];
@@ -21,6 +26,14 @@
     let speakDelayTimer = null;
     let currentTriggerBtn = null;
     let runtimeDeviceBroken = false;
+
+    function normalizeClientTtsText(text) {
+        return String(text || '')
+            .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 160);
+    }
 
     function getMode() {
         try {
@@ -132,17 +145,103 @@
         toast._timer = setTimeout(() => { toast.hidden = true; }, 3200);
     }
 
+    function rememberPrefetchedUrl(key, objectUrl) {
+        if (prefetchedUrls.has(key)) {
+            prefetchedUrls.delete(key);
+        } else if (prefetchedUrls.size >= MAX_PREFETCH_CACHE) {
+            const oldestKey = prefetchedUrls.keys().next().value;
+            const oldestUrl = prefetchedUrls.get(oldestKey);
+            prefetchedUrls.delete(oldestKey);
+            if (oldestUrl) {
+                try { URL.revokeObjectURL(oldestUrl); } catch (e) {}
+            }
+        }
+        prefetchedUrls.set(key, objectUrl);
+    }
+
+    function prefetchSingle(cleanText, lang) {
+        const key = `${lang}:${cleanText}`;
+        if (!cleanText || prefetchedUrls.has(key)) return Promise.resolve();
+        if (inflightPrefetch.has(key)) return inflightPrefetch.get(key);
+
+        const url = `/api/study/tts?text=${encodeURIComponent(cleanText)}&lang=${encodeURIComponent(lang)}`;
+        const job = fetch(url, { credentials: 'include' })
+            .then((res) => (res.ok ? res.blob() : null))
+            .then((blob) => {
+                if (blob && blob.size > 150) {
+                    rememberPrefetchedUrl(key, URL.createObjectURL(blob));
+                }
+            })
+            .catch(() => {})
+            .finally(() => { inflightPrefetch.delete(key); });
+
+        inflightPrefetch.set(key, job);
+        return job;
+    }
+
+    async function processPrefetchQueue() {
+        if (prefetchWorkerActive) return;
+        prefetchWorkerActive = true;
+        try {
+            while (prefetchPending.length > 0) {
+                if (getMode() === 'device') {
+                    prefetchPending.length = 0;
+                    break;
+                }
+                const next = prefetchPending.shift();
+                await prefetchSingle(next.text, next.lang);
+            }
+        } finally {
+            prefetchWorkerActive = false;
+        }
+    }
+
+    function prefetch(items) {
+        if (getMode() === 'device' || !Array.isArray(items) || !items.length) return;
+        const seen = new Set();
+        items.forEach((entry) => {
+            const rawText = typeof entry === 'string' ? entry : entry?.text;
+            const lang = (typeof entry === 'object' && entry?.lang) ? String(entry.lang).trim() : 'ko-KR';
+            const cleanText = normalizeClientTtsText(rawText);
+            if (!cleanText) return;
+            const key = `${lang}:${cleanText}`;
+            if (seen.has(key) || prefetchedUrls.has(key) || inflightPrefetch.has(key)) return;
+            seen.add(key);
+            if (prefetchPending.length < MAX_PREFETCH_CACHE) {
+                prefetchPending.push({ text: cleanText, lang });
+            }
+        });
+        if (prefetchPending.length > 0) {
+            setTimeout(() => { processPrefetchQueue(); }, 80);
+        }
+    }
+
     function playServerAudio(cleanText, lang, triggerBtn) {
         const audio = ensureAudio();
-        const url = `/api/study/tts?text=${encodeURIComponent(cleanText)}&lang=${encodeURIComponent(lang)}`;
+        const remoteUrl = `/api/study/tts?text=${encodeURIComponent(cleanText)}&lang=${encodeURIComponent(lang)}`;
+        const key = `${lang}:${cleanText}`;
+        const cachedBlobUrl = prefetchedUrls.get(key);
+        let retriedRemote = false;
+
         try {
             audio.pause();
             audio.onended = () => clearVisualSpeaking();
             audio.onerror = () => {
+                if (!retriedRemote && cachedBlobUrl && audio.src === cachedBlobUrl) {
+                    retriedRemote = true;
+                    prefetchedUrls.delete(key);
+                    try { URL.revokeObjectURL(cachedBlobUrl); } catch (e) {}
+                    audio.src = remoteUrl;
+                    audio.play().catch(() => {
+                        clearVisualSpeaking();
+                        showToastFallback('음성을 재생할 수 없어요. 기기 음량을 확인해 주세요 🔇');
+                    });
+                    return;
+                }
                 clearVisualSpeaking();
                 showToastFallback('음성을 재생할 수 없어요. 기기 음량을 확인해 주세요 🔇');
             };
-            audio.src = url;
+            audio.src = cachedBlobUrl || remoteUrl;
             setVisualSpeaking(triggerBtn);
             const p = audio.play();
             if (p && typeof p.catch === 'function') {
@@ -157,10 +256,7 @@
     }
 
     function speak(text, lang = 'ko-KR', triggerBtn = null) {
-        const cleanText = String(text || '')
-            .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
+        const cleanText = normalizeClientTtsText(text);
         if (!cleanText) return;
 
         clearTimeout(watchdogTimer);
@@ -278,6 +374,7 @@
     window.StudyTTS = {
         speak,
         stop,
+        prefetch,
         getMode,
         setMode,
         toggleMode

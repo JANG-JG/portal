@@ -38,7 +38,7 @@ async function loadAdminStudyOverview() {
         latestStudyChildren = data.children || [];
         latestStudyKidAccounts = data.kidAccounts || [];
         latestStudyLanUrl = data.lanInfo?.studyUrl || '';
-
+        if (typeof window.renderStudyPreGenPanel === 'function') window.renderStudyPreGenPanel(data.pregen);
         renderStudyStatusCards(data);
         renderStudyConfigForm(data.config || {});
         populateStudyProfileSelectors(latestStudyChildren, latestStudyKidAccounts);

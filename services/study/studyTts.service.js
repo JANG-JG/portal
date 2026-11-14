@@ -236,7 +236,30 @@ async function synthesizeStudySpeech(rawText, rawLang = 'ko-KR') {
     return work;
 }
 
+function hasCachedTts(rawText, rawLang = 'ko-KR') {
+    const { text, lang } = normalizeTtsInput(rawText, rawLang);
+    if (!text) return false;
+    const paths = getCachePaths(text, lang);
+    return fs.existsSync(paths.mp3) || fs.existsSync(paths.wav);
+}
+
+function getTtsCacheStats() {
+    try {
+        ensureCacheDir();
+        const files = fs.readdirSync(CACHE_DIR).filter((f) => f.endsWith('.mp3') || f.endsWith('.wav'));
+        let totalBytes = 0;
+        for (const f of files) {
+            try { totalBytes += fs.statSync(path.join(CACHE_DIR, f)).size; } catch (e) {}
+        }
+        return { fileCount: files.length, totalBytes };
+    } catch (e) {
+        return { fileCount: 0, totalBytes: 0 };
+    }
+}
+
 module.exports = {
     normalizeTtsInput,
-    synthesizeStudySpeech
+    synthesizeStudySpeech,
+    hasCachedTts,
+    getTtsCacheStats
 };
