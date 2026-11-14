@@ -76,7 +76,7 @@
     }
 
     function renderSheet(sheet) {
-        const childLabel = sheet.child_id === 'first' ? '첫째' : '둘째';
+        const childLabel = sheet.child_name || (sheet.child_id === 'first' ? '첫째' : (sheet.child_id === 'second' ? '둘째' : sheet.child_id));
         document.getElementById('btnBackToDashboard').href = `/study?childId=${encodeURIComponent(sheet.child_id)}`;
         document.getElementById('sheetTitleHeading').textContent = sheet.title;
         document.getElementById('sheetMetaLine').textContent =

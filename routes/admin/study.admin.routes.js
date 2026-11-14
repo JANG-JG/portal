@@ -17,6 +17,8 @@ const {
     dbAll,
     dbRun,
     getProfiles,
+    createStudyProfile,
+    deleteStudyProfile,
     getChildLevels,
     getActiveStampBoard,
     getDailyQuotaStatus,
@@ -36,43 +38,61 @@ const {
 
 router.get('/overview', async (req, res) => {
     try {
+        const kidRows = await new Promise((resolve) => {
+            db.all(
+                "SELECT rowid as id, username, nickname, role, avatar_emoji, invite_token, pin_reset_required, last_login_at FROM users WHERE role = 'kid' ORDER BY rowid ASC",
+                [],
+                (err, rows) => resolve(err ? [] : (rows || []))
+            );
+        });
+
         const profiles = await getProfiles();
         const children = [];
         for (const p of profiles) {
+            const matchedKid = kidRows.find((k) =>
+                (p.linked_username && k.username.toLowerCase() === p.linked_username.toLowerCase()) ||
+                (!p.linked_username && (k.username.toLowerCase() === p.id.toLowerCase() || (k.nickname && k.nickname === p.display_name)))
+            );
             children.push({
-                ...p,
+                id: p.id,
+                displayName: p.display_name,
+                birthYear: p.birth_year,
+                avatarEmoji: p.avatar_emoji || '🌟',
+                targetReward: p.target_reward || '',
+                linkedUsername: p.linked_username || matchedKid?.username || '',
+                isCore: p.id === 'first' || p.id === 'second',
                 levels: await getChildLevels(p.id),
                 stampBoard: await getActiveStampBoard(p.id)
             });
         }
 
+        const kidAccounts = kidRows.map((r) => {
+            const linkedProfile = children.find((c) => c.linkedUsername.toLowerCase() === r.username.toLowerCase());
+            return {
+                id: r.id,
+                username: r.username,
+                nickname: r.nickname,
+                emoji: r.avatar_emoji || '🎒',
+                pinResetRequired: Boolean(r.pin_reset_required),
+                inviteUrl: r.invite_token ? `https://j-jg.cc/invite/${r.invite_token}` : '',
+                lastLoginAt: r.last_login_at,
+                linkedProfileId: linkedProfile?.id || '',
+                linkedProfileName: linkedProfile?.displayName || ''
+            };
+        });
+
         const quota = await getDailyQuotaStatus();
         const geminiModel = await getSystemConfig('study_gemini_model', 'gemini-2.5-flash');
         const hasParentPin = Boolean(await getSystemConfig('study_parent_pin', ''));
         const recentSheets = await dbAll(
-            'SELECT id, child_id, subject, level, theme, title, source, completed_at, created_by, created_at FROM study_sheets ORDER BY id DESC LIMIT 20'
+            `SELECT s.id, s.child_id, s.subject, s.level, s.theme, s.title, s.source, s.completed_at, s.created_by, s.created_at,
+                    p.display_name AS child_name, p.avatar_emoji AS child_emoji
+             FROM study_sheets s
+             LEFT JOIN study_profiles p ON p.id = s.child_id
+             ORDER BY s.id DESC LIMIT 20`
         );
         const telegramUsers = await listAllowedTelegramUsers();
         const telegramLogs = await listRecentTelegramLogs(25);
-
-        const kidAccounts = await new Promise((resolve) => {
-            db.all(
-                "SELECT rowid as id, username, nickname, role, avatar_emoji, invite_token, pin_reset_required, last_login_at FROM users WHERE role = 'kid' ORDER BY rowid ASC",
-                [],
-                (err, rows) => {
-                    if (err) return resolve([]);
-                    resolve((rows || []).map((r) => ({
-                        id: r.id,
-                        username: r.username,
-                        nickname: r.nickname,
-                        emoji: r.avatar_emoji || '🎒',
-                        pinResetRequired: Boolean(r.pin_reset_required),
-                        inviteUrl: r.invite_token ? `https://j-jg.cc/invite/${r.invite_token}` : '',
-                        lastLoginAt: r.last_login_at
-                    })));
-                }
-            );
-        });
 
         res.json({
             success: true,
@@ -123,26 +143,65 @@ router.post('/config', async (req, res) => {
     }
 });
 
+router.post('/profile', async (req, res) => {
+    try {
+        const { displayName, birthYear, targetReward, avatarEmoji, linkedUsername } = req.body || {};
+        const created = await createStudyProfile({
+            displayName,
+            birthYear,
+            targetReward,
+            avatarEmoji,
+            linkedUsername
+        });
+        res.json({
+            success: true,
+            message: `[${created.display_name}] 학습 프로필이 추가되었습니다.`,
+            profile: created
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '학습 프로필 생성 실패' });
+    }
+});
+
 router.post('/profile/:childId', async (req, res) => {
     try {
         const cid = normalizeChildId(req.params.childId);
-        const { displayName, targetReward, avatarEmoji } = req.body || {};
+        const { displayName, birthYear, targetReward, avatarEmoji, linkedUsername } = req.body || {};
+        const hasBirthYear = birthYear !== undefined && birthYear !== null && String(birthYear).trim() !== '';
+        const parsedYear = hasBirthYear ? Math.min(2030, Math.max(2010, Number(birthYear) || 2021)) : null;
+        const hasLink = linkedUsername !== undefined;
+        const cleanLink = hasLink ? String(linkedUsername || '').trim().toLowerCase().slice(0, 32) : null;
+
         await dbRun(
             `UPDATE study_profiles
              SET display_name = COALESCE(NULLIF(?, ''), display_name),
+                 birth_year = COALESCE(?, birth_year),
                  target_reward = COALESCE(NULLIF(?, ''), target_reward),
-                 avatar_emoji = COALESCE(NULLIF(?, ''), avatar_emoji)
+                 avatar_emoji = COALESCE(NULLIF(?, ''), avatar_emoji),
+                 linked_username = CASE WHEN ? THEN ? ELSE linked_username END
              WHERE id = ?`,
             [
                 String(displayName || '').trim().slice(0, 20),
+                parsedYear,
                 String(targetReward || '').trim().slice(0, 60),
                 String(avatarEmoji || '').trim().slice(0, 8),
+                hasLink ? 1 : 0,
+                cleanLink || '',
                 cid
             ]
         );
         res.json({ success: true, message: '아이 학습 프로필 정보가 업데이트되었습니다.' });
     } catch (err) {
         res.status(500).json({ success: false, message: '프로필 수정 실패' });
+    }
+});
+
+router.delete('/profile/:childId', async (req, res) => {
+    try {
+        await deleteStudyProfile(req.params.childId);
+        res.json({ success: true, message: '학습 프로필이 삭제되었습니다.' });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '프로필 삭제 실패' });
     }
 });
 
@@ -184,6 +243,9 @@ router.post('/kid-account', async (req, res) => {
         const nickname = String(req.body?.nickname || '우리 아이들 태블릿').trim().slice(0, 20);
         const initialPin = String(req.body?.initialPin || '').trim();
         const emoji = String(req.body?.emoji || '🎒').trim().slice(0, 8);
+        const profileMode = String(req.body?.profileMode || 'create_new').trim();
+        const birthYear = Math.min(2030, Math.max(2010, Number(req.body?.birthYear) || 2021));
+        const linkChildId = String(req.body?.linkChildId || '').trim();
 
         if (!/^[a-z0-9_]{3,20}$/.test(rawUsername)) {
             return res.status(400).json({ success: false, message: '계정 아이디는 영문 소문자/숫자/_ 3~20자로 입력해 주세요.' });
@@ -215,9 +277,34 @@ router.post('/kid-account', async (req, res) => {
             );
         });
 
+        let profileMsg = '';
+        if (profileMode === 'link_existing' && linkChildId) {
+            const targetCid = normalizeChildId(linkChildId);
+            await dbRun('UPDATE study_profiles SET linked_username = ? WHERE id = ?', [rawUsername, targetCid]);
+            profileMsg = ' (기존 학습 프로필에 자동 연결됨)';
+        } else if (profileMode === 'create_new') {
+            const profiles = await getProfiles();
+            const sameNameUnlinked = profiles.find(
+                (p) => p.display_name === nickname && !p.linked_username
+            );
+            if (sameNameUnlinked) {
+                await dbRun('UPDATE study_profiles SET linked_username = ? WHERE id = ?', [rawUsername, sameNameUnlinked.id]);
+                profileMsg = ` (기존 '${sameNameUnlinked.display_name}' 학습 프로필과 연결됨)`;
+            } else {
+                const created = await createStudyProfile({
+                    id: rawUsername,
+                    displayName: nickname,
+                    birthYear,
+                    avatarEmoji: emoji,
+                    linkedUsername: rawUsername
+                });
+                profileMsg = ` ('${created.display_name}' 학습 프로필도 함께 생성됨)`;
+            }
+        }
+
         res.json({
             success: true,
-            message: `아이 전용 학습실 계정(${rawUsername})이 발급되었습니다! 태블릿에서 초대 링크로 접속해 주세요.`,
+            message: `아이 전용 학습실 계정(${rawUsername})이 발급되었습니다!${profileMsg}`,
             inviteUrl: `https://j-jg.cc/invite/${inviteToken}`,
             localInvitePath: `/invite/${inviteToken}`
         });

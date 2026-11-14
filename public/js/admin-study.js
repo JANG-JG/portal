@@ -32,21 +32,48 @@ const STUDY_SOURCE_NAMES = {
     retry_fallback: '안전 문제은행'
 };
 
+let latestStudyChildren = [];
+let latestStudyKidAccounts = [];
+
 async function loadAdminStudyOverview() {
     try {
         const res = await fetch('/api/admin/study/overview', { credentials: 'same-origin' });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || '조회 실패');
 
+        latestStudyChildren = data.children || [];
+        latestStudyKidAccounts = data.kidAccounts || [];
+
         renderStudyStatusCards(data);
         renderStudyConfigForm(data.config || {});
-        renderStudyChildrenCards(data.children || []);
+        populateStudyProfileSelectors(latestStudyChildren, latestStudyKidAccounts);
+        renderStudyChildrenCards(latestStudyChildren, latestStudyKidAccounts);
         renderStudyRecentSheets(data.recentSheets || []);
         renderStudyTelegramUsers(data.telegramUsers || []);
         renderStudyTelegramLogs(data.telegramLogs || []);
-        renderStudyKidAccounts(data.kidAccounts || []);
+        renderStudyKidAccounts(latestStudyKidAccounts);
     } catch (err) {
         studyToast(err.message || '학습실 현황을 불러오지 못했습니다.', true);
+    }
+}
+
+function populateStudyProfileSelectors(children, kidAccounts) {
+    const newLinkSel = document.getElementById('newStudyLinkKidSelect');
+    if (newLinkSel) {
+        const prev = newLinkSel.value;
+        newLinkSel.innerHTML = '<option value="">연결 안 함</option>' + kidAccounts.map((k) =>
+            `<option value="${escStudyAdmin(k.username)}">${escStudyAdmin(k.emoji || '🎒')} ${escStudyAdmin(k.nickname || k.username)} (${escStudyAdmin(k.username)})</option>`
+        ).join('');
+        if (prev) newLinkSel.value = prev;
+    }
+
+    const linkExistingSel = document.getElementById('kidLinkProfileSelect');
+    if (linkExistingSel) {
+        const prev = linkExistingSel.value;
+        linkExistingSel.innerHTML = children.map((c) =>
+            `<option value="${escStudyAdmin(c.id)}">${escStudyAdmin(c.avatarEmoji || '🌟')} ${escStudyAdmin(c.displayName)} (${escStudyAdmin(c.birthYear)}년생)</option>`
+        ).join('');
+        if (prev) linkExistingSel.value = prev;
     }
 }
 
@@ -87,7 +114,7 @@ function renderStudyConfigForm(cfg) {
     if (clearChk) clearChk.checked = false;
 }
 
-function renderStudyChildrenCards(children) {
+function renderStudyChildrenCards(children, kidAccounts = []) {
     const grid = document.getElementById('adminStudyChildrenGrid');
     if (!grid) return;
     if (!children.length) {
@@ -98,24 +125,35 @@ function renderStudyChildrenCards(children) {
     grid.innerHTML = children.map((c) => {
         const levels = c.levels || {};
         const badges = ['korean', 'math', 'english'].map((subj) => {
-            const lv = levels[subj]?.level || 1;
+            const lv = levels[subj]?.level || levels[subj] || 1;
             return `<span style="display:inline-block; background:#eff6ff; color:#1d4ed8; padding:0.2rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:700;">${STUDY_SUBJECT_NAMES[subj]} Lv.${lv}</span>`;
         }).join(' ');
-        const stamps = c.stampBoard?.stampsCount ?? 0;
+        const stamps = c.stampBoard?.earnedCount ?? 0;
+        const kidOptions = '<option value="">태블릿 계정 연결 안 함</option>' + kidAccounts.map((k) => {
+            const selected = (c.linkedUsername || '').toLowerCase() === k.username.toLowerCase() ? 'selected' : '';
+            return `<option value="${escStudyAdmin(k.username)}" ${selected}>📱 ${escStudyAdmin(k.nickname || k.username)} (${escStudyAdmin(k.username)})</option>`;
+        }).join('');
 
         return `
         <form onsubmit="saveAdminStudyProfile(event, '${escStudyAdmin(c.id)}')" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.8rem; padding:0.9rem; box-sizing:border-box;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; margin-bottom:0.55rem;">
-                <strong style="font-size:0.98rem; color:#0f172a;">${escStudyAdmin(c.avatarEmoji || '🌟')} ${escStudyAdmin(c.displayName)} (${escStudyAdmin(c.birthYear)}년생)</strong>
+                <strong style="font-size:0.98rem; color:#0f172a;">${escStudyAdmin(c.avatarEmoji || '🌟')} ${escStudyAdmin(c.displayName || c.id)} (${escStudyAdmin(c.birthYear || '-')}년생)</strong>
                 <span style="font-size:0.78rem; font-weight:700; color:#b45309; background:#fef3c7; padding:0.2rem 0.55rem; border-radius:999px;">도장 ${stamps}/10</span>
             </div>
             <div style="display:flex; gap:0.35rem; flex-wrap:wrap; margin-bottom:0.65rem;">${badges}</div>
-            <div style="display:grid; grid-template-columns:72px 1fr; gap:0.5rem; margin-bottom:0.5rem;">
+            <div style="display:grid; grid-template-columns:64px 1fr 82px; gap:0.45rem; margin-bottom:0.5rem;">
                 <input name="avatarEmoji" type="text" maxlength="8" value="${escStudyAdmin(c.avatarEmoji || '🌟')}" aria-label="이모지" style="width:100%; box-sizing:border-box; padding:0.45rem; border:1px solid #cbd5e1; border-radius:0.45rem; text-align:center;">
-                <input name="displayName" type="text" maxlength="20" value="${escStudyAdmin(c.displayName)}" aria-label="표시 이름" placeholder="표시 이름" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem;">
+                <input name="displayName" type="text" maxlength="20" value="${escStudyAdmin(c.displayName || '')}" aria-label="표시 이름" placeholder="표시 이름" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem;">
+                <input name="birthYear" type="number" min="2010" max="2030" value="${escStudyAdmin(c.birthYear || 2021)}" aria-label="출생연도" style="width:100%; box-sizing:border-box; padding:0.45rem 0.45rem; border:1px solid #cbd5e1; border-radius:0.45rem;">
             </div>
-            <input name="targetReward" type="text" maxlength="60" value="${escStudyAdmin(c.targetReward || '')}" aria-label="목표 보상" placeholder="10칸 도장 달성 목표 보상" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem; margin-bottom:0.55rem;">
-            <button type="submit" class="btn-admin btn-admin-outline" style="width:100%; min-height:38px;">프로필 저장</button>
+            <input name="targetReward" type="text" maxlength="60" value="${escStudyAdmin(c.targetReward || '')}" aria-label="목표 보상" placeholder="10칸 도장 달성 목표 보상" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem; margin-bottom:0.45rem;">
+            <select name="linkedUsername" aria-label="연결된 아이 계정" style="width:100%; box-sizing:border-box; padding:0.45rem 0.55rem; border:1px solid #cbd5e1; border-radius:0.45rem; margin-bottom:0.55rem; background:#fff; font-size:0.84rem;">
+                ${kidOptions}
+            </select>
+            <div style="display:flex; gap:0.45rem;">
+                <button type="submit" class="btn-admin btn-admin-outline" style="flex:1; min-height:38px;">프로필 저장</button>
+                ${c.isCore ? '' : `<button type="button" class="btn-admin btn-admin-outline" style="color:#dc2626; min-height:38px;" onclick="deleteAdminStudyProfile('${escStudyAdmin(c.id)}', '${escStudyAdmin(c.displayName || c.id)}')">삭제</button>`}
+            </div>
         </form>`;
     }).join('');
 }
@@ -131,7 +169,7 @@ function renderStudyRecentSheets(sheets) {
     tbody.innerHTML = sheets.map((s) => `
         <tr>
             <td>#${escStudyAdmin(s.id)}</td>
-            <td>${s.child_id === 'first' ? '🦖 첫째' : '🐰 둘째'}</td>
+            <td>${escStudyAdmin(s.child_emoji || '🧒')} ${escStudyAdmin(s.child_name || (s.child_id === 'first' ? '첫째' : (s.child_id === 'second' ? '둘째' : s.child_id)))}</td>
             <td>${escStudyAdmin(STUDY_SUBJECT_NAMES[s.subject] || s.subject)} Lv.${escStudyAdmin(s.level)}</td>
             <td>${escStudyAdmin(s.theme)}</td>
             <td>${escStudyAdmin(STUDY_SOURCE_NAMES[s.source] || s.source)}</td>
@@ -191,7 +229,7 @@ function renderStudyKidAccounts(accounts) {
     const tbody = document.getElementById('adminStudyKidAccountsBody');
     if (!tbody) return;
     if (!accounts.length) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:1.2rem; color:#64748b;">발급된 아이 전용 계정이 없습니다. 위 버튼으로 1분 만에 만들 수 있어요.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.2rem; color:#64748b;">발급된 아이 전용 계정이 없습니다. 위 버튼으로 1분 만에 만들 수 있어요.</td></tr>';
         return;
     }
 
@@ -199,6 +237,11 @@ function renderStudyKidAccounts(accounts) {
         <tr>
             <td>${escStudyAdmin(a.emoji || '🎒')} <strong>${escStudyAdmin(a.nickname || a.username)}</strong></td>
             <td><code>${escStudyAdmin(a.username)}</code></td>
+            <td>
+                ${a.linkedProfileName
+                    ? `<span style="display:inline-block; background:#dcfce7; color:#166534; padding:0.2rem 0.55rem; border-radius:999px; font-size:0.76rem; font-weight:700;">✅ ${escStudyAdmin(a.linkedProfileName)}</span>`
+                    : `<button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="createProfileFromKidAccount('${escStudyAdmin(a.username)}', '${escStudyAdmin(a.nickname || a.username)}', '${escStudyAdmin(a.emoji || '🧒')}')">➕ 학습 프로필 생성</button>`}
+            </td>
             <td>${a.pinResetRequired ? '초기 PIN 변경 대기' : '✅ PIN 설정 완료'}</td>
             <td style="font-size:0.78rem; color:#64748b;">${escStudyAdmin(a.lastLoginAt || '접속 이력 없음')}</td>
             <td>
@@ -208,6 +251,21 @@ function renderStudyKidAccounts(accounts) {
             </td>
         </tr>
     `).join('');
+}
+
+function toggleAddStudyProfileForm() {
+    const form = document.getElementById('adminStudyAddProfileForm');
+    if (!form) return;
+    const isHidden = form.style.display === 'none' || !form.style.display;
+    form.style.display = isHidden ? 'grid' : 'none';
+}
+
+function onKidProfileModeChange() {
+    const mode = document.getElementById('kidProfileModeSelect')?.value || 'create_new';
+    const yearWrap = document.getElementById('kidBirthYearWrap');
+    const linkWrap = document.getElementById('kidLinkProfileWrap');
+    if (yearWrap) yearWrap.style.display = mode === 'create_new' ? 'block' : 'none';
+    if (linkWrap) linkWrap.style.display = mode === 'link_existing' ? 'block' : 'none';
 }
 
 async function saveAdminStudyConfig(event) {
@@ -233,13 +291,65 @@ async function saveAdminStudyConfig(event) {
     }
 }
 
+async function createAdminStudyProfile(event) {
+    event.preventDefault();
+    const payload = {
+        avatarEmoji: document.getElementById('newStudyEmojiInput')?.value || '🐣',
+        displayName: document.getElementById('newStudyNameInput')?.value || '',
+        birthYear: Number(document.getElementById('newStudyBirthYearInput')?.value || 2023),
+        targetReward: document.getElementById('newStudyRewardInput')?.value || '',
+        linkedUsername: document.getElementById('newStudyLinkKidSelect')?.value || ''
+    };
+    try {
+        const res = await fetch('/api/admin/study/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || '프로필 추가 실패');
+        studyToast(data.message || '새 학습 프로필이 추가되었습니다.');
+        document.getElementById('adminStudyAddProfileForm')?.reset();
+        const form = document.getElementById('adminStudyAddProfileForm');
+        if (form) form.style.display = 'none';
+        await loadAdminStudyOverview();
+    } catch (err) {
+        studyToast(err.message || '프로필 추가 중 오류가 발생했습니다.', true);
+    }
+}
+
+async function createProfileFromKidAccount(username, nickname, emoji) {
+    try {
+        const res = await fetch('/api/admin/study/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                displayName: nickname || username,
+                avatarEmoji: emoji || '🧒',
+                birthYear: 2022,
+                linkedUsername: username
+            })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || '학습 프로필 생성 실패');
+        studyToast(data.message || '학습 프로필이 생성되어 연결되었습니다.');
+        await loadAdminStudyOverview();
+    } catch (err) {
+        studyToast(err.message || '학습 프로필 생성 실패', true);
+    }
+}
+
 async function saveAdminStudyProfile(event, childId) {
     event.preventDefault();
     const form = event.currentTarget;
     const payload = {
         avatarEmoji: form.avatarEmoji?.value || '',
         displayName: form.displayName?.value || '',
-        targetReward: form.targetReward?.value || ''
+        birthYear: form.birthYear?.value || '',
+        targetReward: form.targetReward?.value || '',
+        linkedUsername: form.linkedUsername ? form.linkedUsername.value : undefined
     };
     try {
         const res = await fetch(`/api/admin/study/profile/${encodeURIComponent(childId)}`, {
@@ -254,6 +364,22 @@ async function saveAdminStudyProfile(event, childId) {
         await loadAdminStudyOverview();
     } catch (err) {
         studyToast(err.message || '프로필 저장 중 오류가 발생했습니다.', true);
+    }
+}
+
+async function deleteAdminStudyProfile(childId, name) {
+    if (!confirm(`'${name}' 학습 프로필을 삭제할까요? (생성된 학습지 이력은 DB에 보존됩니다)`)) return;
+    try {
+        const res = await fetch(`/api/admin/study/profile/${encodeURIComponent(childId)}`, {
+            method: 'DELETE',
+            credentials: 'same-origin'
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || '삭제 실패');
+        studyToast(data.message || '학습 프로필이 삭제되었습니다.');
+        await loadAdminStudyOverview();
+    } catch (err) {
+        studyToast(err.message || '프로필 삭제 실패', true);
     }
 }
 
@@ -319,13 +445,16 @@ async function createAdminKidAccount(event) {
     const nickname = String(document.getElementById('kidNicknameInput')?.value || '').trim();
     const initialPin = String(document.getElementById('kidPinInput')?.value || '').trim();
     const emoji = String(document.getElementById('kidEmojiInput')?.value || '🎒').trim();
+    const profileMode = String(document.getElementById('kidProfileModeSelect')?.value || 'create_new').trim();
+    const birthYear = Number(document.getElementById('kidBirthYearInput')?.value || 2022);
+    const linkChildId = String(document.getElementById('kidLinkProfileSelect')?.value || '').trim();
 
     try {
         const res = await fetch('/api/admin/study/kid-account', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ username, nickname, initialPin, emoji })
+            body: JSON.stringify({ username, nickname, initialPin, emoji, profileMode, birthYear, linkChildId })
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || '계정 발급 실패');
@@ -340,8 +469,8 @@ async function createAdminKidAccount(event) {
             `;
         }
         studyToast('아이 전용 태블릿 계정이 발급되었습니다!');
-        const pinInput = document.getElementById('kidPinInput');
-        if (pinInput) pinInput.value = '';
+        document.getElementById('studyKidAccountForm')?.reset();
+        onKidProfileModeChange();
         await loadAdminStudyOverview();
     } catch (err) {
         studyToast(err.message || '계정 발급에 실패했습니다.', true);
@@ -357,11 +486,9 @@ async function copyStudyInviteUrl(url) {
     }
 }
 
-window.loadAdminStudyOverview = loadAdminStudyOverview;
-window.saveAdminStudyConfig = saveAdminStudyConfig;
-window.saveAdminStudyProfile = saveAdminStudyProfile;
-window.addAdminTelegramUser = addAdminTelegramUser;
-window.toggleAdminTelegramUser = toggleAdminTelegramUser;
-window.deleteAdminTelegramUser = deleteAdminTelegramUser;
-window.createAdminKidAccount = createAdminKidAccount;
-window.copyStudyInviteUrl = copyStudyInviteUrl;
+Object.assign(window, {
+    loadAdminStudyOverview, toggleAddStudyProfileForm, onKidProfileModeChange,
+    createAdminStudyProfile, createProfileFromKidAccount, saveAdminStudyConfig,
+    saveAdminStudyProfile, deleteAdminStudyProfile, addAdminTelegramUser,
+    toggleAdminTelegramUser, deleteAdminTelegramUser, createAdminKidAccount, copyStudyInviteUrl
+});

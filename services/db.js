@@ -405,6 +405,7 @@ const portalDb = new sqlite3.Database(PORTAL_DB_PATH, (err) => {
                         );
                     }
                 });
+                portalDb.run("ALTER TABLE study_profiles ADD COLUMN linked_username TEXT DEFAULT ''", () => {});
             });
 
             portalDb.run(`CREATE TABLE IF NOT EXISTS study_levels (

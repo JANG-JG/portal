@@ -17,7 +17,7 @@
     };
 
     const state = {
-        childId: new URLSearchParams(window.location.search).get('childId') || 'first',
+        childId: new URLSearchParams(window.location.search).get('childId') || '',
         selectedSubject: 'korean',
         selectedTheme: '동물 친구',
         hasParentPin: false,
@@ -52,13 +52,19 @@
 
     async function loadDashboard() {
         try {
-            const res = await fetch(`/api/study/dashboard?childId=${encodeURIComponent(state.childId)}`, {
+            const qs = state.childId ? `?childId=${encodeURIComponent(state.childId)}` : '';
+            const res = await fetch(`/api/study/dashboard${qs}`, {
                 credentials: 'include'
             });
             const data = await res.json();
             if (!data.success) {
                 showToast(data.message || '정보를 불러오지 못했어요.');
                 return;
+            }
+            if (data.activeChild?.id) {
+                state.childId = data.activeChild.id;
+            } else if (!state.childId) {
+                state.childId = 'first';
             }
             state.dashboard = data;
             state.hasParentPin = Boolean(data.hasParentPin);
@@ -76,17 +82,22 @@
             portalBack.hidden = data.viewer?.role === 'kid';
         }
 
-        // 프로필 이름 업데이트
-        const firstProfile = data.profiles?.find((p) => p.id === 'first');
-        const secondProfile = data.profiles?.find((p) => p.id === 'second');
-        if (firstProfile) document.getElementById('childNameFirst').textContent = firstProfile.display_name;
-        if (secondProfile) document.getElementById('childNameSecond').textContent = secondProfile.display_name;
-
-        document.querySelectorAll('.child-tab-btn').forEach((btn) => {
-            const active = btn.dataset.child === state.childId;
-            btn.classList.toggle('active', active);
-            btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-        });
+        // 모든 등록된 아이 프로필 탭 동적 렌더링
+        const tabsNav = document.getElementById('childTabsNav');
+        if (tabsNav && Array.isArray(data.profiles) && data.profiles.length > 0) {
+            tabsNav.innerHTML = data.profiles.map((p) => {
+                const active = p.id === state.childId;
+                return `
+                    <button type="button" class="child-tab-btn${active ? ' active' : ''}" data-child="${escapeHtml(p.id)}" aria-pressed="${active ? 'true' : 'false'}">
+                        <span class="child-tab-emoji" aria-hidden="true">${escapeHtml(p.avatar_emoji || '🧒')}</span>
+                        <span>
+                            <span>${escapeHtml(p.display_name || p.id)}</span>
+                            <span class="child-tab-sub">${escapeHtml(p.birth_year || '')}년생</span>
+                        </span>
+                    </button>
+                `;
+            }).join('');
+        }
 
         const explorerBtn = document.getElementById('btnStartExplorerTest');
         if (explorerBtn) {
@@ -236,13 +247,16 @@
     }
 
     function bindEvents() {
-        document.querySelectorAll('.child-tab-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
+        const tabsNav = document.getElementById('childTabsNav');
+        if (tabsNav) {
+            tabsNav.addEventListener('click', (e) => {
+                const btn = e.target.closest('.child-tab-btn');
+                if (!btn) return;
                 state.childId = btn.dataset.child;
                 state._userPickedSubject = false;
                 loadDashboard();
             });
-        });
+        }
 
         document.querySelectorAll('.subject-chip').forEach((btn) => {
             btn.addEventListener('click', () => selectSubjectChip(btn.dataset.subject, true));

@@ -67,8 +67,8 @@ router.get('/study/sheet/:id', authenticateToken, (req, res) => {
 // ------------------------------------------------------------------------------
 router.get('/api/study/dashboard', authenticateToken, async (req, res) => {
     try {
-        const childId = normalizeChildId(req.query.childId || 'first');
-        const state = await getChildDashboardState(childId);
+        const requestedChild = req.query.childId ? String(req.query.childId).trim() : '';
+        const state = await getChildDashboardState(requestedChild, req.user);
         res.json({
             success: true,
             viewer: {

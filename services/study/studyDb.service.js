@@ -60,6 +60,7 @@ function normalizeChildId(input) {
     const val = String(input || '').trim().toLowerCase();
     if (val === 'first' || val === '1' || val === '첫째') return 'first';
     if (val === 'second' || val === '2' || val === '둘째') return 'second';
+    if (/^[a-z0-9_-]{2,32}$/.test(val)) return val;
     return 'first';
 }
 
@@ -90,8 +91,91 @@ async function setSystemConfig(key, value) {
 }
 
 async function getProfiles() {
-    const rows = await dbAll('SELECT * FROM study_profiles ORDER BY birth_year ASC, id ASC');
+    const rows = await dbAll('SELECT * FROM study_profiles ORDER BY birth_year ASC, created_at ASC, id ASC');
     return rows;
+}
+
+async function resolveChildProfileId(input, viewerUser = null) {
+    const profiles = await getProfiles();
+    if (!profiles.length) return 'first';
+
+    const raw = String(input || '').trim();
+    if (raw) {
+        const lower = raw.toLowerCase();
+        const direct = profiles.find((p) => p.id.toLowerCase() === lower);
+        if (direct) return direct.id;
+        if (lower === '1' || lower === '첫째') return profiles.find((p) => p.id === 'first')?.id || profiles[0].id;
+        if (lower === '2' || lower === '둘째') return profiles.find((p) => p.id === 'second')?.id || profiles[0].id;
+        const byNameOrLink = profiles.find(
+            (p) => p.display_name === raw || (p.linked_username && p.linked_username.toLowerCase() === lower)
+        );
+        if (byNameOrLink) return byNameOrLink.id;
+    }
+
+    if (viewerUser && viewerUser.role === 'kid') {
+        const uname = String(viewerUser.username || '').trim().toLowerCase();
+        const nick = String(viewerUser.nickname || '').trim();
+        const matched = profiles.find(
+            (p) =>
+                (p.linked_username && p.linked_username.toLowerCase() === uname) ||
+                p.id.toLowerCase() === uname ||
+                (nick && p.display_name === nick)
+        );
+        if (matched) return matched.id;
+    }
+
+    return profiles[0].id;
+}
+
+async function createStudyProfile({ id = '', displayName, birthYear = 2021, avatarEmoji = '🧒', targetReward = '스티커 판 10칸 완성 선물 🎁', linkedUsername = '' }) {
+    const cleanName = String(displayName || '').trim().slice(0, 20);
+    if (!cleanName) {
+        throw new Error('아이 이름(표시 이름)을 입력해 주세요.');
+    }
+    const cleanYear = Math.min(2030, Math.max(2010, Number(birthYear) || 2021));
+    const cleanEmoji = String(avatarEmoji || '🧒').trim().slice(0, 8) || '🧒';
+    const cleanReward = String(targetReward || '').trim().slice(0, 60) || '스티커 판 10칸 완성 선물 🎁';
+    const cleanLink = String(linkedUsername || '').trim().toLowerCase().slice(0, 32);
+
+    let slug = String(id || cleanLink || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (slug.length < 2) {
+        slug = `child_${crypto.randomBytes(4).toString('hex')}`;
+    } else {
+        slug = slug.slice(0, 32);
+    }
+
+    const existing = await dbGet('SELECT id FROM study_profiles WHERE id = ?', [slug]);
+    if (existing) {
+        slug = `${slug.slice(0, 23)}_${crypto.randomBytes(3).toString('hex')}`;
+    }
+
+    await dbRun(
+        `INSERT INTO study_profiles (id, display_name, birth_year, avatar_emoji, target_reward, linked_username)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [slug, cleanName, cleanYear, cleanEmoji, cleanReward, cleanLink]
+    );
+
+    for (const subj of VALID_SUBJECTS) {
+        await dbRun(
+            'INSERT OR IGNORE INTO study_levels (child_id, subject, level) VALUES (?, ?, 1)',
+            [slug, subj]
+        );
+    }
+
+    return dbGet('SELECT * FROM study_profiles WHERE id = ?', [slug]);
+}
+
+async function deleteStudyProfile(childId) {
+    const cid = normalizeChildId(childId);
+    if (cid === 'first' || cid === 'second') {
+        throw new Error('기본 프로필(첫째·둘째)은 삭제할 수 없습니다.');
+    }
+    const existing = await dbGet('SELECT id FROM study_profiles WHERE id = ?', [cid]);
+    if (!existing) {
+        throw new Error('삭제할 학습 프로필을 찾을 수 없습니다.');
+    }
+    await dbRun('DELETE FROM study_profiles WHERE id = ?', [cid]);
+    return { deletedId: cid };
 }
 
 async function getChildLevels(childId) {
@@ -257,14 +341,16 @@ async function saveWorksheet({ childId, subject, level, theme, title, source = '
 }
 
 async function getWorksheetById(sheetId) {
-    const row = await dbGet('SELECT * FROM study_sheets WHERE id = ?', [Number(sheetId)]);
+    const row = await dbGet(
+        `SELECT s.*, p.display_name AS child_name, p.avatar_emoji AS child_emoji
+         FROM study_sheets s
+         LEFT JOIN study_profiles p ON p.id = s.child_id
+         WHERE s.id = ?`,
+        [Number(sheetId)]
+    );
     if (!row) return null;
     let content = null;
-    try {
-        content = JSON.parse(row.content_json);
-    } catch (e) {
-        content = null;
-    }
+    try { content = JSON.parse(row.content_json); } catch (e) { content = null; }
     return { ...row, content };
 }
 
@@ -287,16 +373,18 @@ async function listRecentWorksheets(childId, limit = 16) {
     );
 }
 
-async function getChildDashboardState(childId) {
-    const cid = normalizeChildId(childId);
+async function getChildDashboardState(childId, viewerUser = null) {
+    const cid = await resolveChildProfileId(childId, viewerUser);
     const profiles = await getProfiles();
     const profile = profiles.find((p) => p.id === cid) || profiles[0];
-    const levels = await getChildLevels(cid);
-    const stampBoard = await getActiveStampBoard(cid);
-    const weeklyBalance = await getWeeklyBalanceRecommendation(cid);
-    const recentSheets = await listRecentWorksheets(cid, 16);
-    const hasParentPin = Boolean(await getSystemConfig('study_parent_pin', ''));
-    const quota = await getDailyQuotaStatus();
+    const [levels, stampBoard, weeklyBalance, recentSheets, parentPinCfg, quota] = await Promise.all([
+        getChildLevels(cid),
+        getActiveStampBoard(cid),
+        getWeeklyBalanceRecommendation(cid),
+        listRecentWorksheets(cid, 16),
+        getSystemConfig('study_parent_pin', ''),
+        getDailyQuotaStatus()
+    ]);
 
     return {
         profiles,
@@ -305,7 +393,7 @@ async function getChildDashboardState(childId) {
         stampBoard,
         weeklyBalance,
         recentSheets,
-        hasParentPin,
+        hasParentPin: Boolean(parentPinCfg),
         quota
     };
 }
@@ -383,33 +471,14 @@ async function setParentLockPin(newPin) {
 }
 
 module.exports = {
-    VALID_CHILDREN,
-    VALID_SUBJECTS,
-    SUBJECT_NAMES,
-    getKstDateString,
-    dbGet,
-    dbAll,
-    dbRun,
-    normalizeChildId,
-    normalizeSubject,
-    clampLevel,
-    getSystemConfig,
-    setSystemConfig,
-    getProfiles,
-    getChildLevels,
-    setChildLevel,
-    adjustChildLevel,
-    getActiveStampBoard,
-    awardStamp,
-    getWeeklyBalanceRecommendation,
-    saveWorksheet,
-    getWorksheetById,
-    updateWorksheetContent,
-    listRecentWorksheets,
-    getChildDashboardState,
-    getDailyQuotaStatus,
-    tryConsumeGeminiQuota,
-    recordFallbackUsage,
-    verifyParentLockPin,
-    setParentLockPin
+    VALID_CHILDREN, VALID_SUBJECTS, SUBJECT_NAMES, getKstDateString,
+    dbGet, dbAll, dbRun,
+    normalizeChildId, normalizeSubject, clampLevel,
+    getSystemConfig, setSystemConfig,
+    getProfiles, resolveChildProfileId, createStudyProfile, deleteStudyProfile,
+    getChildLevels, setChildLevel, adjustChildLevel,
+    getActiveStampBoard, awardStamp, getWeeklyBalanceRecommendation,
+    saveWorksheet, getWorksheetById, updateWorksheetContent, listRecentWorksheets,
+    getChildDashboardState, getDailyQuotaStatus, tryConsumeGeminiQuota, recordFallbackUsage,
+    verifyParentLockPin, setParentLockPin
 };
