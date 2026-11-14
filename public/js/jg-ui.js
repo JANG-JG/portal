@@ -12,7 +12,7 @@
     window.__JG_UI_LOADER_INITIALIZED__ = true;
 
     // 🎯 중앙 집중 단일 버전 상수 (여기서 버전만 올리면 전 사이트 자동 갱신!)
-    const JG_UI_VERSION = '20261114_141138';
+    const JG_UI_VERSION = '20261114_153343';
     window.__JG_UI_VERSION__ = JG_UI_VERSION;
 
     // 0. 🛡️ [FOUC & 거대 로고 방지 동기 크리티컬 인라인 CSS 즉시 주입 (0ms 무지연 가드)]
@@ -317,8 +317,15 @@
         try {
             if (currentScript.src) {
                 const url = new URL(currentScript.src);
-                // 로컬 호스트 테스트 환경 지원 (localhost, 127.0.0.1)
-                if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+                const h = url.hostname;
+                // 로컬 호스트 및 내부 Wi-Fi(LAN) 직접 접속 환경 지원
+                if (
+                    h === 'localhost' ||
+                    h === '127.0.0.1' ||
+                    h === 'lan.j-jg.cc' ||
+                    h.endsWith('.local') ||
+                    /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)
+                ) {
                     origin = url.origin;
                 }
             }

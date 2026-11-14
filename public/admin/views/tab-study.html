@@ -43,8 +43,13 @@
                             <input id="studyDailyLimitInput" type="number" min="1" max="500" value="30" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
                         </div>
                         <div style="min-width:0;">
-                            <label for="studyGeminiModelInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Gemini 모델명</label>
-                            <input id="studyGeminiModelInput" type="text" value="gemini-2.5-flash" placeholder="gemini-2.5-flash" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
+                            <label for="studyGeminiModelInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Gemini 3 AI 모델 (뉴스룸 동일)</label>
+                            <select id="studyGeminiModelInput" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem; background:#fff; cursor:pointer;">
+                                <option value="gemini-3.1-flash-lite">⚡ Gemini 3.1 Flash-Lite (권장)</option>
+                                <option value="gemini-3.5-flash-lite">🎯 Gemini 3.5 Flash-Lite</option>
+                                <option value="gemini-3.8-flash">🚀 Gemini 3.8 Flash</option>
+                                <option value="gemini-3.0-flash">🧠 Gemini 3 Flash</option>
+                            </select>
                         </div>
                         <div style="min-width:0;">
                             <label for="studyParentPinInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">부모 잠금 PIN 변경 (4~8자리)</label>
@@ -58,6 +63,18 @@
                             <button type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:40px;">💾 운영 설정 저장</button>
                         </div>
                     </form>
+
+                    <div id="studyLanHttpsBox" style="margin-top:0.85rem; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:0.75rem; padding:0.8rem 0.9rem; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.65rem; box-sizing:border-box;">
+                        <div style="min-width:0; flex:1 1 220px;">
+                            <div style="font-size:0.83rem; font-weight:800; color:#065f46;">⚡ 같은 Wi-Fi 빠른 내부 HTTPS 접속</div>
+                            <div id="studyLanHttpsUrlText" style="font-size:0.82rem; color:#047857; word-break:break-all; margin-top:0.15rem;">확인 중...</div>
+                            <div style="font-size:0.74rem; color:#065f46; margin-top:0.2rem;">태블릿에서 인증서(CA)를 1회 설치하면 보안 경고 없이 빠르게 바로 열립니다.</div>
+                        </div>
+                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                            <button type="button" id="studyLanCopyBtn" class="btn-admin btn-admin-primary btn-admin-sm" onclick="copyStudyLanUrl()">📋 내부 주소 복사</button>
+                            <a id="studyLanCaDownloadBtn" href="/api/lan-ca.crt" download="jg-lan-ca.crt" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;">🔐 루트 인증서 받기</a>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">

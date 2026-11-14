@@ -18,22 +18,16 @@ function escStudyAdmin(str) {
 }
 
 function studyToast(msg, isError = false) {
-    if (typeof showToast === 'function') {
-        showToast(msg, isError ? 'error' : 'success');
-    } else {
-        alert(msg);
-    }
+    if (typeof showToast === 'function') showToast(msg, isError ? 'error' : 'success');
+    else alert(msg);
 }
 
-const STUDY_SUBJECT_NAMES = { korean: '한글', math: '수학', english: '영어' };
-const STUDY_SOURCE_NAMES = {
-    gemini: 'Gemini AI',
-    fallback_bank: '안전 문제은행',
-    retry_fallback: '안전 문제은행'
-};
+const STUDY_SUBJECT_NAMES = { korean: '한글', math: '수학', english: '영어', coloring: '색칠놀이' };
+const STUDY_SOURCE_NAMES = { gemini: 'Gemini AI', fallback_bank: '안전 문제은행', retry_fallback: '안전 문제은행', coloring_studio: '색칠놀이' };
 
 let latestStudyChildren = [];
 let latestStudyKidAccounts = [];
+let latestStudyLanUrl = '';
 
 async function loadAdminStudyOverview() {
     try {
@@ -43,6 +37,7 @@ async function loadAdminStudyOverview() {
 
         latestStudyChildren = data.children || [];
         latestStudyKidAccounts = data.kidAccounts || [];
+        latestStudyLanUrl = data.lanInfo?.studyUrl || '';
 
         renderStudyStatusCards(data);
         renderStudyConfigForm(data.config || {});
@@ -101,6 +96,14 @@ function renderStudyStatusCards(data) {
         pinEl.textContent = cfg.hasParentPin ? '🔒 PIN 잠금 사용 중' : '👆 길게 누르기 모드';
         pinEl.style.color = '#2563eb';
     }
+
+    const lanEl = document.getElementById('studyLanHttpsUrlText');
+    if (lanEl) {
+        const lan = data.lanInfo || {};
+        lanEl.innerHTML = lan.active
+            ? `<strong>${escStudyAdmin(lan.studyUrl)}</strong> (활성화됨)`
+            : `준비 중: <code>${escStudyAdmin(lan.studyUrl || '')}</code>`;
+    }
 }
 
 function renderStudyConfigForm(cfg) {
@@ -109,7 +112,7 @@ function renderStudyConfigForm(cfg) {
     const pinInput = document.getElementById('studyParentPinInput');
     const clearChk = document.getElementById('studyClearParentPinChk');
     if (limitInput) limitInput.value = cfg.dailyLimit || 30;
-    if (modelInput) modelInput.value = cfg.geminiModel || 'gemini-2.5-flash';
+    if (modelInput) modelInput.value = cfg.geminiModel || 'gemini-3.1-flash-lite';
     if (pinInput) pinInput.value = '';
     if (clearChk) clearChk.checked = false;
 }
@@ -246,7 +249,7 @@ function renderStudyKidAccounts(accounts) {
             <td style="font-size:0.78rem; color:#64748b;">${escStudyAdmin(a.lastLoginAt || '접속 이력 없음')}</td>
             <td>
                 ${a.inviteUrl
-                    ? `<button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(a.inviteUrl)}')">🔗 초대 링크 복사</button>`
+                    ? `<div style="display:flex; gap:0.3rem; flex-wrap:wrap;"><button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(a.inviteUrl)}')">🔗 외부 초대</button>${a.lanInviteUrl ? `<button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(a.lanInviteUrl)}')">⚡ 내부 초대</button>` : ''}</div>`
                     : '<span style="color:#64748b; font-size:0.78rem;">기기 등록 완료</span>'}
             </td>
         </tr>
@@ -464,8 +467,9 @@ async function createAdminKidAccount(event) {
             resultBox.style.display = 'block';
             resultBox.innerHTML = `
                 <div style="font-weight:700; margin-bottom:0.35rem;">🎉 ${escStudyAdmin(data.message)}</div>
-                <div style="word-break:break-all; margin-bottom:0.5rem;">태블릿 초대 링크: <code>${escStudyAdmin(data.inviteUrl)}</code></div>
-                <button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(data.inviteUrl)}')">📋 초대 링크 복사</button>
+                <div style="word-break:break-all; margin-bottom:0.3rem;">외부 초대 링크: <code>${escStudyAdmin(data.inviteUrl)}</code></div>
+                ${data.lanInviteUrl ? `<div style="word-break:break-all; margin-bottom:0.5rem;">⚡ 내부 Wi-Fi 초대: <code>${escStudyAdmin(data.lanInviteUrl)}</code></div>` : ''}
+                <div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(data.inviteUrl)}')">📋 외부 링크 복사</button>${data.lanInviteUrl ? `<button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(data.lanInviteUrl)}')">⚡ 내부 링크 복사</button>` : ''}</div>
             `;
         }
         studyToast('아이 전용 태블릿 계정이 발급되었습니다!');
@@ -478,17 +482,19 @@ async function createAdminKidAccount(event) {
 }
 
 async function copyStudyInviteUrl(url) {
-    try {
-        await navigator.clipboard.writeText(url);
-        studyToast('태블릿 초대 링크가 클립보드에 복사되었습니다.');
-    } catch (e) {
-        prompt('아래 초대 링크를 복사해서 태블릿으로 열어 주세요:', url);
-    }
+    try { await navigator.clipboard.writeText(url); studyToast('링크가 클립보드에 복사되었습니다.'); }
+    catch (e) { prompt('아래 링크를 복사해 주세요:', url); }
+}
+
+function copyStudyLanUrl() {
+    if (!latestStudyLanUrl) return studyToast('내부 Wi-Fi 주소를 확인하지 못했습니다.', true);
+    return copyStudyInviteUrl(latestStudyLanUrl);
 }
 
 Object.assign(window, {
     loadAdminStudyOverview, toggleAddStudyProfileForm, onKidProfileModeChange,
     createAdminStudyProfile, createProfileFromKidAccount, saveAdminStudyConfig,
     saveAdminStudyProfile, deleteAdminStudyProfile, addAdminTelegramUser,
-    toggleAdminTelegramUser, deleteAdminTelegramUser, createAdminKidAccount, copyStudyInviteUrl
+    toggleAdminTelegramUser, deleteAdminTelegramUser, createAdminKidAccount,
+    copyStudyInviteUrl, copyStudyLanUrl
 });

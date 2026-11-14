@@ -54,7 +54,13 @@ function isOriginAllowed(origin) {
     if (ALLOWED_ORIGINS.includes(origin)) return true;
     try {
         const u = new URL(origin);
-        return u.hostname === 'j-jg.cc' || u.hostname.endsWith('.j-jg.cc');
+        const h = u.hostname;
+        if (h === 'j-jg.cc' || h.endsWith('.j-jg.cc')) return true;
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+            if (h === 'localhost' || h === '127.0.0.1' || h.endsWith('.local')) return true;
+            if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) return true;
+        }
+        return false;
     } catch (e) {
         return false;
     }

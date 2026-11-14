@@ -28,6 +28,7 @@ const {
     normalizeChildId
 } = require('../../services/study/studyDb.service');
 const { resolveGeminiApiKey } = require('../../services/study/geminiWorksheet.service');
+const { getLocalHttpsStatus } = require('../../services/localHttps.service');
 const {
     listAllowedTelegramUsers,
     addAllowedTelegramUser,
@@ -66,6 +67,7 @@ router.get('/overview', async (req, res) => {
             });
         }
 
+        const lanInfo = getLocalHttpsStatus();
         const kidAccounts = kidRows.map((r) => {
             const linkedProfile = children.find((c) => c.linkedUsername.toLowerCase() === r.username.toLowerCase());
             return {
@@ -75,6 +77,7 @@ router.get('/overview', async (req, res) => {
                 emoji: r.avatar_emoji || '🎒',
                 pinResetRequired: Boolean(r.pin_reset_required),
                 inviteUrl: r.invite_token ? `https://j-jg.cc/invite/${r.invite_token}` : '',
+                lanInviteUrl: r.invite_token ? `${lanInfo.origin}/invite/${r.invite_token}` : '',
                 lastLoginAt: r.last_login_at,
                 linkedProfileId: linkedProfile?.id || '',
                 linkedProfileName: linkedProfile?.displayName || ''
@@ -82,7 +85,7 @@ router.get('/overview', async (req, res) => {
         });
 
         const quota = await getDailyQuotaStatus();
-        const geminiModel = await getSystemConfig('study_gemini_model', 'gemini-2.5-flash');
+        const geminiModel = await getSystemConfig('study_gemini_model', 'gemini-3.1-flash-lite');
         const hasParentPin = Boolean(await getSystemConfig('study_parent_pin', ''));
         const recentSheets = await dbAll(
             `SELECT s.id, s.child_id, s.subject, s.level, s.theme, s.title, s.source, s.completed_at, s.created_by, s.created_at,
@@ -98,6 +101,7 @@ router.get('/overview', async (req, res) => {
             success: true,
             children,
             quota,
+            lanInfo,
             config: {
                 geminiModel,
                 dailyLimit: quota.dailyLimit,
@@ -302,10 +306,12 @@ router.post('/kid-account', async (req, res) => {
             }
         }
 
+        const lanInfo = getLocalHttpsStatus();
         res.json({
             success: true,
             message: `아이 전용 학습실 계정(${rawUsername})이 발급되었습니다!${profileMsg}`,
             inviteUrl: `https://j-jg.cc/invite/${inviteToken}`,
+            lanInviteUrl: `${lanInfo.origin}/invite/${inviteToken}`,
             localInvitePath: `/invite/${inviteToken}`
         });
     } catch (err) {

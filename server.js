@@ -8,7 +8,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_141138';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_153343';
 const {
     PORT,
     JWT_SECRET,
@@ -22,6 +22,7 @@ const { getLiveWeatherData, initWeatherAutoRefresh } = require('./services/weath
 const { getLiveMarketData } = require('./services/market.service');
 const { sendUnifiedPushNotification } = require('./services/push.service');
 const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
+const { startLocalHttpsServer, getCaCertPath } = require('./services/localHttps.service');
 
 // 🛡️ 미들웨어
 const {
@@ -287,6 +288,18 @@ app.get('/favicon.ico', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
 });
 
+// 1-10. 내부 Wi-Fi HTTPS 전용 로컬 루트 CA 인증서 다운로드
+app.get('/api/lan-ca.crt', (req, res) => {
+    const caPath = getCaCertPath();
+    if (!caPath) {
+        return res.status(404).json({ success: false, message: '로컬 루트 CA 인증서가 아직 생성되지 않았습니다.' });
+    }
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.setHeader('Content-Type', 'application/x-x509-ca-cert');
+    res.setHeader('Content-Disposition', 'attachment; filename="jg-lan-ca.crt"');
+    res.sendFile(caPath);
+});
+
 // 2. 로그인 페이지
 app.get(['/login', '/login.html'], (req, res) => {
     // 🔗 구버전/URL 파라미터형 초대 링크(?invite=...) 감지 시 초대 처리 엔드포인트로 즉시 전달
@@ -449,6 +462,7 @@ if (!isDevInstance && isPrimaryWorker) {
 // 서버 기동
 app.listen(PORT, () => {
     console.log(`🚀 JG 통합 포털 서버 구동 완료 (Port: ${PORT}, Cookie Domain: ${COOKIE_DOMAIN})`);
+    startLocalHttpsServer(app);
     // 백그라운드 캐시 사전 웜업 및 주기적 자동 갱신 스케줄러 기동
     initWeatherAutoRefresh();
     getLiveMarketData().catch(() => {});

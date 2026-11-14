@@ -157,9 +157,10 @@ async function callGeminiStructuredJson(opts) {
     const modelCandidates = [
         configuredModel,
         process.env.GEMINI_STUDY_MODEL,
-        'gemini-2.5-flash',
-        'gemini-2.0-flash',
-        'gemini-3.1-flash-lite'
+        'gemini-3.1-flash-lite',
+        'gemini-3.5-flash-lite',
+        'gemini-3.8-flash',
+        'gemini-3.0-flash'
     ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
     const { prompt, schema } = buildGeminiPromptAndSchema(opts);
@@ -169,7 +170,7 @@ async function callGeminiStructuredJson(opts) {
             responseMimeType: 'application/json',
             responseSchema: schema,
             temperature: 0.4,
-            maxOutputTokens: 1200
+            maxOutputTokens: 2800
         }
     };
 
@@ -182,9 +183,15 @@ async function callGeminiStructuredJson(opts) {
                 continue;
             }
             const parsed = JSON.parse(res.body);
-            const textOut = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!textOut) continue;
-            const jsonObj = JSON.parse(textOut);
+            const parts = parsed?.candidates?.[0]?.content?.parts || [];
+            const rawText = parts
+                .filter((p) => p && typeof p.text === 'string' && !p.thought)
+                .map((p) => p.text)
+                .join('')
+                .trim();
+            if (!rawText) continue;
+            const cleanedText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+            const jsonObj = JSON.parse(cleanedText);
             return { ok: true, model: modelName, data: jsonObj };
         } catch (err) {
             console.warn(`⚠️ [Study Gemini] ${modelName} 호출 오류:`, err.message);
