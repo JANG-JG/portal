@@ -25,7 +25,7 @@
         }
     };
 
-    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261114_112507';
+    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261114_123839';
     const CACHE_KEY_HTML = 'jg_unav_html_v2', CACHE_KEY_VER = 'jg_unav_ver_v2', CACHE_KEY_TIME = 'jg_unav_time_v2';
     const STALE_CHECK_INTERVAL = 5 * 60 * 1000;
     const NOTIF_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'https://j-jg.cc';
@@ -65,13 +65,17 @@
             const style = document.createElement('style');
             style.id = 'jg-ui-critical-css';
             style.textContent = `
-                #unified-nav-root, .unav-header { display: block !important; min-height: 54px !important; background-color: #ffffff !important; position: sticky !important; top: 0 !important; width: 100% !important; z-index: 99999 !important; box-sizing: border-box !important; }
-                .unav-container { max-width: 1280px !important; margin: 0 auto !important; padding: 0.65rem 1.25rem !important; display: flex !important; align-items: center !important; justify-content: space-between !important; box-sizing: border-box !important; height: 54px !important; }
-                .unav-brand { display: inline-flex !important; align-items: center !important; gap: 0.5rem !important; text-decoration: none !important; font-size: 1.2rem !important; font-weight: 800 !important; color: #0f172a !important; line-height: 1 !important; white-space: nowrap !important; }
+                #unified-nav-root, .unav-header { display: block !important; min-height: 54px !important; background-color: #ffffff !important; position: sticky !important; top: 0 !important; width: 100% !important; max-width: 100% !important; z-index: 99999 !important; box-sizing: border-box !important; }
+                .unav-container { width: 100% !important; max-width: 1280px !important; min-width: 0 !important; margin: 0 auto !important; padding: 0.65rem 1.25rem !important; display: flex !important; align-items: center !important; justify-content: space-between !important; box-sizing: border-box !important; height: 54px !important; }
+                .unav-brand { display: inline-flex !important; align-items: center !important; gap: 0.5rem !important; text-decoration: none !important; font-size: 1.2rem !important; font-weight: 800 !important; color: #0f172a !important; line-height: 1 !important; white-space: nowrap !important; flex-shrink: 0 !important; }
                 .unav-brand-icon-img { width: 24px !important; height: 24px !important; max-width: 24px !important; max-height: 24px !important; border-radius: 6px !important; display: inline-block !important; vertical-align: middle !important; object-fit: contain !important; flex-shrink: 0 !important; margin: 0 !important; padding: 0 !important; }
                 .unav-dropdown { position: absolute !important; top: 100% !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+                .unav-item.open > .unav-dropdown { opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; }
                 .unav-drawer:not(.open) { display: none !important; }
-                @media (max-width: 860px) { #unified-nav-root, .unav-header { min-height: 52px !important; } .unav-container { padding: 0.5rem 0.85rem !important; height: 52px !important; } .unav-menu { display: none !important; } }
+                .unav-header.unav-collapsed .unav-container { padding: 0.5rem 0.85rem !important; height: 52px !important; }
+                .unav-header.unav-collapsed .unav-menu { display: none !important; }
+                .unav-header.unav-collapsed .unav-hamburger, .unav-header.unav-collapsed .unav-mobile-notif-btn { display: inline-flex !important; width: 36px !important; height: 36px !important; }
+                @media (max-width: 1024px) { #unified-nav-root, .unav-header { min-height: 52px !important; } .unav-container { padding: 0.5rem 0.85rem !important; height: 52px !important; } .unav-menu { display: none !important; } }
                 html.hide-blood [data-service="blood"], html.hide-asset [data-service="asset"], html.hide-ops [data-service="ops"], html.role-pending [data-service="blood"], html.role-pending [data-service="asset"], html.role-pending [data-service="ops"] { display: none !important; }
             `;
             (document.head || document.documentElement).appendChild(style);
@@ -117,7 +121,7 @@
             cachedHtml = localStorage.getItem(CACHE_KEY_HTML);
             cachedVer = localStorage.getItem(CACHE_KEY_VER);
             cachedTime = parseInt(localStorage.getItem(CACHE_KEY_TIME) || '0', 10);
-            const isLegacy = cachedHtml && (!cachedHtml.includes('notif-category-bar') || !cachedHtml.includes('/go/blood') || !cachedHtml.includes('혈압·건강·약'));
+            const isLegacy = cachedHtml && (!cachedHtml.includes('notif-category-bar') || !cachedHtml.includes('/go/blood') || !cachedHtml.includes('unavLifeDropdown'));
             if (cachedVer !== UNAV_VERSION || isLegacy) {
                 localStorage.removeItem(CACHE_KEY_HTML);
                 localStorage.removeItem(CACHE_KEY_VER);
@@ -216,12 +220,30 @@
         if (host.includes('blood') || path.includes('/go/blood') || path.includes('hospital') || path.includes('report')) activeKey = 'blood';
         else if (host.includes('asset') || path.includes('/go/asset')) activeKey = 'asset';
         else if (host.includes('news') || path.includes('/go/news') || path.includes('weather') || path.includes('breaking') || path.includes('economy')) activeKey = 'news';
+        else if (host.includes('album') || path.includes('/go/album')) activeKey = 'album';
+        else if (path.startsWith('/wiki')) activeKey = 'wiki';
+        else if (path.startsWith('/study')) activeKey = 'study';
+        else if (path.startsWith('/kindergarten')) activeKey = 'kindergarten';
+        else if (path.startsWith('/ai')) activeKey = 'ai';
         else if (path.includes('admin')) activeKey = 'admin';
         else if (path.includes('calendar')) activeKey = 'calendar';
         else if (path.includes('memo')) activeKey = 'memo';
         else if (host === 'j-jg.cc' || host === 'localhost') activeKey = 'home';
 
-        document.querySelectorAll('.unav-link[data-nav]').forEach(el => el.classList.toggle('active', el.getAttribute('data-nav') === activeKey));
+        const lifeKeys = new Set(['calendar', 'memo', 'album', 'wiki', 'study', 'kindergarten']);
+        document.querySelectorAll('.unav-link[data-nav]').forEach(el => {
+            const key = el.getAttribute('data-nav');
+            const isMatch = key === activeKey || (key === 'life' && lifeKeys.has(activeKey));
+            el.classList.toggle('active', isMatch);
+            if (key === activeKey) el.setAttribute('aria-current', 'page');
+            else el.removeAttribute('aria-current');
+        });
+        document.querySelectorAll('.unav-sublink[data-nav]').forEach(el => {
+            const isMatch = el.getAttribute('data-nav') === activeKey;
+            el.classList.toggle('active', isMatch);
+            if (isMatch) el.setAttribute('aria-current', 'page');
+            else el.removeAttribute('aria-current');
+        });
         document.querySelectorAll('.unav-m-group[data-nav]').forEach(group => {
             const btn = group.querySelector('.unav-m-title');
             const isMatch = group.getAttribute('data-nav') === activeKey;
@@ -229,6 +251,7 @@
             if (btn) btn.classList.toggle('active', isMatch);
         });
     }
+    window.highlightUnavActive = highlightActiveMenu;
 
     // 🛡️ 권한 기반 상단 내비바 메뉴 마스킹
     function applyUnifiedNavPermissions() {
@@ -262,6 +285,7 @@
                 }
             };
             applyDom(role, allowed);
+            if (typeof window.syncUnavLayout === 'function') window.syncUnavLayout();
 
             fetch(`${NOTIF_BASE_URL}/api/me`, { credentials: 'include' })
                 .then(res => res.json())
@@ -274,6 +298,7 @@
                             localStorage.setItem('jg_allowed_services', newAllowed);
                         } catch (e) {}
                         applyDom(newRole, newAllowed);
+                        if (typeof window.syncUnavLayout === 'function') window.syncUnavLayout();
                     }
                 }).catch(() => {});
         } catch (e) {}
@@ -371,6 +396,105 @@
         }
     }
 
+    function closeAllDesktopDropdowns(exceptItem) {
+        document.querySelectorAll('.unav-item.open').forEach(item => {
+            if (item === exceptItem) return;
+            item.classList.remove('open');
+            const trigger = item.querySelector('.unav-dropdown-trigger');
+            if (trigger) trigger.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function alignDropdownViewportEdge(item) {
+        const dropdown = item && item.querySelector(':scope > .unav-dropdown');
+        if (!dropdown) return;
+        dropdown.classList.remove('align-right');
+        const rect = dropdown.getBoundingClientRect();
+        if (rect.right > window.innerWidth - 12) {
+            dropdown.classList.add('align-right');
+        }
+    }
+
+    function syncUnavLayout() {
+        const header = document.querySelector('header.unav-header');
+        const container = header && header.querySelector('.unav-container');
+        const menu = header && header.querySelector('.unav-menu');
+        if (!header || !container || !menu) return;
+
+        if (window.innerWidth <= 1024) {
+            header.classList.remove('unav-collapsed');
+            closeAllDesktopDropdowns();
+            return;
+        }
+
+        header.classList.add('unav-measuring');
+        header.classList.remove('unav-collapsed');
+        const overflows = container.scrollWidth > container.clientWidth + 2 || menu.scrollWidth > menu.clientWidth + 2;
+        header.classList.toggle('unav-collapsed', overflows);
+        if (overflows) closeAllDesktopDropdowns();
+
+        requestAnimationFrame(() => {
+            header.classList.remove('unav-measuring');
+        });
+    }
+    window.syncUnavLayout = syncUnavLayout;
+
+    function initDesktopDropdowns() {
+        const header = document.querySelector('header.unav-header');
+        if (!header) return;
+
+        header.querySelectorAll('.unav-dropdown-trigger').forEach(trigger => {
+            if (trigger.__unavTriggerBound) return;
+            trigger.__unavTriggerBound = true;
+            trigger.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const item = trigger.closest('.unav-item');
+                if (!item) return;
+                const willOpen = !item.classList.contains('open');
+                closeAllDesktopDropdowns(willOpen ? item : null);
+                item.classList.toggle('open', willOpen);
+                trigger.setAttribute('aria-expanded', String(willOpen));
+                if (willOpen) alignDropdownViewportEdge(item);
+            });
+        });
+
+        header.querySelectorAll('.unav-item').forEach(item => {
+            if (item.__unavHoverAlignBound) return;
+            item.__unavHoverAlignBound = true;
+            item.addEventListener('pointerenter', () => alignDropdownViewportEdge(item));
+            item.addEventListener('focusin', () => alignDropdownViewportEdge(item));
+        });
+
+        if (!window.__unavDesktopDropdownDocBound) {
+            window.__unavDesktopDropdownDocBound = true;
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.unav-item')) closeAllDesktopDropdowns();
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeAllDesktopDropdowns();
+            });
+            window.addEventListener('resize', () => {
+                if (typeof window.syncUnavLayout === 'function') window.syncUnavLayout();
+            });
+        }
+
+        if (typeof ResizeObserver === 'function' && !header.__unavResizeObserved) {
+            header.__unavResizeObserved = true;
+            let lastHeaderWidth = header.clientWidth;
+            const ro = new ResizeObserver(() => {
+                const w = header.clientWidth;
+                if (Math.abs(w - lastHeaderWidth) > 1 || !header.classList.contains('unav-collapsed')) {
+                    lastHeaderWidth = w;
+                    syncUnavLayout();
+                }
+            });
+            ro.observe(header);
+            const menu = header.querySelector('.unav-menu');
+            if (menu) ro.observe(menu);
+        }
+    }
+
     // 4. 내비게이션 바 인터랙션 및 알림 연동
     function initUnifiedNav() {
         const btn = document.getElementById('unavHamburgerBtn');
@@ -378,6 +502,8 @@
 
         ensureNotificationNavItems();
         applyUnifiedNavPermissions();
+        initDesktopDropdowns();
+        syncUnavLayout();
 
         fetchUnreadBadge();
         if (!window.__unavBadgeTimer) {
@@ -402,12 +528,21 @@
             btn.setAttribute('aria-expanded', String(!isOpen));
             document.body.style.overflow = !isOpen ? 'hidden' : '';
         };
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.unav-header') && drawer.classList.contains('open')) window.closeUnavDrawer();
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && drawer.classList.contains('open')) window.closeUnavDrawer();
-        });
+        if (!window.__unavDrawerDocBound) {
+            window.__unavDrawerDocBound = true;
+            document.addEventListener('click', (e) => {
+                const activeDrawer = document.getElementById('unavDrawer');
+                if (activeDrawer && !e.target.closest('.unav-header') && activeDrawer.classList.contains('open')) {
+                    window.closeUnavDrawer();
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                const activeDrawer = document.getElementById('unavDrawer');
+                if (e.key === 'Escape' && activeDrawer && activeDrawer.classList.contains('open')) {
+                    window.closeUnavDrawer();
+                }
+            });
+        }
         drawer.querySelectorAll('a').forEach(a => a.addEventListener('click', () => window.closeUnavDrawer()));
 
         if (!window.__unavLogoutListenerBound) {

@@ -12,11 +12,11 @@
             <div class="unav-item">
                 <a href="https://j-jg.cc/" class="unav-link" data-nav="home">
                     <span class="unav-item-icon">🏠</span>
-                    <span>대시보드</span>
+                    <span>홈</span>
                     <span class="unav-arrow">▾</span>
                 </a>
                 <div class="unav-dropdown">
-                    <a href="https://j-jg.cc/" class="unav-sublink">
+                    <a href="https://j-jg.cc/" class="unav-sublink" data-nav="home">
                         <span class="unav-sub-icon">🏠</span>
                         <div class="unav-sub-text">
                             <strong>메인 대시보드</strong>
@@ -33,11 +33,11 @@
                 </div>
             </div>
 
-            <!-- 2. 혈압·건강·약 -->
+            <!-- 2. 건강·약 -->
             <div class="unav-item" data-service="blood">
                 <a href="https://j-jg.cc/go/blood?path=/dashboard.html" class="unav-link" data-nav="blood">
                     <span class="unav-item-icon">🩸</span>
-                    <span>혈압·건강·약</span>
+                    <span>건강·약</span>
                     <span class="unav-arrow">▾</span>
                 </a>
                 <div class="unav-dropdown">
@@ -65,11 +65,11 @@
                 </div>
             </div>
 
-            <!-- 3. 자산·금융 -->
+            <!-- 3. 자산 -->
             <div class="unav-item" data-service="asset">
                 <a href="https://j-jg.cc/go/asset" class="unav-link" data-nav="asset">
                     <span class="unav-item-icon">💰</span>
-                    <span>자산·금융</span>
+                    <span>자산</span>
                     <span class="unav-arrow">▾</span>
                 </a>
                 <div class="unav-dropdown">
@@ -97,11 +97,11 @@
                 </div>
             </div>
 
-            <!-- 4. 뉴스룸 -->
+            <!-- 4. 뉴스 -->
             <div class="unav-item">
                 <a href="https://j-jg.cc/go/news" class="unav-link" data-nav="news">
                     <span class="unav-item-icon">📰</span>
-                    <span>뉴스룸</span>
+                    <span>뉴스</span>
                     <span class="unav-arrow">▾</span>
                 </a>
                 <div class="unav-dropdown">
@@ -143,43 +143,75 @@
                 </div>
             </div>
 
-            <!-- 5. 스마트 캘린더 -->
-            <div class="unav-item">
-                <a href="https://j-jg.cc/calendar" class="unav-link" data-nav="calendar">
-                    <span class="unav-item-icon">📅</span>
-                    <span>스마트 캘린더</span>
-                </a>
+            <!-- 5. 생활·가족 그룹 (캘린더, 메모, 앨범, 위키 + 동적 확장 모듈) -->
+            <div class="unav-item unav-group-life">
+                <button type="button" class="unav-link unav-dropdown-trigger" data-nav="life" aria-expanded="false" aria-controls="unavLifeDropdown">
+                    <span class="unav-item-icon">🧩</span>
+                    <span>생활·가족</span>
+                    <span class="unav-arrow">▾</span>
+                </button>
+                <div class="unav-dropdown" id="unavLifeDropdown">
+                    <a href="https://j-jg.cc/calendar" class="unav-sublink" data-nav="calendar">
+                        <span class="unav-sub-icon">📅</span>
+                        <div class="unav-sub-text">
+                            <strong>스마트 캘린더</strong>
+                            <small>가족 일정 · 기념일 · 복약/병원 통합 달력</small>
+                        </div>
+                    </a>
+                    <a href="https://j-jg.cc/memo" class="unav-sublink" data-nav="memo">
+                        <span class="unav-sub-icon">📝</span>
+                        <div class="unav-sub-text">
+                            <strong>아이디어 & 메모</strong>
+                            <small>빠른 메모, 체크리스트 및 AI 요약 정리</small>
+                        </div>
+                    </a>
+                    <a href="https://j-jg.cc/go/album" class="unav-sublink" data-nav="album">
+                        <span class="unav-sub-icon">📸</span>
+                        <div class="unav-sub-text">
+                            <strong>가족 앨범</strong>
+                            <small>우리 가족 추억 사진첩 및 AI 자동 분류</small>
+                        </div>
+                    </a>
+                    <a href="https://j-jg.cc/wiki" class="unav-sublink" data-nav="wiki" data-service="wiki">
+                        <span class="unav-sub-icon">📚</span>
+                        <div class="unav-sub-text">
+                            <strong>가족 위키</strong>
+                            <small>생활 매뉴얼 · 지식창고 · 루틴 관리</small>
+                        </div>
+                    </a>
+                </div>
             </div>
 
-            <!-- 6. 아이디어 & 메모장 -->
-            <div class="unav-item">
-                <a href="https://j-jg.cc/memo" class="unav-link" data-nav="memo">
-                    <span class="unav-item-icon">📝</span>
-                    <span>아이디어 & 메모장</span>
-                </a>
-            </div>
-
-            <!-- 7. 우리 가족 사진첩 -->
-            <div class="unav-item">
-                <a href="https://j-jg.cc/go/album" class="unav-link" data-nav="album">
-                    <span class="unav-item-icon">📸</span>
-                    <span>가족 앨범</span>
-                </a>
-            </div>
-
-            <!-- 8. AI 비서 -->
+            <!-- 6. AI 비서 -->
             <div class="unav-item">
                 <a href="https://j-jg.cc/ai" class="unav-link" data-nav="ai">
                     <span class="unav-item-icon">🤖</span>
                     <span>AI 비서</span>
+                    <span class="unav-arrow">▾</span>
                 </a>
+                <div class="unav-dropdown">
+                    <a href="https://j-jg.cc/ai" class="unav-sublink" data-nav="ai">
+                        <span class="unav-sub-icon">💬</span>
+                        <div class="unav-sub-text">
+                            <strong>AI 비서 대화방</strong>
+                            <small>건강·자산·일정·위키 통합 AI 질의응답</small>
+                        </div>
+                    </a>
+                    <a href="https://j-jg.cc/wiki" class="unav-sublink" data-nav="wiki" data-service="wiki">
+                        <span class="unav-sub-icon">📚</span>
+                        <div class="unav-sub-text">
+                            <strong>가족 위키 지식</strong>
+                            <small>AI가 정리한 생활 지식 및 꿀팁 보관소</small>
+                        </div>
+                    </a>
+                </div>
             </div>
 
-            <!-- 9. 서버 인프라 -->
+            <!-- 7. 서버 인프라 -->
             <div class="unav-item" data-service="ops">
                 <a href="https://j-jg.cc/admin" class="unav-link" data-nav="admin">
                     <span class="unav-item-icon">🖥️</span>
-                    <span>서버 인프라</span>
+                    <span>인프라</span>
                     <span class="unav-arrow">▾</span>
                 </a>
                 <div class="unav-dropdown">
@@ -330,6 +362,14 @@
                 <div class="unav-m-group" data-nav="album">
                     <a href="https://j-jg.cc/go/album" class="unav-m-title" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; width: 100%;">
                         <span>📸 우리 가족 앨범</span>
+                        <span class="unav-m-chevron" style="transform: none; font-size: 0.9rem; opacity: 0.7;">↗</span>
+                    </a>
+                </div>
+
+                <!-- 7-1. 가족 위키 -->
+                <div class="unav-m-group" data-nav="wiki" data-service="wiki">
+                    <a href="https://j-jg.cc/wiki" class="unav-m-title" style="text-decoration: none; display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <span>📚 가족 위키</span>
                         <span class="unav-m-chevron" style="transform: none; font-size: 0.9rem; opacity: 0.7;">↗</span>
                     </a>
                 </div>

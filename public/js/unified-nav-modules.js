@@ -9,9 +9,22 @@
     if (window.__UNAV_MODULES_INITIALIZED__) return;
     window.__UNAV_MODULES_INITIALIZED__ = true;
 
+    function resolvePortalUrl(rawUrl) {
+        if (!rawUrl) return '#';
+        const val = String(rawUrl).trim();
+        if (!val || val.startsWith('#') || val.startsWith('http://') || val.startsWith('https://') || val.startsWith('javascript:')) {
+            return val || '#';
+        }
+        const host = window.location.hostname;
+        const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
+        if (isLocal) return val;
+        return `https://j-jg.cc${val.startsWith('/') ? val : '/' + val}`;
+    }
+
     async function syncDynamicNavModules() {
         try {
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const host = window.location.hostname;
+            const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
             const apiBase = isLocal ? '' : 'https://j-jg.cc';
             const res = await fetch(`${apiBase}/api/modules/nav`, { credentials: 'include' });
             if (!res.ok) return;
@@ -19,8 +32,22 @@
             if (!data.success || !Array.isArray(data.navModules)) return;
 
             const desktopMenu = document.querySelector('.unav-menu');
+            const lifeDropdown = document.getElementById('unavLifeDropdown');
             const mobileList = document.querySelector('.unav-m-list');
             if (!desktopMenu && !mobileList) return;
+
+            const allowedIds = new Set(data.navModules.map(m => m.id));
+            // 정적 마운트된 모듈(예: wiki)이 관리자 설정으로 비활성화된 경우 동기화
+            if (desktopMenu) {
+                desktopMenu.querySelectorAll('[data-service="wiki"]').forEach(el => {
+                    el.style.display = allowedIds.has('wiki') ? '' : 'none';
+                });
+            }
+            if (mobileList) {
+                mobileList.querySelectorAll('[data-service="wiki"]').forEach(el => {
+                    el.style.display = allowedIds.has('wiki') ? '' : 'none';
+                });
+            }
 
             const targetInsertDesktop = desktopMenu?.querySelector('[data-service="ops"]') 
                 || desktopMenu?.querySelector('.unav-notif-btn')?.closest('.unav-item') 
@@ -34,47 +61,63 @@
                 const modId = mod.id;
                 const modLabel = mod.label || mod.name;
                 const modIcon = mod.icon || '📦';
-                const entryUrl = mod.entryUrl || '#';
+                const entryUrl = resolvePortalUrl(mod.entryUrl || '#');
                 const subLinks = Array.isArray(mod.subLinks) ? mod.subLinks : [];
 
-                // 1. 데스크톱 내비바 동적 삽입 (기존 요소가 없을 때만)
+                // 1. 데스크톱 내비바 동적 삽입 (상단 바 비대화 방지를 위해 '생활·가족' 드롭다운 내부에 합류)
                 if (desktopMenu && !desktopMenu.querySelector(`[data-nav="${modId}"], [data-service="${modId}"]`)) {
-                    const item = document.createElement('div');
-                    item.className = 'unav-item';
-                    item.setAttribute('data-service', modId);
-
-                    if (subLinks.length > 0) {
-                        const subLinksHtml = subLinks.map(sub => `
-                            <a href="${sub.url}" class="unav-sublink">
-                                <span class="unav-sub-icon">${sub.icon || '🔗'}</span>
-                                <div class="unav-sub-text">
-                                    <strong>${sub.name}</strong>
-                                    ${sub.desc ? `<small>${sub.desc}</small>` : ''}
-                                </div>
-                            </a>
-                        `).join('');
-
-                        item.innerHTML = `
-                            <a href="${entryUrl}" class="unav-link" data-nav="${modId}">
-                                <span class="unav-item-icon">${modIcon}</span>
-                                <span>${modLabel}</span>
-                                <span class="unav-arrow">▾</span>
-                            </a>
-                            <div class="unav-dropdown">
-                                ${subLinksHtml}
+                    if (lifeDropdown && modId !== 'admin' && modId !== 'ops') {
+                        const subLink = document.createElement('a');
+                        subLink.href = entryUrl;
+                        subLink.className = 'unav-sublink';
+                        subLink.setAttribute('data-nav', modId);
+                        subLink.setAttribute('data-service', modId);
+                        subLink.innerHTML = `
+                            <span class="unav-sub-icon">${modIcon}</span>
+                            <div class="unav-sub-text">
+                                <strong>${modLabel}</strong>
+                                ${mod.desc ? `<small>${mod.desc}</small>` : ''}
                             </div>
                         `;
+                        lifeDropdown.appendChild(subLink);
                     } else {
-                        item.innerHTML = `
-                            <a href="${entryUrl}" class="unav-link" data-nav="${modId}">
-                                <span class="unav-item-icon">${modIcon}</span>
-                                <span>${modLabel}</span>
-                            </a>
-                        `;
-                    }
+                        const item = document.createElement('div');
+                        item.className = 'unav-item';
+                        item.setAttribute('data-service', modId);
 
-                    if (targetInsertDesktop) desktopMenu.insertBefore(item, targetInsertDesktop);
-                    else desktopMenu.appendChild(item);
+                        if (subLinks.length > 0) {
+                            const subLinksHtml = subLinks.map(sub => `
+                                <a href="${resolvePortalUrl(sub.url)}" class="unav-sublink">
+                                    <span class="unav-sub-icon">${sub.icon || '🔗'}</span>
+                                    <div class="unav-sub-text">
+                                        <strong>${sub.name}</strong>
+                                        ${sub.desc ? `<small>${sub.desc}</small>` : ''}
+                                    </div>
+                                </a>
+                            `).join('');
+
+                            item.innerHTML = `
+                                <a href="${entryUrl}" class="unav-link" data-nav="${modId}">
+                                    <span class="unav-item-icon">${modIcon}</span>
+                                    <span>${modLabel}</span>
+                                    <span class="unav-arrow">▾</span>
+                                </a>
+                                <div class="unav-dropdown">
+                                    ${subLinksHtml}
+                                </div>
+                            `;
+                        } else {
+                            item.innerHTML = `
+                                <a href="${entryUrl}" class="unav-link" data-nav="${modId}">
+                                    <span class="unav-item-icon">${modIcon}</span>
+                                    <span>${modLabel}</span>
+                                </a>
+                            `;
+                        }
+
+                        if (targetInsertDesktop) desktopMenu.insertBefore(item, targetInsertDesktop);
+                        else desktopMenu.appendChild(item);
+                    }
                 }
 
                 // 2. 모바일 드로어 동적 삽입 (기존 요소가 없을 때만)
@@ -85,7 +128,7 @@
                     group.setAttribute('data-service', modId);
 
                     if (subLinks.length > 0) {
-                        const subHtml = subLinks.map(sub => `<a href="${sub.url}">${sub.icon || '🔗'} ${sub.name}</a>`).join('');
+                        const subHtml = subLinks.map(sub => `<a href="${resolvePortalUrl(sub.url)}">${sub.icon || '🔗'} ${sub.name}</a>`).join('');
                         group.innerHTML = `
                             <button type="button" class="unav-m-title" onclick="toggleUnavAccordion(this)">
                                 <span>${modIcon} ${modLabel}</span>
@@ -108,6 +151,9 @@
                     else mobileList.appendChild(group);
                 }
             });
+
+            if (typeof window.highlightUnavActive === 'function') window.highlightUnavActive();
+            if (typeof window.syncUnavLayout === 'function') window.syncUnavLayout();
         } catch (e) {
             // 조용히 fallback
         }

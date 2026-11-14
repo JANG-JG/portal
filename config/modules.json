@@ -445,8 +445,8 @@
     "enabled": true,
     "nav": {
       "enabled": true,
-      "label": "지식창고",
-      "entryUrl": "/wiki",
+      "label": "가족 위키",
+      "entryUrl": "https://j-jg.cc/wiki",
       "subLinks": []
     },
     "quickStrip": [
@@ -482,17 +482,17 @@
     "nav": {
       "enabled": true,
       "label": "AI 비서",
-      "entryUrl": "/ai",
+      "entryUrl": "https://j-jg.cc/ai",
       "subLinks": [
         {
           "name": "AI 대화방",
-          "url": "/ai",
+          "url": "https://j-jg.cc/ai",
           "icon": "💬",
           "desc": "실시간 가족 맞춤형 AI 비서 대화방"
         },
         {
           "name": "가족 위키 지식",
-          "url": "/wiki",
+          "url": "https://j-jg.cc/wiki",
           "icon": "📚",
           "desc": "AI가 정리한 생활 지식 및 꿀팁 보관소"
         }
@@ -547,8 +547,8 @@
     "enabled": true,
     "nav": {
       "enabled": true,
-      "label": "유치원 사진 다운로더",
-      "entryUrl": "/kindergarten",
+      "label": "유치원 사진",
+      "entryUrl": "https://j-jg.cc/kindergarten",
       "subLinks": []
     },
     "quickStrip": [
@@ -580,7 +580,7 @@
     "nav": {
       "enabled": true,
       "label": "학습실",
-      "entryUrl": "/study",
+      "entryUrl": "https://j-jg.cc/study",
       "subLinks": []
     },
     "quickStrip": [

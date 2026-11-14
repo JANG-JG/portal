@@ -12,7 +12,7 @@
     window.__JG_UI_LOADER_INITIALIZED__ = true;
 
     // 🎯 중앙 집중 단일 버전 상수 (여기서 버전만 올리면 전 사이트 자동 갱신!)
-    const JG_UI_VERSION = '20261114_112507';
+    const JG_UI_VERSION = '20261114_123839';
     window.__JG_UI_VERSION__ = JG_UI_VERSION;
 
     // 0. 🛡️ [FOUC & 거대 로고 방지 동기 크리티컬 인라인 CSS 즉시 주입 (0ms 무지연 가드)]
@@ -32,11 +32,14 @@
                 left: 0 !important;
                 right: 0 !important;
                 width: 100% !important;
+                max-width: 100% !important;
                 z-index: 99999 !important;
                 box-sizing: border-box !important;
             }
             .unav-container {
+                width: 100% !important;
                 max-width: 1280px !important;
+                min-width: 0 !important;
                 margin: 0 auto !important;
                 padding: 0.65rem 1.25rem !important;
                 display: flex !important;
@@ -83,6 +86,7 @@
                 align-items: center !important;
                 gap: 0.15rem !important;
                 flex-wrap: nowrap !important;
+                min-width: 0 !important;
                 list-style: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
@@ -90,6 +94,7 @@
             .unav-item {
                 position: relative !important;
                 display: inline-flex !important;
+                flex-shrink: 0 !important;
             }
             .unav-link {
                 display: inline-flex !important;
@@ -112,7 +117,8 @@
                 visibility: hidden !important;
                 pointer-events: none !important;
             }
-            .unav-item:hover .unav-dropdown {
+            .unav-item:hover .unav-dropdown,
+            .unav-item.open > .unav-dropdown {
                 opacity: 1 !important;
                 visibility: visible !important;
                 pointer-events: auto !important;
@@ -125,11 +131,33 @@
                 display: inline-flex !important;
                 align-items: center !important;
                 gap: 0.4rem !important;
+                flex-shrink: 0 !important;
             }
             .unav-hamburger, .unav-mobile-notif-btn {
                 display: none !important;
             }
-            @media (max-width: 860px) {
+            .unav-header.unav-collapsed #unified-nav-root,
+            .unav-header.unav-collapsed {
+                min-height: 52px !important;
+            }
+            .unav-header.unav-collapsed .unav-container {
+                padding: 0.5rem 0.85rem !important;
+                height: 52px !important;
+            }
+            .unav-header.unav-collapsed .unav-menu {
+                display: none !important;
+            }
+            .unav-header.unav-collapsed .unav-hamburger {
+                display: flex !important;
+                width: 36px !important;
+                height: 36px !important;
+            }
+            .unav-header.unav-collapsed .unav-mobile-notif-btn {
+                display: inline-flex !important;
+                width: 36px !important;
+                height: 36px !important;
+            }
+            @media (max-width: 1024px) {
                 #unified-nav-root, .unav-header {
                     min-height: 52px !important;
                 }

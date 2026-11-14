@@ -6,6 +6,7 @@
 #unified-nav-root {
     display: block;
     min-height: 54px;
+    max-width: 100%;
     background: #ffffff;
 }
 .unav-header {
@@ -14,6 +15,7 @@
     left: 0;
     right: 0;
     width: 100%;
+    max-width: 100%;
     min-height: 54px;
     z-index: 99999;
     background-color: #ffffff;
@@ -21,10 +23,16 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.5;
+    box-sizing: border-box;
+}
+.unav-header.unav-measuring * {
+    transition: none !important;
 }
 
 .unav-container {
+    width: 100%;
     max-width: 1280px;
+    min-width: 0;
     margin: 0 auto;
     padding: 0.65rem 1.25rem;
     display: flex;
@@ -79,10 +87,12 @@
     align-items: center;
     gap: 0.15rem;
     flex-wrap: nowrap;
+    min-width: 0;
 }
 
 .unav-item {
     position: relative;
+    flex-shrink: 0;
 }
 
 .unav-link {
@@ -97,6 +107,15 @@
     color: #334155;
     transition: all 0.18s ease;
     white-space: nowrap;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    line-height: inherit;
+}
+.unav-link:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
 }
 .unav-link:hover {
     color: #2563eb;
@@ -115,33 +134,31 @@
     color: #94a3b8;
     transition: transform 0.2s ease, color 0.2s;
 }
-.unav-item:hover .unav-arrow {
+.unav-item:hover .unav-arrow,
+.unav-item.open .unav-arrow {
     transform: rotate(180deg);
     color: #2563eb;
 }
 
-/* 861px ~ 1240px 중소형 데스크톱 화면 가로 넘침 방지 콤팩트 최적화 */
-@media (max-width: 1240px) and (min-width: 861px) {
+/* 1025px ~ 1280px 태블릿 가로 및 중소형 데스크톱 화면 콤팩트 최적화 */
+@media (max-width: 1280px) and (min-width: 1025px) {
     .unav-container {
-        padding: 0.4rem 0.5rem !important;
+        padding: 0.45rem 0.75rem !important;
     }
     .unav-brand {
-        font-size: 1.05rem !important;
-        gap: 0.25rem !important;
+        font-size: 1.08rem !important;
+        gap: 0.35rem !important;
     }
     .unav-menu {
-        gap: 0.08rem !important;
+        gap: 0.1rem !important;
     }
     .unav-link {
-        padding: 0.3rem 0.38rem !important;
-        font-size: 0.78rem !important;
-        gap: 0.18rem !important;
+        padding: 0.35rem 0.45rem !important;
+        font-size: 0.8rem !important;
+        gap: 0.2rem !important;
     }
     .unav-item-icon {
-        font-size: 0.85rem !important;
-    }
-    .unav-arrow {
-        display: none !important; /* 가로 공간 절약을 위해 작은 데스크톱에서 화살표 숨김(호버 드롭다운은 정상 작동) */
+        font-size: 0.88rem !important;
     }
     .unav-actions {
         gap: 0.25rem !important;
@@ -154,6 +171,7 @@
     top: 100%;
     left: 0;
     min-width: 260px;
+    max-width: calc(100vw - 24px);
     background: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 0.75rem;
@@ -165,6 +183,11 @@
     transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s;
     z-index: 100000;
     pointer-events: none;
+    box-sizing: border-box;
+}
+.unav-dropdown.align-right {
+    left: auto;
+    right: 0;
 }
 /* 마우스 이동 시 호버 끊김 방지 브릿지 */
 .unav-dropdown::before {
@@ -176,7 +199,8 @@
     height: 12px;
     background: transparent;
 }
-.unav-item:hover .unav-dropdown {
+.unav-item:hover .unav-dropdown,
+.unav-item.open > .unav-dropdown {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
@@ -193,8 +217,15 @@
     color: #1e293b;
     transition: background-color 0.15s;
 }
-.unav-sublink:hover {
+.unav-sublink:hover,
+.unav-sublink.active {
     background-color: #f1f5f9;
+}
+.unav-sublink.active {
+    background-color: #eff6ff;
+}
+.unav-sublink.active .unav-sub-text strong {
+    color: #2563eb;
 }
 .unav-sub-icon {
     font-size: 1.15rem;
@@ -425,8 +456,42 @@
     background-color: #fee2e2;
 }
 
-/* 860px 이하 스마트폰 모바일 햄버거 메뉴 반응형 전환 */
-@media (max-width: 860px) {
+/* 1024px 이하 태블릿·모바일 및 동적 가로 넘침(.unav-collapsed) 햄버거 메뉴 반응형 전환 */
+.unav-header.unav-collapsed .unav-container {
+    padding: 0.5rem 0.85rem !important;
+    height: 52px !important;
+}
+.unav-header.unav-collapsed .unav-brand {
+    font-size: 1.1rem !important;
+    gap: 0.4rem !important;
+}
+.unav-header.unav-collapsed .unav-brand-text {
+    white-space: nowrap !important;
+}
+.unav-header.unav-collapsed .unav-menu {
+    display: none !important;
+}
+.unav-header.unav-collapsed .unav-actions {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+.unav-header.unav-collapsed .unav-mobile-notif-btn {
+    display: inline-flex !important;
+    width: 36px !important;
+    height: 36px !important;
+}
+.unav-header.unav-collapsed .unav-hamburger {
+    display: flex !important;
+    width: 36px !important;
+    height: 36px !important;
+}
+.unav-header.unav-collapsed .unav-drawer {
+    display: block;
+}
+
+@media (max-width: 1024px) {
     .unav-container {
         padding: 0.5rem 0.85rem !important;
         height: 52px !important;

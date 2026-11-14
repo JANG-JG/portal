@@ -56,7 +56,7 @@
                     <button type="button" class="btn-change-member" onclick="resetFamilySelection()">다른 가족 선택</button>
                 </div>
 
-                <div class="pin-dots-wrap" id="pinDotsWrap" onclick="focusPinInput()" title="숫자 키패드 열기">
+                <div class="pin-dots-wrap" id="pinDotsWrap">
                     <div class="pin-dot"></div>
                     <div class="pin-dot"></div>
                     <div class="pin-dot"></div>
@@ -65,11 +65,11 @@
                     <div class="pin-dot"></div>
                 </div>
 
-                <!-- 모바일 네이티브 키패드 및 물리 키보드 바인딩 숨김 인풋 -->
-                <input type="password" id="familyPinHiddenInput" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;">
+                <!-- 모바일 가상 키보드 차단용 숨김 상태 인풋 -->
+                <input type="password" id="familyPinHiddenInput" inputmode="none" readonly tabindex="-1" aria-hidden="true" pattern="[0-9]*" maxlength="6" autocomplete="off" style="position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px;">
 
-                <!-- 화면 가상 3x4 키패드 -->
-                <div class="numpad-grid">
+                <!-- 화면 가상 3x4 키패드 (숫자 위치 랜덤 셔플) -->
+                <div class="numpad-grid" aria-label="6자리 PIN 입력 키패드">
                     <button type="button" class="numpad-btn" data-key="1">1</button>
                     <button type="button" class="numpad-btn" data-key="2">2</button>
                     <button type="button" class="numpad-btn" data-key="3">3</button>
@@ -81,7 +81,7 @@
                     <button type="button" class="numpad-btn" data-key="9">9</button>
                     <button type="button" class="numpad-btn btn-action" data-key="clear">초기화</button>
                     <button type="button" class="numpad-btn" data-key="0">0</button>
-                    <button type="button" class="numpad-btn btn-action" data-key="backspace">⌫</button>
+                    <button type="button" class="numpad-btn btn-action" data-key="backspace" aria-label="한 글자 지우기">⌫</button>
                 </div>
 
                 <div class="form-options">
@@ -92,7 +92,7 @@
                 </div>
             </div>
 
-            <div id="familyErrorMessage" class="error-msg" style="display: none;"></div>
+            <div id="familyErrorMessage" class="error-msg" role="alert" style="display: none;"></div>
 
             <div class="family-unlink-wrap" style="text-align: center; margin-top: 1.25rem;">
                 <button type="button" class="btn-unlink-device" onclick="unlinkFamilyDevice()">
@@ -234,6 +234,7 @@
         </div>
     </div>
 
+    <script src="/js/login-pinpad.js" defer></script>
     <script src="/js/login-family.js" defer></script>
     <script src="/js/login-reset.js" defer></script>
     <script src="/js/login-register.js" defer></script>

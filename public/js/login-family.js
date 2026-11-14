@@ -21,8 +21,6 @@
     const familyChipsContainer = document.getElementById('familyChipsContainer');
     const selectedMemberEmoji = document.getElementById('selectedMemberEmoji');
     const selectedMemberName = document.getElementById('selectedMemberName');
-    const familyPinHiddenInput = document.getElementById('familyPinHiddenInput');
-    const pinDotsWrap = document.getElementById('pinDotsWrap');
     const familyErrorMsg = document.getElementById('familyErrorMessage');
     const pinChangeModal = document.getElementById('pinChangeModal');
     const pinChangeError = document.getElementById('pinChangeError');
@@ -47,12 +45,14 @@
             const usernameInput = document.getElementById('username');
             if (usernameInput) setTimeout(() => usernameInput.focus(), 100);
         } else {
+            if (window.FamilyPinPad) window.FamilyPinPad.blurActiveInput();
             if (familySec) familySec.style.display = 'block';
             if (adminSec) adminSec.style.display = 'none';
             if (tabBtnFamily) tabBtnFamily.classList.add('active');
             if (tabBtnAdmin) tabBtnAdmin.classList.remove('active');
             if (loginTitle) loginTitle.textContent = '가족 간편입장';
             if (loginSubtitle) loginSubtitle.textContent = '내 프로필을 선택하고 6자리 PIN을 입력하세요';
+            if (currentMember && window.FamilyPinPad) window.FamilyPinPad.shuffle();
         }
     };
 
@@ -128,6 +128,7 @@
     // 3. 가족 프로필 선택 처리
     function selectFamilyMember(member) {
         currentMember = member;
+        if (window.FamilyPinPad) window.FamilyPinPad.blurActiveInput();
         if (selectedMemberEmoji) selectedMemberEmoji.textContent = member.emoji || '😊';
         if (selectedMemberName) selectedMemberName.textContent = member.nickname || member.username;
 
@@ -135,8 +136,10 @@
         if (familyPinView) familyPinView.style.display = 'block';
         if (familyErrorMsg) familyErrorMsg.style.display = 'none';
 
-        resetPinInput();
-        focusPinInput();
+        if (window.FamilyPinPad) {
+            window.FamilyPinPad.reset();
+            window.FamilyPinPad.shuffle();
+        }
     }
 
     window.resetFamilySelection = function () {
@@ -144,70 +147,23 @@
         if (familyPickerView) familyPickerView.style.display = 'block';
         if (familyPinView) familyPinView.style.display = 'none';
         if (familyErrorMsg) familyErrorMsg.style.display = 'none';
-        resetPinInput();
+        if (window.FamilyPinPad) window.FamilyPinPad.reset();
     };
 
-    // 4. PIN 입력 제어 (도트 동기화 & 가상 키패드)
-    function resetPinInput() {
-        if (familyPinHiddenInput) familyPinHiddenInput.value = '';
-        updatePinDots('');
-    }
-
-    window.focusPinInput = function () {
-        if (familyPinHiddenInput) {
-            familyPinHiddenInput.focus();
-        }
-    };
-
-    function updatePinDots(val) {
-        if (!pinDotsWrap) return;
-        const dots = pinDotsWrap.querySelectorAll('.pin-dot');
-        dots.forEach((dot, idx) => {
-            if (idx < val.length) {
-                dot.classList.add('filled');
-            } else {
-                dot.classList.remove('filled');
-            }
-        });
-    }
-
+    // 4. PIN 키패드 모듈 초기화
     function initNumpad() {
-        const buttons = document.querySelectorAll('.numpad-btn');
-        buttons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (isSubmitting || !currentMember) return;
-                const key = btn.getAttribute('data-key');
-                let cur = familyPinHiddenInput ? familyPinHiddenInput.value : '';
-
-                if (key === 'clear') {
-                    cur = '';
-                } else if (key === 'backspace') {
-                    cur = cur.slice(0, -1);
-                } else if (/^\d$/.test(key)) {
-                    if (cur.length < 6) {
-                        cur += key;
-                    }
-                }
-
-                if (familyPinHiddenInput) familyPinHiddenInput.value = cur;
-                updatePinDots(cur);
-
-                if (cur.length === 6) {
-                    handleFamilyLogin(cur);
-                }
-            });
+        if (!window.FamilyPinPad) return;
+        window.FamilyPinPad.init({
+            canInput: () => {
+                const familySec = document.getElementById('familyLoginSection');
+                return Boolean(
+                    familySec && familySec.style.display !== 'none' &&
+                    familyPinView && familyPinView.style.display !== 'none' &&
+                    currentMember && !isSubmitting
+                );
+            },
+            onComplete: handleFamilyLogin
         });
-
-        if (familyPinHiddenInput) {
-            familyPinHiddenInput.addEventListener('input', (e) => {
-                let clean = e.target.value.replace(/\D/g, '').slice(0, 6);
-                e.target.value = clean;
-                updatePinDots(clean);
-                if (clean.length === 6) {
-                    handleFamilyLogin(clean);
-                }
-            });
-        }
     }
 
     function getNextRedirectParam() {
@@ -252,8 +208,10 @@
                     familyErrorMsg.textContent = data.message || 'PIN 번호가 올바르지 않습니다.';
                     familyErrorMsg.style.display = 'block';
                 }
-                resetPinInput();
-                focusPinInput();
+                if (window.FamilyPinPad) {
+                    window.FamilyPinPad.reset();
+                    window.FamilyPinPad.shuffle();
+                }
             }
         } catch (err) {
             console.error('로그인 요청 실패:', err);
@@ -261,7 +219,7 @@
                 familyErrorMsg.textContent = '서버 통신 중 오류가 발생했습니다. 다시 시도해 주세요.';
                 familyErrorMsg.style.display = 'block';
             }
-            resetPinInput();
+            if (window.FamilyPinPad) window.FamilyPinPad.reset();
         } finally {
             isSubmitting = false;
         }
