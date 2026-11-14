@@ -203,26 +203,23 @@
 }
 
 .coloring-stage {
-    width: 100%;
-    background: #ffffff;
-    border: 2px solid #e2e8f0;
-    border-radius: 18px;
-    padding: 10px;
-    text-align: center;
+    width: 100%; max-width: 100%; box-sizing: border-box;
+    background: #ffffff; border: 2px solid #e2e8f0; border-radius: 18px; padding: 10px; text-align: center;
 }
-
-.coloring-svg {
-    display: block;
-    width: 100%;
-    max-width: 420px;
-    height: auto;
-    margin: 0 auto;
+.coloring-canvas-wrap {
+    position: relative; width: 100%; max-width: 440px; aspect-ratio: 320 / 220;
+    margin: 0 auto; border-radius: 12px; overflow: hidden; background: #ffffff;
 }
-
-.coloring-svg [data-color-part] {
-    cursor: pointer;
-    transition: fill 0.15s ease;
-}
+.coloring-svg,
+.coloring-draw-canvas { display: block; width: 100%; height: 100%; }
+.coloring-svg { position: relative; z-index: 1; }
+.coloring-draw-canvas { position: absolute; inset: 0; z-index: 2; touch-action: none; cursor: crosshair; }
+.coloring-outline-svg { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.coloring-canvas-wrap[data-color-mode="fill"] .coloring-draw-canvas,
+.coloring-canvas-wrap[data-color-mode="brush"] .coloring-svg,
+.coloring-canvas-wrap[data-color-mode="eraser"] .coloring-svg { pointer-events: none; }
+.coloring-canvas-wrap[data-color-mode="eraser"] .coloring-draw-canvas { cursor: cell; }
+.coloring-svg [data-color-part] { cursor: pointer; transition: fill 0.15s ease; }
 
 /* A4 인쇄 시 블록 페이지 잘림 방지 & 놀이 블록 선명도 유지 */
 @media print {
@@ -295,14 +292,18 @@
     letter-spacing: 0.08em;
 }
 
-.trace-toolbar {
+.trace-toolbar,
+.color-toolbar {
     display: flex;
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
 }
 
-.trace-tool-btn {
+.color-toolbar { margin-bottom: 8px; }
+
+.trace-tool-btn,
+.color-tool-btn {
     min-block-size: 44px;
     min-inline-size: 44px;
     padding: 8px 14px;
@@ -312,21 +313,60 @@
     border: 2px solid #cbd5e1;
     background: #ffffff;
     color: #334155;
+    cursor: pointer;
 }
 
-.trace-tool-btn[data-tool="pen"].active {
+.color-tool-btn[data-color-mode="fill"].active {
+    background: #7c3aed;
+    border-color: #6d28d9;
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(124, 58, 237, 0.25);
+}
+
+.trace-tool-btn[data-tool="pen"].active,
+.color-tool-btn[data-color-mode="brush"].active {
     background: #ea580c;
     border-color: #c2410c;
     color: #ffffff;
     box-shadow: 0 3px 10px rgba(234, 88, 12, 0.25);
 }
 
-.trace-tool-btn[data-tool="eraser"].active {
+.trace-tool-btn[data-tool="eraser"].active,
+.color-tool-btn[data-color-mode="eraser"].active {
     background: #0ea5e9;
     border-color: #0284c7;
     color: #ffffff;
     box-shadow: 0 3px 10px rgba(14, 165, 233, 0.25);
 }
+
+.color-size-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.color-size-group.is-muted { opacity: 0.55; }
+
+.color-size-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+.color-size-btn.active {
+    border-color: #1e293b;
+    background: #fff7ed;
+}
+
+.color-size-dot { display: block; border-radius: 999px; background: #334155; }
+.color-size-dot.size-md { width: 12px; height: 12px; }
+.color-size-dot.size-lg { width: 20px; height: 20px; }
 
 .trace-wrap.trace-wrap-roomy {
     height: auto;

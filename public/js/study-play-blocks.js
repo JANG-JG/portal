@@ -12,16 +12,6 @@
     'use strict';
 
     const SVG_NS = 'http://www.w3.org/2000/svg';
-    const CRAYONS = [
-        { name: '빨강', hex: '#ef4444' },
-        { name: '주황', hex: '#fb923c' },
-        { name: '노랑', hex: '#facc15' },
-        { name: '초록', hex: '#22c55e' },
-        { name: '파랑', hex: '#3b82f6' },
-        { name: '보라', hex: '#a855f7' },
-        { name: '분홍', hex: '#f472b6' },
-        { name: '하양(지우개)', hex: '#ffffff' }
-    ];
 
     function createSvgEl(tag, attrs = {}) {
         const el = document.createElementNS(SVG_NS, tag);
@@ -291,73 +281,9 @@
     }
 
     function renderColorBlock(container, blk, speakFn) {
-        let activeHex = CRAYONS[0].hex;
-        let paintedCount = 0;
-
-        const palette = document.createElement('div');
-        palette.className = 'color-palette no-print';
-        palette.setAttribute('role', 'group');
-        palette.setAttribute('aria-label', '색연필 고르기');
-
-        CRAYONS.forEach((c, idx) => {
-            const sw = document.createElement('button');
-            sw.type = 'button';
-            sw.className = `color-swatch${idx === 0 ? ' active' : ''}`;
-            sw.style.backgroundColor = c.hex;
-            sw.setAttribute('aria-label', `${c.name} 색연필`);
-            sw.title = c.name;
-            sw.addEventListener('click', () => {
-                activeHex = c.hex;
-                palette.querySelectorAll('.color-swatch').forEach((b) => b.classList.toggle('active', b === sw));
-            });
-            palette.appendChild(sw);
-        });
-
-        const clearBtn = document.createElement('button');
-        clearBtn.type = 'button';
-        clearBtn.className = 'study-btn study-btn-outline play-reset-btn';
-        clearBtn.textContent = '🧹 다시 칠하기';
-        palette.appendChild(clearBtn);
-
-        const stage = document.createElement('div');
-        stage.className = 'coloring-stage';
-        stage.innerHTML = window.StudyIllustrations
-            ? window.StudyIllustrations.getColoringSvg(blk.templateId || 'dino')
-            : '<p>색칠 도안을 불러오지 못했어요.</p>';
-
-        const banner = document.createElement('p');
-        banner.className = 'play-feedback';
-        banner.textContent = blk.hint || '원하는 색연필을 고른 뒤 그림 안을 톡톡 눌러 보세요!';
-
-        const parts = stage.querySelectorAll('[data-color-part]');
-        parts.forEach((part) => {
-            part.addEventListener('click', () => {
-                part.setAttribute('fill', activeHex);
-                if (activeHex !== '#ffffff' && !part.dataset.painted) {
-                    part.dataset.painted = '1';
-                    paintedCount += 1;
-                    if (paintedCount === 3) {
-                        banner.style.color = '#047857';
-                        banner.textContent = '우와, 색감이 정말 예뻐요! 계속 멋지게 칠해 보세요 🎨';
-                        if (speakFn) speakFn('우와! 정말 예쁘게 칠하고 있네요!', 'ko-KR');
-                    }
-                }
-            });
-        });
-
-        clearBtn.addEventListener('click', () => {
-            parts.forEach((p) => {
-                p.setAttribute('fill', '#ffffff');
-                delete p.dataset.painted;
-            });
-            paintedCount = 0;
-            banner.style.color = '#64748b';
-            banner.textContent = '깨끗해졌어요! 다시 예쁘게 칠해 보아요 🎨';
-        });
-
-        container.appendChild(palette);
-        container.appendChild(stage);
-        container.appendChild(banner);
+        if (window.StudyColorBlock && typeof window.StudyColorBlock.renderColorBlock === 'function') {
+            window.StudyColorBlock.renderColorBlock(container, blk, speakFn);
+        }
     }
 
     window.StudyPlayBlocks = {
