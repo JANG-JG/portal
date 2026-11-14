@@ -245,4 +245,190 @@
         border-color: #64748b !important;
         box-shadow: none !important;
     }
+    .trace-wrap.trace-wrap-roomy {
+        height: auto !important;
+        min-height: 165px !important;
+        padding: 14px 12px !important;
+        background: #ffffff !important;
+        border-color: #64748b !important;
+    }
+    .trace-char-box {
+        width: 112px;
+        height: 122px;
+        background: #ffffff;
+        border-color: #94a3b8;
+    }
+    .trace-char-box span {
+        font-size: 4.2rem;
+        color: rgba(71, 85, 105, 0.34);
+    }
+    .trace-guide--dense .trace-char-box {
+        width: 88px;
+        height: 98px;
+    }
+    .trace-guide--dense .trace-char-box span {
+        font-size: 3.2rem;
+    }
 }
+
+/* 글씨 따라쓰기: 넉넉한 칸 간격 + 연필/지우개 툴바 */
+.trace-meta-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    min-width: 0;
+}
+
+.trace-word-label {
+    font-size: 1.45rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.trace-word-label strong {
+    font-size: 1.2rem;
+    letter-spacing: 0.08em;
+}
+
+.trace-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.trace-tool-btn {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+    padding: 8px 14px;
+    font-size: 0.92rem;
+    font-weight: 800;
+    border-radius: 12px;
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+}
+
+.trace-tool-btn[data-tool="pen"].active {
+    background: #ea580c;
+    border-color: #c2410c;
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(234, 88, 12, 0.25);
+}
+
+.trace-tool-btn[data-tool="eraser"].active {
+    background: #0ea5e9;
+    border-color: #0284c7;
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(14, 165, 233, 0.25);
+}
+
+.trace-wrap.trace-wrap-roomy {
+    height: auto;
+    min-height: 220px;
+    padding: 22px 18px;
+    border-radius: 20px;
+    border: 2px dashed #cbd5e1;
+    background: #fffdf4;
+    box-sizing: border-box;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.trace-wrap.trace-wrap-roomy[data-tool="eraser"] {
+    border-color: #38bdf8;
+    background: #f8fcff;
+}
+
+.trace-wrap.trace-wrap-roomy[data-tool="eraser"] .trace-canvas {
+    cursor: cell;
+}
+
+.trace-wrap-roomy .trace-guide {
+    position: relative;
+    inset: auto;
+    z-index: 1;
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(14px, 3.2vw, 28px);
+    font-size: initial;
+    letter-spacing: 0;
+}
+
+.trace-wrap-roomy .trace-guide.trace-guide--dense {
+    gap: clamp(10px, 2vw, 18px);
+}
+
+.trace-char-box {
+    position: relative;
+    width: clamp(92px, 23vw, 164px);
+    height: clamp(104px, 25vw, 178px);
+    border: 2px dashed rgba(148, 163, 184, 0.55);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+.trace-char-box::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 50%;
+    border-top: 1px dashed rgba(148, 163, 184, 0.42);
+    pointer-events: none;
+}
+
+.trace-char-box::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 50%;
+    border-left: 1px dashed rgba(148, 163, 184, 0.42);
+    pointer-events: none;
+}
+
+.trace-char-box span {
+    position: relative;
+    z-index: 1;
+    font-size: clamp(3.6rem, 11vw, 5.8rem);
+    font-weight: 900;
+    line-height: 1;
+    color: rgba(100, 116, 139, 0.28);
+}
+
+.trace-guide--dense .trace-char-box {
+    width: clamp(76px, 16vw, 124px);
+    height: clamp(88px, 18vw, 138px);
+}
+
+.trace-guide--dense .trace-char-box span {
+    font-size: clamp(2.8rem, 8.5vw, 4.4rem);
+}
+
+.trace-char-gap {
+    width: clamp(8px, 2vw, 20px);
+    height: 1px;
+    flex-shrink: 0;
+}
+
+.trace-wrap-roomy .trace-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+}
+

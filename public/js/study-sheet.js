@@ -172,55 +172,99 @@
     }
 
     function renderTraceBlock(container, blk) {
+        const rawWord = String(blk.targetWord || '').trim();
+        const chars = Array.from(rawWord);
+        const nonSpaceCount = chars.filter((ch) => !/\s/.test(ch)).length;
+
         const meta = document.createElement('div');
-        meta.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap;';
+        meta.className = 'trace-meta-bar';
         meta.innerHTML = `
-            <span style="font-size: 1.5rem;">${escapeHtml(blk.emoji || '✏️')} <strong style="font-size: 1.15rem;">${escapeHtml(blk.targetWord || '')}</strong></span>
-            <button type="button" class="study-btn study-btn-outline no-print btn-clear-canvas" style="min-block-size: 38px; padding: 6px 12px; font-size: 0.85rem;">🧹 다시 쓰기</button>
+            <span class="trace-word-label">${escapeHtml(blk.emoji || '✏️')} <strong>${escapeHtml(rawWord)}</strong></span>
+            <div class="trace-toolbar no-print" role="group" aria-label="따라쓰기 도구">
+                <button type="button" class="study-btn trace-tool-btn active" data-tool="pen" aria-pressed="true">✏️ 쓰기</button>
+                <button type="button" class="study-btn trace-tool-btn" data-tool="eraser" aria-pressed="false">🧽 지우개</button>
+                <button type="button" class="study-btn study-btn-outline trace-tool-btn btn-clear-canvas">🧹 다 지우기</button>
+            </div>
         `;
 
         const wrap = document.createElement('div');
-        wrap.className = 'trace-wrap';
+        wrap.className = 'trace-wrap trace-wrap-roomy';
+        wrap.dataset.tool = 'pen';
 
         const guide = document.createElement('div');
-        guide.className = 'trace-guide';
-        guide.textContent = blk.targetWord || '';
+        guide.className = nonSpaceCount >= 6 ? 'trace-guide trace-guide--dense' : 'trace-guide';
+        guide.setAttribute('aria-hidden', 'true');
+
+        guide.innerHTML = chars.length
+            ? chars.map((ch) => /\s/.test(ch)
+                ? '<div class="trace-char-gap"></div>'
+                : `<div class="trace-char-box"><span>${escapeHtml(ch)}</span></div>`).join('')
+            : '<div class="trace-char-box"></div>';
 
         const canvas = document.createElement('canvas');
         canvas.className = 'trace-canvas';
+        wrap.append(guide, canvas);
+        container.append(meta, wrap);
 
-        wrap.appendChild(guide);
-        wrap.appendChild(canvas);
-        container.appendChild(meta);
-        container.appendChild(wrap);
-
-        // 캔버스 드로잉 바인딩
         const ctx = canvas.getContext('2d');
-        const resizeCanvas = () => {
-            const rect = wrap.getBoundingClientRect();
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            canvas.width = Math.max(200, Math.floor(rect.width * dpr));
-            canvas.height = Math.max(120, Math.floor(rect.height * dpr));
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        let activeTool = 'pen';
+        let hasInk = false;
+        let drawing = false;
+
+        const applyToolStyle = () => {
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
-            ctx.lineWidth = 7;
+            const isEraser = activeTool === 'eraser';
+            ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over';
+            ctx.lineWidth = isEraser ? 28 : 8;
             ctx.strokeStyle = '#ea580c';
         };
-        requestAnimationFrame(resizeCanvas);
 
-        let drawing = false;
+        const resizeCanvas = () => {
+            const rect = wrap.getBoundingClientRect();
+            if (!rect.width || !rect.height) return;
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const targetW = Math.max(200, Math.floor(rect.width * dpr));
+            const targetH = Math.max(160, Math.floor(rect.height * dpr));
+            if (targetW === canvas.width && targetH === canvas.height) return;
+
+            let snapshot = null;
+            if (canvas.width > 0 && canvas.height > 0 && hasInk) {
+                snapshot = document.createElement('canvas');
+                snapshot.width = canvas.width;
+                snapshot.height = canvas.height;
+                snapshot.getContext('2d').drawImage(canvas, 0, 0);
+            }
+            canvas.width = targetW;
+            canvas.height = targetH;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            if (snapshot) {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.drawImage(snapshot, 0, 0, rect.width, rect.height);
+            }
+            applyToolStyle();
+        };
+        requestAnimationFrame(resizeCanvas);
+        if (typeof ResizeObserver === 'function') {
+            new ResizeObserver(resizeCanvas).observe(wrap);
+        } else {
+            window.addEventListener('resize', resizeCanvas);
+        }
+
         const getPos = (e) => {
             const r = canvas.getBoundingClientRect();
             return { x: e.clientX - r.left, y: e.clientY - r.top };
         };
-
         canvas.addEventListener('pointerdown', (e) => {
             drawing = true;
+            if (activeTool === 'pen') hasInk = true;
             canvas.setPointerCapture(e.pointerId);
+            applyToolStyle();
             const p = getPos(e);
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p.x + 0.01, p.y + 0.01);
+            ctx.stroke();
         });
         canvas.addEventListener('pointermove', (e) => {
             if (!drawing) return;
@@ -232,8 +276,24 @@
         canvas.addEventListener('pointerup', endDraw);
         canvas.addEventListener('pointercancel', endDraw);
 
+        const toolBtns = Array.from(meta.querySelectorAll('[data-tool]'));
+        toolBtns.forEach((btn) => btn.addEventListener('click', () => {
+            activeTool = btn.dataset.tool;
+            wrap.dataset.tool = activeTool;
+            toolBtns.forEach((b) => {
+                const on = b.dataset.tool === activeTool;
+                b.classList.toggle('active', on);
+                b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            applyToolStyle();
+        }));
         meta.querySelector('.btn-clear-canvas').addEventListener('click', () => {
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+            hasInk = false;
+            applyToolStyle();
         });
     }
 
