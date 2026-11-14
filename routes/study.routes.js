@@ -29,6 +29,7 @@ const {
 const { generateAndSaveWorksheet } = require('../services/study/geminiWorksheet.service');
 const { regenerateSingleBlock } = require('../services/study/worksheetValidator.service');
 const { startLevelTest, submitLevelTestAnswer } = require('../services/study/adaptiveLevel.service');
+const { synthesizeStudySpeech } = require('../services/study/studyTts.service');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -143,12 +144,13 @@ router.post('/api/study/stamps/paper', authenticateToken, async (req, res) => {
 // ------------------------------------------------------------------------------
 router.post('/api/study/sheets/generate', authenticateToken, async (req, res) => {
     try {
-        const { childId, subject, theme } = req.body || {};
+        const { childId, subject, theme, includePlayBlock } = req.body || {};
         const sheet = await generateAndSaveWorksheet({
             childId: normalizeChildId(childId),
             subject: normalizeSubject(subject),
             theme: theme || '동물 친구',
-            createdBy: req.user.username || 'web'
+            createdBy: req.user.username || 'web',
+            includePlayBlock: includePlayBlock !== false
         });
         res.json({ success: true, sheet });
     } catch (err) {
@@ -219,7 +221,7 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
 });
 
 // ------------------------------------------------------------------------------
-// 4. 5분 탐험 수준 테스트 API
+// 4. 5분 탐험 수준 테스트 & 서버 폴백 음성(TTS) API
 // ------------------------------------------------------------------------------
 router.post('/api/study/test/start', authenticateToken, async (req, res) => {
     try {
@@ -240,6 +242,47 @@ router.post('/api/study/test/:testId/answer', authenticateToken, async (req, res
     } catch (err) {
         console.error('수준 테스트 채점 오류:', err);
         res.status(500).json({ success: false, message: err.message || '채점 처리 중 오류가 발생했습니다.' });
+    }
+});
+
+router.get('/api/study/tts', authenticateToken, async (req, res) => {
+    try {
+        const text = String(req.query.text || '').trim();
+        const lang = String(req.query.lang || 'ko-KR').trim();
+        const out = await synthesizeStudySpeech(text, lang);
+        if (!out.ok) {
+            return res.status(out.status || 503).json({
+                success: false,
+                message: '음성 합성에 일시적인 문제가 있습니다.'
+            });
+        }
+
+        const buf = out.buffer;
+        const total = buf.length;
+        res.setHeader('Content-Type', out.mimeType);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'private, max-age=86400');
+
+        const rangeHeader = req.headers.range;
+        if (rangeHeader && rangeHeader.startsWith('bytes=')) {
+            const [sStr, eStr] = rangeHeader.replace('bytes=', '').split('-');
+            const start = Math.max(0, parseInt(sStr, 10) || 0);
+            const end = eStr ? Math.min(total - 1, parseInt(eStr, 10)) : total - 1;
+            if (start >= total || start > end) {
+                return res.status(416).setHeader('Content-Range', `bytes */${total}`).end();
+            }
+            const chunk = buf.subarray(start, end + 1);
+            res.status(206);
+            res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
+            res.setHeader('Content-Length', chunk.length);
+            return res.send(chunk);
+        }
+
+        res.setHeader('Content-Length', total);
+        return res.send(buf);
+    } catch (err) {
+        console.error('학습실 TTS 스트리밍 오류:', err);
+        return res.status(500).json({ success: false, message: '음성 생성 중 오류가 발생했습니다.' });
     }
 });
 

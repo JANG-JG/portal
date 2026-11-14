@@ -23,14 +23,17 @@
     let activeQuestion = null;
     let isLocked = false;
 
-    function speakText(text, lang = 'ko-KR') {
-        if (!('speechSynthesis' in window) || !text) return;
+    function speakText(text, lang = 'ko-KR', triggerBtn = null) {
+        if (!text) return;
+        if (window.StudyTTS && typeof window.StudyTTS.speak === 'function') {
+            window.StudyTTS.speak(text, lang, triggerBtn);
+            return;
+        }
+        if (!('speechSynthesis' in window)) return;
         try {
-            window.speechSynthesis.cancel();
             const utter = new SpeechSynthesisUtterance(String(text));
             utter.lang = lang;
             utter.rate = 0.88;
-            utter.pitch = 1.08;
             window.speechSynthesis.speak(utter);
         } catch (e) {}
     }
@@ -144,7 +147,7 @@
         const speakBtn = document.getElementById('btnSpeakQuestion');
         if (speakBtn) {
             speakBtn.addEventListener('click', () => {
-                if (activeQuestion) speakText(activeQuestion.ttsText || activeQuestion.prompt, activeQuestion.ttsLang || 'ko-KR');
+                if (activeQuestion) speakText(activeQuestion.ttsText || activeQuestion.prompt, activeQuestion.ttsLang || 'ko-KR', speakBtn);
             });
         }
         beginTest();

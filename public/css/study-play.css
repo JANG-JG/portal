@@ -1,0 +1,248 @@
+/**
+ * ==============================================================================
+ * 유아 학습실 테마 SVG 일러스트 · TTS 피드백 · 놀이형 블록 스타일 (study-play.css)
+ * ------------------------------------------------------------------------------
+ * [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px~태블릿 터치(44px+) & A4 인쇄 호환
+ * ==============================================================================
+ */
+
+.sheet-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.sheet-theme-art {
+    flex-shrink: 0;
+    line-height: 0;
+}
+
+.sheet-theme-art svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+.btn-block-tts.is-speaking,
+.study-btn.is-speaking {
+    background: #fef3c7 !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
+.play-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.play-status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: #fff7ed;
+    border: 2px solid #fed7aa;
+    color: #c2410c;
+    font-weight: 800;
+    font-size: 0.92rem;
+}
+
+.play-reset-btn {
+    min-block-size: 44px;
+    padding: 6px 12px;
+    font-size: 0.86rem;
+}
+
+.play-feedback {
+    margin: 10px 0 0;
+    font-weight: 800;
+    font-size: 0.95rem;
+    min-height: 1.4em;
+    color: #475569;
+}
+
+/* ① 점 이어 그림 완성 */
+.dot-stage {
+    width: 100%;
+    background: #ffffff;
+    border: 2px dashed #cbd5e1;
+    border-radius: 18px;
+    padding: 8px;
+    touch-action: manipulation;
+}
+
+.dot-svg {
+    display: block;
+    width: 100%;
+    max-width: 440px;
+    height: auto;
+    margin: 0 auto;
+    user-select: none;
+}
+
+.dot-node {
+    cursor: pointer;
+}
+
+@keyframes dotPulse {
+    0%, 100% { transform: scale(1); opacity: 0.95; }
+    50% { transform: scale(1.16); opacity: 0.45; }
+}
+
+.dot-pulse-ring {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: dotPulse 1.2s ease-in-out infinite;
+}
+
+/* ② 길 찾기 미로 */
+.maze-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--maze-cols, 4), minmax(0, 1fr));
+    gap: 8px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 10px;
+}
+
+.maze-cell {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 54px;
+    padding: 6px 4px;
+    border-radius: 14px;
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    color: #1e293b;
+    font-family: inherit;
+    font-size: 1.08rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform 0.14s ease, background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.maze-cell.is-obstacle {
+    background: #f1f5f9;
+    border-style: dashed;
+    color: #64748b;
+}
+
+.maze-cell.is-visited {
+    background: #dcfce7;
+    border-color: #10b981;
+    color: #065f46;
+}
+
+.maze-cell.is-current {
+    background: #ffedd5;
+    border-color: #f97316;
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.25);
+}
+
+.maze-cell.is-goal {
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+
+.maze-cell.is-goal.is-visited {
+    background: #fde047;
+    border-color: #ca8a04;
+}
+
+.maze-char {
+    font-size: 1.15rem;
+    line-height: 1.1;
+}
+
+@keyframes cellShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+.maze-cell.is-shake {
+    animation: cellShake 0.24s ease;
+    border-color: #ef4444;
+}
+
+/* ③ 색칠하기 도안 */
+.color-palette {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.color-swatch {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 999px;
+    border: 3px solid #cbd5e1;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+    transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.color-swatch.active {
+    transform: scale(1.12);
+    border-color: #1e293b;
+    box-shadow: 0 0 0 3px rgba(255, 122, 69, 0.35);
+}
+
+.coloring-stage {
+    width: 100%;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 10px;
+    text-align: center;
+}
+
+.coloring-svg {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    margin: 0 auto;
+}
+
+.coloring-svg [data-color-part] {
+    cursor: pointer;
+    transition: fill 0.15s ease;
+}
+
+/* A4 인쇄 시 블록 페이지 잘림 방지 & 놀이 블록 선명도 유지 */
+@media print {
+    .worksheet-block {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    .dot-stage,
+    .maze-grid,
+    .coloring-stage {
+        border: 1.5px solid #64748b !important;
+        background: #ffffff !important;
+    }
+    .dot-pulse-ring {
+        display: none !important;
+    }
+    .maze-cell {
+        min-block-size: 42px;
+        background: #ffffff !important;
+        border-color: #64748b !important;
+        box-shadow: none !important;
+    }
+}

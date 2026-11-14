@@ -17,6 +17,7 @@ const {
     pickThemeEmojis
 } = require('./fallbackBank.data');
 const { clampLevel } = require('./studyDb.service');
+const { appendOptionalPlayBlock, trySwapPlayBlock } = require('./playBlocks.service');
 
 const HANGUL_ONLY_RE = /^[가-힣\s]+$/;
 const ENGLISH_ONLY_RE = /^[A-Za-z\s'-]+$/;
@@ -292,7 +293,7 @@ function buildFallbackLanguageSheet(subject, level, theme) {
 /**
  * 4단계 전체 검증 + 정제 + 폴백 결합 엔트리포인트
  */
-function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme }) {
+function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, includePlayBlock = true }) {
     const lv = clampLevel(level);
     const cleanTheme = containsBannedWord(theme) ? '동물 친구' : String(theme || '동물 친구').trim().slice(0, 20);
     const emojiPool = pickThemeEmojis(cleanTheme);
@@ -304,13 +305,14 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme }) {
         const safeTitle = (rawTitle && !containsBannedWord(rawTitle) && rawTitle.length <= 40)
             ? rawTitle
             : `${cleanTheme} 숫자·수학 놀이 (Lv.${lv})`;
+        const baseBlocks = buildDeterministicMathBlocks(lv, cleanTheme, aiEmojis);
         return {
             ok: true,
             usedFallback: false,
             sheet: {
                 title: safeTitle,
                 encouragement: '숫자 박사님처럼 정말 똑똑하게 풀었어요! 🌟',
-                blocks: buildDeterministicMathBlocks(lv, cleanTheme, aiEmojis)
+                blocks: appendOptionalPlayBlock(baseBlocks, { subject, level: lv, theme: cleanTheme, includePlayBlock })
             }
         };
     }
@@ -405,68 +407,54 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme }) {
         sheet: {
             title: safeTitle,
             encouragement: '스스로 해내다니 정말 멋져요! 최고예요! 🎉',
-            blocks: [
-                {
-                    id: 'block-1',
-                    type: 'trace',
-                    prompt: subject === 'english'
-                        ? `단어 '${validItems[0].word}'(${validItems[0].hint})를 반듯하게 따라 써 보아요!`
-                        : `예쁜 글자 '${validItems[0].word}'를 점선을 따라 써 보아요!`,
-                    ttsText: validItems[0].word,
-                    ttsLang: subject === 'english' ? 'en-US' : 'ko-KR',
-                    targetWord: validItems[0].word,
-                    emoji: validItems[0].emoji,
-                    hint: validItems[0].hint
-                },
-                {
-                    id: 'block-2',
-                    type: 'quiz',
-                    prompt: subject === 'english'
-                        ? `${q2.emoji} 그림에 맞는 영어 단어를 눌러 보세요!`
-                        : `${q2.emoji} 그림에 알맞은 낱말을 눌러 주세요!`,
-                    ttsText: q2.word,
-                    ttsLang: subject === 'english' ? 'en-US' : 'ko-KR',
-                    visualLeft: q2.emoji,
-                    answer: q2.word,
-                    choices: shuffleArray([q2.word, ...q2.distractors]).slice(0, 3),
-                    hint: q2.hint
-                },
-                {
-                    id: 'block-3',
-                    type: 'match',
-                    prompt: '그림과 알맞은 글자를 두 번 탭해서 선으로 이어 보아요!',
-                    ttsText: '그림과 알맞은 글자를 선으로 이어 보아요.',
-                    pairs,
-                    shuffledRights: shuffleArray(pairs.map((p) => p.right))
-                },
-                {
-                    id: 'block-4',
-                    type: 'trace',
-                    prompt: subject === 'english'
-                        ? `한 번 더 써 보아요! '${q4.word}' (${q4.hint})`
-                        : `한 번 더 써 보아요! '${q4.word}'`,
-                    ttsText: q4.word,
-                    ttsLang: subject === 'english' ? 'en-US' : 'ko-KR',
-                    targetWord: q4.word,
-                    emoji: q4.emoji,
-                    hint: q4.hint
-                }
-            ]
+            blocks: appendOptionalPlayBlock(blocksList(validItems, subject, pairs, q2, q4), { subject, level: lv, theme: cleanTheme, includePlayBlock })
         }
     };
 }
 
-function buildFallbackWorksheet({ subject, level, theme }) {
+function blocksList(validItems, subject, pairs, q2, q4) {
+    const lang = subject === 'english' ? 'en-US' : 'ko-KR';
+    const isEn = subject === 'english';
+    return [
+        {
+            id: 'block-1', type: 'trace', ttsText: validItems[0].word, ttsLang: lang,
+            targetWord: validItems[0].word, emoji: validItems[0].emoji, hint: validItems[0].hint,
+            prompt: isEn
+                ? `단어 '${validItems[0].word}'(${validItems[0].hint})를 반듯하게 따라 써 보아요!`
+                : `예쁜 글자 '${validItems[0].word}'를 점선을 따라 써 보아요!`
+        },
+        {
+            id: 'block-2', type: 'quiz', ttsText: q2.word, ttsLang: lang,
+            visualLeft: q2.emoji, answer: q2.word, hint: q2.hint,
+            choices: shuffleArray([q2.word, ...q2.distractors]).slice(0, 3),
+            prompt: isEn ? `${q2.emoji} 그림에 맞는 영어 단어를 눌러 보세요!` : `${q2.emoji} 그림에 알맞은 낱말을 눌러 주세요!`
+        },
+        {
+            id: 'block-3', type: 'match', pairs,
+            shuffledRights: shuffleArray(pairs.map((p) => p.right)),
+            prompt: '그림과 알맞은 글자를 두 번 탭해서 선으로 이어 보아요!',
+            ttsText: '그림과 알맞은 글자를 선으로 이어 보아요.'
+        },
+        {
+            id: 'block-4', type: 'trace', ttsText: q4.word, ttsLang: lang,
+            targetWord: q4.word, emoji: q4.emoji, hint: q4.hint,
+            prompt: isEn ? `한 번 더 써 보아요! '${q4.word}' (${q4.hint})` : `한 번 더 써 보아요! '${q4.word}'`
+        }
+    ];
+}
+
+function buildFallbackWorksheet({ subject, level, theme, includePlayBlock = true }) {
     const lv = clampLevel(level);
     const cleanTheme = containsBannedWord(theme) ? '동물 친구' : String(theme || '동물 친구').trim().slice(0, 20);
-    if (subject === 'math') {
-        return {
+    const sheet = subject === 'math'
+        ? {
             title: `${cleanTheme} 숫자·수학 놀이 (Lv.${lv})`,
             encouragement: '차근차근 끝까지 해냈어요! 멋져요! ⭐',
             blocks: buildDeterministicMathBlocks(lv, cleanTheme, [])
-        };
-    }
-    return buildFallbackLanguageSheet(subject, lv, cleanTheme);
+        }
+        : buildFallbackLanguageSheet(subject, lv, cleanTheme);
+    sheet.blocks = appendOptionalPlayBlock(sheet.blocks, { subject, level: lv, theme: cleanTheme, includePlayBlock });
+    return sheet;
 }
 
 /**
@@ -478,16 +466,16 @@ function regenerateSingleBlock(currentSheet, blockIndex, { subject, level, theme
     if (idx < 0 || idx >= blocks.length) return currentSheet;
 
     const existingBlock = blocks[idx];
-    const freshSheet = buildFallbackWorksheet({ subject, level, theme });
+    const swappedPlay = trySwapPlayBlock(existingBlock, idx, { subject, level, theme });
+    if (swappedPlay) {
+        blocks[idx] = swappedPlay;
+        return { ...currentSheet, blocks };
+    }
+
+    const freshSheet = buildFallbackWorksheet({ subject, level, theme, includePlayBlock: false });
     const replacement = freshSheet.blocks[idx] || freshSheet.blocks[0];
-    blocks[idx] = {
-        ...replacement,
-        id: existingBlock.id || `block-${idx + 1}`
-    };
-    return {
-        ...currentSheet,
-        blocks
-    };
+    blocks[idx] = { ...replacement, id: existingBlock.id || `block-${idx + 1}` };
+    return { ...currentSheet, blocks };
 }
 
 module.exports = {

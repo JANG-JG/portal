@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg">
     <link rel="stylesheet" href="/css/pretendard.css">
     <link rel="stylesheet" href="/css/study.css">
+    <link rel="stylesheet" href="/css/study-play.css">
 </head>
 <body>
     <div class="study-shell">
@@ -19,6 +20,7 @@
                 </div>
             </div>
             <div class="study-topbar-actions">
+                <button type="button" id="btnTtsModeToggle" class="study-btn study-btn-outline" title="기기 음성이 안 들릴 때 서버 음성으로 전환해요">🔊 음성: 자동</button>
                 <button type="button" id="btnPrintA4" class="study-btn study-btn-outline">🖨️ A4 인쇄 / PDF</button>
                 <a id="btnBackToDashboard" href="/study" class="study-link-btn study-btn-secondary">⬅️ 학습실로</a>
             </div>
@@ -26,9 +28,12 @@
 
         <main>
             <section class="sheet-header-card">
-                <div>
-                    <h2 id="sheetTitleHeading" style="margin: 0 0 4px; font-size: clamp(1.2rem, 3.2vw, 1.55rem);">학습지 제목</h2>
-                    <span id="sheetInfoLine" style="font-size: 0.92rem; color: #64748b; font-weight: 700;">이름: ____________ · 날짜: ____________</span>
+                <div class="sheet-header-left">
+                    <div id="sheetThemeArt" class="sheet-theme-art" aria-hidden="true"></div>
+                    <div>
+                        <h2 id="sheetTitleHeading" style="margin: 0 0 4px; font-size: clamp(1.2rem, 3.2vw, 1.55rem);">학습지 제목</h2>
+                        <span id="sheetInfoLine" style="font-size: 0.92rem; color: #64748b; font-weight: 700;">이름: ____________ · 날짜: ____________</span>
+                    </div>
                 </div>
                 <span id="sheetSourceBadge" class="level-badge">맞춤 학습</span>
             </section>
@@ -48,6 +53,9 @@
 
     <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
 
+    <script src="/js/study-tts.js" defer></script>
+    <script src="/js/study-illustrations.js" defer></script>
+    <script src="/js/study-play-blocks.js" defer></script>
     <script src="/js/study-sheet.js" defer></script>
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
 </body>

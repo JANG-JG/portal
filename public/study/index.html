@@ -104,11 +104,17 @@
                     <button type="button" class="theme-pill" data-theme="탈것 여행">🚒 탈것 여행</button>
                     <button type="button" class="theme-pill" data-theme="우주 모험">🚀 우주 모험</button>
                     <button type="button" class="theme-pill" data-theme="바다 친구">🐳 바다 친구</button>
+                    <button type="button" class="theme-pill" data-theme="공주·요정">👑 공주·요정</button>
+                    <button type="button" class="theme-pill" data-theme="로봇·변신">🤖 로봇·변신</button>
                 </div>
 
                 <div class="theme-custom-row">
                     <label for="customThemeInput" class="visually-hidden">원하는 학습 주제 직접 입력</label>
                     <input type="text" id="customThemeInput" class="study-input" placeholder="원하는 주제를 직접 적을 수 있어요 (예: 공주님, 자동차)" maxlength="24">
+                    <label style="display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; font-weight: 700; color: #475569; cursor: pointer;">
+                        <input type="checkbox" id="chkIncludePlayBlock" checked style="width: 20px; height: 20px; accent-color: #ff7a45;">
+                        <span>🎨 놀이 미션 포함 (점잇기 · 미로 찾기 · 색칠 놀이)</span>
+                    </label>
                     <button type="button" id="btnGenerateSheet" class="study-btn study-btn-primary" style="width: 100%;">
                         🎨 학습지 바로 만들기!
                     </button>

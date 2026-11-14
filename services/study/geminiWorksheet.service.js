@@ -192,7 +192,7 @@ async function callGeminiStructuredJson(opts) {
     return { ok: false, reason: 'gemini_request_failed' };
 }
 
-async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친구', createdBy = 'web' }) {
+async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친구', createdBy = 'web', includePlayBlock = true }) {
     const cid = normalizeChildId(childId);
     const subj = normalizeSubject(subject);
     const levels = await getChildLevels(cid);
@@ -223,7 +223,8 @@ async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친�
             const validated = validateAndNormalizeWorksheet(aiRes.data, {
                 subject: subj,
                 level,
-                theme: cleanTheme
+                theme: cleanTheme,
+                includePlayBlock
             });
             if (validated.ok) {
                 finalSheet = validated.sheet;
@@ -242,7 +243,8 @@ async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친�
         finalSheet = buildFallbackWorksheet({
             subject: subj,
             level,
-            theme: cleanTheme
+            theme: cleanTheme,
+            includePlayBlock
         });
         sourceLabel = `fallback:${lastFailureReason || 'safe_bank'}`;
     }

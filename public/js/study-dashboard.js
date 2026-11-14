@@ -370,6 +370,8 @@
             btnGen.addEventListener('click', async () => {
                 const customVal = (document.getElementById('customThemeInput')?.value || '').trim();
                 const theme = customVal || state.selectedTheme || '동물 친구';
+                const playChk = document.getElementById('chkIncludePlayBlock');
+                const includePlayBlock = playChk ? Boolean(playChk.checked) : true;
                 btnGen.disabled = true;
                 const origText = btnGen.textContent;
                 btnGen.textContent = '✨ 재미있는 학습지를 만들고 있어요...';
@@ -381,7 +383,8 @@
                         body: JSON.stringify({
                             childId: state.childId,
                             subject: state.selectedSubject,
-                            theme
+                            theme,
+                            includePlayBlock
                         })
                     });
                     const data = await res.json();

@@ -41,14 +41,17 @@
             .replace(/"/g, '&quot;');
     }
 
-    function speakText(text, lang = 'ko-KR') {
-        if (!('speechSynthesis' in window) || !text) return;
+    function speakText(text, lang = 'ko-KR', triggerBtn = null) {
+        if (!text) return;
+        if (window.StudyTTS && typeof window.StudyTTS.speak === 'function') {
+            window.StudyTTS.speak(text, lang, triggerBtn);
+            return;
+        }
+        if (!('speechSynthesis' in window)) return;
         try {
-            window.speechSynthesis.cancel();
             const u = new SpeechSynthesisUtterance(String(text));
             u.lang = lang;
-            u.rate = 0.86;
-            u.pitch = 1.08;
+            u.rate = 0.88;
             window.speechSynthesis.speak(u);
         } catch (e) {}
     }
@@ -86,6 +89,11 @@
         document.getElementById('sheetSourceBadge').textContent =
             String(sheet.source || '').startsWith('gemini') ? '✨ AI 맞춤 학습' : '📚 안전 학습 은행';
 
+        const themeArtEl = document.getElementById('sheetThemeArt');
+        if (themeArtEl && window.StudyIllustrations) {
+            themeArtEl.innerHTML = window.StudyIllustrations.getThemeBannerSvg(sheet.theme, sheet.title);
+        }
+
         const container = document.getElementById('sheetBlocksContainer');
         const blocks = Array.isArray(sheet.content?.blocks) ? sheet.content.blocks : [];
         container.innerHTML = '';
@@ -108,8 +116,8 @@
                 <div class="block-body"></div>
             `;
 
-            card.querySelector('.btn-block-tts').addEventListener('click', () => {
-                speakText(blk.ttsText || blk.prompt, blk.ttsLang || 'ko-KR');
+            card.querySelector('.btn-block-tts').addEventListener('click', (ev) => {
+                speakText(blk.ttsText || blk.prompt, blk.ttsLang || 'ko-KR', ev.currentTarget);
             });
 
             card.querySelector('.btn-block-swap').addEventListener('click', async (ev) => {
@@ -138,6 +146,9 @@
             if (blk.type === 'trace') renderTraceBlock(bodyEl, blk);
             else if (blk.type === 'count') renderCountBlock(bodyEl, blk);
             else if (blk.type === 'match') renderMatchBlock(bodyEl, blk);
+            else if (blk.type === 'dot_to_dot' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderDotToDotBlock(bodyEl, blk, speakText, showToast);
+            else if (blk.type === 'maze' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMazeBlock(bodyEl, blk, speakText, showToast);
+            else if (blk.type === 'color' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderColorBlock(bodyEl, blk, speakText, showToast);
             else renderQuizBlock(bodyEl, blk);
 
             container.appendChild(card);
@@ -153,6 +164,10 @@
         if (type === 'trace') return '✍️ 손가락 따라쓰기';
         if (type === 'count') return '👆 하나씩 콕! 숫자 세기';
         if (type === 'match') return '🔗 두 번 탭 선 잇기';
+        if (window.StudyPlayBlocks) {
+            const playLbl = window.StudyPlayBlocks.typeLabel(type);
+            if (playLbl) return playLbl;
+        }
         return '🎯 골라보기 퀴즈';
     }
 
