@@ -53,7 +53,7 @@ function authenticateToken(req, res, next) {
         user = null;
     }
 
-    if (!user || !user.username || user.purpose === 'sso_ticket') {
+    if (!user || !user.username || user.purpose) {
         if (req.cookies && req.cookies.portal_token) {
             res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
         }

@@ -74,10 +74,16 @@ function sanitizeSetCookieHeaders(setCookieHeader) {
     return list.map((cookieStr) => String(cookieStr).replace(/;\s*domain=[^;]+/ig, ''));
 }
 
+function isAllowedProxyHost(host, lanIp) {
+    const h = String(host || '').trim().toLowerCase();
+    if (!h) return false;
+    return h === lanIp.toLowerCase() || h === '127.0.0.1' || h === 'localhost' || h === 'jg-server.local' || h === 'lan.j-jg.cc';
+}
+
 function createServiceProxyHandler(spec, lanIp, portalPort) {
     return (req, res) => {
-        const reqHostRaw = (req.headers.host || lanIp).split(':')[0];
-        const reqHost = /^[a-zA-Z0-9.-]+$/.test(reqHostRaw) ? reqHostRaw : lanIp;
+        const reqHostRaw = (req.headers.host || lanIp).split(':')[0].trim();
+        const reqHost = (/^[a-zA-Z0-9.-]+$/.test(reqHostRaw) && isAllowedProxyHost(reqHostRaw, lanIp)) ? reqHostRaw : lanIp;
 
         const forwardHeaders = { ...req.headers };
         delete forwardHeaders.connection;

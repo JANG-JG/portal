@@ -73,7 +73,7 @@ function verifyPortalCookieUser(req) {
     if (!token || revokedTokens.has(token)) return null;
     try {
         const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-        if (!decoded || !decoded.username || decoded.purpose === 'sso_ticket' || decoded.purpose === 'lan_sso_handoff') {
+        if (!decoded || !decoded.username || decoded.purpose) {
             return null;
         }
         return decoded;

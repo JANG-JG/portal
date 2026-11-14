@@ -12,17 +12,17 @@
     "success": true,
     "status": "SUCCESS",
     "error": "",
-    "executed_at": "2026-11-02 03:12:59",
-    "total_downloaded": 703,
-    "total_skipped_posts": 97,
+    "executed_at": "2026-11-14 17:19:59",
+    "total_downloaded": 178,
+    "total_skipped_posts": 141,
     "report": {
       "소망반_16번게시판": {
-        "downloaded": 348,
-        "skipped_posts": 50
+        "downloaded": 75,
+        "skipped_posts": 73
       },
       "열매반_17번게시판": {
-        "downloaded": 355,
-        "skipped_posts": 47
+        "downloaded": 103,
+        "skipped_posts": 68
       }
     }
   }

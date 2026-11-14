@@ -25,7 +25,7 @@
         }
     };
 
-    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261114_171627';
+    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261114_174107';
     const CACHE_KEY_HTML = 'jg_unav_html_v2', CACHE_KEY_VER = 'jg_unav_ver_v2', CACHE_KEY_TIME = 'jg_unav_time_v2';
     const STALE_CHECK_INTERVAL = 5 * 60 * 1000;
     const PORTAL_ORIGIN = window.__JG_PORTAL_ORIGIN__ || 'https://j-jg.cc';

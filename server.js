@@ -63,6 +63,7 @@ app.use(compression({
 // 🌐 CORS 화이트리스트 검증 미들웨어
 app.use((req, res, next) => {
     const origin = req.headers.origin;
+    res.setHeader('Vary', 'Origin');
     if (origin && isOriginAllowed(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
         res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -318,8 +319,8 @@ app.get(['/login', '/login.html'], (req, res) => {
         const token = req.cookies.portal_token;
         if (token) {
             if (!revokedTokens.has(token)) {
-                return jwt.verify(token, JWT_SECRET, (err) => {
-                    if (!err) return res.redirect('/');
+                return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, (err, decoded) => {
+                    if (!err && decoded && decoded.username && !decoded.purpose) return res.redirect('/');
                     sendHtml(res, 'login.html');
                 });
             }
@@ -431,7 +432,6 @@ app.use('/', studyRoutes);
 
 // 헬스 체크
 app.get('/health', (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
     res.json({ status: 'ok', service: 'JG Portal' });
 });

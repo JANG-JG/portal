@@ -60,17 +60,36 @@ function setAutoRedirectEnabled(enabled) {
 
 loadLanRuntimeConfig();
 
+function getOwnLanIpv4Set() {
+    const allowed = new Set(['127.0.0.1']);
+    const envHost = String(process.env.LOCAL_HTTPS_HOST || '').trim().toLowerCase();
+    if (envHost) allowed.add(envHost);
+    if (state.lanIp) allowed.add(state.lanIp.toLowerCase());
+    try {
+        const ifaces = os.networkInterfaces();
+        for (const addrs of Object.values(ifaces || {})) {
+            if (!Array.isArray(addrs)) continue;
+            for (const info of addrs) {
+                if (info && info.family === 'IPv4' && info.address) {
+                    allowed.add(info.address.toLowerCase());
+                }
+            }
+        }
+    } catch (_) {}
+    return allowed;
+}
+
 function isPrivateLanHostname(rawHost = '') {
     const h = String(rawHost || '').split(':')[0].trim().toLowerCase();
     if (!h) return false;
-    if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === 'lan.j-jg.cc' || h.endsWith('.local')) {
+    if (h === 'localhost' || h === '127.0.0.1' || h === '::1' || h === 'lan.j-jg.cc' || h === 'jg-server.local') {
         return true;
     }
-    return /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
+    return getOwnLanIpv4Set().has(h);
 }
 
 function getSafeRequestHostname(req) {
-    const raw = (req && (req.headers['x-forwarded-host'] || req.hostname || req.headers.host)) || '';
+    const raw = (req && req.headers && req.headers.host) || (req && req.hostname) || '';
     const cleaned = String(raw).split(',')[0].split(':')[0].trim();
     return /^[a-zA-Z0-9.-]+$/.test(cleaned) ? cleaned : '';
 }
