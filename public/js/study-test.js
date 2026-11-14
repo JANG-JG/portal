@@ -69,7 +69,10 @@
         document.getElementById('testStepLabel').textContent = `${progress.current} / ${progress.total}`;
         document.getElementById('testProgressBar').value = progress.current;
         document.getElementById('testPrompt').textContent = q.prompt;
-        document.getElementById('testVisualBox').textContent = q.visual || '✨';
+        const visualBox = document.getElementById('testVisualBox');
+        const visText = String(q.visual || '✨').trim();
+        visualBox.textContent = visText;
+        visualBox.classList.toggle('is-hero', Boolean(visText) && !/\s/.test(visText));
         document.getElementById('testEquationText').textContent = q.equationText || '';
         document.getElementById('testFeedbackBanner').textContent = '';
 

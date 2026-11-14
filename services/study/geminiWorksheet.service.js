@@ -23,6 +23,7 @@ const {
     validateAndNormalizeWorksheet,
     buildFallbackWorksheet
 } = require('./worksheetValidator.service');
+const { buildColoringWorksheet } = require('./playBlocks.service');
 
 const ipv4HttpsAgent = new https.Agent({ family: 4 });
 
@@ -192,14 +193,39 @@ async function callGeminiStructuredJson(opts) {
     return { ok: false, reason: 'gemini_request_failed' };
 }
 
-async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친구', createdBy = 'web', includePlayBlock = true }) {
+async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친구', createdBy = 'web', includePlayBlock = true, coloringMode = 'auto_3' }) {
     const cid = normalizeChildId(childId);
     const subj = normalizeSubject(subject);
+    const cleanTheme = String(theme || '동물 친구').trim().slice(0, 24) || '동물 친구';
+
+    if (subj === 'coloring') {
+        const coloringSheet = buildColoringWorksheet({ theme: cleanTheme, coloringMode });
+        const sheetId = await saveWorksheet({
+            childId: cid,
+            subject: 'coloring',
+            level: 1,
+            theme: cleanTheme,
+            title: coloringSheet.title,
+            source: 'coloring_studio',
+            content: coloringSheet,
+            createdBy
+        });
+        return {
+            id: sheetId,
+            childId: cid,
+            subject: 'coloring',
+            level: 1,
+            theme: cleanTheme,
+            title: coloringSheet.title,
+            source: 'coloring_studio',
+            content: coloringSheet
+        };
+    }
+
     const levels = await getChildLevels(cid);
     const level = levels[subj] || 1;
     const childName = cid === 'first' ? '첫째' : '둘째';
     const birthYear = cid === 'first' ? 2021 : 2022;
-    const cleanTheme = String(theme || '동물 친구').trim().slice(0, 24) || '동물 친구';
 
     let finalSheet = null;
     let sourceLabel = 'fallback';

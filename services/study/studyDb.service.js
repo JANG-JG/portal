@@ -17,7 +17,8 @@ const VALID_SUBJECTS = new Set(['korean', 'math', 'english']);
 const SUBJECT_NAMES = {
     korean: '한글 놀이',
     math: '숫자·수학 놀이',
-    english: '영어 놀이'
+    english: '영어 놀이',
+    coloring: '색칠놀이'
 };
 
 function getKstDateString(offsetDays = 0) {
@@ -69,6 +70,7 @@ function normalizeSubject(input) {
     if (val === 'korean' || val === '한글') return 'korean';
     if (val === 'math' || val === '수학') return 'math';
     if (val === 'english' || val === '영어') return 'english';
+    if (val === 'coloring' || val === 'color' || val === '색칠놀이' || val === '색칠') return 'coloring';
     return 'korean';
 }
 
@@ -193,6 +195,9 @@ async function getChildLevels(childId) {
 async function setChildLevel(childId, subject, level) {
     const cid = normalizeChildId(childId);
     const subj = normalizeSubject(subject);
+    if (!VALID_SUBJECTS.has(subj)) {
+        return 1;
+    }
     const clamped = clampLevel(level);
     await dbRun(
         `INSERT INTO study_levels (child_id, subject, level, updated_at)
@@ -206,6 +211,9 @@ async function setChildLevel(childId, subject, level) {
 async function adjustChildLevel(childId, subject, delta) {
     const levels = await getChildLevels(childId);
     const subj = normalizeSubject(subject);
+    if (!VALID_SUBJECTS.has(subj)) {
+        return 1;
+    }
     const next = clampLevel((levels[subj] || 1) + Number(delta || 0));
     return setChildLevel(childId, subj, next);
 }

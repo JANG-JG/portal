@@ -144,13 +144,14 @@ router.post('/api/study/stamps/paper', authenticateToken, async (req, res) => {
 // ------------------------------------------------------------------------------
 router.post('/api/study/sheets/generate', authenticateToken, async (req, res) => {
     try {
-        const { childId, subject, theme, includePlayBlock } = req.body || {};
+        const { childId, subject, theme, includePlayBlock, coloringMode } = req.body || {};
         const sheet = await generateAndSaveWorksheet({
             childId: normalizeChildId(childId),
             subject: normalizeSubject(subject),
             theme: theme || '동물 친구',
             createdBy: req.user.username || 'web',
-            includePlayBlock: includePlayBlock !== false
+            includePlayBlock: includePlayBlock !== false,
+            coloringMode: coloringMode || 'auto_3'
         });
         res.json({ success: true, sheet });
     } catch (err) {

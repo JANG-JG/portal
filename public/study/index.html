@@ -8,6 +8,7 @@
     <link rel="apple-touch-icon" href="/icon-v2-192.png">
     <link rel="stylesheet" href="/css/pretendard.css">
     <link rel="stylesheet" href="/css/study.css">
+    <link rel="stylesheet" href="/css/study-visuals.css">
 </head>
 <body>
     <div class="study-shell">
@@ -95,6 +96,7 @@
                     <button type="button" class="subject-chip active" data-subject="korean">🇰🇷 한글</button>
                     <button type="button" class="subject-chip" data-subject="math">🔢 수학</button>
                     <button type="button" class="subject-chip" data-subject="english">🔤 영어</button>
+                    <button type="button" class="subject-chip" data-subject="coloring">🎨 색칠놀이</button>
                 </div>
 
                 <div class="theme-pills" role="group" aria-label="추천 주제">
@@ -108,10 +110,28 @@
                     <button type="button" class="theme-pill" data-theme="로봇·변신">🤖 로봇·변신</button>
                 </div>
 
+                <div id="coloringPickerBox" class="coloring-picker-box" hidden>
+                    <p class="coloring-picker-label">🖍️ 원하는 색칠 도안이나 묶음을 골라 보세요! (AI 횟수 차감 없이 바로 만들어져요)</p>
+                    <div class="coloring-picker-grid" role="group" aria-label="색칠 도안 선택">
+                        <button type="button" class="coloring-tpl-pill active" data-coloring-mode="auto_3">🎲 테마 맞춤 3장 모음</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="bundle_5">📚 인기 도안 5장 색칠책</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="dino">🦕 아기 공룡</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="rocket">🚀 우주 로켓</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="princess_crown">👑 반짝 왕관</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="car">🚗 꼬마 자동차</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="whale">🐳 아기 고래</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="robot">🤖 멋진 로봇</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="cat">🐱 야옹 고양이</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="rabbit">🐰 깡충 토끼</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="butterfly">🦋 예쁜 나비</button>
+                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="strawberry">🍓 달콤 딸기</button>
+                    </div>
+                </div>
+
                 <div class="theme-custom-row">
                     <label for="customThemeInput" class="visually-hidden">원하는 학습 주제 직접 입력</label>
                     <input type="text" id="customThemeInput" class="study-input" placeholder="원하는 주제를 직접 적을 수 있어요 (예: 공주님, 자동차)" maxlength="24">
-                    <label style="display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; font-weight: 700; color: #475569; cursor: pointer;">
+                    <label id="playMissionRow" style="display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; font-weight: 700; color: #475569; cursor: pointer;">
                         <input type="checkbox" id="chkIncludePlayBlock" checked style="width: 20px; height: 20px; accent-color: #ff7a45;">
                         <span>🎨 놀이 미션 포함 (점잇기 · 미로 찾기 · 색칠 놀이)</span>
                     </label>

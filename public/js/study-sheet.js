@@ -15,7 +15,8 @@
     const SUBJECT_NAMES = {
         korean: '한글 놀이',
         math: '숫자·수학 놀이',
-        english: '영어 놀이'
+        english: '영어 놀이',
+        coloring: '색칠놀이'
     };
 
     const matchSegments = window.location.pathname.match(/\/study\/sheet\/(\d+)/);
@@ -80,14 +81,18 @@
 
     function renderSheet(sheet) {
         const childLabel = sheet.child_name || (sheet.child_id === 'first' ? '첫째' : (sheet.child_id === 'second' ? '둘째' : sheet.child_id));
+        const isColoringSheet = sheet.subject === 'coloring';
         document.getElementById('btnBackToDashboard').href = `/study?childId=${encodeURIComponent(sheet.child_id)}`;
         document.getElementById('sheetTitleHeading').textContent = sheet.title;
-        document.getElementById('sheetMetaLine').textContent =
-            `${childLabel} · ${SUBJECT_NAMES[sheet.subject] || sheet.subject} · Lv.${sheet.level}`;
+        document.getElementById('sheetMetaLine').textContent = isColoringSheet
+            ? `${childLabel} · 🎨 ${SUBJECT_NAMES.coloring}`
+            : `${childLabel} · ${SUBJECT_NAMES[sheet.subject] || sheet.subject} · Lv.${sheet.level}`;
         document.getElementById('sheetInfoLine').textContent =
             `어린이: ${childLabel}  |  주제: ${sheet.theme}  |  날짜: ${String(sheet.created_at || '').slice(0, 10)}`;
-        document.getElementById('sheetSourceBadge').textContent =
-            String(sheet.source || '').startsWith('gemini') ? '✨ AI 맞춤 학습' : '📚 안전 학습 은행';
+        const sourceBadge = sheet.source === 'coloring_studio'
+            ? '🎨 색칠 도안 스튜디오'
+            : (String(sheet.source || '').startsWith('gemini') ? '✨ AI 맞춤 학습' : '📚 안전 학습 은행');
+        document.getElementById('sheetSourceBadge').textContent = sourceBadge;
 
         const themeArtEl = document.getElementById('sheetThemeArt');
         if (themeArtEl && window.StudyIllustrations) {
@@ -100,7 +105,10 @@
 
         blocks.forEach((blk, idx) => {
             const card = document.createElement('article');
-            card.className = 'worksheet-block';
+            card.className = (isColoringSheet && blocks.length === 1)
+                ? 'worksheet-block coloring-sheet-solo'
+                : 'worksheet-block';
+            const swapLabel = blk.type === 'color' ? '🔄 다른 그림으로' : '🔄 문제 바꾸기';
             card.innerHTML = `
                 <div class="block-head">
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -109,7 +117,7 @@
                     </div>
                     <div class="block-actions no-print" style="display: flex; gap: 6px;">
                         <button type="button" class="study-btn study-btn-secondary btn-block-tts" style="min-block-size: 38px; padding: 6px 12px; font-size: 0.86rem;">🔊 듣기</button>
-                        <button type="button" class="study-btn study-btn-outline btn-block-swap" style="min-block-size: 38px; padding: 6px 12px; font-size: 0.86rem;">🔄 문제 바꾸기</button>
+                        <button type="button" class="study-btn study-btn-outline btn-block-swap" style="min-block-size: 38px; padding: 6px 12px; font-size: 0.86rem;">${swapLabel}</button>
                     </div>
                 </div>
                 <p class="block-prompt">${escapeHtml(blk.prompt)}</p>
@@ -327,18 +335,27 @@
     function renderQuizBlock(container, blk) {
         if (blk.visualLeft || blk.visualRight || blk.equationText) {
             const box = document.createElement('div');
-            box.style.cssText = 'text-align:center; padding:12px; background:#f8fafc; border-radius:14px; margin-bottom:10px;';
-            if (blk.visualLeft || blk.visualRight) {
+            box.className = 'quiz-visual-box';
+            if (blk.visualLeft && blk.visualRight) {
+                const mk = (cls, txt) => Object.assign(document.createElement('span'), { className: cls, textContent: txt });
+                const row = document.createElement('div');
+                row.className = 'quiz-visual-equation-row';
+                row.append(
+                    mk('quiz-visual-side', blk.visualLeft),
+                    mk('quiz-visual-op', blk.operator || '+'),
+                    mk('quiz-visual-side', blk.visualRight)
+                );
+                box.appendChild(row);
+            } else if (blk.visualLeft || blk.visualRight) {
+                const text = String(blk.visualLeft || blk.visualRight).trim();
                 const vis = document.createElement('div');
-                vis.style.cssText = 'font-size:2rem; letter-spacing:4px;';
-                vis.textContent = blk.visualRight
-                    ? `${blk.visualLeft}   ${blk.operator || '+'}   ${blk.visualRight}`
-                    : blk.visualLeft;
+                vis.className = !/\s/.test(text) ? 'quiz-visual-hero' : 'quiz-visual-group';
+                vis.textContent = text;
                 box.appendChild(vis);
             }
             if (blk.equationText) {
                 const eq = document.createElement('div');
-                eq.style.cssText = 'font-size:1.45rem; font-weight:900; margin-top:6px; color:#1e293b;';
+                eq.className = 'quiz-equation-text';
                 eq.textContent = blk.equationText;
                 box.appendChild(eq);
             }
@@ -407,7 +424,8 @@
         pairs.forEach((p) => {
             const btn = document.createElement('button');
             btn.type = 'button';
-            btn.className = 'match-node';
+            const isVisual = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(String(p.left || ''));
+            btn.className = isVisual ? 'match-node match-node--visual' : 'match-node';
             btn.textContent = p.left;
             btn.dataset.answer = p.right;
             btn.addEventListener('click', () => {

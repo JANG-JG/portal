@@ -211,6 +211,40 @@
                     <circle cx="136" cy="92" r="5" fill="#1e293b"/><circle cx="184" cy="92" r="5" fill="#1e293b"/>
                     <polygon points="154,104 166,104 160,112" fill="#1e293b"/>
                     <path d="M144 120 Q160 130 176 120" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+                </svg>`,
+            rabbit: `
+                <svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="깡충 토끼 색칠 도안">
+                    <ellipse data-color-part="0" cx="130" cy="54" rx="18" ry="44" transform="rotate(-10 130 54)" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>
+                    <ellipse data-color-part="1" cx="190" cy="54" rx="18" ry="44" transform="rotate(10 190 54)" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>
+                    <ellipse data-color-part="2" cx="160" cy="110" rx="58" ry="46" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>
+                    <path data-color-part="3" d="M112 152 C100 182 114 206 160 206 C206 206 220 182 208 152 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>
+                    <circle data-color-part="4" cx="160" cy="180" r="18" fill="#ffffff" stroke="#1e293b" stroke-width="3.5"/>
+                    <circle cx="138" cy="102" r="5" fill="#1e293b"/><circle cx="182" cy="102" r="5" fill="#1e293b"/>
+                    <ellipse cx="160" cy="116" rx="7" ry="5" fill="#1e293b"/>
+                    <path d="M146 128 Q160 138 174 128" fill="none" stroke="#1e293b" stroke-width="3" stroke-linecap="round"/>
+                </svg>`,
+            butterfly: `
+                <svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="예쁜 나비 색칠 도안">
+                    <path data-color-part="0" d="M148 92 C110 34 40 42 46 96 C50 132 108 128 148 112 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4" stroke-linejoin="round"/>
+                    <path data-color-part="1" d="M172 92 C210 34 280 42 274 96 C270 132 212 128 172 112 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4" stroke-linejoin="round"/>
+                    <path data-color-part="2" d="M148 118 C102 128 66 156 82 184 C98 208 136 184 148 148 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4" stroke-linejoin="round"/>
+                    <path data-color-part="3" d="M172 118 C218 128 254 156 238 184 C222 208 184 184 172 148 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4" stroke-linejoin="round"/>
+                    <circle data-color-part="4" cx="92" cy="88" r="16" fill="#ffffff" stroke="#1e293b" stroke-width="3.5"/>
+                    <circle data-color-part="5" cx="228" cy="88" r="16" fill="#ffffff" stroke="#1e293b" stroke-width="3.5"/>
+                    <ellipse data-color-part="6" cx="160" cy="124" rx="14" ry="54" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>
+                    <circle data-color-part="7" cx="160" cy="66" r="16" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>
+                    <path d="M152 52 Q138 28 124 30 M168 52 Q182 28 196 30" fill="none" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round"/>
+                </svg>`,
+            strawberry: `
+                <svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="달콤 딸기 색칠 도안">
+                    <path data-color-part="0" d="M160 202 C104 192 78 130 92 84 C104 54 216 54 228 84 C242 130 216 192 160 202 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4" stroke-linejoin="round"/>
+                    <path data-color-part="1" d="M104 68 Q128 42 160 58 Q192 42 216 68 Q190 86 160 76 Q130 86 104 68 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4" stroke-linejoin="round"/>
+                    <path data-color-part="2" d="M154 20 H166 V54 H154 Z" fill="#ffffff" stroke="#1e293b" stroke-width="3.5"/>
+                    <ellipse data-color-part="3" cx="128" cy="112" rx="8" ry="12" fill="#ffffff" stroke="#1e293b" stroke-width="3"/>
+                    <ellipse data-color-part="4" cx="192" cy="112" rx="8" ry="12" fill="#ffffff" stroke="#1e293b" stroke-width="3"/>
+                    <ellipse data-color-part="5" cx="160" cy="144" rx="8" ry="12" fill="#ffffff" stroke="#1e293b" stroke-width="3"/>
+                    <ellipse data-color-part="6" cx="134" cy="166" rx="7" ry="11" fill="#ffffff" stroke="#1e293b" stroke-width="3"/>
+                    <ellipse data-color-part="7" cx="186" cy="166" rx="7" ry="11" fill="#ffffff" stroke="#1e293b" stroke-width="3"/>
                 </svg>`
         };
         return templates[templateId] || templates.dino;

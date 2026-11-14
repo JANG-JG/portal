@@ -95,7 +95,10 @@ const COLOR_TEMPLATES = [
     { templateId: 'car', templateTitle: '꼬마 자동차', shapeEmoji: '🚗', themes: ['vehicle'] },
     { templateId: 'whale', templateTitle: '아기 고래', shapeEmoji: '🐳', themes: ['ocean'] },
     { templateId: 'robot', templateTitle: '멋진 로봇', shapeEmoji: '🤖', themes: ['robot'] },
-    { templateId: 'cat', templateTitle: '야옹 고양이', shapeEmoji: '🐱', themes: ['animal', 'fruit'] }
+    { templateId: 'cat', templateTitle: '야옹 고양이', shapeEmoji: '🐱', themes: ['animal'] },
+    { templateId: 'rabbit', templateTitle: '깡충 토끼', shapeEmoji: '🐰', themes: ['animal'] },
+    { templateId: 'butterfly', templateTitle: '예쁜 나비', shapeEmoji: '🦋', themes: ['princess', 'animal', 'fruit'] },
+    { templateId: 'strawberry', templateTitle: '달콤 딸기', shapeEmoji: '🍓', themes: ['fruit'] }
 ];
 
 const OBSTACLE_ICONS = ['🌲', '🪨', '☁️', '🌊', '🌷'];
@@ -281,11 +284,12 @@ function buildMazeBlock({ subject, level, theme }) {
     };
 }
 
-function buildColoringBlock({ level, theme, excludeTemplateId = '' }) {
+function buildColoringBlock({ level = 1, theme, templateId = '', excludeTemplateId = '' }) {
     const category = resolveThemeCategory(theme);
+    const explicit = templateId ? COLOR_TEMPLATES.find((c) => c.templateId === templateId) : null;
     const preferred = COLOR_TEMPLATES.filter((c) => c.themes.includes(category) && c.templateId !== excludeTemplateId);
     const pool = COLOR_TEMPLATES.filter((c) => c.templateId !== excludeTemplateId);
-    const tpl = preferred.length ? pickRandom(preferred) : pickRandom(pool.length ? pool : COLOR_TEMPLATES);
+    const tpl = explicit || (preferred.length ? pickRandom(preferred) : pickRandom(pool.length ? pool : COLOR_TEMPLATES));
 
     return {
         id: 'block-5',
@@ -299,6 +303,43 @@ function buildColoringBlock({ level, theme, excludeTemplateId = '' }) {
         ttsText: `${tpl.templateTitle} 그림을 좋아하는 색깔로 예쁘게 칠해 보아요!`,
         ttsLang: 'ko-KR',
         hint: '인쇄해서 색연필로 색칠해도 멋져요!'
+    };
+}
+
+function buildColoringWorksheet({ theme = '동물 친구', coloringMode = 'auto_3' } = {}) {
+    const mode = String(coloringMode || 'auto_3').trim();
+    const cleanTheme = String(theme || '동물 친구').trim().slice(0, 24) || '동물 친구';
+    const category = resolveThemeCategory(cleanTheme);
+    const explicitTpl = COLOR_TEMPLATES.find((c) => c.templateId === mode);
+
+    if (explicitTpl) {
+        const block = { ...buildColoringBlock({ level: 1, theme: cleanTheme, templateId: explicitTpl.templateId }), id: 'block-1' };
+        return {
+            title: `🎨 ${explicitTpl.templateTitle} 색칠놀이`,
+            encouragement: '알록달록 나만의 멋진 그림이 완성되었어요! 🌈',
+            blocks: [block]
+        };
+    }
+
+    const targetCount = mode === 'bundle_5' ? 5 : 3;
+    const matching = COLOR_TEMPLATES.filter((c) => c.themes.includes(category));
+    const others = COLOR_TEMPLATES.filter((c) => !c.themes.includes(category));
+    const orderedPool = [
+        ...matching,
+        ...others.sort(() => Math.random() - 0.5)
+    ];
+
+    const blocks = orderedPool.slice(0, targetCount).map((tpl, idx) => ({
+        ...buildColoringBlock({ level: 1, theme: cleanTheme, templateId: tpl.templateId }),
+        id: `block-${idx + 1}`
+    }));
+
+    return {
+        title: mode === 'bundle_5'
+            ? `🎨 ${cleanTheme} 색칠놀이 책 (${blocks.length}장)`
+            : `🎨 ${cleanTheme} 색칠놀이 모음 (${blocks.length}장)`,
+        encouragement: '와! 알록달록 그림을 모두 예쁘게 색칠했어요! 🌟',
+        blocks
     };
 }
 
@@ -342,15 +383,18 @@ function appendOptionalPlayBlock(baseBlocks, { subject, level, theme, includePla
 function trySwapPlayBlock(existingBlock, idx, { subject, level, theme }) {
     const playTypes = new Set(['dot_to_dot', 'maze', 'color']);
     if (!playTypes.has(existingBlock?.type)) return null;
-    const nextPlay = buildPlayBlock({ subject, level, theme, currentBlock: existingBlock });
+    const preferredType = subject === 'coloring' ? 'color' : '';
+    const nextPlay = buildPlayBlock({ subject, level, theme, preferredType, currentBlock: existingBlock });
     return { ...nextPlay, id: existingBlock.id || `block-${idx + 1}` };
 }
 
 module.exports = {
+    COLOR_TEMPLATES,
     resolveThemeCategory,
     buildDotToDotBlock,
     buildMazeBlock,
     buildColoringBlock,
+    buildColoringWorksheet,
     buildPlayBlock,
     appendOptionalPlayBlock,
     trySwapPlayBlock

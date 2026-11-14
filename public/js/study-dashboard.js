@@ -13,13 +13,15 @@
     const SUBJECT_LABELS = {
         korean: '🇰🇷 한글 놀이',
         math: '🔢 숫자·수학',
-        english: '🔤 영어 놀이'
+        english: '🔤 영어 놀이',
+        coloring: '🎨 색칠놀이'
     };
 
     const state = {
         childId: new URLSearchParams(window.location.search).get('childId') || '',
         selectedSubject: 'korean',
         selectedTheme: '동물 친구',
+        selectedColoringMode: 'auto_3',
         hasParentPin: false,
         parentUnlocked: false,
         parentPinValue: '',
@@ -220,11 +222,12 @@
         list.innerHTML = sheets.map((s) => {
             const doneText = s.completed_at ? '✅ 완료함' : '📝 풀기 전';
             const subjText = SUBJECT_LABELS[s.subject] || s.subject;
+            const metaText = s.subject === 'coloring' ? subjText : `${subjText} · Lv.${s.level}`;
             return `
                 <article class="archive-item">
                     <div>
                         <div class="archive-meta">
-                            <span>${subjText} · Lv.${s.level}</span>
+                            <span>${metaText}</span>
                             <span>${doneText}</span>
                         </div>
                         <h3 class="archive-title">${escapeHtml(s.title)}</h3>
@@ -244,6 +247,15 @@
         document.querySelectorAll('.subject-chip').forEach((btn) => {
             btn.classList.toggle('active', btn.dataset.subject === subject);
         });
+        const isColoring = subject === 'coloring';
+        const coloringBox = document.getElementById('coloringPickerBox');
+        const playRow = document.getElementById('playMissionRow');
+        const genBtn = document.getElementById('btnGenerateSheet');
+        if (coloringBox) coloringBox.hidden = !isColoring;
+        if (playRow) playRow.hidden = isColoring;
+        if (genBtn && !genBtn.disabled) {
+            genBtn.textContent = isColoring ? '🖍️ 색칠놀이 바로 만들기!' : '🎨 학습지 바로 만들기!';
+        }
     }
 
     function bindEvents() {
@@ -260,6 +272,13 @@
 
         document.querySelectorAll('.subject-chip').forEach((btn) => {
             btn.addEventListener('click', () => selectSubjectChip(btn.dataset.subject, true));
+        });
+
+        document.querySelectorAll('.coloring-tpl-pill').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                state.selectedColoringMode = btn.dataset.coloringMode || 'auto_3';
+                document.querySelectorAll('.coloring-tpl-pill').forEach((p) => p.classList.toggle('active', p === btn));
+            });
         });
 
         document.querySelectorAll('.theme-pill').forEach((btn) => {
@@ -374,7 +393,9 @@
                 const includePlayBlock = playChk ? Boolean(playChk.checked) : true;
                 btnGen.disabled = true;
                 const origText = btnGen.textContent;
-                btnGen.textContent = '✨ 재미있는 학습지를 만들고 있어요...';
+                btnGen.textContent = state.selectedSubject === 'coloring'
+                    ? '🖍️ 색칠 도안을 준비하고 있어요...'
+                    : '✨ 재미있는 학습지를 만들고 있어요...';
                 try {
                     const res = await fetch('/api/study/sheets/generate', {
                         method: 'POST',
@@ -384,7 +405,8 @@
                             childId: state.childId,
                             subject: state.selectedSubject,
                             theme,
-                            includePlayBlock
+                            includePlayBlock,
+                            coloringMode: state.selectedColoringMode
                         })
                     });
                     const data = await res.json();
