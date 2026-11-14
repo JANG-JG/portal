@@ -25,6 +25,10 @@ function getKstDateString(offsetDays = 0) {
     return now.toISOString().slice(0, 10);
 }
 
+function escapeTelegramMarkdown(text) {
+    return String(text || '').replace(/([_*`\[])/g, '\\$1');
+}
+
 function dbGet(sql, params = []) {
     return new Promise((resolve, reject) => {
         portalDb.get(sql, params, (err, row) => {
@@ -197,10 +201,12 @@ async function awardStamp({ childId, sourceType = 'online', sheetId = null, note
         const profile = await dbGet('SELECT display_name, target_reward FROM study_profiles WHERE id = ?', [cid]);
         const childLabel = profile?.display_name || (cid === 'first' ? '첫째' : '둘째');
         const reward = profile?.target_reward || '칭찬 선물';
+        const safeChildLabel = escapeTelegramMarkdown(childLabel);
+        const safeReward = escapeTelegramMarkdown(reward);
         sendServerTelegram(
-            `🎉 <b>[어린이 학습실] ${childLabel} 칭찬 도장판 10칸 완성!</b>\n` +
-            `• 총 누적 도장: ${boardAfter.totalEarned}개 (${boardAfter.completedCycles}번째 도장판 달성)\n` +
-            `• 약속한 보상: <b>${reward}</b>\n` +
+            `🎉 *[어린이 학습실] ${safeChildLabel} 칭찬 도장판 10칸 완성!*\n\n` +
+            `• 총 누적 도장: *${boardAfter.totalEarned}개* (${boardAfter.completedCycles}번째 도장판 달성)\n` +
+            `• 약속한 보상: *${safeReward}*\n` +
             `아이에게 크게 칭찬하고 선물을 챙겨주세요! 🌟`
         ).catch(() => {});
     }
