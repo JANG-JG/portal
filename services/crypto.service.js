@@ -157,9 +157,64 @@ function decryptMemoText(cipherText, userId) {
     }
 }
 
+/**
+ * 🔐 범용 민감 식별자(텔레그램 ID 등) 암호화 / 복호화 / 블라인드 인덱스
+ */
+function deriveScopedKey(scope = 'general') {
+    const salt = `jg-portal-secret-salt:${scope}`;
+    const info = `jg-portal-secret-key:${scope}`;
+    return crypto.hkdfSync('sha256', getMasterSecret(), salt, info, 32);
+}
+
+function encryptSecret(plainText, scope = 'telegram') {
+    if (plainText === null || plainText === undefined || plainText === '') return '';
+    if (typeof plainText === 'string' && plainText.startsWith(PREFIX)) return plainText;
+
+    const key = deriveScopedKey(scope);
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+
+    let encrypted = cipher.update(String(plainText), 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex');
+
+    return `${PREFIX}${iv.toString('hex')}:${authTag}:${encrypted}`;
+}
+
+function decryptSecret(cipherText, scope = 'telegram') {
+    if (!cipherText || typeof cipherText !== 'string') return '';
+    if (!cipherText.startsWith(PREFIX)) return cipherText;
+
+    const parts = cipherText.slice(PREFIX.length).split(':');
+    if (parts.length !== 3) return '';
+
+    const [ivHex, tagHex, dataHex] = parts;
+    try {
+        const key = deriveScopedKey(scope);
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, Buffer.from(ivHex, 'hex'));
+        decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+        let decrypted = decipher.update(dataHex, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch (e) {
+        return '';
+    }
+}
+
+function hashBlindIndex(value, scope = 'telegram') {
+    if (value === null || value === undefined || value === '') return '';
+    return crypto
+        .createHmac('sha256', getMasterSecret())
+        .update(`${scope}:${String(value).trim()}`)
+        .digest('hex');
+}
+
 module.exports = {
     encryptCalendarText,
     decryptCalendarText,
     encryptMemoText,
-    decryptMemoText
+    decryptMemoText,
+    encryptSecret,
+    decryptSecret,
+    hashBlindIndex
 };

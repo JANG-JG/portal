@@ -274,6 +274,7 @@ if (fs.existsSync(WIKI_DB_PATH)) {
             if (typeof params === 'function') { cb = params; params = []; }
             if (fs.existsSync(WIKI_DB_PATH)) {
                 const realDb = new sqlite3.Database(WIKI_DB_PATH);
+                realDb.run('PRAGMA busy_timeout = 5000;');
                 return realDb.all(sql, params, (err, rows) => { realDb.close(); cb(err, rows); });
             }
             cb(null, []);
@@ -282,6 +283,7 @@ if (fs.existsSync(WIKI_DB_PATH)) {
             if (typeof params === 'function') { cb = params; params = []; }
             if (fs.existsSync(WIKI_DB_PATH)) {
                 const realDb = new sqlite3.Database(WIKI_DB_PATH);
+                realDb.run('PRAGMA busy_timeout = 5000;');
                 return realDb.get(sql, params, (err, row) => { realDb.close(); cb(err, row); });
             }
             cb(null, null);
@@ -290,7 +292,13 @@ if (fs.existsSync(WIKI_DB_PATH)) {
             if (typeof params === 'function') { cb = params; params = []; }
             if (fs.existsSync(WIKI_DB_PATH)) {
                 const realDb = new sqlite3.Database(WIKI_DB_PATH);
-                return realDb.run(sql, params, function(err) { realDb.close(); if (cb) cb.call(this, err); });
+                realDb.serialize(() => {
+                    realDb.run('PRAGMA journal_mode = WAL;');
+                    realDb.run('PRAGMA synchronous = NORMAL;');
+                    realDb.run('PRAGMA busy_timeout = 5000;');
+                    realDb.run(sql, params, function(err) { realDb.close(); if (cb) cb.call(this, err); });
+                });
+                return;
             }
             if (cb) cb(new Error('WIKI_DB_NOT_FOUND'));
         }
@@ -374,6 +382,112 @@ const portalDb = new sqlite3.Database(PORTAL_DB_PATH, (err) => {
             portalDb.run(`CREATE TABLE IF NOT EXISTS system_configs (
                 key TEXT PRIMARY KEY,
                 value TEXT
+            )`);
+
+            // 5. 어린이 적응형 학습실 테이블군 (2021년생 첫째 / 2022년생 둘째)
+            portalDb.run(`CREATE TABLE IF NOT EXISTS study_profiles (
+                id TEXT PRIMARY KEY,
+                display_name TEXT NOT NULL,
+                birth_year INTEGER NOT NULL,
+                avatar_emoji TEXT DEFAULT '🧒',
+                target_reward TEXT DEFAULT '스티커 판 10칸 완성 선물 🎁',
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`, () => {
+                portalDb.get("SELECT COUNT(*) as cnt FROM study_profiles", (err, row) => {
+                    if (!err && row && row.cnt === 0) {
+                        portalDb.run(
+                            "INSERT OR IGNORE INTO study_profiles (id, display_name, birth_year, avatar_emoji, target_reward) VALUES (?, ?, ?, ?, ?)",
+                            ['first', '첫째', 2021, '🦖', '공룡 스티커 10개 모으기!']
+                        );
+                        portalDb.run(
+                            "INSERT OR IGNORE INTO study_profiles (id, display_name, birth_year, avatar_emoji, target_reward) VALUES (?, ?, ?, ?, ?)",
+                            ['second', '둘째', 2022, '🐰', '토끼 스티커 10개 모으기!']
+                        );
+                    }
+                });
+            });
+
+            portalDb.run(`CREATE TABLE IF NOT EXISTS study_levels (
+                child_id TEXT NOT NULL,
+                subject TEXT NOT NULL CHECK(subject IN ('korean', 'math', 'english')),
+                level INTEGER NOT NULL DEFAULT 1 CHECK(level BETWEEN 1 AND 5),
+                updated_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                PRIMARY KEY (child_id, subject)
+            )`, () => {
+                const seedSubjects = ['korean', 'math', 'english'];
+                ['first', 'second'].forEach(cid => {
+                    seedSubjects.forEach(subj => {
+                        portalDb.run(
+                            "INSERT OR IGNORE INTO study_levels (child_id, subject, level) VALUES (?, ?, 1)",
+                            [cid, subj]
+                        );
+                    });
+                });
+            });
+
+            portalDb.run(`CREATE TABLE IF NOT EXISTS study_stamps (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                child_id TEXT NOT NULL,
+                cycle_no INTEGER NOT NULL DEFAULT 1,
+                source_type TEXT NOT NULL DEFAULT 'online',
+                sheet_id INTEGER,
+                note TEXT DEFAULT '',
+                earned_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+            portalDb.run(`CREATE INDEX IF NOT EXISTS idx_study_stamps_child_cycle ON study_stamps (child_id, cycle_no, earned_at DESC)`);
+
+            portalDb.run(`CREATE TABLE IF NOT EXISTS study_sheets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                child_id TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                level INTEGER NOT NULL DEFAULT 1,
+                theme TEXT NOT NULL,
+                title TEXT NOT NULL,
+                source TEXT DEFAULT 'gemini',
+                content_json TEXT NOT NULL,
+                completed_at DATETIME,
+                created_by TEXT DEFAULT 'web',
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+            portalDb.run(`CREATE INDEX IF NOT EXISTS idx_study_sheets_child ON study_sheets (child_id, created_at DESC)`);
+
+            portalDb.run(`CREATE TABLE IF NOT EXISTS study_level_tests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                child_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'in_progress',
+                state_json TEXT NOT NULL,
+                result_json TEXT DEFAULT '{}',
+                started_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                completed_at DATETIME
+            )`);
+
+            portalDb.run(`CREATE TABLE IF NOT EXISTS study_daily_quota (
+                quota_date TEXT PRIMARY KEY,
+                gemini_calls INTEGER DEFAULT 0,
+                fallback_calls INTEGER DEFAULT 0,
+                daily_limit INTEGER DEFAULT 30,
+                updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+
+            // 6. 텔레그램 양방향 제어 화이트리스트 (AES-256-GCM 암호화 + HMAC 블라인드 인덱스)
+            portalDb.run(`CREATE TABLE IF NOT EXISTS telegram_allowed_users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                telegram_id_enc TEXT NOT NULL,
+                telegram_id_hash TEXT NOT NULL UNIQUE,
+                label TEXT NOT NULL,
+                portal_username TEXT NOT NULL DEFAULT 'upt0731',
+                role TEXT NOT NULL DEFAULT 'family',
+                enabled INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
+            )`);
+
+            portalDb.run(`CREATE TABLE IF NOT EXISTS telegram_bot_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_hash TEXT DEFAULT '',
+                command TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'ok',
+                detail TEXT DEFAULT '',
+                created_at DATETIME DEFAULT (datetime('now', 'localtime'))
             )`);
 
             // 🛡️ 기존 health.db로부터 데이터 1회성 무손실 자동 마이그레이션

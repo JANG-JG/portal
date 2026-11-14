@@ -73,7 +73,8 @@ router.post('/api/login', (req, res) => {
             );
 
             sendPortalAuthCookie(res, req, token, isRemember ? 7 : 1, userRole, allowedServices);
-            res.json({ success: true, redirect: '/' });
+            const targetRedirect = resolveSafePostLoginRedirect(userRole, req.body?.next);
+            res.json({ success: true, redirect: targetRedirect });
         } catch (bcryptErr) {
             console.error('비밀번호 검증 오류:', bcryptErr);
             recordLoginLog(username, clientIp, 'FAILED');
@@ -81,6 +82,19 @@ router.post('/api/login', (req, res) => {
         }
     });
 });
+
+function resolveSafePostLoginRedirect(userRole, requestedNext) {
+    const defaultDest = userRole === 'kid' ? '/study' : '/';
+    if (!requestedNext || typeof requestedNext !== 'string') return defaultDest;
+    const trimmed = requestedNext.trim();
+    if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.startsWith('/login') || trimmed.startsWith('/logout')) {
+        return defaultDest;
+    }
+    if (userRole === 'kid') {
+        return (trimmed === '/study' || trimmed.startsWith('/study/')) ? trimmed : '/study';
+    }
+    return trimmed;
+}
 
 // ------------------------------------------------------------------------------
 // 가족 간편 로그인 & 6자리 PIN 인증 API
@@ -162,7 +176,7 @@ router.get('/api/auth/family-members', (req, res) => {
     db.get(
         `SELECT username, nickname, role, avatar_emoji 
          FROM users 
-         WHERE username = ? AND (role = 'family' OR role IS NULL)`,
+         WHERE username = ? AND (role IN ('family', 'kid') OR role IS NULL)`,
         [authorizedUsername],
         (err, row) => {
             if (err || !row) {
@@ -287,11 +301,12 @@ router.post('/api/auth/family-login', async (req, res) => {
                 { expiresIn: '3650d' }
             );
             sendDeviceCookie(res, req, deviceToken);
-            sendPortalAuthCookie(res, req, token, 365, user.role || 'family', allowedServices);
+            const userRole = user.role || 'family';
+            sendPortalAuthCookie(res, req, token, 365, userRole, allowedServices);
             res.json({
                 success: true,
                 requirePinChange: false,
-                redirect: '/',
+                redirect: resolveSafePostLoginRedirect(userRole, req.body?.next),
                 nickname: user.nickname || user.username,
                 deviceToken
             });
@@ -340,10 +355,11 @@ router.post('/api/auth/change-pin', async (req, res) => {
                         if (user.allowed_services) allowedServices = JSON.parse(user.allowed_services);
                     } catch (e) {}
 
+                    const userRole = user.role || 'family';
                     const token = jwt.sign(
                         {
                             username: user.username,
-                            role: user.role || 'family',
+                            role: userRole,
                             nickname: user.nickname || user.username,
                             allowed_services: allowedServices
                         },
@@ -352,16 +368,16 @@ router.post('/api/auth/change-pin', async (req, res) => {
                     );
 
                     const deviceToken = jwt.sign(
-                        { username: user.username, role: user.role || 'family', purpose: 'family_device' },
+                        { username: user.username, role: userRole, purpose: 'family_device' },
                         JWT_SECRET,
                         { expiresIn: '3650d' }
                     );
                     sendDeviceCookie(res, req, deviceToken);
-                    sendPortalAuthCookie(res, req, token, 365, user.role || 'family', allowedServices);
+                    sendPortalAuthCookie(res, req, token, 365, userRole, allowedServices);
                     res.json({
                         success: true,
                         message: '새로운 6자리 PIN이 안전하게 설정되었습니다! 이제 자동 로그인됩니다.',
-                        redirect: '/',
+                        redirect: resolveSafePostLoginRedirect(userRole, req.body?.next),
                         deviceToken
                     });
                 }

@@ -92,6 +92,7 @@ function getDbConnection(resolvedPath) {
         const dynDb = new sqlite3.Database(resolvedPath, (err) => {
             if (!err) {
                 dynDb.run('PRAGMA journal_mode = WAL;');
+                dynDb.run('PRAGMA synchronous = NORMAL;');
                 dynDb.run('PRAGMA busy_timeout = 5000;');
             }
         });

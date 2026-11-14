@@ -86,6 +86,9 @@ function getUserModules(user) {
     }
 
     const allowedList = parseAllowedServices(user.allowed_services);
+    if (user.role === 'kid') {
+        return modules.filter(m => !m.adminOnly && allowedList.includes(m.id));
+    }
     const isAllAllowed = allowedList.includes('all');
 
     return modules.filter(m => {

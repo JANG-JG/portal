@@ -566,6 +566,60 @@
     "order": 100
   },
   {
+    "id": "study",
+    "name": "어린이 학습실",
+    "icon": "🎒",
+    "description": "우리 아이 태블릿 맞춤형 한글·수학·영어 5단계 적응형 학습실",
+    "category": "가족",
+    "entryUrl": "/study",
+    "baseUrl": "",
+    "ssoEnabled": false,
+    "adminOnly": false,
+    "defaultFamilyAllowed": true,
+    "enabled": true,
+    "nav": {
+      "enabled": true,
+      "label": "학습실",
+      "entryUrl": "/study",
+      "subLinks": []
+    },
+    "quickStrip": [
+      {
+        "id": "study-quick",
+        "label": "학습실",
+        "icon": "🎒",
+        "type": "link",
+        "url": "/study"
+      }
+    ],
+    "portalWidget": null,
+    "admin": {
+      "enabled": true,
+      "title": "학습실·텔레그램 관제",
+      "icon": "🎒",
+      "tabId": "tab-study",
+      "subMenus": [
+        {
+          "id": "subpane-study-overview",
+          "title": "학습실·Gemini 할당량",
+          "icon": "🎒"
+        },
+        {
+          "id": "subpane-study-telegram",
+          "title": "텔레그램 ID·봇 제어",
+          "icon": "🤖"
+        },
+        {
+          "id": "subpane-study-kids",
+          "title": "아이 계정·PIN 관리",
+          "icon": "👶"
+        }
+      ]
+    },
+    "dbPath": "portal/portal.db",
+    "order": 95
+  },
+  {
     "id": "admin",
     "name": "관리자",
     "icon": "⚙️",

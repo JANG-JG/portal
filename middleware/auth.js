@@ -15,6 +15,14 @@ setInterval(() => {
     }
 }, 30 * 60 * 1000);
 
+function buildLoginRedirect(req) {
+    const origUrl = req.originalUrl || req.path || '';
+    const nextQuery = (origUrl.startsWith('/') && !origUrl.startsWith('//') && origUrl !== '/' && origUrl !== '/login')
+        ? `?next=${encodeURIComponent(origUrl)}`
+        : '';
+    return `/login${nextQuery}`;
+}
+
 // 토큰 인증 미들웨어
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -24,7 +32,7 @@ function authenticateToken(req, res, next) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(401).json({ success: false, message: '인증이 필요합니다.' });
         }
-        return res.redirect('/login');
+        return res.redirect(buildLoginRedirect(req));
     }
 
     // 🛡️ 로그아웃된 무효화 토큰(블랙리스트) 검증
@@ -35,7 +43,7 @@ function authenticateToken(req, res, next) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(401).json({ success: false, message: '로그아웃된 토큰입니다. 다시 로그인해 주세요.' });
         }
-        return res.redirect('/login');
+        return res.redirect(buildLoginRedirect(req));
     }
 
     let user = null;
@@ -52,8 +60,32 @@ function authenticateToken(req, res, next) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(401).json({ success: false, message: '인증이 만료되었습니다.' });
         }
-        return res.redirect('/login');
+        return res.redirect(buildLoginRedirect(req));
     }
+
+    // 🧒 어린이(kid) 계정은 오직 학습실(/study, /api/study/*)만 접근 가능
+    if (user.role === 'kid') {
+        const reqPath = (req.originalUrl || req.path || '').split('?')[0];
+        const isKidAllowed =
+            reqPath === '/study' ||
+            reqPath.startsWith('/study/') ||
+            reqPath === '/api/study' ||
+            reqPath.startsWith('/api/study/') ||
+            reqPath === '/api/me' ||
+            reqPath.startsWith('/api/auth/') ||
+            reqPath === '/api/jg-ui' ||
+            reqPath === '/logout' ||
+            reqPath === '/login' ||
+            reqPath.startsWith('/invite/');
+
+        if (!isKidAllowed) {
+            if (reqPath.startsWith('/api/')) {
+                return res.status(403).json({ success: false, message: '학습 전용 계정에서는 이용할 수 없습니다.' });
+            }
+            return res.redirect('/study');
+        }
+    }
+
     req.user = user;
     next();
 }

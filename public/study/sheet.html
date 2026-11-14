@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오늘의 맞춤 학습지 | 우리 아이 학습실</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg">
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="stylesheet" href="/css/study.css">
+</head>
+<body>
+    <div class="study-shell">
+        <header class="study-topbar no-print">
+            <div class="study-brand">
+                <span class="study-brand-icon" aria-hidden="true">📝</span>
+                <div>
+                    <h1>오늘의 맞춤 학습지</h1>
+                    <small id="sheetMetaLine" style="color: #64748b; font-weight: 700;">학습지를 불러오는 중...</small>
+                </div>
+            </div>
+            <div class="study-topbar-actions">
+                <button type="button" id="btnPrintA4" class="study-btn study-btn-outline">🖨️ A4 인쇄 / PDF</button>
+                <a id="btnBackToDashboard" href="/study" class="study-link-btn study-btn-secondary">⬅️ 학습실로</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="sheet-header-card">
+                <div>
+                    <h2 id="sheetTitleHeading" style="margin: 0 0 4px; font-size: clamp(1.2rem, 3.2vw, 1.55rem);">학습지 제목</h2>
+                    <span id="sheetInfoLine" style="font-size: 0.92rem; color: #64748b; font-weight: 700;">이름: ____________ · 날짜: ____________</span>
+                </div>
+                <span id="sheetSourceBadge" class="level-badge">맞춤 학습</span>
+            </section>
+
+            <div id="sheetBlocksContainer">
+                <p style="text-align: center; padding: 24px; color: #64748b;">문제를 예쁘게 준비하고 있어요...</p>
+            </div>
+
+            <section class="study-card sheet-footer-actions no-print" style="text-align: center;">
+                <p id="sheetEncouragement" style="font-weight: 800; font-size: 1.05rem; margin: 0 0 12px; color: #047857;">모든 문제를 다 풀었다면 아래 버튼을 눌러 칭찬 도장을 받아 보세요!</p>
+                <button type="button" id="btnCompleteSheet" class="study-btn study-btn-primary" style="width: 100%; max-width: 380px; font-size: 1.1rem; min-block-size: 56px;">
+                    🌟 다 풀었어요! 칭찬 도장 받기
+                </button>
+            </section>
+        </main>
+    </div>
+
+    <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
+
+    <script src="/js/study-sheet.js" defer></script>
+    <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
+</body>
+</html>

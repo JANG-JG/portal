@@ -8,7 +8,7 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261113_115538';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261114_103949';
 const {
     PORT,
     JWT_SECRET,
@@ -119,7 +119,8 @@ function assembleAdminHtml() {
         'tab-database.html',
         'tab-security.html',
         'tab-modules.html',
-        'tab-ai.html'
+        'tab-ai.html',
+        'tab-study.html'
     ];
 
     const panes = tabFiles.map(file => {
@@ -397,6 +398,10 @@ app.use('/', aiHistoryRoutes);
 // 🏫 유치원 사진 수집 API (/api/kindergarten/*)
 app.use('/api/kindergarten', kindergartenRoutes);
 
+// 🎒 어린이 적응형 학습실 (/study, /study/*, /api/study/*)
+const studyRoutes = require('./routes/study.routes');
+app.use('/', studyRoutes);
+
 // 헬스 체크
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', service: 'JG Portal' });
@@ -427,12 +432,14 @@ app.use((err, req, res, next) => {
 });
 
 // ==========================================
-// ⏰ [통합 포털 단일 알림 스케줄러 기동]
+// ⏰ [통합 포털 단일 알림 스케줄러 & 텔레그램 봇 기동]
 // ==========================================
+const { initTelegramBotPolling } = require('./services/telegram/telegramBot.service');
 const isDevInstance = PORT == 3005 || process.env.IS_DEV === 'true';
 const isPrimaryWorker = !process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === '0';
 if (!isDevInstance && isPrimaryWorker) {
     initUnifiedNotificationScheduler(db, sendUnifiedPushNotification, getLiveWeatherData, getLiveMarketData);
+    initTelegramBotPolling();
 } else {
     console.log('🧪 [portal] 보조 워커 또는 테스트 인스턴스: 알림 중복 발송 방지를 위해 백그라운드 푸시 스케줄러 비활성화');
 }

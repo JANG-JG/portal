@@ -15,6 +15,7 @@ const aiAdminRoutes = require('./admin/ai.admin.routes');
 const wikiAdminRoutes = require('./admin/wiki.admin.routes');
 const pushAdminRoutes = require('./admin/push.admin.routes');
 const systemAdminRoutes = require('./admin/system.admin.routes');
+const studyAdminRoutes = require('./admin/study.admin.routes');
 
 router.use('/blood', bloodAdminRoutes);
 router.use('/news', newsAdminRoutes);
@@ -26,6 +27,7 @@ router.use('/asset', assetAdminRoutes);
 router.use('/ai', aiAdminRoutes);
 router.use('/wiki', wikiAdminRoutes);
 router.use('/push', pushAdminRoutes);
+router.use('/study', studyAdminRoutes);
 router.use('/', systemAdminRoutes);
 
 // 관리자 마스터 비밀번호 변경

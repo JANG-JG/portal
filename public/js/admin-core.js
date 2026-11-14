@@ -71,6 +71,11 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-ai-config', label: 'AI 비서 운영 설정', icon: '⚙️' },
         { id: 'subpane-ai-status', label: 'AI 엔진 상태 및 점검', icon: '🤖' },
         { id: 'subpane-ai-audit', label: '대화·라우팅 감사 이력', icon: '🛡️' }
+    ],
+    'tab-study': [
+        { id: 'subpane-study-overview', label: '학습실 설정 · 프로필', icon: '🎨' },
+        { id: 'subpane-study-telegram', label: '암호화 텔레그램 ID', icon: '✈️' },
+        { id: 'subpane-study-kids', label: '아이 전용 계정 발급', icon: '📱' }
     ]
 };
 
@@ -267,7 +272,10 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
         'subpane-news-ai': 'loadNewsAiGovernance',
         'subpane-ai-status': 'checkAdminAiHealth',
         'subpane-ai-audit': 'loadAdminAiAuditLogs',
-        'subpane-wiki-governance': 'loadWikiGovernance'
+        'subpane-wiki-governance': 'loadWikiGovernance',
+        'subpane-study-overview': 'loadAdminStudyOverview',
+        'subpane-study-telegram': 'loadAdminStudyOverview',
+        'subpane-study-kids': 'loadAdminStudyOverview'
     };
     if (subLoaderMap[subId] && typeof window[subLoaderMap[subId]] === 'function') {
         window[subLoaderMap[subId]]();

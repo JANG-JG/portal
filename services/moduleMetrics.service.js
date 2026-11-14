@@ -35,6 +35,7 @@ async function queryDbStats(fullDbPath) {
         }
         const tempDb = new sqlite3.Database(fullDbPath, sqlite3.OPEN_READONLY, (err) => {
             if (err) return resolve(null);
+            tempDb.run('PRAGMA busy_timeout = 5000;');
         });
 
         tempDb.all("SELECT name FROM sqlite_master WHERE type IN ('table') AND name NOT LIKE 'sqlite_%'", [], async (err, tables) => {

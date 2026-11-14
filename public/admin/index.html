@@ -305,6 +305,25 @@
                     </button>
                 </div>
             </div>
+
+            <!-- 그룹 12: 아이 학습실 & 텔레그램 관리 -->
+            <div class="admin-sidebar-group" id="sidebar-group-study">
+                <button type="button" class="admin-sidebar-parent" onclick="toggleSidebarGroup('study', 'tab-study')">
+                    <span class="group-title"><span>🎒</span> 아이 학습실 · 봇</span>
+                    <span class="chevron">▸</span>
+                </button>
+                <div class="admin-sidebar-sublist">
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-study" data-sub="subpane-study-overview" onclick="switchAdminTabAndSub('tab-study', 'subpane-study-overview')">
+                        <span>🎨</span> 학습실 설정 · 프로필
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-study" data-sub="subpane-study-telegram" onclick="switchAdminTabAndSub('tab-study', 'subpane-study-telegram')">
+                        <span>✈️</span> 암호화 텔레그램 ID
+                    </button>
+                    <button type="button" class="admin-sidebar-sublink" data-tab="tab-study" data-sub="subpane-study-kids" onclick="switchAdminTabAndSub('tab-study', 'subpane-study-kids')">
+                        <span>📱</span> 아이 전용 계정 발급
+                    </button>
+                </div>
+            </div>
         </nav>
         <div class="admin-sidebar-footer">
             <button class="btn-admin btn-admin-success btn-admin-sm" onclick="downloadAllDatabases()" style="width:100%; justify-content:center;">
@@ -379,6 +398,9 @@
                 <button class="admin-tab-btn" data-tab="tab-ai" onclick="switchAdminTab('tab-ai', this)">
                     🤖 AI 비서
                 </button>
+                <button class="admin-tab-btn" data-tab="tab-study" onclick="switchAdminTab('tab-study', this)">
+                    🎒 아이 학습실 · 봇
+                </button>
             </nav>
             <!-- 2단 서브메뉴 탭 (선택된 대메뉴에 따라 동적 주입) -->
             <div class="admin-subtabs-nav" id="adminSubtabsNav">
@@ -422,6 +444,7 @@
     <script src="/js/admin-service-logs.js"></script>
     <script src="/js/admin-ai-news-audit.js"></script>
     <script src="/js/admin-wiki-governance.js"></script>
+    <script src="/js/admin-study.js"></script>
 
     <!-- 🚀 JG 통합 UI 런처 (상단 내비바 로드, 관리자 페이지는 data-ticker="false"로 하단 뉴스/속보 티커 제외) -->
     <script src="/api/jg-ui" data-ticker="false" defer></script>

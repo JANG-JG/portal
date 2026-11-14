@@ -210,6 +210,14 @@
         }
     }
 
+    function getNextRedirectParam() {
+        try {
+            const p = new URLSearchParams(window.location.search).get('next');
+            if (p && p.startsWith('/') && !p.startsWith('//')) return p;
+        } catch (e) {}
+        return '';
+    }
+
     // 5. 가족 PIN 검증 로그인 요청
     async function handleFamilyLogin(pin) {
         if (isSubmitting || !currentMember) return;
@@ -223,7 +231,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: currentMember.username,
-                    pin: pin
+                    pin: pin,
+                    next: getNextRedirectParam()
                 })
             });
 
@@ -307,7 +316,8 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     tempToken: currentTempToken,
-                    newPin: newPin
+                    newPin: newPin,
+                    next: getNextRedirectParam()
                 })
             });
 
@@ -392,7 +402,7 @@
                 const res = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password, rememberMe })
+                    body: JSON.stringify({ username, password, rememberMe, next: getNextRedirectParam() })
                 });
                 const data = await res.json();
                 if (data.success) {

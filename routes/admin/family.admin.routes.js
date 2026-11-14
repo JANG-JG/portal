@@ -192,11 +192,16 @@ router.put('/members/:username', (req, res) => {
                 const sqlite3 = require('sqlite3').verbose();
                 const albumDb = new sqlite3.Database(ALBUM_DB_PATH, (aErr) => {
                     if (!aErr) {
-                        albumDb.run(
-                            'UPDATE family_members SET nickname = ? WHERE user_id = ?',
-                            [nickname, targetUsername],
-                            () => { albumDb.close(); }
-                        );
+                        albumDb.serialize(() => {
+                            albumDb.run('PRAGMA journal_mode = WAL;');
+                            albumDb.run('PRAGMA synchronous = NORMAL;');
+                            albumDb.run('PRAGMA busy_timeout = 5000;');
+                            albumDb.run(
+                                'UPDATE family_members SET nickname = ? WHERE user_id = ?',
+                                [nickname, targetUsername],
+                                () => { albumDb.close(); }
+                            );
+                        });
                     }
                 });
             }

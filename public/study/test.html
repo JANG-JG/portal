@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5분 탐험 수준 테스트 | 우리 아이 학습실</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon-v2.svg">
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="stylesheet" href="/css/study.css">
+</head>
+<body>
+    <div class="study-shell">
+        <header class="study-topbar">
+            <div class="study-brand">
+                <span class="study-brand-icon" aria-hidden="true">🧭</span>
+                <div>
+                    <h1>5분 탐험 수준 테스트</h1>
+                    <small id="testSubLabel" style="color: #64748b; font-weight: 700;">재미있는 문제를 풀며 딱 맞는 레벨을 찾아요</small>
+                </div>
+            </div>
+            <div class="study-topbar-actions">
+                <a id="btnBackToStudy" href="/study" class="study-link-btn study-btn-outline">⬅️ 학습실로</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="study-card" id="testProgressCard">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 800;">
+                    <span id="testSubjectBadge" class="level-badge">탐험 준비 중</span>
+                    <span id="testStepLabel">0 / 9</span>
+                </div>
+                <progress id="testProgressBar" value="0" max="9" style="width: 100%; height: 14px; accent-color: #ff7a45;"></progress>
+            </section>
+
+            <section class="study-card" id="testQuestionCard">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px;">
+                    <h2 id="testPrompt" style="margin: 0; font-size: clamp(1.15rem, 3vw, 1.4rem);">문제를 준비하고 있어요...</h2>
+                    <button type="button" id="btnSpeakQuestion" class="study-btn study-btn-secondary">🔊 읽어주기</button>
+                </div>
+
+                <div id="testVisualBox" style="text-align: center; font-size: clamp(2.4rem, 7vw, 3.8rem); padding: 20px 10px; background: #fffbeb; border-radius: 18px; margin-bottom: 14px; letter-spacing: 6px;"></div>
+                <p id="testEquationText" style="text-align: center; font-size: 1.5rem; font-weight: 800; color: #334155; margin: 0 0 14px;"></p>
+
+                <div class="choice-grid" id="testChoicesGrid"></div>
+                <p id="testFeedbackBanner" aria-live="polite" style="text-align: center; font-weight: 800; font-size: 1.1rem; min-height: 1.6em; margin: 14px 0 0;"></p>
+            </section>
+
+            <section class="study-card" id="testResultCard" hidden>
+                <div style="text-align: center; padding: 12px 4px;">
+                    <div style="font-size: 3.4rem;" aria-hidden="true">🎉</div>
+                    <h2 style="margin: 8px 0; font-size: 1.5rem;">탐험 완료! 우리 아이 맞춤 레벨을 찾았어요</h2>
+                    <p id="testResultSummary" style="color: #475569; font-weight: 700;"></p>
+                    <div class="levels-grid" id="testResultLevels" style="margin: 18px 0;"></div>
+                    <a id="btnFinishReturn" href="/study" class="study-link-btn study-btn-primary" style="width: 100%; max-width: 340px;">
+                        🎒 학습실로 돌아가기
+                    </a>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/js/study-test.js" defer></script>
+    <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
+</body>
+</html>
