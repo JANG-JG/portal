@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { db, newsDb } = require('../services/db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, getClientIp, revokedTokens } = require('../middleware/auth');
 const { JWT_SECRET, ADMIN_USERS } = require('../config/constants');
 const {
     VAPID_PUBLIC_KEY,
@@ -412,20 +412,45 @@ router.post('/test', authenticateToken, async (req, res) => {
     }
 });
 
-// 7. 서비스 워커 푸시 수신/표시 ACK 로깅 API
+// 7. 서비스 워커 푸시 수신/표시 ACK 로깅 API (IP당 분당 30회 제한 및 로그 길이 제한)
+const swAckRateMap = new Map();
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of swAckRateMap.entries()) {
+        if (now - entry.windowStart > 120 * 1000) swAckRateMap.delete(ip);
+    }
+}, 5 * 60 * 1000).unref();
+
 router.post('/sw-ack', (req, res) => {
-    const { status, title, tag, error } = req.body || {};
+    const clientIp = getClientIp(req);
+    const now = Date.now();
+    const rate = swAckRateMap.get(clientIp);
+    if (!rate || now - rate.windowStart > 60 * 1000) {
+        swAckRateMap.set(clientIp, { count: 1, windowStart: now });
+    } else {
+        if (rate.count >= 30) {
+            return res.status(429).json({ success: false, message: '요청이 너무 많습니다.' });
+        }
+        rate.count += 1;
+    }
+
+    const body = req.body || {};
+    const status = String(body.status || 'shown').slice(0, 20).replace(/[\r\n]/g, ' ');
+    const title = String(body.title || '-').slice(0, 120).replace(/[\r\n]/g, ' ');
+    const tag = String(body.tag || '-').slice(0, 60).replace(/[\r\n]/g, ' ');
+    const error = String(body.error || '').slice(0, 200).replace(/[\r\n]/g, ' ');
+
     recordPushDiagEvent({
         kind: 'sw-ack',
-        status: status || 'shown',
-        title: title || '-',
-        tag: tag || '-',
-        error: error || ''
+        status,
+        title,
+        tag,
+        error
     });
     if (status === 'error') {
-        console.error(`❌ [SW-Push-ACK] 알림 표시 오류: title=${title || '-'}, error=${error || 'unknown'}`);
+        console.error(`❌ [SW-Push-ACK] 알림 표시 오류: title=${title}, error=${error || 'unknown'}`);
     } else {
-        console.log(`📲 [SW-Push-ACK] 기기 알림 표시 완료 (${status || 'shown'}): title=${title || '-'}`);
+        console.log(`📲 [SW-Push-ACK] 기기 알림 표시 완료 (${status}): title=${title}`);
     }
     res.json({ success: true });
 });
@@ -442,11 +467,11 @@ router.post('/broadcast', async (req, res) => {
 
     let isAdminTokenValid = false;
     const authHeader = req.headers['authorization'];
-    const rawToken = (authHeader && authHeader.split(' ')[1]) || (req.cookies && req.cookies.portal_token);
-    if (!isInternalValid && rawToken) {
+    const rawToken = (authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null) || (req.cookies && req.cookies.portal_token);
+    if (!isInternalValid && rawToken && !revokedTokens.has(rawToken)) {
         try {
             const decoded = jwt.verify(rawToken, JWT_SECRET, { algorithms: ['HS256'] });
-            if (decoded && decoded.username && ADMIN_USERS.has(decoded.username)) {
+            if (decoded && decoded.username && !decoded.purpose && (decoded.role === 'admin' || ADMIN_USERS.has(decoded.username))) {
                 isAdminTokenValid = true;
             }
         } catch (err) {}
@@ -460,7 +485,7 @@ router.post('/broadcast', async (req, res) => {
         const result = await sendUnifiedPushNotification(req.body);
         res.json(result);
     } catch (e) {
-        res.status(500).json({ success: false, message: '브로드캐스트 발송 실패: ' + e.message });
+        res.status(500).json({ success: false, message: '브로드캐스트 발송 실패' });
     }
 });
 

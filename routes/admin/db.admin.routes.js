@@ -172,11 +172,35 @@ router.get('/:dbKey/table/:table/data', (req, res) => {
                     return res.status(500).json({ success: false, message: '데이터 조회 실패: ' + dataErr.message });
                 }
 
+const SENSITIVE_DB_COLS = new Set(['password', 'pin', 'invite_token', 'password_hash', 'secret']);
+
+function redactSensitiveRows(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) return rows || [];
+    return rows.map((row) => {
+        if (!row || typeof row !== 'object') return row;
+        const cloned = { ...row };
+        for (const col of Object.keys(cloned)) {
+            if (SENSITIVE_DB_COLS.has(col.toLowerCase()) && cloned[col] !== null && cloned[col] !== '') {
+                cloned[col] = '***[보호됨]***';
+            }
+        }
+        return cloned;
+    });
+}
+
+function escapeCsvFormulaCell(val) {
+    let s = val !== null && val !== undefined ? String(val) : '';
+    if (/^[=+\-@\t\r]/.test(s)) {
+        s = "'" + s;
+    }
+    return `"${s.replace(/"/g, '""')}"`;
+}
+
                 res.json({
                     success: true,
                     table: tableName,
                     columns,
-                    rows: rows || [],
+                    rows: redactSensitiveRows(rows),
                     pagination: {
                         page,
                         limit,
@@ -228,8 +252,16 @@ router.post('/:dbKey/query', (req, res) => {
         return res.status(400).json({ success: false, message: '실행할 SQL 쿼리를 입력하세요.' });
     }
 
-    // 🛡️ 위험 쿼리 안전 방어
+    // 🛡️ 파일 I/O 및 외부 확장 구문 영구 차단 (force 여부와 무관하게 허용 불가)
     const upper = sql.toUpperCase();
+    if (/\b(ATTACH|DETACH)\b/i.test(upper) || /\bVACUUM\s+INTO\b/i.test(upper) || /\bLOAD_EXTENSION\b/i.test(upper)) {
+        return res.status(403).json({
+            success: false,
+            message: '보안상 ATTACH/DETACH/VACUUM INTO/LOAD_EXTENSION 구문은 실행할 수 없습니다.'
+        });
+    }
+
+    // 🛡️ 위험 쿼리 안전 방어
     const isDangerous = /DROP\s+TABLE/i.test(upper) ||
                         /TRUNCATE/i.test(upper) ||
                         (/\bDELETE\s+FROM\b/i.test(upper) && !/\bWHERE\b/i.test(upper)) ||
@@ -252,13 +284,14 @@ router.post('/:dbKey/query', (req, res) => {
             if (err) {
                 return res.status(400).json({ success: false, message: err.message, elapsed_ms: elapsed });
             }
-            const cols = (rows && rows.length > 0) ? Object.keys(rows[0]) : [];
+            const safeRows = redactSensitiveRows(rows);
+            const cols = (safeRows && safeRows.length > 0) ? Object.keys(safeRows[0]) : [];
             res.json({
                 success: true,
                 is_select: true,
                 columns: cols,
-                rows: rows || [],
-                count: rows ? rows.length : 0,
+                rows: safeRows,
+                count: safeRows.length,
                 elapsed_ms: elapsed
             });
         });
@@ -386,15 +419,12 @@ router.get('/:dbKey/table/:table/export/csv', (req, res) => {
             return res.status(404).send('데이터가 없습니다.');
         }
 
-        const cols = Object.keys(rows[0]);
+        const safeRows = redactSensitiveRows(rows);
+        const cols = Object.keys(safeRows[0]);
         let csv = '\uFEFF' + cols.join(',') + '\n';
 
-        rows.forEach(r => {
-            const line = cols.map(c => {
-                let v = r[c] !== null && r[c] !== undefined ? String(r[c]) : '';
-                v = v.replace(/"/g, '""');
-                return `"${v}"`;
-            }).join(',');
+        safeRows.forEach(r => {
+            const line = cols.map(c => escapeCsvFormulaCell(r[c])).join(',');
             csv += line + '\n';
         });
 

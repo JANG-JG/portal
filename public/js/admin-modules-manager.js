@@ -67,12 +67,43 @@
             return;
         }
 
+        if (!tbody.dataset.boundModuleActions) {
+            tbody.dataset.boundModuleActions = 'true';
+            tbody.addEventListener('click', (e) => {
+                const dbLink = e.target.closest('[data-mod-db]');
+                if (dbLink) {
+                    e.preventDefault();
+                    const dbId = dbLink.dataset.modDb;
+                    if (typeof switchAdminTab === 'function') {
+                        switchAdminTab('tab-database');
+                        if (window.DbManager) setTimeout(() => DbManager.switchDb(dbId), 150);
+                    }
+                    return;
+                }
+                const btn = e.target.closest('button[data-mod-action]');
+                if (!btn) return;
+                const action = btn.dataset.modAction;
+                const modId = btn.dataset.modId || '';
+                const modName = btn.dataset.modName || '';
+                if (action === 'toggle' && typeof toggleModuleStatus === 'function') toggleModuleStatus(modId);
+                else if (action === 'delete' && typeof deleteModuleItem === 'function') deleteModuleItem(modId, modName);
+                else if (action === 'move-up' && typeof moveModuleItemOrder === 'function') moveModuleItemOrder(modId, 'up');
+                else if (action === 'move-down' && typeof moveModuleItemOrder === 'function') moveModuleItemOrder(modId, 'down');
+                else if (action === 'kpi' && typeof openModuleKpiModal === 'function') openModuleKpiModal(modId, modName);
+                else if (action === 'edit' && typeof openModuleModal === 'function') openModuleModal(modId);
+            });
+        }
+
         tbody.innerHTML = modules.map((m, idx) => {
             const isCore = coreModuleSet.has(m.id);
             const isEnabled = m.enabled !== false;
             const isFirst = idx === 0;
             const isLast = idx === modules.length - 1;
             const orderNumber = idx + 1;
+            const safeModId = escapeHtml(m.id);
+            const safeModName = escapeHtml(m.name);
+            const rawUrl = String(m.entryUrl || '').trim();
+            const safeEntryUrl = escapeHtml((/^https?:\/\//i.test(rawUrl) || (rawUrl.startsWith('/') && !rawUrl.startsWith('//'))) ? rawUrl : '#');
 
             // 권한 뱃지
             let permBadge = '';
@@ -92,16 +123,16 @@
             if (m.admin?.enabled) featureBadges.push('<span style="font-size:0.72rem; background:#ede9fe; color:#6d28d9; padding:2px 5px; border-radius:4px;">⚙️ 관리자</span>');
             if (m.dbPath) {
                 const dbFile = m.dbPath.split('/').pop();
-                featureBadges.push(`<a href="javascript:void(0)" onclick="if(typeof switchAdminTab==='function'){switchAdminTab('tab-database'); if(window.DbManager){setTimeout(()=>DbManager.switchDb('${m.id}'),150);}}" style="font-size:0.72rem; background:#dbeafe; color:#1d4ed8; padding:2px 5px; border-radius:4px; text-decoration:none; font-weight:600;" title="DB 관리자로 이동">🗄️ ${escapeHtml(dbFile)}</a>`);
+                featureBadges.push(`<a href="#" data-mod-db="${safeModId}" style="font-size:0.72rem; background:#dbeafe; color:#1d4ed8; padding:2px 5px; border-radius:4px; text-decoration:none; font-weight:600;" title="DB 관리자로 이동">🗄️ ${escapeHtml(dbFile)}</a>`);
             }
 
             // 토글 버튼 스타일
             const toggleBtn = isEnabled ? `
-                <button type="button" class="btn-admin btn-admin-success btn-admin-sm" style="padding:2px 8px; font-size:0.75rem;" onclick="toggleModuleStatus('${m.id}')">
+                <button type="button" class="btn-admin btn-admin-success btn-admin-sm" style="padding:2px 8px; font-size:0.75rem;" data-mod-action="toggle" data-mod-id="${safeModId}">
                     🟢 활성 중
                 </button>
             ` : `
-                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 8px; font-size:0.75rem; color:#94a3b8;" onclick="toggleModuleStatus('${m.id}')">
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 8px; font-size:0.75rem; color:#94a3b8;" data-mod-action="toggle" data-mod-id="${safeModId}">
                     ⚪ 비활성
                 </button>
             `;
@@ -112,7 +143,7 @@
                     🔒
                 </button>
             ` : `
-                <button type="button" class="btn-admin btn-admin-danger btn-admin-sm" style="padding:2px 6px; font-size:0.75rem;" onclick="deleteModuleItem('${m.id}', '${m.name}')" title="모듈 삭제">
+                <button type="button" class="btn-admin btn-admin-danger btn-admin-sm" style="padding:2px 6px; font-size:0.75rem;" data-mod-action="delete" data-mod-id="${safeModId}" data-mod-name="${safeModName}" title="모듈 삭제">
                     🗑️
                 </button>
             `;
@@ -128,34 +159,34 @@
                                 <button type="button" class="btn-admin btn-admin-outline" 
                                     style="padding:0 4px; height:15px; line-height:13px; font-size:0.6rem; border-radius:3px; ${isFirst ? 'opacity:0.25; cursor:not-allowed;' : ''}" 
                                     ${isFirst ? 'disabled' : ''} 
-                                    onclick="moveModuleItemOrder('${m.id}', 'up')" 
+                                    data-mod-action="move-up" data-mod-id="${safeModId}"
                                     title="${isFirst ? '첫 번째 항목입니다' : '위로 한 칸 이동'}">▲</button>
                                 <button type="button" class="btn-admin btn-admin-outline" 
                                     style="padding:0 4px; height:15px; line-height:13px; font-size:0.6rem; border-radius:3px; ${isLast ? 'opacity:0.25; cursor:not-allowed;' : ''}" 
                                     ${isLast ? 'disabled' : ''} 
-                                    onclick="moveModuleItemOrder('${m.id}', 'down')" 
+                                    data-mod-action="move-down" data-mod-id="${safeModId}"
                                     title="${isLast ? '마지막 항목입니다' : '아래로 한 칸 이동'}">▼</button>
                             </div>
                         </div>
                     </td>
                     <td>
                         <div style="font-weight:700; font-size:0.92rem; color:#0f172a; display:flex; align-items:center; gap:6px;">
-                            <span>${m.icon || '📦'}</span>
-                            <span>${m.name}</span>
+                            <span>${escapeHtml(m.icon || '📦')}</span>
+                            <span>${safeModName}</span>
                             ${isCore ? '<span style="font-size:0.68rem; color:#94a3b8; font-weight:normal;">(코어)</span>' : ''}
                         </div>
                         <div style="font-family:monospace; font-size:0.75rem; color:#64748b; margin-top:2px;">
-                            ${m.id}
+                            ${safeModId}
                         </div>
                     </td>
                     <td>
                         <span class="badge" style="background:#f8fafc; border:1px solid #e2e8f0; font-size:0.75rem;">
-                            ${m.category || '라이프'}
+                            ${escapeHtml(m.category || '라이프')}
                         </span>
                     </td>
                     <td>
-                        <a href="${m.entryUrl}" target="_blank" style="font-family:monospace; font-size:0.78rem; color:#2563eb; text-decoration:none;">
-                            ${m.entryUrl}
+                        <a href="${safeEntryUrl}" target="_blank" rel="noopener noreferrer" style="font-family:monospace; font-size:0.78rem; color:#2563eb; text-decoration:none;">
+                            ${escapeHtml(rawUrl)}
                         </a>
                     </td>
                     <td>
@@ -171,10 +202,10 @@
                     </td>
                     <td style="text-align:center;">
                         <div style="display:inline-flex; gap:4px; align-items:center;">
-                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 6px; font-size:0.75rem;" onclick="if(typeof openModuleKpiModal==='function')openModuleKpiModal('${m.id}', '${escapeHtml(m.name)}')" title="실시간 Bento KPI 지표 보기">
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 6px; font-size:0.75rem;" data-mod-action="kpi" data-mod-id="${safeModId}" data-mod-name="${safeModName}" title="실시간 Bento KPI 지표 보기">
                                 📊
                             </button>
-                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 6px; font-size:0.75rem;" onclick="openModuleModal('${m.id}')" title="설정 수정">
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 6px; font-size:0.75rem;" data-mod-action="edit" data-mod-id="${safeModId}" title="설정 수정">
                                 ✏️
                             </button>
                             ${deleteBtn}

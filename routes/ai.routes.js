@@ -50,7 +50,7 @@ setInterval(() => {
         if (valid.length === 0) chatRateLimitMap.delete(k);
         else chatRateLimitMap.set(k, valid);
     }
-}, 10 * 60 * 1000);
+}, 10 * 60 * 1000).unref();
 
 /** 👤 사용자 친화적 표시 호칭 정제 (admin 계정은 '관리자'로 정중하게 변환) */
 function resolveUserName(user) {
@@ -60,13 +60,13 @@ function resolveUserName(user) {
     return name;
 }
 
-// 0. AI 비서 런타임 설정 조회 (웰컴 메시지 및 글자 수 제한)
-router.get('/api/ai/config', (req, res) => {
+// 0. AI 비서 런타임 설정 조회 (웰컴 메시지 및 글자 수 제한, 인증 필수)
+router.get('/api/ai/config', authenticateToken, (req, res) => {
     try {
         const config = getAiConfig();
         res.json({ success: true, config });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'AI 설정을 불러오지 못했습니다.', error: err.message });
+        res.status(500).json({ success: false, message: 'AI 설정을 불러오지 못했습니다.' });
     }
 });
 
@@ -76,7 +76,7 @@ router.get('/api/ai/health', authenticateToken, async (req, res) => {
         const health = await checkAiHealth();
         res.json({ success: true, health });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'AI 헬스체크 실패', error: err.message });
+        res.status(500).json({ success: false, message: 'AI 헬스체크 실패' });
     }
 });
 
@@ -84,6 +84,15 @@ router.get('/api/ai/health', authenticateToken, async (req, res) => {
 router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
     try {
         const forceRefresh = (req.query.refresh === '1' || req.query.refresh === 'true');
+        if (forceRefresh) {
+            const rateKey = req.user?.username || getClientIp(req);
+            if (!checkChatRateLimit(rateKey)) {
+                return res.status(429).json({
+                    success: false,
+                    message: 'AI 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.'
+                });
+            }
+        }
         const summary = await getPortalSummary(req.user);
         const userName = resolveUserName(req.user);
 
@@ -220,6 +229,11 @@ router.post('/api/ai/memo-to-wiki', authenticateToken, async (req, res) => {
             return res.status(400).json({ success: false, message: '정리할 메모 내용이 없습니다.' });
         }
 
+        const rateKey = req.user?.username || getClientIp(req);
+        if (!checkChatRateLimit(rateKey)) {
+            return res.status(429).json({ success: false, message: 'AI 요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요. (1분당 최대 12회)' });
+        }
+
         if (activeAiRequests >= MAX_CONCURRENT_AI) {
             return res.status(503).json({ success: false, message: 'AI 엔진이 다른 작업을 처리 중입니다. 잠시 후 시도해 주세요.' });
         }
@@ -245,7 +259,7 @@ router.post('/api/ai/memo-to-wiki', authenticateToken, async (req, res) => {
         }
     } catch (err) {
         console.error('[API /api/ai/memo-to-wiki] 오류:', err);
-        res.status(500).json({ success: false, message: '위키 문서 변환 실패: ' + err.message });
+        res.status(500).json({ success: false, message: '위키 문서 변환 처리 중 오류가 발생했습니다.' });
     }
 });
 
@@ -255,6 +269,11 @@ router.post('/api/ai/extract-routine', authenticateToken, async (req, res) => {
         const { title, content } = req.body;
         if (!content || !content.trim()) {
             return res.status(400).json({ success: false, message: '분석할 메모 내용이 없습니다.' });
+        }
+
+        const rateKey = req.user?.username || getClientIp(req);
+        if (!checkChatRateLimit(rateKey)) {
+            return res.status(429).json({ success: false, message: 'AI 요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요. (1분당 최대 12회)' });
         }
 
         if (activeAiRequests >= MAX_CONCURRENT_AI) {
@@ -281,7 +300,7 @@ router.post('/api/ai/extract-routine', authenticateToken, async (req, res) => {
         }
     } catch (err) {
         console.error('[API /api/ai/extract-routine] 오류:', err);
-        res.status(500).json({ success: false, message: '루틴 분석 실패: ' + err.message });
+        res.status(500).json({ success: false, message: '루틴 분석 처리 중 오류가 발생했습니다.' });
     }
 });
 
@@ -291,6 +310,11 @@ router.post('/api/ai/summarize', authenticateToken, async (req, res) => {
         const { text, maxLines = 3 } = req.body;
         if (!text || !text.trim()) {
             return res.status(400).json({ success: false, message: '요약할 본문 내용이 없습니다.' });
+        }
+
+        const rateKey = req.user?.username || getClientIp(req);
+        if (!checkChatRateLimit(rateKey)) {
+            return res.status(429).json({ success: false, message: 'AI 요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요. (1분당 최대 12회)' });
         }
 
         if (activeAiRequests >= MAX_CONCURRENT_AI) {
@@ -317,7 +341,7 @@ router.post('/api/ai/summarize', authenticateToken, async (req, res) => {
         }
     } catch (err) {
         console.error('[API /api/ai/summarize] 오류:', err);
-        res.status(500).json({ success: false, message: '요약 생성 실패: ' + err.message });
+        res.status(500).json({ success: false, message: '요약 생성 중 오류가 발생했습니다.' });
     }
 });
 
@@ -327,6 +351,11 @@ router.post('/api/ai/wiki-draft', authenticateToken, async (req, res) => {
         const { prompt, category = '생활' } = req.body;
         if (!prompt || !prompt.trim()) {
             return res.status(400).json({ success: false, message: '작성할 주제를 입력해 주세요.' });
+        }
+
+        const rateKey = req.user?.username || getClientIp(req);
+        if (!checkChatRateLimit(rateKey)) {
+            return res.status(429).json({ success: false, message: 'AI 요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요. (1분당 최대 12회)' });
         }
 
         if (activeAiRequests >= MAX_CONCURRENT_AI) {
@@ -353,7 +382,7 @@ router.post('/api/ai/wiki-draft', authenticateToken, async (req, res) => {
         }
     } catch (err) {
         console.error('[API /api/ai/wiki-draft] 오류:', err);
-        res.status(500).json({ success: false, message: '위키 초안 작성 실패: ' + err.message });
+        res.status(500).json({ success: false, message: '위키 초안 작성 중 오류가 발생했습니다.' });
     }
 });
 
@@ -363,6 +392,11 @@ router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
         const { title = '', content, category = '생활', forceNew = false } = req.body;
         if (!content || !content.trim()) {
             return res.status(400).json({ success: false, message: '위키로 등록할 내용이 없습니다.' });
+        }
+
+        const rateKey = req.user?.username || getClientIp(req);
+        if (!checkChatRateLimit(rateKey)) {
+            return res.status(429).json({ success: false, message: 'AI 요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요. (1분당 최대 12회)' });
         }
 
         if (activeAiRequests >= MAX_CONCURRENT_AI) {
@@ -459,7 +493,7 @@ router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
         }
     } catch (err) {
         console.error('[API /api/ai/publish-to-wiki] 오류:', err);
-        res.status(500).json({ success: false, message: '위키 문서 처리 실패: ' + err.message });
+        res.status(500).json({ success: false, message: '위키 문서 처리 중 오류가 발생했습니다.' });
     }
 });
 

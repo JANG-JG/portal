@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { JWT_SECRET } = require('../config/constants');
+const { JWT_SECRET, ADMIN_USERS } = require('../config/constants');
 const { db, newsDb, albumDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { getLiveWeatherData, CITY_LIST, normalizeCityCode, getDefaultWeatherCity } = require('../services/weather.service');
@@ -108,7 +108,7 @@ router.get('/api/portal/recent-photos', authenticateToken, (req, res) => {
 // 2. 원터치 복약 등록 API
 router.post('/api/blood/quick-med', authenticateToken, (req, res) => {
     // 🛡️ 혈압 및 복약 기능은 관리자 전용
-    if (!req.user || req.user.role !== 'admin') {
+    if (!req.user || (req.user.role !== 'admin' && !ADMIN_USERS.has(req.user.username))) {
         return res.status(403).json({ success: false, message: '혈압 및 복약 관리는 관리자 전용 기능입니다.' });
     }
     try {

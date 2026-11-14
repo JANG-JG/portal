@@ -195,21 +195,22 @@ async function loadUpcomingCalendarEvents() {
                 ddayText = diffDays > 0 ? `D-${diffDays}` : `D+${Math.abs(diffDays)}`;
             }
 
-            const title = (ev.title || '일정').replace(/</g, '&lt;');
-            const category = ev.category || '일정';
-            const color = ev.color || '#6366f1';
-            const timeStr = ev.is_all_day ? '종일' : (ev.event_time || '');
+            const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const title = esc(ev.title || '일정');
+            const category = esc(ev.category || '일정');
+            const color = /^#[0-9a-fA-F]{3,8}$/.test(String(ev.color || '')) ? ev.color : '#6366f1';
+            const timeStr = esc(ev.is_all_day ? '종일' : (ev.event_time || ''));
 
             return `
                 <a href="/calendar" class="cal-upcoming-card" style="border-left-color:${color};" title="${title}">
                     <div class="cal-upcoming-date-box">
-                        <span class="cal-upcoming-month">${month}</span>
-                        <span class="cal-upcoming-day">${day}</span>
+                        <span class="cal-upcoming-month">${esc(month)}</span>
+                        <span class="cal-upcoming-day">${esc(day)}</span>
                     </div>
                     <div class="cal-upcoming-body">
                         <div class="cal-upcoming-title">${title}</div>
                         <div class="cal-upcoming-meta">
-                            <span class="cal-dday-badge ${isToday ? 'today' : ''}">${ddayText}</span>
+                            <span class="cal-dday-badge ${isToday ? 'today' : ''}">${esc(ddayText)}</span>
                             <span>${category}</span>
                             ${timeStr ? `<span>· ${timeStr}</span>` : ''}
                         </div>

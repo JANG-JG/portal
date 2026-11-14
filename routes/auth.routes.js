@@ -145,7 +145,7 @@ function getAuthorizedDeviceUsername(req) {
     const token = req.cookies?.jg_family_device || req.headers['x-family-device'] || req.query?.device_token;
     if (!token) return null;
     try {
-        const decoded = jwt.verify(token, JWT_SECRET);
+        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
         if (decoded && decoded.username && decoded.purpose === 'family_device') {
             return decoded.username;
         }
@@ -161,7 +161,7 @@ router.get('/api/auth/family-members', (req, res) => {
     if (!authorizedUsername && (req.headers['x-invite-verify'] || req.query?.verify_invite)) {
         const verifyToken = req.headers['x-invite-verify'] || req.query?.verify_invite;
         try {
-            const decoded = jwt.verify(verifyToken, JWT_SECRET);
+            const decoded = jwt.verify(verifyToken, JWT_SECRET, { algorithms: ['HS256'] });
             if (decoded && decoded.username && decoded.purpose === 'invite_verify') {
                 authorizedUsername = decoded.username;
             }
@@ -202,6 +202,15 @@ router.post('/api/auth/family-login', async (req, res) => {
     const { username, pin } = req.body;
     const clientIp = getClientIp(req);
 
+    const limitCheck = checkLoginRateLimit(clientIp);
+    if (!limitCheck.allowed) {
+        recordLoginLog(username || '미입력', clientIp, 'BLOCKED_FAMILY_RATE_LIMIT');
+        return res.status(429).json({
+            success: false,
+            message: `로그인 시도가 너무 많습니다. 보안을 위해 약 ${limitCheck.remainingMinutes}분 후에 다시 시도해 주세요.`
+        });
+    }
+
     if (!username || !pin) {
         return res.status(400).json({ success: false, message: '가족을 선택하고 6자리 PIN을 입력해 주세요.' });
     }
@@ -213,7 +222,8 @@ router.post('/api/auth/family-login', async (req, res) => {
     db.get('SELECT rowid, * FROM users WHERE username = ?', [username], async (err, user) => {
         if (err || !user) {
             recordLoginFailure(clientIp);
-            return res.status(401).json({ success: false, message: '등록되지 않은 가족 계정입니다.' });
+            recordLoginLog(username, clientIp, 'FAILED_FAMILY_PIN');
+            return res.status(401).json({ success: false, message: '가족 계정 정보 또는 6자리 PIN 번호가 올바르지 않습니다.' });
         }
 
         // 🛡️ 5회 연속 실패 잠금 검사 (30분 잠금)
@@ -231,6 +241,7 @@ router.post('/api/auth/family-login', async (req, res) => {
             const match = await bcrypt.compare(String(pin), pinToCompare);
 
             if (!match) {
+                recordLoginFailure(clientIp);
                 const newAttempts = (user.failed_pin_attempts || 0) + 1;
                 if (newAttempts >= 5) {
                     db.run(
@@ -248,7 +259,7 @@ router.post('/api/auth/family-login', async (req, res) => {
                     recordLoginLog(username, clientIp, 'FAILED_PIN');
                     return res.status(401).json({
                         success: false,
-                        message: `PIN 번호가 올바르지 않습니다. (남은 기회: ${5 - newAttempts}회)`
+                        message: '가족 계정 정보 또는 6자리 PIN 번호가 올바르지 않습니다.'
                     });
                 }
             }
@@ -328,11 +339,18 @@ router.post('/api/auth/change-pin', async (req, res) => {
         return res.status(400).json({ success: false, message: '새 PIN은 반드시 숫자 6자리여야 합니다.' });
     }
 
+    if (revokedTokens.has(tempToken)) {
+        return res.status(401).json({ success: false, message: '이미 사용된 인증 요청입니다. 다시 로그인해 주세요.' });
+    }
+
     try {
-        const decoded = jwt.verify(tempToken, JWT_SECRET);
+        const decoded = jwt.verify(tempToken, JWT_SECRET, { algorithms: ['HS256'] });
         if (!decoded || !decoded.username || decoded.purpose !== 'pin_change_required') {
             return res.status(401).json({ success: false, message: '유효하지 않거나 만료된 요청입니다. 다시 로그인해 주세요.' });
         }
+
+        const expTime = decoded.exp ? decoded.exp * 1000 : Date.now() + 30 * 60 * 1000;
+        revokedTokens.set(tempToken, expTime);
 
         const username = decoded.username;
         const newPinHash = await bcrypt.hash(String(newPin), 10);
@@ -343,8 +361,8 @@ router.post('/api/auth/change-pin', async (req, res) => {
             }
 
             db.run(
-                'UPDATE users SET pin = ?, password = ?, pin_reset_required = 0, failed_pin_attempts = 0, locked_until = NULL WHERE username = ?',
-                [newPinHash, newPinHash, username],
+                'UPDATE users SET pin = ?, pin_reset_required = 0, failed_pin_attempts = 0, locked_until = NULL WHERE username = ?',
+                [newPinHash, username],
                 (upErr) => {
                     if (upErr) {
                         return res.status(500).json({ success: false, message: 'PIN 변경 실패' });
@@ -438,8 +456,10 @@ router.post('/api/auth/unlink-device', (req, res) => {
 
 // 로그아웃 API
 router.get('/logout', (req, res) => {
-    const token = req.cookies.portal_token;
-    if (token) {
+    const authHeader = req.headers['authorization'];
+    const bearerToken = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.split(' ')[1] : null;
+    const tokensToRevoke = [req.cookies?.portal_token, bearerToken].filter(Boolean);
+    for (const token of tokensToRevoke) {
         try {
             const decoded = jwt.decode(token);
             const expTime = (decoded && decoded.exp) ? decoded.exp * 1000 : Date.now() + 7 * 24 * 60 * 60 * 1000;
@@ -464,6 +484,9 @@ router.get('/logout', (req, res) => {
         `jg_user_role=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
         `jg_allowed_services=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
     ]);
+    if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+        res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
+    }
 
     res.redirect('/login?logout=success');
 });

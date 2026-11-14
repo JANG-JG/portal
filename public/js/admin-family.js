@@ -74,13 +74,33 @@ function renderFamilyMembersTable(members) {
     }
 
 
+    if (!tableBody.dataset.boundFamilyActions) {
+        tableBody.dataset.boundFamilyActions = 'true';
+        tableBody.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-family-action]');
+            if (!btn) return;
+            const action = btn.dataset.familyAction;
+            const username = btn.dataset.username || '';
+            const nickname = btn.dataset.nickname || '';
+            const inviteUrl = btn.dataset.inviteUrl || '';
+            if (action === 'unlock' && typeof unlockFamilyMember === 'function') unlockFamilyMember(username);
+            else if (action === 'copy-invite' && typeof copyFamilyInviteUrl === 'function') copyFamilyInviteUrl(inviteUrl, nickname);
+            else if (action === 'reset-pin' && typeof openResetPinModal === 'function') openResetPinModal(username, nickname);
+            else if (action === 'edit' && typeof openEditFamilyModal === 'function') openEditFamilyModal(username);
+            else if (action === 'delete' && typeof deleteFamilyMember === 'function') deleteFamilyMember(username, nickname);
+        });
+    }
+
     tableBody.innerHTML = members.map(m => {
         const isAdmin = m.role === 'admin';
         const isSelf = isAdmin && (m.id === 1 || m.username === 'admin');
+        const safeUsernameAttr = escapeHtml(m.username);
+        const safeNicknameAttr = escapeHtml(m.nickname);
+        const safeInviteUrlAttr = escapeHtml(m.inviteUrl || '');
 
         // 허용 서비스 배지 생성
         const serviceBadges = (m.allowedServices || []).map(s => {
-            const label = serviceLabels[s] || s;
+            const label = escapeHtml(serviceLabels[s] || s);
             const bg = (s === 'all' || s === 'asset') ? '#f3e8ff; color:#7c3aed;' : (s === 'album' ? '#fdf2f8; color:#db2777;' : '#f0fdf4; color:#16a34a;');
             return `<span style="display:inline-block; font-size:0.75rem; font-weight:700; padding:2px 8px; border-radius:9999px; background:${bg}; margin:2px;">${label}</span>`;
         }).join(' ');
@@ -93,7 +113,7 @@ function renderFamilyMembersTable(members) {
             pinStatusHtml = `
                 <div style="display:inline-flex; align-items:center; gap:4px;">
                     <span style="color:#dc2626; font-weight:800; font-size:0.8rem;">🔒 5회 오류 잠금</span>
-                    <button type="button" class="btn-admin btn-admin-danger btn-admin-sm" style="padding:1px 6px; font-size:0.7rem;" onclick="unlockFamilyMember('${m.username}')">해제</button>
+                    <button type="button" class="btn-admin btn-admin-danger btn-admin-sm" style="padding:1px 6px; font-size:0.7rem;" data-family-action="unlock" data-username="${safeUsernameAttr}">해제</button>
                 </div>
             `;
         } else if (m.pinResetRequired) {
@@ -104,25 +124,25 @@ function renderFamilyMembersTable(members) {
 
         // 액션 버튼
         const inviteBtn = (!isAdmin && m.inviteUrl) ? `
-            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" title="카카오톡 초대 링크 복사" onclick="copyFamilyInviteUrl('${m.inviteUrl}', '${escapeHtml(m.nickname)}')">
+            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" title="카카오톡 초대 링크 복사" data-family-action="copy-invite" data-invite-url="${safeInviteUrlAttr}" data-nickname="${safeNicknameAttr}">
                 🔗 초대 링크
             </button>
         ` : '';
 
         const resetPinBtn = !isAdmin ? `
-            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" title="임시 PIN 재설정" onclick="openResetPinModal('${m.username}', '${escapeHtml(m.nickname)}')">
+            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" title="임시 PIN 재설정" data-family-action="reset-pin" data-username="${safeUsernameAttr}" data-nickname="${safeNicknameAttr}">
                 🔑 PIN 재설정
             </button>
         ` : '';
 
         const editBtn = `
-            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="openEditFamilyModal('${m.username}')">
+            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" data-family-action="edit" data-username="${safeUsernameAttr}">
                 ✏️ 수정
             </button>
         `;
 
         const deleteBtn = !isSelf ? `
-            <button type="button" class="btn-admin btn-admin-danger btn-admin-sm" onclick="deleteFamilyMember('${m.username}', '${escapeHtml(m.nickname)}')">
+            <button type="button" class="btn-admin btn-admin-danger btn-admin-sm" data-family-action="delete" data-username="${safeUsernameAttr}" data-nickname="${safeNicknameAttr}">
                 🗑️ 삭제
             </button>
         ` : '';

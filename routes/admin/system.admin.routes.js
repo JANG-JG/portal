@@ -6,9 +6,11 @@ const os = require('os');
 const { exec, execFile } = require('child_process');
 
 const {
+    resolveDbPath,
     getDynamicDbMap,
     getFileSizeStr
 } = require('../../services/adminDbInspector.service');
+const { getAllModules } = require('../../services/moduleRegistry.service');
 
 const { db, newsDb } = require('../../services/db');
 const { WORKSPACE_ROOT, SECONDARY_HOST } = require('../../config/constants');
@@ -428,7 +430,7 @@ router.get('/backup/all', (req, res) => {
         const mods = getAllModules(true);
         mods.forEach(m => {
             if (m.dbPath) {
-                const fullP = resolveModuleDbPath(m.dbPath);
+                const fullP = resolveDbPath(m.dbPath);
                 if (fullP && fs.existsSync(fullP) && !seen.has(fullP)) {
                     seen.add(fullP);
                     dbFiles.push({ path: fullP, arc: `${m.id}_${path.basename(fullP)}` });
@@ -439,22 +441,24 @@ router.get('/backup/all', (req, res) => {
         console.error('[백업] 모듈 DB 수집 실패:', e.message);
     }
 
-    const pyScript = `import zipfile, os, json
-zpath = "${tmpZip}"
-files = json.loads('''${JSON.stringify(dbFiles)}''')
-zf = zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED)
-for item in files:
-    p = item.get("path")
-    arc = item.get("arc")
-    if p and os.path.exists(p):
-        zf.write(p, arc)
-zf.close()
-`;
+    const pyScript = [
+        'import zipfile, os, json',
+        'zpath = os.environ["BACKUP_ZIP_PATH"]',
+        'files = json.loads(os.environ["BACKUP_FILES_JSON"])',
+        'with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as zf:',
+        '    for item in files:',
+        '        p = item.get("path")',
+        '        arc = item.get("arc")',
+        '        if p and os.path.exists(p):',
+        '            zf.write(p, arc)'
+    ].join('\n');
 
-    execFile('python3', ['-c', pyScript], (err) => {
+    execFile('python3', ['-c', pyScript], {
+        env: { ...process.env, BACKUP_ZIP_PATH: tmpZip, BACKUP_FILES_JSON: JSON.stringify(dbFiles) }
+    }, (err) => {
         if (err || !fs.existsSync(tmpZip)) {
             console.error('[일괄 백업 압축 오류]', err);
-            return res.status(500).json({ success: false, message: '전체 DB 압축 생성 실패: ' + (err ? err.message : '파일 없음') });
+            return res.status(500).json({ success: false, message: '전체 DB 압축 생성 실패' });
         }
         res.download(tmpZip, `jg_all_databases_${timestamp}.zip`, () => {
             try { fs.unlinkSync(tmpZip); } catch (e) {}
@@ -476,7 +480,7 @@ router.get('/backup/:type', (req, res) => {
         const targetId = (type === 'health') ? 'blood' : (type === 'briefing' ? 'news' : type);
         const mod = mods.find(m => m.id === targetId || m.id === type);
         if (mod && mod.dbPath) {
-            const fullP = resolveModuleDbPath(mod.dbPath);
+            const fullP = resolveDbPath(mod.dbPath);
             if (fullP && fs.existsSync(fullP)) {
                 return res.download(fullP, `${mod.id}_${path.basename(fullP, '.db')}_backup_${now}.db`);
             }

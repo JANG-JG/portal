@@ -52,7 +52,12 @@
                     const descEl = existingHero.querySelector('.ai-hero-desc');
                     if (iconEl && data.config.heroIcon) iconEl.textContent = data.config.heroIcon;
                     if (titleEl && data.config.heroTitle) titleEl.textContent = data.config.heroTitle;
-                    if (descEl && data.config.heroDescription) descEl.innerHTML = data.config.heroDescription.replace(/\n/g, '<br>');
+                    if (descEl && data.config.heroDescription) {
+                        const safeDesc = String(data.config.heroDescription)
+                            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        descEl.innerHTML = safeDesc.replace(/\r?\n/g, '<br>');
+                    }
                 }
 
                 // 4. 모델 선택 셀렉트 박스 라벨 적용 (관리자가 지정한 한글 친화적 명칭)
@@ -258,13 +263,16 @@
         }
 
         historyListEl.innerHTML = '';
-        const escapeFn = (window.JgAiRender && window.JgAiRender.escapeHtml) ? window.JgAiRender.escapeHtml : (s => s);
+        const escapeFn = (window.JgAiRender && window.JgAiRender.escapeHtml)
+            ? window.JgAiRender.escapeHtml
+            : (s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'));
 
         sessions.forEach(sess => {
             const item = document.createElement('div');
             item.className = 'ai-history-item' + (sess.id === activeId ? ' active' : '');
             const userMsgCount = sess.messages ? sess.messages.filter(m => m.role === 'user').length : 0;
-            const timeStr = window.JgAiHistory.formatRelativeTime ? window.JgAiHistory.formatRelativeTime(sess.updatedAt) : '';
+            const timeStr = escapeFn(window.JgAiHistory.formatRelativeTime ? window.JgAiHistory.formatRelativeTime(sess.updatedAt) : '');
+            const safeSessId = escapeFn(sess.id);
 
             item.innerHTML = `
                 <div class="ai-history-item-info">
@@ -272,8 +280,8 @@
                     <div class="ai-history-item-meta">${timeStr} • 대화 ${userMsgCount}개</div>
                 </div>
                 <div class="ai-history-item-actions">
-                    <button type="button" class="ai-history-action-btn ai-history-edit-btn" title="대화명 변경" data-edit-id="${sess.id}">✏️</button>
-                    <button type="button" class="ai-history-action-btn ai-history-del-btn" title="대화 삭제" data-del-id="${sess.id}">🗑️</button>
+                    <button type="button" class="ai-history-action-btn ai-history-edit-btn" title="대화명 변경" data-edit-id="${safeSessId}">✏️</button>
+                    <button type="button" class="ai-history-action-btn ai-history-del-btn" title="대화 삭제" data-del-id="${safeSessId}">🗑️</button>
                 </div>
             `;
 

@@ -213,28 +213,38 @@
         }
 
         function escapeHtml(str) {
-            return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function sanitizeSearchUrl(url, fallback = '/go/news') {
+            const s = String(url || '').trim();
+            return (/^https?:\/\//i.test(s) || (s.startsWith('/') && !s.startsWith('//'))) ? s : fallback;
         }
 
         function escapeRegExp(string) {
             return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         }
 
-        // HTML 태그 제거 및 순수 텍스트 정제 헬퍼
+        // HTML 태그 제거 및 순수 텍스트 정제 헬퍼 (DOMParser 기반 비실행 파싱)
         function stripHtmlTags(html) {
             if (!html) return '';
-            const tmp = document.createElement('div');
-            tmp.innerHTML = html;
-            const text = tmp.textContent || tmp.innerText || '';
-            return text.replace(/\s+/g, ' ').trim();
+            try {
+                const doc = new DOMParser().parseFromString(String(html), 'text/html');
+                const text = doc.body ? (doc.body.textContent || '') : '';
+                return text.replace(/\s+/g, ' ').trim();
+            } catch (e) {
+                return String(html).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            }
         }
 
         function highlightMatch(text, query) {
-            if (!text || !query) return (text || '');
-            const safeText = String(text)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
+            const safeText = escapeHtml(text || '');
+            if (!safeText || !query) return safeText;
             const cleanQuery = query.trim();
             if (!cleanQuery) return safeText;
             const regex = new RegExp(`(${escapeRegExp(cleanQuery)})`, 'gi');
@@ -270,12 +280,12 @@
                     const cleanPlainContent = stripHtmlTags(m.content || '');
                     const contentSnippet = cleanPlainContent.length > 140 ? cleanPlainContent.slice(0, 140) + '...' : cleanPlainContent;
                     const contentHtml = highlightMatch(contentSnippet, query);
-                    const dateStr = (m.updated_at || '').slice(0, 16);
+                    const dateStr = escapeHtml((m.updated_at || '').slice(0, 16));
 
                     item.innerHTML = `
                         <div class="qs-item-top">
                             <span class="qs-item-title">${m.is_pinned ? '📌 ' : ''}${titleHtml}</span>
-                            <span class="qs-item-badge" style="background:#fef3c7; color:#92400e;">${catName}</span>
+                            <span class="qs-item-badge" style="background:#fef3c7; color:#92400e;">${escapeHtml(catName)}</span>
                         </div>
                         <div class="qs-item-desc">${contentHtml}</div>
                         <div class="qs-item-meta">
@@ -299,21 +309,21 @@
                 news.forEach(n => {
                     const item = document.createElement('a');
                     item.className = 'qs-item';
-                    item.href = n.link || '/go/news';
+                    item.href = sanitizeSearchUrl(n.link, '/go/news');
                     item.target = '_blank';
                     item.rel = 'noopener noreferrer';
                     const titleHtml = highlightMatch(n.title || '', query);
                     const descHtml = highlightMatch(n.summary || '', query);
-                    const timeStr = n.published_at ? n.published_at.slice(0, 16) : n.date;
+                    const timeStr = escapeHtml(n.published_at ? n.published_at.slice(0, 16) : n.date);
 
                     item.innerHTML = `
                         <div class="qs-item-top">
                             <span class="qs-item-title">${titleHtml}</span>
-                            <span class="qs-item-badge" style="background:#dbeafe; color:#1e40af;">${n.category_name || '뉴스'}</span>
+                            <span class="qs-item-badge" style="background:#dbeafe; color:#1e40af;">${escapeHtml(n.category_name || '뉴스')}</span>
                         </div>
                         ${descHtml ? `<div class="qs-item-desc">${descHtml}</div>` : ''}
                         <div class="qs-item-meta">
-                            <span>${n.media_name || '언론사'}</span>
+                            <span>${escapeHtml(n.media_name || '언론사')}</span>
                             <span>•</span>
                             <span>${timeStr}</span>
                             <span>•</span>
@@ -360,8 +370,8 @@
                         </div>
                         ${memoHtml ? `<div class="qs-item-desc">${memoHtml}</div>` : ''}
                         <div class="qs-item-meta">
-                            <span>진료일: ${h.visit_date || '-'}</span>
-                            ${h.next_visit_date ? `<span>• 다음 예약: <b>${h.next_visit_date}</b></span>` : ''}
+                            <span>진료일: ${escapeHtml(h.visit_date || '-')}</span>
+                            ${h.next_visit_date ? `<span>• 다음 예약: <b>${escapeHtml(h.next_visit_date)}</b></span>` : ''}
                             <span>•</span>
                             <span style="color:#dc2626;">병원 관리 ↗</span>
                         </div>
@@ -388,12 +398,12 @@
                     item.innerHTML = `
                         <div class="qs-item-top">
                             <span class="qs-item-title">${symHtml} - ${nameHtml}</span>
-                            <span class="qs-item-badge" style="background:#dcfce7; color:#166534;">${a.asset_type || '주식'}</span>
+                            <span class="qs-item-badge" style="background:#dcfce7; color:#166534;">${escapeHtml(a.asset_type || '주식')}</span>
                         </div>
                         <div class="qs-item-meta">
-                            <span>보유 수량: <b>${a.quantity || 0}주</b></span>
+                            <span>보유 수량: <b>${escapeHtml(Number(a.quantity) || 0)}주</b></span>
                             <span>•</span>
-                            <span>평단가: ${(a.avg_price || 0).toLocaleString()} ${a.currency || 'KRW'}</span>
+                            <span>평단가: ${escapeHtml((Number(a.avg_price) || 0).toLocaleString())} ${escapeHtml(a.currency || 'KRW')}</span>
                             <span>•</span>
                             <span style="color:#16a34a;">자산 앱 열기 ↗</span>
                         </div>

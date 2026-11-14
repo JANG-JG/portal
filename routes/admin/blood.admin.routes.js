@@ -1,9 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { BLOOD_DIR } = require('../../config/constants');
 const { db } = require('../../services/db');
+
+function csvSafeCell(val) {
+    let s = val !== null && val !== undefined ? String(val) : '';
+    if (/^[=+\-@\t\r]/.test(s)) {
+        s = "'" + s;
+    }
+    return `"${s.replace(/"/g, '""')}"`;
+}
 
 // 1. 혈압 CSV 내보내기
 router.get('/export-csv', (req, res) => {
@@ -14,16 +22,13 @@ router.get('/export-csv', (req, res) => {
             let csvContent = '\uFEFF[혈압 및 복약 기록]\n';
             csvContent += '번호,최고혈압(수축기),최저혈압(이완기),맥박,측정일시,복약일시\n';
             (records || []).forEach(row => {
-                csvContent += `${row.id},${row.systolic ?? ''},${row.diastolic ?? ''},${row.pulse ?? ''},"${row.measured_at ?? ''}","${row.medication_time ?? ''}"\n`;
+                csvContent += `${row.id},${row.systolic ?? ''},${row.diastolic ?? ''},${row.pulse ?? ''},${csvSafeCell(row.measured_at)},${csvSafeCell(row.medication_time)}\n`;
             });
 
             csvContent += '\n[병원 진료 및 처방 기록]\n';
             csvContent += '번호,진료일,병원명,진료과,메모,처방일수,다음진료예정일,예약오픈일시,알림이메일,알림여부\n';
             (visits || []).forEach(v => {
-                const hospName = (v.hospital_name || '').replace(/"/g, '""');
-                const dept = (v.department || '').replace(/"/g, '""');
-                const memo = (v.memo || '').replace(/"/g, '""');
-                csvContent += `${v.id},${v.visit_date || ''},"${hospName}","${dept}","${memo}",${v.prescription_days || ''},${v.next_visit_date || ''},"${v.reservation_open_date || ''}","${v.notification_email || ''}",${v.send_notification ? '켜짐' : '꺼짐'}\n`;
+                csvContent += `${v.id},${csvSafeCell(v.visit_date)},${csvSafeCell(v.hospital_name)},${csvSafeCell(v.department)},${csvSafeCell(v.memo)},${v.prescription_days || ''},${csvSafeCell(v.next_visit_date)},${csvSafeCell(v.reservation_open_date)},${csvSafeCell(v.notification_email)},${v.send_notification ? '켜짐' : '꺼짐'}\n`;
             });
 
             const kstToday = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
@@ -92,9 +97,9 @@ router.get('/recent', (req, res) => {
 // 4. 혈압 알림 메일 (SMTP) 전송 테스트
 router.post('/test-email', (req, res) => {
     const bloodEnvPath = path.join(BLOOD_DIR, '.env');
-    const testScript = `require('dotenv').config({ path: '${bloodEnvPath}' }); const nodemailer = require('nodemailer'); if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) { console.error('MISSING_ENV'); process.exit(1); } const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } }); transporter.sendMail({ from: process.env.EMAIL_USER, to: process.env.EMAIL_USER, subject: '🩸 JG 포털 통합 관리자 - 구글 SMTP 연결 테스트', text: '통합 관리자 센터에서 요청하신 Gmail SMTP 알림 메일 발송 테스트가 성공하였습니다! 일시: ' + new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) }).then(() => { process.exit(0); }).catch(e => { console.error(e.message); process.exit(2); });`;
+    const testScript = "require('dotenv').config({ path: process.env.BLOOD_ENV_PATH }); const nodemailer = require('nodemailer'); if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) { console.error('MISSING_ENV'); process.exit(1); } const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } }); transporter.sendMail({ from: process.env.EMAIL_USER, to: process.env.EMAIL_USER, subject: '🩸 JG 포털 통합 관리자 - 구글 SMTP 연결 테스트', text: '통합 관리자 센터에서 요청하신 Gmail SMTP 알림 메일 발송 테스트가 성공하였습니다! 일시: ' + new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) }).then(() => { process.exit(0); }).catch(e => { console.error(e.message); process.exit(2); });";
 
-    exec(`node -e "${testScript}"`, { cwd: BLOOD_DIR }, (err, stdout, stderr) => {
+    execFile('node', ['-e', testScript], { cwd: BLOOD_DIR, env: { ...process.env, BLOOD_ENV_PATH: bloodEnvPath } }, (err, stdout, stderr) => {
         if (err) {
             return res.status(500).json({ success: false, message: `발송 실패: ${stderr || err.message}` });
         }

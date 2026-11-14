@@ -5,13 +5,32 @@ const { authenticateToken } = require('../middleware/auth');
 const { ADMIN_USERS } = require('../config/constants');
 const { encryptMemoText, decryptMemoText } = require('../services/crypto.service');
 
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function sanitizeHttpUrl(rawUrl) {
+    try {
+        const parsed = new URL(String(rawUrl || '').trim());
+        if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+            return parsed.href;
+        }
+    } catch (e) {}
+    return '';
+}
+
 // 1. 메모 목록 조회 (상단 고정 우선, 최신 수정순 정렬, AES-256-GCM 복호화)
 router.get('/', authenticateToken, (req, res) => {
     const userId = req.user.username || 'admin';
     const isAdmin = (req.user.role === 'admin' || ADMIN_USERS.has(userId)) ? 1 : 0;
     const { category, search } = req.query;
 
-    let query = "SELECT * FROM user_memos WHERE (user_id = ? OR user_id = 'admin' OR ? = 1)";
+    let query = "SELECT * FROM user_memos WHERE (user_id = ? OR ? = 1)";
     const params = [userId, isAdmin];
 
     if (category && category !== 'all') {
@@ -95,13 +114,17 @@ router.post('/scrap', authenticateToken, (req, res) => {
         return res.status(400).json({ success: false, message: '기사 제목과 링크가 필요합니다.' });
     }
 
+    const safeHref = sanitizeHttpUrl(link);
+    if (!safeHref) {
+        return res.status(400).json({ success: false, message: '유효한 http/https 기사 링크만 스크랩할 수 있습니다.' });
+    }
+
     const cleanTitle = title.trim();
-    const cleanMedia = (mediaName || '언론사').trim();
-    const cleanLink = link.trim();
-    const cleanSummary = (summary || '요약 정보 없음').trim().replace(/\n/g, '<br>');
+    const cleanMedia = escapeHtml((mediaName || '언론사').trim());
+    const cleanSummary = escapeHtml((summary || '요약 정보 없음').trim()).replace(/\r?\n/g, '<br>');
 
     const scrapTitle = `[스크랩] ${cleanTitle}`;
-    const scrapContent = `<p>📰 <strong>출처:</strong> ${cleanMedia} | <a href="${cleanLink}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-weight: 700; text-decoration: underline;">원문 이동 ↗</a></p><p><br></p><p>💡 <strong>핵심 요약:</strong></p><p>${cleanSummary}</p>`;
+    const scrapContent = `<p>📰 <strong>출처:</strong> ${cleanMedia} | <a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-weight: 700; text-decoration: underline;">원문 이동 ↗</a></p><p><br></p><p>💡 <strong>핵심 요약:</strong></p><p>${cleanSummary}</p>`;
     
     const encTitle = encryptMemoText(scrapTitle, userId);
     const encContent = encryptMemoText(scrapContent, userId);
@@ -114,7 +137,7 @@ router.post('/scrap', authenticateToken, (req, res) => {
     db.run(query, [userId, encTitle, encContent], function(err) {
         if (err) {
             console.error('[Scrap 등록 실패]:', err.message);
-            return res.status(500).json({ success: false, message: '스크랩 저장 실패: ' + err.message });
+            return res.status(500).json({ success: false, message: '스크랩 저장 실패' });
         }
         res.json({ success: true, id: this.lastID, message: '포털 메모장에 기사가 성공적으로 스크랩되었습니다.' });
     });

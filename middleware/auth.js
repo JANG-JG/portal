@@ -13,7 +13,7 @@ setInterval(() => {
             revokedTokens.delete(t);
         }
     }
-}, 30 * 60 * 1000);
+}, 30 * 60 * 1000).unref();
 
 function buildLoginRedirect(req) {
     const origUrl = req.originalUrl || req.path || '';
@@ -23,13 +23,17 @@ function buildLoginRedirect(req) {
     return `/login${nextQuery}`;
 }
 
+function isApiPath(req) {
+    return ((req.originalUrl || req.path || '').split('?')[0]).startsWith('/api/');
+}
+
 // 토큰 인증 미들웨어
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const bearerToken = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.split(' ')[1] : null;
     const token = req.cookies?.portal_token || bearerToken;
     if (!token) {
-        if (req.path && req.path.startsWith('/api/')) {
+        if (isApiPath(req)) {
             return res.status(401).json({ success: false, message: '인증이 필요합니다.' });
         }
         return res.redirect(buildLoginRedirect(req));
@@ -40,7 +44,7 @@ function authenticateToken(req, res, next) {
         if (req.cookies && req.cookies.portal_token) {
             res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
         }
-        if (req.path && req.path.startsWith('/api/')) {
+        if (isApiPath(req)) {
             return res.status(401).json({ success: false, message: '로그아웃된 토큰입니다. 다시 로그인해 주세요.' });
         }
         return res.redirect(buildLoginRedirect(req));
@@ -57,7 +61,7 @@ function authenticateToken(req, res, next) {
         if (req.cookies && req.cookies.portal_token) {
             res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
         }
-        if (req.path && req.path.startsWith('/api/')) {
+        if (isApiPath(req)) {
             return res.status(401).json({ success: false, message: '인증이 만료되었습니다.' });
         }
         return res.redirect(buildLoginRedirect(req));
@@ -93,7 +97,7 @@ function authenticateToken(req, res, next) {
 // 🛡️ [보안 강화] 관리자 권한(RBAC) 검증 미들웨어
 function requireAdmin(req, res, next) {
     if (!req.user || !req.user.username || (req.user.role !== 'admin' && !ADMIN_USERS.has(req.user.username))) {
-        if (req.path && req.path.startsWith('/api/')) {
+        if (isApiPath(req)) {
             return res.status(403).json({ success: false, message: '관리자 전용 기능입니다. 접근 권한이 없습니다.' });
         }
         return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
@@ -101,16 +105,20 @@ function requireAdmin(req, res, next) {
     next();
 }
 
-// 클라이언트 실제 접속 IP 추출 유틸리티 (Cloudflare cf-connecting-ip 최우선)
+// 클라이언트 실제 접속 IP 추출 유틸리티 (로컬 Cloudflared/프록시 경유 시에만 CF/XFF 헤더 신뢰)
 function getClientIp(req) {
-    if (req.headers['cf-connecting-ip']) {
-        return req.headers['cf-connecting-ip'].toString().trim();
+    const remote = req.socket?.remoteAddress || req.ip || '';
+    const isTrustedLoopbackProxy = remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+    if (isTrustedLoopbackProxy) {
+        if (req.headers['cf-connecting-ip']) {
+            return req.headers['cf-connecting-ip'].toString().trim();
+        }
+        const forwarded = req.headers['x-forwarded-for'];
+        if (forwarded) {
+            return forwarded.split(',')[0].trim();
+        }
     }
-    const forwarded = req.headers['x-forwarded-for'];
-    if (forwarded) {
-        return forwarded.split(',')[0].trim();
-    }
-    return req.ip || req.socket.remoteAddress || '127.0.0.1';
+    return remote || '127.0.0.1';
 }
 
 // 🛡️ [보안 강화] 로그인 무차별 대입(Brute-Force) 방어 인메모리 레이트 리미터
@@ -156,7 +164,7 @@ setInterval(() => {
             loginAttemptsMap.delete(ip);
         }
     }
-}, 30 * 60 * 1000);
+}, 30 * 60 * 1000).unref();
 
 // 보안 로그인 시도 이력 기록 헬퍼
 function recordLoginLog(username, ip, status) {

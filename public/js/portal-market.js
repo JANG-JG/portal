@@ -172,18 +172,21 @@ function startAssetFading(tickerRow, items) {
     if (assetFadeTimer) clearInterval(assetFadeTimer);
 
     let currentIndex = 0;
+    const escapeMarketHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
     assetFadeTimer = setInterval(() => {
         currentIndex = (currentIndex + 1) % items.length;
         const stock = items[currentIndex];
         const dirSymbol = stock.direction === 'up' ? '▲' : (stock.direction === 'down' ? '▼' : '-');
+        const dirClass = (stock.direction === 'up' || stock.direction === 'down') ? stock.direction : 'flat';
 
         tickerRow.classList.add('fade-out');
         setTimeout(() => {
             const valEl = document.getElementById('assetTickerBox') || tickerRow;
             valEl.innerHTML = `
-                <span class="stock-kor-name" title="${stock.name}" style="color:var(--hm-text-main, #0f172a); font-weight:700; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis;">${stock.name}</span>
-                <span class="stock-price" style="color:var(--hm-text-main, #0f172a); font-weight:700; font-size:0.75rem; flex-shrink:0;">${stock.formattedTotal}</span>
-                <span class="stock-diff ${stock.direction}" style="font-size:0.72rem; flex-shrink:0;">${dirSymbol} ${stock.diffPercent}</span>
+                <span class="stock-kor-name" title="${escapeMarketHtml(stock.name)}" style="color:var(--hm-text-main, #0f172a); font-weight:700; font-size:0.75rem; overflow:hidden; text-overflow:ellipsis;">${escapeMarketHtml(stock.name)}</span>
+                <span class="stock-price" style="color:var(--hm-text-main, #0f172a); font-weight:700; font-size:0.75rem; flex-shrink:0;">${escapeMarketHtml(stock.formattedTotal)}</span>
+                <span class="stock-diff ${dirClass}" style="font-size:0.72rem; flex-shrink:0;">${dirSymbol} ${escapeMarketHtml(stock.diffPercent)}</span>
             `;
             tickerRow.classList.remove('fade-out');
         }, 200);
@@ -204,13 +207,19 @@ function bindBreakingTicker(articles) {
         return;
     }
 
+    const escapeBrkHtml = (str) => String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const safeBrkUrl = (url, fallback) => {
+        const s = String(url || '').trim();
+        return (/^https?:\/\//i.test(s) || (s.startsWith('/') && !s.startsWith('//'))) ? s : fallback;
+    };
+
     bannerEl.classList.add('has-breaking');
     bannerEl.style.setProperty('display', 'flex', 'important');
     if (dropdownList) {
         dropdownList.innerHTML = articles.map(item => `
-            <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="breaking-dropdown-item">
-                <span class="breaking-dropdown-item-title">${item.title}</span>
-                <span class="breaking-dropdown-item-meta">${item.media_name || '속보'}</span>
+            <a href="${escapeBrkHtml(safeBrkUrl(item.link, 'https://news.j-jg.cc/breaking'))}" target="_blank" rel="noopener noreferrer" class="breaking-dropdown-item">
+                <span class="breaking-dropdown-item-title">${escapeBrkHtml(item.title)}</span>
+                <span class="breaking-dropdown-item-meta">${escapeBrkHtml(item.media_name || '속보')}</span>
             </a>
         `).join('');
     }
@@ -218,7 +227,7 @@ function bindBreakingTicker(articles) {
     let bIdx = 0;
     const renderItem = (idx) => {
         const item = articles[idx];
-        trackEl.innerHTML = `<a href="${item.link || 'https://news.j-jg.cc/breaking'}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item"><span class="breaking-item-title">${item.title}</span></a>`;
+        trackEl.innerHTML = `<a href="${escapeBrkHtml(safeBrkUrl(item.link, 'https://news.j-jg.cc/breaking'))}" target="_blank" rel="noopener noreferrer" class="breaking-ticker-item"><span class="breaking-item-title">${escapeBrkHtml(item.title)}</span></a>`;
     };
     trackEl.classList.remove('fade-out');
     renderItem(0);

@@ -117,14 +117,20 @@ router.delete('/photos/:id', (req, res) => {
                     return res.status(500).json({ success: false, message: '사진 데이터 삭제 실패' });
                 }
 
-                // 물리 파일 삭제 (안전하게 존재 여부 확인 후 삭제)
+                // 물리 파일 삭제 (안전하게 basename 검증 및 존재 여부 확인 후 삭제)
                 try {
                     const uploadsDir = path.join(ALBUM_DIR, 'uploads');
-                    const origPath = path.join(uploadsDir, 'originals', photo.storage_filename);
-                    const thumbPath = path.join(uploadsDir, 'thumbnails', photo.thumbnail_filename);
+                    const safeOrig = photo.storage_filename ? path.basename(String(photo.storage_filename)) : '';
+                    const safeThumb = photo.thumbnail_filename ? path.basename(String(photo.thumbnail_filename)) : '';
 
-                    if (fs.existsSync(origPath)) fs.unlinkSync(origPath);
-                    if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+                    if (safeOrig && safeOrig === photo.storage_filename) {
+                        const origPath = path.join(uploadsDir, 'originals', safeOrig);
+                        if (fs.existsSync(origPath)) fs.unlinkSync(origPath);
+                    }
+                    if (safeThumb && safeThumb === photo.thumbnail_filename) {
+                        const thumbPath = path.join(uploadsDir, 'thumbnails', safeThumb);
+                        if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+                    }
                 } catch (fsErr) {
                     console.warn('사진 물리 파일 삭제 중 경고:', fsErr.message);
                 }

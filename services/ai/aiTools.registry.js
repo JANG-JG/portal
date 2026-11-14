@@ -5,6 +5,7 @@
  * - [규칙 2] 100% 한국어 인터페이스 | [규칙 3] 500줄 이하 모듈화
  */
 
+const { isServiceAllowed } = require('../moduleRegistry.service');
 const {
     isAdmin,
     fetchBloodSummary,
@@ -50,7 +51,7 @@ const MASTER_TOOLS = {
     },
 
     // =========================================================================
-    // 👥 2. 가족 공용 도구 (모든 사용자 허용)
+    // 👥 2. 가족 공용 도구 (모든 사용자 허용, 서비스 권한 연동)
     // =========================================================================
     get_weather: {
         name: 'get_weather',
@@ -70,6 +71,7 @@ const MASTER_TOOLS = {
         name: 'get_news_top',
         description: '실시간 주요 뉴스 헤드라인을 확인하거나 특정 주제/키워드 뉴스를 검색합니다.',
         category: 'family',
+        requiredService: 'news',
         parameters: {
             type: 'object',
             properties: {
@@ -95,6 +97,7 @@ const MASTER_TOOLS = {
         name: 'get_family_wiki',
         description: '가족 위키에 기록된 가전 매뉴얼, 생활 팁, 집안 규칙, 레시피 지식을 검색합니다.',
         category: 'family',
+        requiredService: 'wiki',
         parameters: {
             type: 'object',
             properties: {
@@ -108,6 +111,7 @@ const MASTER_TOOLS = {
         name: 'get_family_photos',
         description: '가족 사진첩(앨범)에서 특정 날짜, 장소, 인물 등의 추억 사진을 검색합니다.',
         category: 'family',
+        requiredService: 'album',
         parameters: {
             type: 'object',
             properties: {
@@ -147,17 +151,26 @@ const MASTER_TOOLS = {
     }
 };
 
+function isToolPermittedForUser(toolDef, user) {
+    if (!toolDef) return false;
+    if (toolDef.category === 'admin' && !isAdmin(user)) {
+        return false;
+    }
+    if (toolDef.requiredService && !isAdmin(user) && !isServiceAllowed(user, toolDef.requiredService)) {
+        return false;
+    }
+    return true;
+}
+
 /**
  * 🛡️ [RBAC 보안 필터] 현재 사용자 권한에 허용된 도구 목록만 선별 반환
- * - 일반 가족 계정인 경우 admin 카테고리 도구는 스키마 목록에서 완전 은닉
  */
 function getPermittedTools(user) {
-    const isUserAdmin = isAdmin(user);
     const permitted = [];
 
-    for (const [toolName, toolDef] of Object.entries(MASTER_TOOLS)) {
-        if (toolDef.category === 'admin' && !isUserAdmin) {
-            continue; // 관리자가 아니면 아예 건너뜀 (은닉)
+    for (const [, toolDef] of Object.entries(MASTER_TOOLS)) {
+        if (!isToolPermittedForUser(toolDef, user)) {
+            continue;
         }
         permitted.push({
             type: 'function',
@@ -181,11 +194,10 @@ async function executeTool(toolName, params = {}, user = null) {
         return { success: false, error: `알 수 없는 도구 요청입니다: ${toolName}` };
     }
 
-    // 🔒 이중 보안 가드: 관리자 전용 도구인데 관리자가 아닌 경우 강제 차단
-    if (tool.category === 'admin' && !isAdmin(user)) {
+    if (!isToolPermittedForUser(tool, user)) {
         return {
             success: false,
-            error: '관리자 전용 기능입니다. 가족 계정에서는 조회 권한이 없습니다.'
+            error: '해당 기능에 대한 조회 권한이 없습니다.'
         };
     }
 

@@ -32,9 +32,18 @@ function updateWeatherBadge(w) {
     const tempEl = document.getElementById('welcomeWeatherTemp');
     const badgeEl = document.getElementById('welcomeWeatherBadge');
     if (iconEl) {
-        const iconUrl = w.icon_url || (w.icon_slug ? `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${w.icon_slug}.svg` : null);
-        if (iconUrl) {
-            iconEl.innerHTML = `<img src="${iconUrl}" alt="${w.condition || '날씨'}" style="width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;" onerror="this.onerror=null; this.outerHTML='${w.icon || '🌤️'}';">`;
+        const rawIconUrl = w.icon_url || (w.icon_slug ? `https://cdn.jsdelivr.net/gh/basmilius/weather-icons@dev/production/fill/svg/${encodeURIComponent(w.icon_slug)}.svg` : null);
+        const isSafeIconUrl = rawIconUrl && (/^https?:\/\//i.test(rawIconUrl) || (rawIconUrl.startsWith('/') && !rawIconUrl.startsWith('//')));
+        if (isSafeIconUrl) {
+            iconEl.textContent = '';
+            const imgEl = document.createElement('img');
+            imgEl.src = rawIconUrl;
+            imgEl.alt = String(w.condition || '날씨');
+            imgEl.style.cssText = 'width:18px; height:18px; vertical-align:middle; display:inline-block; flex-shrink:0;';
+            imgEl.addEventListener('error', () => {
+                iconEl.textContent = w.icon || '🌤️';
+            }, { once: true });
+            iconEl.appendChild(imgEl);
         } else if (w.icon) {
             iconEl.textContent = w.icon;
         }
@@ -336,15 +345,27 @@ function renderPortalNewsList(tab) {
         return;
     }
 
+    if (!recListEl.dataset.boundSummaryModal) {
+        recListEl.dataset.boundSummaryModal = 'true';
+        recListEl.addEventListener('click', (e) => {
+            const btn = e.target.closest('button.portal-news-ai-btn[data-news-idx]');
+            if (!btn) return;
+            const idx = Number(btn.dataset.newsIdx);
+            const newsTab = btn.dataset.newsTab === 'breaking' ? 'breaking' : 'top';
+            if (Number.isInteger(idx) && idx >= 0) openPortalNewsSummaryModal(idx, newsTab);
+        });
+    }
+
+    const safeTab = tab === 'breaking' ? 'breaking' : 'top';
     const items = articles.slice(0, 3);
     recListEl.innerHTML = items.map((a, idx) => {
         const title = a.title || '뉴스 기사';
         const media = a.media_name || '뉴스';
-        const cat = a.category_name || (tab === 'breaking' ? '속보' : '주요');
-        const isBreaking = tab === 'breaking' || cat === '속보' || title.includes('[속보]') || title.includes('(속보)');
+        const cat = a.category_name || (safeTab === 'breaking' ? '속보' : '주요');
+        const isBreaking = safeTab === 'breaking' || cat === '속보' || title.includes('[속보]') || title.includes('(속보)');
         const catBadgeClass = isBreaking ? 'badge-breaking' : 'badge-normal';
-        const link = a.link || '/go/news';
-        const img = a.image_url || '';
+        const link = sanitizePortalNewsUrl(a.link, '/go/news');
+        const img = sanitizePortalNewsUrl(a.image_url, '');
         const summary = (a.summary || '').trim();
         const hasSummary = Boolean(summary);
 
@@ -357,27 +378,27 @@ function renderPortalNewsList(tab) {
             <div class="portal-news-card-item">
                 <div class="portal-news-main-col">
                     <div class="portal-news-meta-row">
-                        <span class="portal-news-badge ${catBadgeClass}">${isBreaking ? '🚨 속보' : cat}</span>
-                        <span class="portal-news-media">${media}</span>
-                        ${timeLabel ? `<span class="portal-news-time">${timeLabel}</span>` : ''}
+                        <span class="portal-news-badge ${catBadgeClass}">${isBreaking ? '🚨 속보' : escapePortalNewsHtml(cat)}</span>
+                        <span class="portal-news-media">${escapePortalNewsHtml(media)}</span>
+                        ${timeLabel ? `<span class="portal-news-time">${escapePortalNewsHtml(timeLabel)}</span>` : ''}
                     </div>
-                    <a href="${link}" target="_blank" rel="noopener noreferrer" class="portal-news-title" title="${escapePortalNewsAttr(title)}">
+                    <a href="${escapePortalNewsAttr(link)}" target="_blank" rel="noopener noreferrer" class="portal-news-title" title="${escapePortalNewsAttr(title)}">
                         ${escapePortalNewsHtml(title)}
                     </a>
                     <div class="portal-news-actions">
                         ${hasSummary ? `
-                            <button type="button" class="portal-news-ai-btn" onclick="openPortalNewsSummaryModal(${idx}, '${tab}')">
+                            <button type="button" class="portal-news-ai-btn" data-news-idx="${idx}" data-news-tab="${safeTab}">
                                 ⚡ AI 3줄 요약
                             </button>
                         ` : ''}
-                        <a href="${link}" target="_blank" rel="noopener noreferrer" class="portal-news-origin-link">
+                        <a href="${escapePortalNewsAttr(link)}" target="_blank" rel="noopener noreferrer" class="portal-news-origin-link">
                             원문 보기 ↗
                         </a>
                     </div>
                 </div>
                 ${img ? `
                 <div class="portal-news-thumb-wrap">
-                    <img src="${img}" alt="" class="portal-news-thumb" loading="lazy" onerror="this.parentElement.style.display='none'">
+                    <img src="${escapePortalNewsAttr(img)}" alt="" class="portal-news-thumb" loading="lazy" onerror="this.parentElement.style.display='none'">
                 </div>` : ''}
             </div>
         `;
@@ -419,7 +440,7 @@ function openPortalNewsSummaryModal(index, tab) {
     }
 
     if (originLink) {
-        originLink.href = item.link || '/go/news';
+        originLink.href = sanitizePortalNewsUrl(item.link, '/go/news');
     }
 
     modal.style.display = 'flex';
@@ -443,10 +464,15 @@ function handlePortalNewsModalBackdrop(e) {
 }
 window.handlePortalNewsModalBackdrop = handlePortalNewsModalBackdrop;
 
+function sanitizePortalNewsUrl(url, fallback = '') {
+    const s = String(url || '').trim();
+    return (/^https?:\/\//i.test(s) || (s.startsWith('/') && !s.startsWith('//'))) ? s : fallback;
+}
+
 function escapePortalNewsHtml(str) {
-    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function escapePortalNewsAttr(str) {
-    return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }

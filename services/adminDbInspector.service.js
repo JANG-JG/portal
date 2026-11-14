@@ -196,8 +196,7 @@ function getDbInstance(dbKey) {
         return dynamicMap['portal'] || dynamicMap['calendar'] || dynamicMap['memo'];
     }
 
-    const list = Object.values(dynamicMap);
-    return list.length > 0 ? list[0] : null;
+    return null;
 }
 
 /**

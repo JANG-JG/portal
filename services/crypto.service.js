@@ -2,7 +2,11 @@ try { require('dotenv').config(); } catch (e) {}
 const crypto = require('crypto');
 
 function getMasterSecret() {
-    return process.env.JWT_SECRET || 'jg_calendar_default_master_salt_2026';
+    const secret = process.env.JWT_SECRET;
+    if (!secret || !secret.trim()) {
+        throw new Error('FATAL: JWT_SECRET 환경변수가 설정되지 않아 암호화 키를 생성할 수 없습니다.');
+    }
+    return secret;
 }
 
 const ALGORITHM = 'aes-256-gcm';

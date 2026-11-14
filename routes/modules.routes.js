@@ -89,12 +89,22 @@ router.get('/quick-strip', authenticateToken, async (req, res) => {
 });
 
 // 4. 단일 모듈 상세 조회
-router.get('/detail/:id', authenticateToken, (req, res) => {
-    const mod = getModuleById(req.params.id);
-    if (!mod || mod.enabled === false) {
-        return res.status(404).json({ success: false, message: '해당 모듈을 찾을 수 없습니다.' });
+router.get('/detail/:id', authenticateToken, async (req, res) => {
+    try {
+        const freshUser = await fetchFreshUserData(req.user);
+        const permittedModules = getUserModules(freshUser);
+        const permittedMod = permittedModules.find(m => m.id === req.params.id);
+        if (!permittedMod) {
+            return res.status(403).json({ success: false, message: '해당 모듈에 접근할 권한이 없거나 존재하지 않습니다.' });
+        }
+        const mod = getModuleById(req.params.id);
+        if (!mod || mod.enabled === false) {
+            return res.status(404).json({ success: false, message: '해당 모듈을 찾을 수 없습니다.' });
+        }
+        res.json({ success: true, module: mod });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '모듈 상세 조회 실패' });
     }
-    res.json({ success: true, module: mod });
 });
 
 // 5. 관리자 전용 전체 모듈 목록 조회 (비활성 모듈 및 관리자 설정 포함)
@@ -141,40 +151,7 @@ router.post('/admin', authenticateToken, requireAdmin, (req, res) => {
     }
 });
 
-// 8. 관리자: 기존 모듈 설정 수정
-router.put('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
-    try {
-        const payload = { ...req.body, id: req.params.id };
-        const updated = createOrUpdateModule(payload, false);
-        res.json({
-            success: true,
-            message: `서비스 [${updated.name}] 모듈 정보가 성공적으로 수정되었습니다.`,
-            module: updated
-        });
-    } catch (err) {
-        res.status(400).json({ success: false, message: err.message || '모듈 수정 실패' });
-    }
-});
-
-// 9. 관리자: 모듈 순서 한 단계 위/아래 이동
-router.patch('/admin/:id/move', authenticateToken, requireAdmin, (req, res) => {
-    try {
-        const { direction } = req.body;
-        if (!['up', 'down'].includes(direction)) {
-            return res.status(400).json({ success: false, message: '이동 방향은 up 또는 down 이어야 합니다.' });
-        }
-        const updatedList = moveModuleOrder(req.params.id, direction);
-        res.json({
-            success: true,
-            message: '모듈 노출 순서가 변경되었습니다.',
-            modules: updatedList
-        });
-    } catch (err) {
-        res.status(400).json({ success: false, message: err.message || '순서 이동 실패' });
-    }
-});
-
-// 10. 관리자: 전체 모듈 순서 일괄 재배열
+// 8. 관리자: 전체 모듈 순서 일괄 재배열 (동적 :id 라우트보다 먼저 선언)
 router.put('/admin/reorder', authenticateToken, requireAdmin, (req, res) => {
     try {
         const { orderedIds } = req.body;
@@ -192,6 +169,39 @@ router.put('/admin/reorder', authenticateToken, requireAdmin, (req, res) => {
     }
 });
 
+// 9. 관리자: 기존 모듈 설정 수정
+router.put('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const payload = { ...req.body, id: req.params.id };
+        const updated = createOrUpdateModule(payload, false);
+        res.json({
+            success: true,
+            message: `서비스 [${updated.name}] 모듈 정보가 성공적으로 수정되었습니다.`,
+            module: updated
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '모듈 수정 실패' });
+    }
+});
+
+// 10. 관리자: 모듈 순서 한 단계 위/아래 이동
+router.patch('/admin/:id/move', authenticateToken, requireAdmin, (req, res) => {
+    try {
+        const { direction } = req.body;
+        if (!['up', 'down'].includes(direction)) {
+            return res.status(400).json({ success: false, message: '이동 방향은 up 또는 down 이어야 합니다.' });
+        }
+        const updatedList = moveModuleOrder(req.params.id, direction);
+        res.json({
+            success: true,
+            message: '모듈 노출 순서가 변경되었습니다.',
+            modules: updatedList
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '순서 이동 실패' });
+    }
+});
+
 // 11. 관리자: 모듈 삭제 (코어 모듈 보호)
 router.delete('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
     try {
@@ -205,9 +215,14 @@ router.delete('/admin/:id', authenticateToken, requireAdmin, (req, res) => {
     }
 });
 
-// 10. 관리자/사용자: 특정 모듈 표준 KPI 메트릭 조회
+// 12. 관리자/사용자: 특정 모듈 표준 KPI 메트릭 조회 (허용된 모듈만 조회 가능)
 router.get('/:id/metrics', authenticateToken, async (req, res) => {
     try {
+        const freshUser = await fetchFreshUserData(req.user);
+        const permittedModules = getUserModules(freshUser);
+        if (!permittedModules.some(m => m.id === req.params.id)) {
+            return res.status(403).json({ success: false, message: '해당 모듈의 메트릭을 조회할 권한이 없습니다.' });
+        }
         const metrics = await getModuleMetrics(req.params.id);
         res.json(metrics);
     } catch (err) {
@@ -215,7 +230,7 @@ router.get('/:id/metrics', authenticateToken, async (req, res) => {
     }
 });
 
-// 11. 관리자: 전체 모듈 KPI 종합 요약 조회
+// 13. 관리자: 전체 모듈 KPI 종합 요약 조회
 router.get('/admin/kpis', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const summary = await getAllModulesKpiSummary();
@@ -225,8 +240,8 @@ router.get('/admin/kpis', authenticateToken, requireAdmin, async (req, res) => {
     }
 });
 
-// 12. 공통: 대시보드 위젯 배치 설정 조회
-router.get('/dashboard/config', (req, res) => {
+// 14. 공통: 대시보드 위젯 배치 설정 조회 (인증 필수)
+router.get('/dashboard/config', authenticateToken, (req, res) => {
     try {
         const widgets = getDashboardConfig();
         res.json({ success: true, count: widgets.length, widgets });

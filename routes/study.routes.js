@@ -90,6 +90,24 @@ router.get('/api/study/dashboard', authenticateToken, async (req, res) => {
     }
 });
 
+const studyRateMap = new Map();
+function checkStudyActionLimit(key, maxCount, windowMs) {
+    const now = Date.now();
+    const list = (studyRateMap.get(key) || []).filter((t) => now - t < windowMs);
+    if (list.length >= maxCount) return false;
+    list.push(now);
+    studyRateMap.set(key, list);
+    return true;
+}
+setInterval(() => {
+    const now = Date.now();
+    for (const [k, list] of studyRateMap.entries()) {
+        const valid = list.filter((t) => now - t < 15 * 60 * 1000);
+        if (valid.length === 0) studyRateMap.delete(k);
+        else studyRateMap.set(k, valid);
+    }
+}, 10 * 60 * 1000).unref();
+
 router.post('/api/study/levels/adjust', authenticateToken, async (req, res) => {
     try {
         const { childId, subject, delta, level, parentPin, longPressVerified } = req.body || {};
@@ -103,10 +121,18 @@ router.post('/api/study/levels/adjust', authenticateToken, async (req, res) => {
                     message: '부모님 잠금 PIN 번호가 올바르지 않습니다.'
                 });
             }
-        } else if (!longPressVerified && req.user.role === 'kid') {
+        } else if (longPressVerified !== true && req.user.role === 'kid') {
             return res.status(403).json({
                 success: false,
                 message: '어른 확인(버튼 꾹 누르기)이 필요합니다.'
+            });
+        }
+
+        const rateKey = `lvl:${req.user.username}`;
+        if (req.user.role === 'kid' && !check.configured && !checkStudyActionLimit(rateKey, 5, 60 * 1000)) {
+            return res.status(429).json({
+                success: false,
+                message: '잠시 후 다시 조절해 주세요.'
             });
         }
 
@@ -126,9 +152,18 @@ router.post('/api/study/levels/adjust', authenticateToken, async (req, res) => {
 
 router.post('/api/study/stamps/paper', authenticateToken, async (req, res) => {
     try {
-        const { childId, note } = req.body || {};
+        const cid = normalizeChildId(req.body?.childId);
+        const stampKey = `paper:${req.user.username}:${cid}`;
+        if (!checkStudyActionLimit(stampKey, 5, 10 * 60 * 1000)) {
+            return res.status(429).json({
+                success: false,
+                message: '종이 학습지 도장은 잠시 후 다시 찍을 수 있어요!'
+            });
+        }
+
+        const { note } = req.body || {};
         const result = await awardStamp({
-            childId: normalizeChildId(childId),
+            childId: cid,
             sourceType: 'paper',
             note: note || '종이 학습지 스스로 완료! 📄'
         });
@@ -150,6 +185,14 @@ router.post('/api/study/stamps/paper', authenticateToken, async (req, res) => {
 // ------------------------------------------------------------------------------
 router.post('/api/study/sheets/generate', authenticateToken, async (req, res) => {
     try {
+        const genKey = `gen:${req.user.username}`;
+        if (!checkStudyActionLimit(genKey, 6, 60 * 1000)) {
+            return res.status(429).json({
+                success: false,
+                message: '학습지 생성 요청이 너무 빠릅니다. 잠시 후 다시 시도해 주세요.'
+            });
+        }
+
         const { childId, subject, theme, includePlayBlock, coloringMode } = req.body || {};
         const opts = {
             childId: normalizeChildId(childId),

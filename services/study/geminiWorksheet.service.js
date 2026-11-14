@@ -171,29 +171,39 @@ async function callGeminiStructuredJson(opts) {
             responseMimeType: 'application/json',
             responseSchema: schema,
             temperature: 0.4,
-            maxOutputTokens: 2800
+            maxOutputTokens: 8192
         }
     };
 
     for (const modelName of modelCandidates) {
         try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
-            const res = await postJsonIPv4(url, { 'x-goog-api-key': apiKey }, payload, 15000);
+            const res = await postJsonIPv4(url, { 'x-goog-api-key': apiKey }, payload, 20000);
             if (res.status !== 200) {
                 console.warn(`⚠️ [Study Gemini] ${modelName} 응답 상태 ${res.status}`);
                 continue;
             }
             const parsed = JSON.parse(res.body);
-            const parts = parsed?.candidates?.[0]?.content?.parts || [];
+            const candidate = parsed?.candidates?.[0];
+            const finishReason = candidate?.finishReason || 'UNKNOWN';
+            const parts = candidate?.content?.parts || [];
             const rawText = parts
                 .filter((p) => p && typeof p.text === 'string' && !p.thought)
                 .map((p) => p.text)
                 .join('')
                 .trim();
-            if (!rawText) continue;
+            if (!rawText) {
+                console.warn(`⚠️ [Study Gemini] ${modelName} 빈 응답 (finishReason=${finishReason})`);
+                continue;
+            }
             const cleanedText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-            const jsonObj = JSON.parse(cleanedText);
-            return { ok: true, model: modelName, data: jsonObj };
+            try {
+                const jsonObj = JSON.parse(cleanedText);
+                return { ok: true, model: modelName, data: jsonObj };
+            } catch (parseErr) {
+                console.warn(`⚠️ [Study Gemini] ${modelName} JSON 파싱 실패 (finishReason=${finishReason}):`, parseErr.message);
+                continue;
+            }
         } catch (err) {
             console.warn(`⚠️ [Study Gemini] ${modelName} 호출 오류:`, err.message);
         }

@@ -15,6 +15,14 @@ function getAgentUrl() {
     return process.env.KINDERGARTEN_AGENT_URL || cfg.AGENT_URL || 'http://localhost:5055';
 }
 
+function getAgentHeaders(extra = {}) {
+    const headers = { ...extra };
+    if (process.env.KINDERGARTEN_AGENT_SECRET) {
+        headers['X-Agent-Secret'] = process.env.KINDERGARTEN_AGENT_SECRET;
+    }
+    return headers;
+}
+
 // 싱글톤 상태 객체 (로컬 워커용)
 const state = {
     isRunning: false,
@@ -131,7 +139,7 @@ async function saveCredentialsAndSettings({ userId, userPw, targetBoards, hddBas
             const timeout = setTimeout(() => controller.abort(), 3000);
             await fetch(`${getAgentUrl()}/config`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAgentHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ userId, userPw, targetBoards, hddBasePath }),
                 signal: controller.signal
             }).catch(() => {});
@@ -302,7 +310,10 @@ async function getStatus() {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
-            const res = await fetch(`${getAgentUrl()}/status`, { signal: controller.signal });
+            const res = await fetch(`${getAgentUrl()}/status`, {
+                headers: getAgentHeaders(),
+                signal: controller.signal
+            });
             clearTimeout(timeout);
             const data = await res.json();
             if (data.success) {
@@ -337,7 +348,10 @@ async function getCumulativeHistoryLog() {
         try {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 3000);
-            const res = await fetch(`${getAgentUrl()}/history-log`, { signal: controller.signal });
+            const res = await fetch(`${getAgentUrl()}/history-log`, {
+                headers: getAgentHeaders(),
+                signal: controller.signal
+            });
             clearTimeout(timeout);
             const data = await res.json();
             if (data.success) return data.log;

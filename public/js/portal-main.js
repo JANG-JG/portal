@@ -252,28 +252,55 @@ document.addEventListener('DOMContentLoaded', () => {
     syncDynamicBentoWidgets();
 });
 
+function escapePortalMainHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function sanitizePortalMainUrl(url, fallback = '#') {
+    const s = String(url || '').trim();
+    return (/^https?:\/\//i.test(s) || (s.startsWith('/') && !s.startsWith('//'))) ? s : fallback;
+}
+
 // 🌟 5. 모듈 레지스트리 기반 원터치 빠른 실행(Quick Strip) 동적 로드 (신규 서비스 자동 연동)
 async function loadDynamicQuickStrip() {
     const grid = document.getElementById('portalQuickStripGrid');
     if (!grid) return;
+    if (!grid.dataset.boundActionClick) {
+        grid.dataset.boundActionClick = 'true';
+        grid.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-action-name]');
+            if (!btn) return;
+            const fnName = btn.dataset.actionName;
+            if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(fnName) && typeof window[fnName] === 'function') {
+                window[fnName]();
+            }
+        });
+    }
     try {
         const res = await fetch('/api/modules/quick-strip');
         if (!res.ok) return;
         const data = await res.json();
         if (data.success && Array.isArray(data.quickItems) && data.quickItems.length > 0) {
             grid.innerHTML = data.quickItems.map(item => {
-                const icon = item.icon || '🚀';
-                const label = item.label || '바로가기';
-                const modId = item.moduleId || '';
+                const icon = escapePortalMainHtml(item.icon || '🚀');
+                const label = escapePortalMainHtml(item.label || '바로가기');
+                const modId = escapePortalMainHtml(item.moduleId || '');
                 if (item.type === 'action') {
+                    const fnMatch = String(item.action || '').trim().match(/^([A-Za-z_][A-Za-z0-9_]*)\(\);?$/);
+                    const actionName = fnMatch ? fnMatch[1] : '';
                     return `
-                        <button type="button" class="cmd-strip-btn" onclick="${item.action}" title="${label}" data-service="${modId}">
+                        <button type="button" class="cmd-strip-btn" data-action-name="${escapePortalMainHtml(actionName)}" title="${label}" data-service="${modId}">
                             <span class="cmd-strip-icon">${icon}</span>
                             <span>${label}</span>
                         </button>
                     `;
                 }
-                const url = item.url || '#';
+                const url = escapePortalMainHtml(sanitizePortalMainUrl(item.url, '#'));
                 return `
                     <a href="${url}" class="cmd-strip-btn" title="${label}" data-service="${modId}">
                         <span class="cmd-strip-icon">${icon}</span>
@@ -297,20 +324,21 @@ async function syncDynamicBentoWidgets() {
 
         for (const mod of data.modules) {
             if (!mod.portalWidget || mod.portalWidget.enabled === false) continue;
-            const cardId = mod.portalWidget.cardId || `bento-${mod.id}`;
+            const safeModId = String(mod.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+            const cardId = String(mod.portalWidget.cardId || `bento-${safeModId}`).replace(/[^a-zA-Z0-9_-]/g, '');
 
             // 이미 정적으로 존재하는 위젯이면 건너뜀 (기존 정상 로직 100% 보존)
             if (document.getElementById(cardId)) continue;
 
-            const title = mod.portalWidget.title || mod.name;
-            const icon = mod.icon || '📦';
-            const viewMoreUrl = mod.portalWidget.viewMoreUrl || mod.entryUrl || '#';
+            const title = escapePortalMainHtml(mod.portalWidget.title || mod.name);
+            const icon = escapePortalMainHtml(mod.icon || '📦');
+            const viewMoreUrl = escapePortalMainHtml(sanitizePortalMainUrl(mod.portalWidget.viewMoreUrl || mod.entryUrl, '#'));
             const apiEndpoint = mod.portalWidget.apiEndpoint;
 
             const card = document.createElement('div');
-            card.className = `homarr-card card-${mod.id}`;
+            card.className = `homarr-card card-${safeModId}`;
             card.id = cardId;
-            card.setAttribute('data-service', mod.id);
+            card.setAttribute('data-service', safeModId);
 
             card.innerHTML = `
                 <div class="homarr-card-header">
@@ -324,22 +352,22 @@ async function syncDynamicBentoWidgets() {
                     <div style="font-size:0.85rem; color:#64748b;">데이터를 불러오는 중입니다...</div>
                 </div>
                 <div class="bento-card-footer">
-                    <span id="${cardId}-status">${mod.description || title}</span>
+                    <span id="${cardId}-status">${escapePortalMainHtml(mod.description || mod.portalWidget.title || mod.name)}</span>
                     <a href="${viewMoreUrl}" style="color:var(--hm-blue); text-decoration:none; font-weight:600;">열기 ↗</a>
                 </div>
             `;
             grid.appendChild(card);
 
-            if (apiEndpoint) {
+            if (apiEndpoint && apiEndpoint.startsWith('/') && !apiEndpoint.startsWith('//')) {
                 fetch(apiEndpoint, { credentials: 'include' })
                     .then(r => r.json())
                     .then(resData => {
                         const bodyEl = document.getElementById(`${cardId}-body`);
                         if (!bodyEl) return;
                         if (resData && resData.success !== false) {
-                            const val = resData.mainVal || resData.value || resData.summary || resData.count || '';
-                            const sub = resData.subVal || resData.subText || resData.desc || '';
-                            const badge = resData.badge ? `<span class="bento-badge badge-emerald" style="margin-left:8px;">${resData.badge}</span>` : '';
+                            const val = escapePortalMainHtml(resData.mainVal || resData.value || resData.summary || resData.count || '');
+                            const sub = escapePortalMainHtml(resData.subVal || resData.subText || resData.desc || '');
+                            const badge = resData.badge ? `<span class="bento-badge badge-emerald" style="margin-left:8px;">${escapePortalMainHtml(resData.badge)}</span>` : '';
                             bodyEl.innerHTML = `
                                 <div style="display:flex; align-items:baseline; gap:8px;">
                                     <strong style="font-size:1.35rem; color:var(--hm-text); font-family:monospace;">${val || '정상 운영 중'}</strong>
@@ -348,12 +376,12 @@ async function syncDynamicBentoWidgets() {
                                 ${sub ? `<div style="font-size:0.82rem; color:var(--hm-text-muted); margin-top:4px;">${sub}</div>` : ''}
                             `;
                         } else {
-                            bodyEl.innerHTML = `<div style="font-size:0.85rem; color:#64748b;">${mod.description || '정상 운영 중'}</div>`;
+                            bodyEl.innerHTML = `<div style="font-size:0.85rem; color:#64748b;">${escapePortalMainHtml(mod.description || '정상 운영 중')}</div>`;
                         }
                     })
                     .catch(() => {
                         const bodyEl = document.getElementById(`${cardId}-body`);
-                        if (bodyEl) bodyEl.innerHTML = `<div style="font-size:0.85rem; color:#64748b;">${mod.description || '정상 운영 중'}</div>`;
+                        if (bodyEl) bodyEl.innerHTML = `<div style="font-size:0.85rem; color:#64748b;">${escapePortalMainHtml(mod.description || '정상 운영 중')}</div>`;
                     });
             }
         }
