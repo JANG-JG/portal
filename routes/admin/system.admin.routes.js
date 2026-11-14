@@ -61,17 +61,21 @@ router.get('/overview', async (req, res) => {
                         'portal': '🏠 JG 통합 포털',
                         'blood-pressure-app': '🩸 혈압 관리 서비스',
                         'asset': '💰 내 자산 관리 서비스',
+                        'family-album': '📸 가족 앨범 서비스',
                         'news-dashboard': '📰 AI 뉴스 대시보드',
                         'news-scheduler': '⏱️ 모닝 뉴스 스케줄러 데몬',
-                        'cloudflared': '🛡️ Cloudflare 보안 터널'
+                        'cloudflared': '🛡️ Cloudflare 보안 터널',
+                        'server-watchdog': '🐕 포털 외부 감시 데몬'
                     };
                     const ports = {
                         'portal': '3004',
                         'blood-pressure-app': '3000',
                         'asset': '3003',
+                        'family-album': '3005',
                         'news-dashboard': '5050',
                         'news-scheduler': 'Daemon',
-                        'cloudflared': 'Tunnel'
+                        'cloudflared': 'Tunnel',
+                        'server-watchdog': 'Daemon'
                     };
                     processes = list.map(p => {
                         const pidStr = String(p.pid);
@@ -222,8 +226,8 @@ router.post('/secondary/backup-now', (req, res) => {
     });
 });
 
-// 보조 서버(family-wiki) 및 메인 서버 로컬 PM2 통합 실행 헬퍼
-const SECONDARY_PM2_PROCS = new Set(['family-wiki']);
+// 보조 서버(family-wiki, ssd-https-agent) 및 메인 서버 로컬 PM2 통합 실행 헬퍼
+const SECONDARY_PM2_PROCS = new Set(['family-wiki', 'ssd-https-agent']);
 
 function runPm2TargetCommand(procName, pm2Cmd, options, callback) {
     if (typeof options === 'function') {

@@ -51,7 +51,7 @@
                                 기사 제목, 언론사, 요약문에 해당 단어가 포함된 경우 수집 단계에서 즉시 차단합니다.
                             </p>
                             <div style="display:flex; gap:0.4rem; align-items:center; margin-bottom:0.6rem;">
-                                <input type="text" id="adminInputExcludeKeyword" placeholder="제외할 단어 입력 후 [추가] 또는 엔터" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addAdminExcludeKeyword(); }" style="flex:1; padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; font-size:0.88rem;">
+                                <input type="text" id="adminInputExcludeKeyword" placeholder="제외할 단어 입력 후 [추가] 또는 엔터" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); if(event.isComposing || event.keyCode === 229) return; addAdminExcludeKeyword(); }" style="flex:1; padding:0.4rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.4rem; font-size:0.88rem;">
                                 <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="addAdminExcludeKeyword()">추가 +</button>
                             </div>
                             <div id="adminExcludeChipsContainer" style="display:flex; flex-wrap:wrap; gap:0.4rem; min-height:36px; padding:0.5rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.5rem; align-items:center;">

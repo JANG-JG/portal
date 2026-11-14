@@ -521,6 +521,7 @@
         promptInputEl.addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey && window.innerWidth > 768) {
                 e.preventDefault();
+                if (e.isComposing || e.keyCode === 229) return;
                 handleComposerSubmit();
             }
         });

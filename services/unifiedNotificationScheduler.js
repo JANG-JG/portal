@@ -341,9 +341,9 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
         checkPm2Health(currentTargetDateTime, sendBroadcastPush);
 
         // ======================================================================
-        // [C] 💾 디스크 용량(UFS) 헬스체크 (5분마다 1회 실행, 90% 초과 시 텔레그램 경보)
+        // [C] 💾 디스크 용량(UFS) 및 확장 헬스체크 (원격 보조서버·HTTP 포함)
         // ======================================================================
-        checkDiskHealth(kstDateStr, kstTimeStr, currentTargetDateTime);
+        checkDiskHealth(kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush);
     }
 
     // [트리거 1] node-cron 1분 스케줄러 (지연 허용 오차 120초 지정)

@@ -445,6 +445,7 @@
                 updateQsFocus(items);
             } else if (e.key === 'Enter') {
                 e.preventDefault();
+                if (e.isComposing || e.keyCode === 229) return;
                 if (qsFocusedIndex >= 0 && items[qsFocusedIndex]) {
                     items[qsFocusedIndex].click();
                 } else if (items.length > 0) {

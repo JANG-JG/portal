@@ -332,6 +332,7 @@
                     activeAutocompleteIndex = (activeAutocompleteIndex - 1 + items.length) % items.length;
                     updateAutocompleteActiveItem(items);
                 } else if (e.key === 'Enter') {
+                    if (e.isComposing || e.keyCode === 229) return;
                     if (activeAutocompleteIndex >= 0 && activeAutocompleteIndex < currentAutocompleteMatches.length) {
                         e.preventDefault();
                         applyAutocomplete(currentAutocompleteMatches[activeAutocompleteIndex]);

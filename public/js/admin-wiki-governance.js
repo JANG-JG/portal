@@ -37,7 +37,7 @@ function ensureWikiGovernanceShell() {
                 </div>
                 <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap; max-width:100%;">
                     <input type="search" id="wikiGovSlugInput" placeholder="🔍 슬러그 필터 (예: home-appliance)"
-                        onkeydown="if(event.key==='Enter'){applyWikiGovSlugFilter();}"
+                        onkeydown="if(event.key==='Enter'){if(event.isComposing||event.keyCode===229)return;applyWikiGovSlugFilter();}"
                         style="padding:0.38rem 0.65rem; font-size:0.8rem; border:1px solid #cbd5e1; border-radius:0.45rem; width:190px; max-width:100%; min-width:0; box-sizing:border-box; background:#f8fafc;">
                     <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="applyWikiGovSlugFilter()">필터</button>
                     <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="resetWikiGovSlugFilter()">🔄 전체 새로고침</button>
