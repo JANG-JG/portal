@@ -126,6 +126,22 @@ async function handleNaturalTelegramMessage({ token, chatId, senderId, text, aut
 
     await sendTelegramChatAction(token, chatId, 'typing');
     const placeholder = await sendTelegramReply(token, chatId, '🤔 <b>잠시만요, 확인하고 있어요...</b>');
+    const typingInterval = setInterval(() => {
+        sendTelegramChatAction(token, chatId, 'typing').catch(() => {});
+    }, 4500);
+    let noticeUpdated = false;
+    let finished = false;
+    const slowNoticeTimer = setTimeout(() => {
+        if (!finished && !noticeUpdated && placeholder && placeholder.message_id) {
+            noticeUpdated = true;
+            editTelegramMessage(
+                token,
+                chatId,
+                placeholder.message_id,
+                '⏳ <b>AI가 포털 데이터를 읽고 답변을 정리하고 있어요...</b>\n(처음 답할 때는 30초~1분 이상 걸릴 수 있어요 😊)'
+            ).catch(() => {});
+        }
+    }, 18000);
 
     try {
         const userCtx = {
@@ -137,11 +153,26 @@ async function handleNaturalTelegramMessage({ token, chatId, senderId, text, aut
             history: getHistory(senderId),
             user: userCtx,
             preference: 'auto',
-            requestType: 'telegram_chat'
+            requestType: 'telegram_chat',
+            onStatus: async (evt) => {
+                if (!finished && evt?.type === 'model_loading' && !noticeUpdated && placeholder?.message_id) {
+                    noticeUpdated = true;
+                    await editTelegramMessage(
+                        token,
+                        chatId,
+                        placeholder.message_id,
+                        '⏳ <b>AI 대화 모델을 메모리에 새로 불러오는 중이에요...</b>\n(모델 준비에 약 30~60초 정도 걸릴 수 있어요 😊)'
+                    ).catch(() => {});
+                }
+            }
         });
 
+        finished = true;
+        clearTimeout(slowNoticeTimer);
+        clearInterval(typingInterval);
+
         const formattedHtml = formatMarkdownToTelegramHtml(result.answer || '답변을 준비하지 못했어요.');
-        if (!result.blocked) {
+        if (!result.blocked && !result.fallback && result.ok) {
             pushHistory(senderId, clean, result.answer);
         }
 
@@ -157,10 +188,12 @@ async function handleNaturalTelegramMessage({ token, chatId, senderId, text, aut
         await logTelegramCommand({
             senderId,
             command: 'ai_chat',
-            status: result.ok ? 'ok' : 'fallback',
+            status: result.ok ? (result.fallback ? 'fallback' : 'ok') : 'error',
             detail: `${result.model || 'ai'}:${clean.slice(0, 45)}`
         });
     } catch (err) {
+        clearTimeout(slowNoticeTimer);
+        clearInterval(typingInterval);
         console.error('⚠️ [Telegram AI] 자연어 처리 오류:', err.message);
         await logTelegramCommand({ senderId, command: 'ai_chat', status: 'error', detail: err.message });
         const errMsg = '⚠️ 답변을 만드는 중 일시적인 문제가 생겼어요. 잠시 후 다시 말씀해 주세요!';

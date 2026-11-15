@@ -310,7 +310,16 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
  * - 동일 RBAC·도구·PII 마스킹·감사 로그 파이프라인 공유
  * - Ollama 오프라인 시 수집된 포털 실시간 데이터 기반 안전 요약 자동 폴백
  */
-async function runChatCompletion({ prompt, history = [], user, preference = 'auto', requestType = 'telegram_chat', timeoutMs = 45000 }) {
+async function runChatCompletion({
+    prompt,
+    history = [],
+    user,
+    preference = 'auto',
+    requestType = 'telegram_chat',
+    timeoutMs = null,
+    maxTokens = null,
+    onStatus = null
+}) {
     const reqStartMs = Date.now();
     const ctx = await prepareOrchestrationContext({ prompt, history, user, preference });
     if (ctx.blocked) {
@@ -328,11 +337,21 @@ async function runChatCompletion({ prompt, history = [], user, preference = 'aut
     }
 
     const { neededTools, toolResults, picked, activeModel, isReasoning, messages, streamOptions } = ctx;
+    const effectiveTimeoutMs = Number(timeoutMs) > 0
+        ? Number(timeoutMs)
+        : Math.max(Number(picked?.timeoutMs) || 300000, 240000);
+    const effectivePredict = Number(maxTokens) > 0
+        ? Number(maxTokens)
+        : (isReasoning ? 950 : 650);
+
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), effectiveTimeoutMs);
 
     try {
-        await ensureModelSlot(activeModel).catch(() => {});
+        const slotResult = await ensureModelSlot(activeModel).catch(() => ({ isAlreadyLoaded: true }));
+        if (slotResult && slotResult.isAlreadyLoaded === false && typeof onStatus === 'function') {
+            Promise.resolve(onStatus({ type: 'model_loading', model: activeModel, mode: picked?.mode })).catch(() => {});
+        }
         const ollamaRes = await fetch(`${DEFAULT_OLLAMA_HOST}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -344,7 +363,7 @@ async function runChatCompletion({ prompt, history = [], user, preference = 'aut
                 options: {
                     temperature: 0.65,
                     top_p: 0.9,
-                    num_predict: 900,
+                    num_predict: effectivePredict,
                     ...streamOptions
                 }
             }),
@@ -376,6 +395,12 @@ async function runChatCompletion({ prompt, history = [], user, preference = 'aut
         });
         return { ok: true, blocked: false, answer, model: activeModel, toolsUsed: neededTools };
     } catch (err) {
+        const elapsedMs = Date.now() - reqStartMs;
+        console.error(
+            `⚠️ [AI 비서] ${requestType} 추론 실패 (model=${activeModel}, elapsed=${elapsedMs}ms, timeout=${effectiveTimeoutMs}ms):`,
+            err?.name || 'Error',
+            err?.message || err
+        );
         if (toolResults.length > 0) {
             const fallbackSummary = toolResults
                 .join('\n\n')
@@ -388,7 +413,7 @@ async function runChatCompletion({ prompt, history = [], user, preference = 'aut
                 model: 'portal-data-fallback',
                 toolsUsed: neededTools,
                 prompt,
-                durationMs: Date.now() - reqStartMs,
+                durationMs: elapsedMs,
                 status: 'SUCCESS'
             });
             return {
@@ -408,7 +433,7 @@ async function runChatCompletion({ prompt, history = [], user, preference = 'aut
             model: activeModel,
             toolsUsed: neededTools,
             prompt,
-            durationMs: Date.now() - reqStartMs,
+            durationMs: elapsedMs,
             status: 'ERROR'
         });
         return {
