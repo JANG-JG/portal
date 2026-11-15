@@ -89,7 +89,8 @@ function buildHelpText() {
         '⚡ <b>빠른 명령어</b>',
         '• <code>/혈압</code> / <code>/약</code> / <code>/약먹음</code> — 혈압·복약 상태 조회 및 원탭 체크 (관리자)',
         '• <code>/메모 장보기 우유, 계란</code> — 포털 메모장에 암호화 저장',
-        '• <code>/일정 내일 오후 3시 첫째 소아과</code> — 가족 캘린더 일정 등록',
+        '• <code>/일정 내일 오후 3시 첫째 소아과</code> — 가족 공유 일정 등록',
+        '• <code>/개인일정 내일 오후 2시 치과</code> (또는 <code>/일정 개인 치과</code>) — 내 개인 일정 등록',
         '• <code>/조회</code> (<code>메모</code> | <code>일정</code> | <code>장보기</code> | <code>할일</code> | <code>위키</code>) — 최근 목록 조회',
         '• <code>/삭제 메모 12</code> / <code>/삭제 일정 5</code> / <code>/삭제 할일 3</code> — 해당 번호 삭제',
         '• <code>/위키 공기청정기</code> / <code>/위키등록 제목 | 내용</code> — 가족 위키 검색·등록',
@@ -115,25 +116,46 @@ async function handleMemoCommand(argText, authUser) {
     return `✅ <b>메모 저장 완료</b> (번호: #${res.lastID})\n• 내용: ${escapeHtml(content)}`;
 }
 
-async function handleScheduleCommand(argText, authUser) {
-    const text = argText.trim();
+async function handleScheduleCommand(argText, authUser, forcedScope = 'auto') {
+    let text = argText.trim();
     if (!text) {
-        return '📅 일정 날짜와 내용을 입력해 주세요.\n예: <code>/일정 내일 오후 3시 소아과 예방접종</code>';
+        return [
+            '📅 일정 날짜와 내용을 입력해 주세요.',
+            '• 가족 공유: <code>/일정 내일 오후 3시 소아과 예방접종</code>',
+            '• 개인 일정: <code>/개인일정 내일 오후 2시 치과</code> 또는 <code>/일정 개인 치과</code>'
+        ].join('\n');
     }
+
+    let isFamily = 1;
+    if (forcedScope === 'personal') {
+        isFamily = 0;
+    } else if (forcedScope === 'family') {
+        isFamily = 1;
+    } else if (/^(?:개인|개인용|개인일정|나만|비공개)\s+/.test(text) || /(?:^|\s)(?:개인\s*일정|개인용|나만\s*볼|비공개)(?:\s|$)/.test(text)) {
+        isFamily = 0;
+    }
+
+    // 선행 구분 키워드('개인 ...', '가족공유 ...')만 깔끔히 제거 (예: '가족 외식'의 '가족'은 제목으로 유지)
+    text = text
+        .replace(/^(?:개인용|개인일정|개인|나만|비공개|가족공유|가족용|공유일정|공유)\s+/i, '')
+        .trim();
 
     const parsed = parseKoreanDateTime(text);
     const cleaned = cleanScheduleTitle(text) || text;
-    const encTitle = encryptCalendarText(cleaned, authUser.portalUsername);
+    const encTitle = encryptCalendarText(cleaned, authUser.portalUsername, Boolean(isFamily));
+    const category = isFamily ? '가족' : '개인';
+    const color = isFamily ? '#ec4899' : '#6366f1';
 
     const res = await pRun(
         `INSERT INTO calendar_events (user_id, title, event_date, event_time, category, color, memo, is_all_day, is_family, notify_timing, notify_repeat)
-         VALUES (?, ?, ?, ?, '가족', '#ec4899', '', ?, 1, 'exact', 1)`,
-        [authUser.portalUsername, encTitle, parsed.dateStr, parsed.eventTime || '', parsed.isAllDay ? 1 : 0]
+         VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, 'exact', 1)`,
+        [authUser.portalUsername, encTitle, parsed.dateStr, parsed.eventTime || '', category, color, parsed.isAllDay ? 1 : 0, isFamily]
     );
 
     const timeLabel = parsed.isAllDay || !parsed.eventTime ? '종일' : parsed.eventTime;
+    const scopeLabel = isFamily ? '가족 공유 일정 👨‍👩‍👧‍👦' : '내 개인 일정 🔒';
     return [
-        `📅 <b>가족 일정 등록 완료</b> (번호: #${res.lastID})`,
+        `📅 <b>${scopeLabel} 등록 완료</b> (번호: #${res.lastID})`,
         `• 날짜: <b>${parsed.dateStr}</b> (${timeLabel})`,
         `• 내용: ${escapeHtml(cleaned)}`
     ].join('\n');
@@ -150,7 +172,7 @@ async function handleQueryCommand(argText, authUser) {
 
     if (!mode || mode.includes('일정')) {
         const events = await pAll(
-            `SELECT id, user_id, title, event_date, event_time, is_all_day
+            `SELECT id, user_id, title, event_date, event_time, is_all_day, is_family, category
              FROM calendar_events
              WHERE (user_id = ? OR is_family = 1 OR category = '가족')
                AND event_date >= ?
@@ -158,14 +180,19 @@ async function handleQueryCommand(argText, authUser) {
              LIMIT 7`,
             [authUser.portalUsername, today]
         );
-        lines.push('📅 <b>다가오는 가족 일정</b>');
+        lines.push('📅 <b>다가오는 일정 (개인 · 가족)</b>');
         if (events.length === 0) {
             lines.push('  • 예정된 일정이 없어요.');
         } else {
             events.forEach((ev) => {
-                const title = decryptCalendarText(ev.title, ev.user_id);
+                const isFam = Boolean(ev.is_family) || ev.category === '가족';
+                let title = decryptCalendarText(ev.title, ev.user_id, isFam);
+                if (title === '🔒 [암호화된 일정]' && isFam) {
+                    title = decryptCalendarText(ev.title, ev.user_id, false);
+                }
                 const t = ev.is_all_day || !ev.event_time ? '종일' : ev.event_time;
-                lines.push(`  • <b>#${ev.id}</b> [${ev.event_date} ${t}] ${escapeHtml(title)}`);
+                const badge = isFam ? '[가족]' : '[개인]';
+                lines.push(`  • <b>#${ev.id}</b> ${badge} [${ev.event_date} ${t}] ${escapeHtml(title)}`);
             });
         }
     }
@@ -302,8 +329,12 @@ async function executeTelegramCommand(rawText, authUser, senderId) {
             reply = buildHelpText();
         } else if (cmd === '/메모' || cmd === '/memo') {
             reply = await handleMemoCommand(argText, authUser);
+        } else if (cmd === '/개인일정' || cmd === '/personal') {
+            reply = await handleScheduleCommand(argText, authUser, 'personal');
+        } else if (cmd === '/가족일정' || cmd === '/family') {
+            reply = await handleScheduleCommand(argText, authUser, 'family');
         } else if (cmd === '/일정' || cmd === '/schedule') {
-            reply = await handleScheduleCommand(argText, authUser);
+            reply = await handleScheduleCommand(argText, authUser, 'auto');
         } else if (cmd === '/조회' || cmd === '/list') {
             reply = await handleQueryCommand(argText, authUser);
         } else if (cmd === '/삭제' || cmd === '/delete') {

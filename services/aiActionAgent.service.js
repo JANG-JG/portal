@@ -183,10 +183,12 @@ function parseCalendarAction(prompt) {
     // 알림 설정, 장소/메모 및 제목 분리 파싱
     const calDetails = parseCalendarDetails(prompt, dt.isAllDay);
 
-    // 카테고리 및 가족 공유 여부 판정
+    // 카테고리 및 가족 공유 여부 판정 (명시적 개인/가족 지정 최우선)
+    const forcePersonal = /(?:개인\s*(?:일정|스케줄|캘린더|용|으로)|(?:^|\s)개인(?=\s|$)|나만|혼자\s*볼|비공개)/.test(prompt);
+    const forceFamily = /(?:가족\s*(?:일정|공유|스케줄|캘린더)|공유\s*일정|다\s*같이\s*볼)/.test(prompt);
     let category = '개인';
     let isFamily = 0;
-    if (/(가족|모임|외식|제사|명절|여행|엄마|아빠|아이)/.test(prompt)) {
+    if (!forcePersonal && (forceFamily || /(가족|모임|외식|제사|명절|여행|엄마|아빠|아이)/.test(prompt))) {
         category = '가족';
         isFamily = 1;
     } else if (/(업무|회의|미팅|출장|보고|마감|프로젝트|사건처리비|국내여비|예산|서류)/.test(prompt)) {
@@ -354,7 +356,7 @@ async function executeAction({ action, user, userName }) {
 
                 const timeDesc = action.isAllDay ? '종일 일정 ☀️' : formatKoreanTime(action.eventTime);
                 const notifyDesc = getNotifyTimingDisplay(notifyTiming);
-                const familyBadge = action.isFamily ? ' (가족 공유 👨‍👩‍👧‍👦)' : '';
+                const familyBadge = action.isFamily ? ' (가족 공유 👨‍👩‍👧‍👦)' : ' (내 개인 일정 🔒)';
                 const memoLine = action.memo ? `- **장소/메모**: ${action.memo.replace(/\n/g, ', ')}\n` : '';
                 const card = `새로운 일정을 **캘린더**에 성공적으로 등록했습니다! 📅\n\n` +
                     `- **일정 내용**: **${action.title}**${familyBadge}\n` +

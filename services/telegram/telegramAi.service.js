@@ -58,6 +58,11 @@ function formatMarkdownToTelegramHtml(rawText) {
         .replace(/>/g, '&gt;');
     escaped = escaped.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
     escaped = escaped.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+    const baseUrl = (process.env.PORTAL_PUBLIC_URL || 'https://j-jg.cc').replace(/\/+$/, '');
+    escaped = escaped.replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+|\/[^\s)]+)\)/g, (_, label, url) => {
+        const fullUrl = url.startsWith('/') ? `${baseUrl}${url}` : url;
+        return `<a href="${fullUrl}">${label}</a>`;
+    });
     return escaped.trim();
 }
 

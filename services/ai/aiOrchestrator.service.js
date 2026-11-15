@@ -19,6 +19,13 @@ const {
 const { getChatModel, selectChatModel, ensureModelSlot } = require('../aiModelRouter.service');
 const { recordAiAuditLog } = require('../aiAuditLog.service');
 const { detectPromptInjection, scrubPromptPii } = require('./aiGuardrails.service');
+const { handleActionIntent } = require('../aiActionAgent.service');
+
+function resolveActionUserName(user) {
+    const raw = (user?.nickname || user?.username || '').trim();
+    if (!raw || raw.toLowerCase() === 'admin') return '관리자';
+    return raw;
+}
 
 /** 🔍 사용자 질문에서 필요한 도구 목록 지능형 선별 */
 function resolveNeededTools(prompt, user) {
@@ -206,34 +213,63 @@ async function prepareOrchestrationContext({ prompt, history = [], user, prefere
     };
 }
 
+function writeAudit(user, startMs, fields) {
+    recordAiAuditLog({ user, durationMs: Date.now() - startMs, ...fields });
+}
+
+function checkAndLogPolicyBlock({ prompt, user, reqStartMs }) {
+    const injectionCheck = detectPromptInjection(prompt);
+    const blockedMsg = injectionCheck.blocked ? injectionCheck.message : checkUnauthorizedAdminQuery(prompt, user);
+    if (!blockedMsg) return null;
+    writeAudit(user, reqStartMs, {
+        requestType: injectionCheck.blocked ? 'injection_blocked' : 'policy_blocked',
+        routedMode: 'policy', model: 'policy-guard', toolsUsed: [], prompt, status: 'BLOCKED'
+    });
+    return blockedMsg;
+}
+
+async function tryExecuteChatAction({ prompt, user, requestType, reqStartMs }) {
+    const actionResult = await handleActionIntent({ prompt, user, userName: resolveActionUserName(user) });
+    if (!actionResult || !actionResult.handled) return null;
+    writeAudit(user, reqStartMs, {
+        requestType, routedMode: 'action_agent', model: 'action-agent',
+        toolsUsed: [actionResult.actionType || 'action'], prompt,
+        status: actionResult.success === false ? 'ERROR' : 'SUCCESS'
+    });
+    return actionResult;
+}
+
+function sendImmediateSseResponse(res, { model, text, doneExtra = {} }) {
+    if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+    }
+    res.write(`data: ${JSON.stringify({ type: 'start', model })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'content', delta: text })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'done', model, ...doneExtra })}\n\n`);
+    return res.end();
+}
+
 /**
  * 🚀 전체 대화 요청 오케스트레이션 메인 함수 (HTTP SSE)
  */
 async function orchestrateChatRequest({ req, res, prompt, history = [], user, preference = 'auto' }) {
     const reqStartMs = Date.now();
     // 1. 프롬프트 인젝션 / 비인가 관리자 데이터 질의 사전 차단 (SSE 헤더 전 빠른 차단)
-    const injectionCheck = detectPromptInjection(prompt);
-    const earlyUnauthorized = injectionCheck.blocked ? injectionCheck.message : checkUnauthorizedAdminQuery(prompt, user);
+    const earlyUnauthorized = checkAndLogPolicyBlock({ prompt, user, reqStartMs });
     if (earlyUnauthorized) {
-        recordAiAuditLog({
-            user,
-            requestType: injectionCheck.blocked ? 'injection_blocked' : 'policy_blocked',
-            routedMode: 'policy',
-            model: 'policy-guard',
-            toolsUsed: [],
-            prompt,
-            durationMs: Date.now() - reqStartMs,
-            status: 'BLOCKED'
+        return sendImmediateSseResponse(res, { model: 'policy-guard', text: earlyUnauthorized });
+    }
+
+    // 2. ⚡ 자연어 액션 에이전트 실행 (일정·혈압·메모 즉시 등록)
+    const actionResult = await tryExecuteChatAction({ prompt, user, requestType: 'stream_action', reqStartMs });
+    if (actionResult) {
+        return sendImmediateSseResponse(res, {
+            model: 'action-agent',
+            text: actionResult.message,
+            doneExtra: { fullText: actionResult.message, action: actionResult.meta, actionType: actionResult.actionType }
         });
-        if (!res.headersSent) {
-            res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('Connection', 'keep-alive');
-        }
-        res.write(`data: ${JSON.stringify({ type: 'start', model: 'policy-guard' })}\n\n`);
-        res.write(`data: ${JSON.stringify({ type: 'content', delta: earlyUnauthorized })}\n\n`);
-        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-        return res.end();
     }
 
     // ⚡ SSE 실시간 스트리밍 응답 헤더 즉시 수립 (프록시/클라우드플레어 1차 타임아웃 차단)
@@ -278,26 +314,14 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
             keepAlive: picked.keepAlive || '24h',
             isReasoningMode: isReasoning
         });
-        recordAiAuditLog({
-            user,
-            requestType: 'stream_chat',
-            routedMode: picked.mode || 'balanced',
-            model: activeModel,
-            toolsUsed: neededTools,
-            prompt,
-            durationMs: Date.now() - reqStartMs,
-            status: 'SUCCESS'
+        writeAudit(user, reqStartMs, {
+            requestType: 'stream_chat', routedMode: picked.mode || 'balanced',
+            model: activeModel, toolsUsed: neededTools, prompt, status: 'SUCCESS'
         });
     } catch (streamErr) {
-        recordAiAuditLog({
-            user,
-            requestType: 'stream_chat',
-            routedMode: picked.mode || 'balanced',
-            model: activeModel,
-            toolsUsed: neededTools,
-            prompt,
-            durationMs: Date.now() - reqStartMs,
-            status: 'ERROR'
+        writeAudit(user, reqStartMs, {
+            requestType: 'stream_chat', routedMode: picked.mode || 'balanced',
+            model: activeModel, toolsUsed: neededTools, prompt, status: 'ERROR'
         });
         throw streamErr;
     } finally {
@@ -321,18 +345,25 @@ async function runChatCompletion({
     onStatus = null
 }) {
     const reqStartMs = Date.now();
+    const blockedMsg = checkAndLogPolicyBlock({ prompt, user, reqStartMs });
+    if (blockedMsg) {
+        return { ok: true, blocked: true, answer: blockedMsg, model: 'policy-guard', toolsUsed: [] };
+    }
+
+    const actionResult = await tryExecuteChatAction({ prompt, user, requestType: `${requestType}_action`, reqStartMs });
+    if (actionResult) {
+        return {
+            ok: actionResult.success !== false,
+            blocked: false,
+            answer: actionResult.message,
+            model: 'action-agent',
+            actionType: actionResult.actionType,
+            toolsUsed: [actionResult.actionType || 'action']
+        };
+    }
+
     const ctx = await prepareOrchestrationContext({ prompt, history, user, preference });
     if (ctx.blocked) {
-        recordAiAuditLog({
-            user,
-            requestType: ctx.blockReason,
-            routedMode: 'policy',
-            model: 'policy-guard',
-            toolsUsed: [],
-            prompt,
-            durationMs: Date.now() - reqStartMs,
-            status: 'BLOCKED'
-        });
         return { ok: true, blocked: true, answer: ctx.unauthorizedMsg, model: 'policy-guard', toolsUsed: [] };
     }
 
@@ -383,15 +414,9 @@ async function runChatCompletion({
             throw new Error('EMPTY_ANSWER');
         }
 
-        recordAiAuditLog({
-            user,
-            requestType,
-            routedMode: picked.mode || 'balanced',
-            model: activeModel,
-            toolsUsed: neededTools,
-            prompt,
-            durationMs: Date.now() - reqStartMs,
-            status: 'SUCCESS'
+        writeAudit(user, reqStartMs, {
+            requestType, routedMode: picked.mode || 'balanced',
+            model: activeModel, toolsUsed: neededTools, prompt, status: 'SUCCESS'
         });
         return { ok: true, blocked: false, answer, model: activeModel, toolsUsed: neededTools };
     } catch (err) {
@@ -406,15 +431,9 @@ async function runChatCompletion({
                 .join('\n\n')
                 .replace(/^\[[^\]]+\]\s*/gm, '• ')
                 .slice(0, 1500);
-            recordAiAuditLog({
-                user,
-                requestType,
-                routedMode: 'rule_fallback',
-                model: 'portal-data-fallback',
-                toolsUsed: neededTools,
-                prompt,
-                durationMs: elapsedMs,
-                status: 'SUCCESS'
+            writeAudit(user, reqStartMs, {
+                requestType, routedMode: 'rule_fallback',
+                model: 'portal-data-fallback', toolsUsed: neededTools, prompt, status: 'SUCCESS'
             });
             return {
                 ok: true,
@@ -426,15 +445,9 @@ async function runChatCompletion({
             };
         }
 
-        recordAiAuditLog({
-            user,
-            requestType,
-            routedMode: picked?.mode || 'balanced',
-            model: activeModel,
-            toolsUsed: neededTools,
-            prompt,
-            durationMs: elapsedMs,
-            status: 'ERROR'
+        writeAudit(user, reqStartMs, {
+            requestType, routedMode: picked?.mode || 'balanced',
+            model: activeModel, toolsUsed: neededTools, prompt, status: 'ERROR'
         });
         return {
             ok: false,
