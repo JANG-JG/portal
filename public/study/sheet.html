@@ -31,6 +31,7 @@
             <div class="study-topbar-actions">
                 <button type="button" id="btnWakeLockToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">💡 화면 유지 중</button>
                 <button type="button" id="btnPenOnlyToggle" class="study-btn study-btn-outline" aria-pressed="false" hidden>🖐️ 손·펜 모두</button>
+                <button type="button" id="btnSoundFxToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">🔔 효과음</button>
                 <button type="button" id="btnTtsModeToggle" class="study-btn study-btn-outline" title="기기 음성이 안 들릴 때 서버 음성으로 전환해요">🔊 음성: 자동</button>
                 <button type="button" id="btnPrintA4" class="study-btn study-btn-outline">🖨️ A4 인쇄 / PDF</button>
                 <a id="btnBackToDashboard" href="/study" class="study-link-btn study-btn-secondary">⬅️ 학습실로</a>
@@ -66,8 +67,14 @@
 
     <script src="/js/study-pwa.js" defer></script>
     <script src="/js/study-tablet.js" defer></script>
+    <script src="/vendor/study/canvas-confetti.min.js" defer></script>
+    <script src="/vendor/study/hangul-writer.min.js" defer></script>
+    <script src="/vendor/study/perfect-freehand.min.js" defer></script>
+    <script src="/js/study-fx.js" defer></script>
     <script src="/js/study-tts.js" defer></script>
     <script src="/js/study-illustrations.js" defer></script>
+    <script src="/js/study-hangul-trace.js" defer></script>
+    <script src="/js/study-artwork.js" defer></script>
     <script src="/js/study-color-block.js" defer></script>
     <script src="/js/study-play-blocks.js" defer></script>
     <script src="/js/study-sheet.js" defer></script>

@@ -184,7 +184,13 @@
                     const note = (noteEl?.value || '').trim();
                     const { ok, data } = await callStampApi('/api/study/stamps/paper', { note });
                     ctx.showToast(data.message || (ok ? '종이 학습지 도장을 부여했어요!' : '도장 부여에 실패했어요.'));
-                    if (ok && noteEl) noteEl.value = '';
+                    if (ok) {
+                        if (window.StudyFx) {
+                            window.StudyFx.stamp();
+                            window.StudyFx.celebrate({ big: Boolean(data.reachedTen) });
+                        }
+                        if (noteEl) noteEl.value = '';
+                    }
                     await ctx.reloadDashboard();
                 } catch (_) {
                     ctx.showToast('도장 부여 중 오류가 발생했어요.');
@@ -204,7 +210,13 @@
                     const note = (noteEl?.value || '').trim();
                     const { ok, data } = await callStampApi('/api/study/stamps/manage', { action: 'add_online', note });
                     ctx.showToast(data.message || (ok ? '도장을 추가했어요!' : '추가에 실패했어요.'));
-                    if (ok && noteEl) noteEl.value = '';
+                    if (ok) {
+                        if (window.StudyFx) {
+                            window.StudyFx.stamp();
+                            window.StudyFx.celebrate({ big: Boolean(data.reachedTen) });
+                        }
+                        if (noteEl) noteEl.value = '';
+                    }
                     await ctx.reloadDashboard();
                 } catch (_) {
                     ctx.showToast('도장 추가 중 오류가 발생했어요.');

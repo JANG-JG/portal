@@ -214,6 +214,8 @@
             if (!res.ok) return;
             const data = await res.json();
             if (!data || !data.success || !data.config) return;
+            window.StudyTabletConfig = data.config;
+            document.dispatchEvent(new CustomEvent('study-tablet-config', { detail: data.config }));
             if (!hasStoredFlag(STORAGE_WAKELOCK) && typeof data.config.wakeLockDefault === 'boolean') {
                 await setWakeLockEnabled(data.config.wakeLockDefault, false);
             }

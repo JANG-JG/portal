@@ -380,12 +380,18 @@ router.get('/tablet-config', async (req, res) => {
     try {
         const wakeRaw = await getSystemConfig('study_tablet_wake_lock_default', '1');
         const penRaw = await getSystemConfig('study_tablet_pen_only_default', '0');
+        const sfxRaw = await getSystemConfig('study_tablet_sound_fx_default', '1');
+        const hangulRaw = await getSystemConfig('study_hangul_guide_enabled', '1');
+        const albumShareRaw = await getSystemConfig('study_kid_album_share_enabled', '1');
         const lanInfo = getLocalHttpsStatus();
         res.json({
             success: true,
             config: {
                 wakeLockDefault: wakeRaw !== '0',
-                penOnlyDefault: penRaw === '1'
+                penOnlyDefault: penRaw === '1',
+                soundFxDefault: sfxRaw !== '0',
+                hangulGuideEnabled: hangulRaw !== '0',
+                kidAlbumShareEnabled: albumShareRaw !== '0'
             },
             urls: {
                 extLoginUrl: 'https://j-jg.cc/study/login',
@@ -400,21 +406,42 @@ router.get('/tablet-config', async (req, res) => {
 
 router.post('/tablet-config', async (req, res) => {
     try {
-        const { wakeLockDefault, penOnlyDefault } = req.body || {};
+        const {
+            wakeLockDefault,
+            penOnlyDefault,
+            soundFxDefault,
+            hangulGuideEnabled,
+            kidAlbumShareEnabled
+        } = req.body || {};
         if (typeof wakeLockDefault === 'boolean') {
             await setSystemConfig('study_tablet_wake_lock_default', wakeLockDefault ? '1' : '0');
         }
         if (typeof penOnlyDefault === 'boolean') {
             await setSystemConfig('study_tablet_pen_only_default', penOnlyDefault ? '1' : '0');
         }
+        if (typeof soundFxDefault === 'boolean') {
+            await setSystemConfig('study_tablet_sound_fx_default', soundFxDefault ? '1' : '0');
+        }
+        if (typeof hangulGuideEnabled === 'boolean') {
+            await setSystemConfig('study_hangul_guide_enabled', hangulGuideEnabled ? '1' : '0');
+        }
+        if (typeof kidAlbumShareEnabled === 'boolean') {
+            await setSystemConfig('study_kid_album_share_enabled', kidAlbumShareEnabled ? '1' : '0');
+        }
         const nextWake = (await getSystemConfig('study_tablet_wake_lock_default', '1')) !== '0';
         const nextPen = (await getSystemConfig('study_tablet_pen_only_default', '0')) === '1';
+        const nextSfx = (await getSystemConfig('study_tablet_sound_fx_default', '1')) !== '0';
+        const nextHangul = (await getSystemConfig('study_hangul_guide_enabled', '1')) !== '0';
+        const nextAlbumShare = (await getSystemConfig('study_kid_album_share_enabled', '1')) !== '0';
         res.json({
             success: true,
             message: '「빨간패드공부」 태블릿 앱 설정이 저장되었습니다.',
             config: {
                 wakeLockDefault: nextWake,
-                penOnlyDefault: nextPen
+                penOnlyDefault: nextPen,
+                soundFxDefault: nextSfx,
+                hangulGuideEnabled: nextHangul,
+                kidAlbumShareEnabled: nextAlbumShare
             }
         });
     } catch (err) {
@@ -423,5 +450,6 @@ router.post('/tablet-config', async (req, res) => {
 });
 
 router.use('/stamps', require('./studyStamps.admin.routes'));
+router.use('/artworks', require('./studyArtwork.admin.routes'));
 
 module.exports = router;

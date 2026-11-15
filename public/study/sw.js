@@ -19,7 +19,13 @@ const PRECACHE_ASSETS = [
     '/css/study-tablet.css',
     '/fonts/Pretendard-Regular.subset.woff2',
     '/fonts/Pretendard-SemiBold.subset.woff2',
-    '/fonts/Pretendard-Bold.subset.woff2'
+    '/fonts/Pretendard-Bold.subset.woff2',
+    '/vendor/study/canvas-confetti.min.js',
+    '/vendor/study/hangul-writer.min.js',
+    '/vendor/study/perfect-freehand.min.js',
+    '/js/study-fx.js',
+    '/js/study-hangul-trace.js',
+    '/js/study-artwork.js'
 ];
 
 self.addEventListener('install', (event) => {

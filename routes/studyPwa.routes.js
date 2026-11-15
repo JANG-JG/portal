@@ -32,7 +32,7 @@ function sendNoStoreHtml(res, relPath) {
         const fullPath = path.join(PUBLIC_DIR, relPath);
         let html = fs.readFileSync(fullPath, 'utf8');
         const v = STATIC_ASSET_VERSION || Date.now();
-        html = html.replace(/(href|src)="(\/(?:css|js)\/[^"?#]+)(\?v=[^"]*)?"/g, `$1="$2?v=${v}"`);
+        html = html.replace(/(href|src)="(\/(?:css|js|vendor)\/[^"?#]+)(\?v=[^"]*)?"/g, `$1="$2?v=${v}"`);
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         res.setHeader('Pragma', 'no-cache');

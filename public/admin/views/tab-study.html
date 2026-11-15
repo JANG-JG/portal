@@ -126,6 +126,18 @@
                                     <input id="chkTabletPenOnlyDefault" type="checkbox">
                                     S펜 전용 모드 기본 켜기 (손바닥 터치 차단)
                                 </label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                    <input id="chkTabletSoundFxDefault" type="checkbox" checked>
+                                    효과음·폭죽 팩 기본 켜기
+                                </label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                    <input id="chkTabletHangulGuideEnabled" type="checkbox" checked>
+                                    한글 획순 애니메이션·퀴즈 켜기
+                                </label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                    <input id="chkTabletKidAlbumShareEnabled" type="checkbox" checked>
+                                    내가 칠한 그림 가족앨범 자랑 허용
+                                </label>
                             </div>
                             <button type="button" id="btnSaveStudyTabletConfig" class="btn-admin btn-admin-primary btn-admin-sm" onclick="saveStudyTabletConfig()">💾 태블릿 앱 설정 저장</button>
                         </div>
@@ -198,6 +210,21 @@
                                 <tr><td colspan="6" style="text-align:center; padding:1rem; color:#64748b;">도장 이력을 불러오는 중...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div id="studyArtworkAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">🎨 아이들 색칠 작품 &amp; 가족앨범 공유 관리</h3>
+                            <p style="margin:0.2rem 0 0; font-size:0.78rem; color:#64748b;">
+                                아이들이 색칠 놀이를 마치고 저장·자랑한 그림을 확인하고 가족앨범 재등록 또는 삭제할 수 있습니다.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyArtworks()">🔄 작품 새로고침</button>
+                    </div>
+                    <div id="adminStudyArtworksGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.75rem; margin-top:0.75rem;">
+                        <div style="padding:0.9rem; color:#64748b; font-size:0.84rem;">그림 작품 목록을 불러오는 중입니다...</div>
                     </div>
                 </div>
 

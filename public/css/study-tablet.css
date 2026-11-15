@@ -286,6 +286,87 @@ body {
     border-color: #fecaca;
 }
 
+/* 한글 획순 애니메이션·퀴즈 오버레이 */
+.trace-wrap {
+    position: relative;
+}
+
+.trace-char-box {
+    position: relative;
+}
+
+.trace-hw-slot {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.trace-wrap.is-hw-active .trace-hw-slot {
+    opacity: 1;
+}
+
+.trace-wrap.is-hw-active .trace-char-box > span {
+    opacity: 0.14;
+}
+
+.trace-wrap.is-hw-active .trace-canvas {
+    pointer-events: none;
+    opacity: 0.25;
+}
+
+.trace-wrap.is-hw-quiz .trace-hw-slot {
+    pointer-events: auto;
+}
+
+.trace-char-box.is-hw-focus {
+    outline: 3px solid #fb923c;
+    outline-offset: 2px;
+    border-radius: 14px;
+    background: rgba(255, 247, 237, 0.72);
+}
+
+.trace-hw-hint {
+    margin: 8px 0 0;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #475569;
+    line-height: 1.45;
+    min-height: 1.4em;
+}
+
+.color-undo-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.color-artwork-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.color-share-btn {
+    flex: 1.6 1 210px;
+    min-height: 48px;
+}
+
+.color-download-btn {
+    flex: 1 1 130px;
+    min-height: 48px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .stamp-slot--editable {
+        transition: none;
+    }
+}
+
 @media print {
     .study-shell {
         max-width: none !important;
@@ -295,6 +376,10 @@ body {
     #studyInstallBanner,
     #btnWakeLockToggle,
     #btnPenOnlyToggle,
+    #btnSoundFxToggle,
+    .trace-hw-hint,
+    .trace-hw-slot,
+    .color-artwork-actions,
     .stamp-lock-notice,
     .stamp-parent-panel {
         display: none !important;

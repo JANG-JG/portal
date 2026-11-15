@@ -156,7 +156,7 @@
             else if (blk.type === 'match') renderMatchBlock(bodyEl, blk);
             else if (blk.type === 'dot_to_dot' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderDotToDotBlock(bodyEl, blk, speakText, showToast);
             else if (blk.type === 'maze' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMazeBlock(bodyEl, blk, speakText, showToast);
-            else if (blk.type === 'color' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderColorBlock(bodyEl, blk, speakText, showToast);
+            else if (blk.type === 'color' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderColorBlock(bodyEl, blk, speakText, showToast, sheet);
             else renderQuizBlock(bodyEl, blk);
 
             container.appendChild(card);
@@ -262,48 +262,50 @@
             window.addEventListener('resize', resizeCanvas);
         }
 
-        const getPos = (e) => {
-            const r = canvas.getBoundingClientRect();
-            return { x: e.clientX - r.left, y: e.clientY - r.top };
+        const getPos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+        const applyStrokeWidth = (e) => {
+            if (activeTool === 'eraser') { ctx.lineWidth = 28; return; }
+            ctx.lineWidth = (e && e.pointerType === 'pen' && e.pressure > 0) ? (4.5 + Math.min(1, e.pressure) * 9.5) : 8;
         };
-        const beginStroke = (p) => {
+        const beginStroke = (p, e) => {
             drawing = true;
             if (activeTool === 'pen') hasInk = true;
-            applyToolStyle();
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x + 0.01, p.y + 0.01);
-            ctx.stroke();
+            applyToolStyle(); applyStrokeWidth(e);
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 0.01, p.y + 0.01); ctx.stroke();
         };
-        const moveStroke = (p) => { if (drawing) { ctx.lineTo(p.x, p.y); ctx.stroke(); } };
+        const moveStroke = (p, e) => {
+            if (!drawing) return;
+            if (activeTool === 'pen' && e && e.pointerType === 'pen' && e.pressure > 0) applyStrokeWidth(e);
+            ctx.lineTo(p.x, p.y); ctx.stroke();
+        };
         const endDraw = () => { drawing = false; };
         if (window.StudyTablet && window.StudyTablet.bindDrawingCanvas) {
             window.StudyTablet.bindDrawingCanvas(canvas, { getPos, onStart: beginStroke, onMove: moveStroke, onEnd: endDraw, onResize: resizeCanvas });
         } else {
-            canvas.addEventListener('pointerdown', (e) => { if (e.isPrimary !== false) { canvas.setPointerCapture(e.pointerId); beginStroke(getPos(e)); } });
-            canvas.addEventListener('pointermove', (e) => moveStroke(getPos(e)));
+            canvas.addEventListener('pointerdown', (e) => { if (e.isPrimary !== false) { canvas.setPointerCapture(e.pointerId); beginStroke(getPos(e), e); } });
+            canvas.addEventListener('pointermove', (e) => moveStroke(getPos(e), e));
             canvas.addEventListener('pointerup', endDraw);
             canvas.addEventListener('pointercancel', endDraw);
         }
 
         const toolBtns = Array.from(meta.querySelectorAll('[data-tool]'));
-        toolBtns.forEach((btn) => btn.addEventListener('click', () => {
-            activeTool = btn.dataset.tool;
-            wrap.dataset.tool = activeTool;
+        const selectTool = (nextTool) => {
+            activeTool = nextTool; wrap.dataset.tool = activeTool;
             toolBtns.forEach((b) => {
                 const on = b.dataset.tool === activeTool;
                 b.classList.toggle('active', on);
                 b.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
             applyToolStyle();
-        }));
+        };
+        toolBtns.forEach((btn) => btn.addEventListener('click', () => selectTool(btn.dataset.tool)));
+        const hwCtrl = window.StudyHangulTrace
+            ? window.StudyHangulTrace.enhanceTraceBlock({ meta, wrap, rawWord, speakFn: speakText, toastFn: showToast, onSelectFreeMode: selectTool })
+            : null;
         meta.querySelector('.btn-clear-canvas').addEventListener('click', () => {
-            ctx.save();
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.restore();
-            hasInk = false;
-            applyToolStyle();
+            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore();
+            hasInk = false; applyToolStyle();
+            if (hwCtrl && typeof hwCtrl.reset === 'function') hwCtrl.reset();
         });
     }
 
@@ -326,6 +328,7 @@
                 badge.className = 'count-badge';
                 badge.textContent = String(tappedSeq);
                 btn.appendChild(badge);
+                if (window.StudyFx) window.StudyFx.tap();
                 speakText(String(tappedSeq), 'ko-KR');
             });
             grid.appendChild(btn);
@@ -373,23 +376,19 @@
         feedback.style.cssText = 'font-weight:800; margin:10px 0 0; min-height:1.4em;';
 
         (blk.choices || []).forEach((ch) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'choice-btn';
-            btn.textContent = ch;
+            const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'choice-btn', textContent: ch });
             btn.addEventListener('click', () => {
                 const isOk = String(ch).trim().toUpperCase() === String(blk.answer).trim().toUpperCase();
                 grid.querySelectorAll('.choice-btn').forEach((b) => b.classList.remove('correct', 'wrong'));
                 btn.classList.add(isOk ? 'correct' : 'wrong');
                 feedback.style.color = isOk ? '#047857' : '#dc2626';
                 feedback.textContent = isOk ? '딩동댕! 정답이에요! 🌟' : '한 번 더 생각해 볼까요? 😊';
+                if (window.StudyFx) (isOk ? window.StudyFx.correct : window.StudyFx.retry)();
                 if (isOk) speakText('딩동댕! 참 잘했어요!', 'ko-KR');
             });
             grid.appendChild(btn);
         });
-
-        container.appendChild(grid);
-        container.appendChild(feedback);
+        container.append(grid, feedback);
     }
 
     function renderMatchBlock(container, blk) {
@@ -452,19 +451,18 @@
                     btn.classList.add('matched');
                     drawLineBetween(selectedLeft, btn, '#10b981');
                     selectedLeft = null;
+                    if (window.StudyFx) window.StudyFx.correct();
                     showToast('짝꿍 찾기 성공! 🌟');
                 } else {
                     selectedLeft.classList.remove('selected');
                     selectedLeft = null;
+                    if (window.StudyFx) window.StudyFx.retry();
                     showToast('다른 짝꿍을 찾아 볼까요?');
                 }
             });
             rightCol.appendChild(btn);
         });
-
-        board.appendChild(svg);
-        board.appendChild(leftCol);
-        board.appendChild(rightCol);
+        board.append(svg, leftCol, rightCol);
         container.appendChild(board);
     }
 
@@ -474,19 +472,14 @@
             const btn = ev.currentTarget;
             btn.disabled = true;
             try {
-                const res = await fetch(`/api/study/sheets/${sheetId}/complete`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include'
-                });
+                const res = await fetch(`/api/study/sheets/${sheetId}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include' });
                 const data = await res.json();
                 showToast(data.message || '칭찬 도장을 받았어요!');
                 if (data.success) {
+                    if (window.StudyFx) { window.StudyFx.fanfare(); window.StudyFx.celebrate({ big: Boolean(data.reachedTen) }); }
                     btn.textContent = '✅ 칭찬 도장을 받았어요! (학습실로 가기)';
                     btn.disabled = false;
-                    btn.onclick = () => {
-                        window.location.href = `/study?childId=${encodeURIComponent(currentSheet?.child_id || 'first')}`;
-                    };
+                    btn.onclick = () => { window.location.href = `/study?childId=${encodeURIComponent(currentSheet?.child_id || 'first')}`; };
                 }
             } catch (e) {
                 btn.disabled = false;

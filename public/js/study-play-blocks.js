@@ -118,6 +118,7 @@
                         const expected = points[nextIdx].label;
                         banner.style.color = '#d97706';
                         banner.textContent = `지금은 '${expected}' 점을 눌러 볼까요? 😊`;
+                        if (window.StudyFx) window.StudyFx.retry();
                         if (toastFn) toastFn(`다음 순서는 '${expected}'예요!`);
                         return;
                     }
@@ -144,11 +145,16 @@
                         statusBadge.textContent = `완성! ${blk.shapeEmoji || '🌟'} ${blk.shapeName || '그림'}`;
                         banner.style.color = '#047857';
                         banner.textContent = `와! 멋진 '${blk.shapeName || '그림'}' 완성했어요! 🎉`;
+                        if (window.StudyFx) {
+                            window.StudyFx.correct();
+                            window.StudyFx.celebrate({ big: false });
+                        }
                         if (speakFn) speakFn(`와! 멋진 ${blk.shapeName || '그림'}을 완성했어요!`, 'ko-KR');
                     } else {
                         statusBadge.textContent = `다음 점: ${points[nextIdx].label}`;
                         banner.style.color = '#0284c7';
                         banner.textContent = `잘했어요! 다음은 '${points[nextIdx].label}'을 찾아보세요.`;
+                        if (window.StudyFx) window.StudyFx.tap();
                     }
                     redrawNodes();
                 };
@@ -245,12 +251,17 @@
                                 statusBadge.textContent = `도착! ${blk.goalEmoji || '🎁'}`;
                                 banner.style.color = '#047857';
                                 banner.textContent = `만세! ${blk.goalEmoji || '보물'}까지 길을 모두 찾았어요! 🎉`;
+                                if (window.StudyFx) {
+                                    window.StudyFx.correct();
+                                    window.StudyFx.celebrate({ big: false });
+                                }
                                 if (speakFn) speakFn('만세! 길을 끝까지 잘 찾았어요!', 'ko-KR');
                             } else {
                                 const upcoming = path[stepIdx + 1];
                                 statusBadge.textContent = `다음 칸: ${upcoming.label}`;
                                 banner.style.color = '#0284c7';
                                 banner.textContent = `한 걸음 전진! 이제 '${upcoming.label}' 칸을 눌러 보세요.`;
+                                if (window.StudyFx) window.StudyFx.tap();
                             }
                             renderGrid();
                         } else {
@@ -259,6 +270,7 @@
                             btn.classList.add('is-shake');
                             banner.style.color = '#d97706';
                             banner.textContent = `붙어 있는 '${nextTarget.label}' 칸으로 이동해 보아요!`;
+                            if (window.StudyFx) window.StudyFx.retry();
                             if (toastFn) toastFn(`옆에 있는 '${nextTarget.label}' 칸을 눌러요!`);
                         }
                     });
@@ -280,9 +292,9 @@
         container.appendChild(banner);
     }
 
-    function renderColorBlock(container, blk, speakFn) {
+    function renderColorBlock(container, blk, speakFn, toastFn, sheetMeta) {
         if (window.StudyColorBlock && typeof window.StudyColorBlock.renderColorBlock === 'function') {
-            window.StudyColorBlock.renderColorBlock(container, blk, speakFn);
+            window.StudyColorBlock.renderColorBlock(container, blk, speakFn, toastFn, sheetMeta);
         }
     }
 

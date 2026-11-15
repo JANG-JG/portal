@@ -49,7 +49,7 @@ function sendStudyHtml(res, relPath) {
         const fullPath = path.join(PUBLIC_DIR, relPath);
         let html = fs.readFileSync(fullPath, 'utf8');
         const v = STATIC_ASSET_VERSION || Date.now();
-        html = html.replace(/(href|src)="(\/(?:css|js)\/[^"?#]+)(\?v=[^"]*)?"/g, `$1="$2?v=${v}"`);
+        html = html.replace(/(href|src)="(\/(?:css|js|vendor)\/[^"?#]+)(\?v=[^"]*)?"/g, `$1="$2?v=${v}"`);
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
         res.send(html);
@@ -100,11 +100,17 @@ router.get('/api/study/tablet-config', authenticateToken, async (req, res) => {
     try {
         const wakeRaw = await getSystemConfig('study_tablet_wake_lock_default', '1');
         const penRaw = await getSystemConfig('study_tablet_pen_only_default', '0');
+        const sfxRaw = await getSystemConfig('study_tablet_sound_fx_default', '1');
+        const hangulRaw = await getSystemConfig('study_hangul_guide_enabled', '1');
+        const albumShareRaw = await getSystemConfig('study_kid_album_share_enabled', '1');
         res.json({
             success: true,
             config: {
                 wakeLockDefault: wakeRaw !== '0',
-                penOnlyDefault: penRaw === '1'
+                penOnlyDefault: penRaw === '1',
+                soundFxDefault: sfxRaw !== '0',
+                hangulGuideEnabled: hangulRaw !== '0',
+                kidAlbumShareEnabled: albumShareRaw !== '0'
             }
         });
     } catch (err) {
@@ -486,5 +492,7 @@ router.get('/api/study/tts', authenticateToken, async (req, res) => {
         return res.status(500).json({ success: false, message: '음성 생성 중 오류가 발생했습니다.' });
     }
 });
+
+router.use(require('./studyArtwork.routes'));
 
 module.exports = router;
