@@ -58,10 +58,14 @@ async function ensurePokemonTables() {
             hatched INTEGER NOT NULL DEFAULT 0,
             hatch_acknowledged INTEGER NOT NULL DEFAULT 0,
             hatched_at DATETIME,
+            reward_approved_at DATETIME,
+            reward_approved_by TEXT DEFAULT '',
             created_at DATETIME DEFAULT (datetime('now', 'localtime')),
             UNIQUE (child_id, cycle_no)
         )
     `);
+    await dbRun('ALTER TABLE study_pokemon_eggs ADD COLUMN reward_approved_at DATETIME', []).catch(() => {});
+    await dbRun("ALTER TABLE study_pokemon_eggs ADD COLUMN reward_approved_by TEXT DEFAULT ''", []).catch(() => {});
     await dbRun(`
         CREATE TABLE IF NOT EXISTS study_pokemon_pokedex (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -221,6 +225,9 @@ async function getPokemonStateForBoard(childId, board) {
         eggColor: targetMeta.eggColor,
         eggSpot: targetMeta.eggSpot,
         typeHint: `${targetMeta.typeEmoji} ${targetMeta.typeLabel} 기운이 느껴져요!`,
+        rewardApproved: Boolean(egg.reward_approved_at),
+        rewardApprovedAt: egg.reward_approved_at || null,
+        rewardApprovedBy: egg.reward_approved_by || '',
         revealedPokemon: isHatched
             ? {
                 ...targetMeta,
@@ -277,6 +284,20 @@ async function acknowledgeEggHatch(childId, cycleNo) {
         [cid, cNo]
     );
     return true;
+}
+
+async function approveEggReward(childId, cycleNo, approverLabel = '부모님') {
+    await ensurePokemonTables();
+    const cid = String(childId || 'first').trim() || 'first';
+    const cNo = Math.max(1, Number(cycleNo || 1));
+    const res = await dbRun(
+        `UPDATE study_pokemon_eggs
+         SET reward_approved_at = COALESCE(reward_approved_at, datetime('now', 'localtime')),
+             reward_approved_by = ?
+         WHERE child_id = ? AND cycle_no = ? AND hatched = 1`,
+        [String(approverLabel || '부모님').slice(0, 30), cid, cNo]
+    );
+    return res.changes > 0;
 }
 
 async function setPartnerPokemon(childId, pokemonId) {
@@ -432,6 +453,7 @@ module.exports = {
     syncEggProgressWithBoard,
     getPokemonStateForBoard,
     acknowledgeEggHatch,
+    approveEggReward,
     setPartnerPokemon,
     rerollUnhatchedEgg,
     getOrCachePokemonSprite,

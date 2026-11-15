@@ -313,4 +313,48 @@ router.post('/api/portal/user/weather-city', authenticateToken, async (req, res)
     }
 });
 
+// 7. 포털 메인 대시보드 - 오늘의 아이들 학습 단짝 포켓몬 미니 현황 API
+router.get('/api/portal/study-buddies', authenticateToken, async (req, res) => {
+    try {
+        const { getProfiles, getActiveStampBoard, getSystemConfig } = require('../services/study/studyDb.service');
+        const { getPokemonStateForBoard } = require('../services/study/studyPokemon.service');
+
+        const widgetEnabled = (await getSystemConfig('portal_study_buddy_widget_enabled', '1')) !== '0';
+        if (!widgetEnabled) {
+            return res.json({ success: true, enabled: false, buddies: [] });
+        }
+
+        const profiles = await getProfiles();
+        const buddies = [];
+        for (const p of profiles.slice(0, 4)) {
+            const board = await getActiveStampBoard(p.id);
+            const pokeState = await getPokemonStateForBoard(p.id, board);
+            if (!pokeState || pokeState.enabled === false) {
+                return res.json({ success: true, enabled: false, buddies: [] });
+            }
+            buddies.push({
+                childId: p.id,
+                displayName: p.display_name,
+                avatarEmoji: p.avatar_emoji || '🌟',
+                steps: Number(pokeState.activeEgg?.steps ?? board.earnedCount ?? 0),
+                hatched: Boolean(pokeState.activeEgg?.hatched),
+                stageLabel: pokeState.activeEgg?.stageLabel || '',
+                collectedCount: Number(pokeState.collectedCount || 0),
+                partner: pokeState.partnerPokemon
+                    ? {
+                        id: pokeState.partnerPokemon.id,
+                        nameKo: pokeState.partnerPokemon.nameKo,
+                        animatedUrl: pokeState.partnerPokemon.animatedUrl,
+                        artworkUrl: pokeState.partnerPokemon.artworkUrl
+                    }
+                    : null
+            });
+        }
+        res.json({ success: true, enabled: true, buddies });
+    } catch (err) {
+        console.warn('포털 학습 단짝 위젯 조회 오류:', err.message);
+        res.json({ success: true, enabled: false, buddies: [] });
+    }
+});
+
 module.exports = router;

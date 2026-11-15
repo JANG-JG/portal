@@ -130,8 +130,11 @@
             eggBtn.dataset.stage = String(egg.stage || 0);
             const pct = Math.min(1, Math.max(0, Number(egg.steps || 0) / 10));
             const titleText = egg.hatched
-                ? '🎉 알이 부화했어요! 눌러서 열기'
+                ? (egg.rewardApproved ? '🎁 부모님이 선물을 승인했어요!' : '🎉 알이 부화했어요! 눌러서 열기')
                 : `신비한 알 (${egg.steps || 0}/10칸)`;
+            const statusSub = egg.hatched && egg.rewardApproved
+                ? `축하해요! ${esc(egg.rewardApprovedBy || '부모님')}이(가) 보상 약속을 확인해 주셨어요 ✨`
+                : (egg.statusLine || '');
             eggBtn.innerHTML = `
                 <span class="pokemon-stage__tag">${esc(egg.cycleNo || 1)}번째 알 · ${esc(egg.stageLabel || '둥지')}</span>
                 <div class="pokemon-actor-wrap">
@@ -140,7 +143,7 @@
                 </div>
                 <div style="width:100%;">
                     <div class="pokemon-stage__label">${esc(titleText)}</div>
-                    <div class="pokemon-stage__sub">${esc(egg.statusLine || '')}</div>
+                    <div class="pokemon-stage__sub">${esc(statusSub)}</div>
                     <div class="pokemon-progress" aria-hidden="true">
                         <div class="pokemon-progress__bar" style="transform:scaleX(${pct});"></div>
                     </div>
@@ -207,6 +210,9 @@
         const poke = egg.revealedPokemon;
         dlg.dataset.cycleNo = String(egg.cycleNo || 1);
         dlg.dataset.pokemonId = String(poke.id);
+        const approvedBanner = egg.rewardApproved
+            ? `<div style="margin-top:0.55rem; padding:0.35rem 0.75rem; border-radius:999px; background:#dcfce7; color:#15803d; font-size:0.82rem; font-weight:800; display:inline-block;">🎁 ${esc(egg.rewardApprovedBy || '부모님')}이(가) 보상 선물을 승인했어요!</div>`
+            : '';
         hero.innerHTML = `
             <div style="font-size:0.86rem; font-weight:800; color:#b45309;">🎉 ${esc(egg.cycleNo || 1)}번째 도장판 완성! 알이 부화했어요!</div>
             <img src="${esc(poke.artworkUrl || poke.animatedUrl)}" alt="${esc(poke.nameKo)}">
@@ -214,6 +220,7 @@
             <span style="display:inline-block; padding:0.2rem 0.65rem; border-radius:999px; font-size:0.8rem; font-weight:800; background:${esc(poke.bgSoft || '#fef3c7')}; color:${esc(poke.color || '#b45309')};">
                 ${esc(poke.typeEmoji)} ${esc(poke.typeLabel)}
             </span>
+            ${approvedBanner}
             <p style="margin:0.6rem 0 0; font-size:0.88rem; color:#475569; line-height:1.45;">${esc(poke.flavorKo || '')}</p>
         `;
         if (window.StudyFx) {

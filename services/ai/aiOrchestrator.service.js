@@ -9,7 +9,13 @@
 const { executeTool } = require('./aiTools.registry');
 const { isAdmin } = require('./aiDataFetchers.service');
 const { buildSystemPrompt, formatToolDataToContext } = require('./aiPromptBuilder.service');
-const { streamChatToClient } = require('./aiStreamClient.service');
+const {
+    DEFAULT_OLLAMA_HOST,
+    streamChatToClient,
+    ensureKoreanEnglishPair,
+    splitThinkStream,
+    ollamaDispatcher
+} = require('./aiStreamClient.service');
 const { getChatModel, selectChatModel, ensureModelSlot } = require('../aiModelRouter.service');
 const { recordAiAuditLog } = require('../aiAuditLog.service');
 const { detectPromptInjection, scrubPromptPii } = require('./aiGuardrails.service');
@@ -115,48 +121,21 @@ function checkUnauthorizedAdminQuery(prompt, user) {
 }
 
 /**
- * 🚀 전체 대화 요청 오케스트레이션 메인 함수
+ * 🧩 공통 컨텍스트 빌더: 보안 가드 + 도구 병렬 수집 + 모델/프롬프트 조립
  */
-async function orchestrateChatRequest({ req, res, prompt, history = [], user, preference = 'auto' }) {
-    const reqStartMs = Date.now();
-    // 1. 프롬프트 인젝션 / 비인가 관리자 데이터 질의 사전 차단
+async function prepareOrchestrationContext({ prompt, history = [], user, preference = 'auto' }) {
     const injectionCheck = detectPromptInjection(prompt);
     const unauthorizedMsg = injectionCheck.blocked ? injectionCheck.message : checkUnauthorizedAdminQuery(prompt, user);
     if (unauthorizedMsg) {
-        recordAiAuditLog({
-            user,
-            requestType: injectionCheck.blocked ? 'injection_blocked' : 'policy_blocked',
-            routedMode: 'policy',
-            model: 'policy-guard',
-            toolsUsed: [],
-            prompt,
-            durationMs: Date.now() - reqStartMs,
-            status: 'BLOCKED'
-        });
-        if (!res.headersSent) {
-            res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-            res.setHeader('Cache-Control', 'no-cache');
-            res.setHeader('Connection', 'keep-alive');
-        }
-        res.write(`data: ${JSON.stringify({ type: 'start', model: 'policy-guard' })}\n\n`);
-        res.write(`data: ${JSON.stringify({ type: 'content', delta: unauthorizedMsg })}\n\n`);
-        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-        return res.end();
+        return {
+            blocked: true,
+            blockReason: injectionCheck.blocked ? 'injection_blocked' : 'policy_blocked',
+            unauthorizedMsg
+        };
     }
 
-    // ⚡ SSE 실시간 스트리밍 응답 헤더 즉시 수립 (프록시/클라우드플레어 1차 타임아웃 차단)
-    if (!res.headersSent) {
-        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
-        res.setHeader('Cache-Control', 'no-cache, no-transform');
-        res.setHeader('Connection', 'keep-alive');
-        res.setHeader('X-Accel-Buffering', 'no');
-        res.flushHeaders?.();
-    }
-
-    // 2. 필요 도구 판별 및 병렬 데이터 수집
     const neededTools = resolveNeededTools(prompt, user);
     const toolResults = [];
-
     if (neededTools.length > 0) {
         const fetchPromises = neededTools.map(async (toolName) => {
             const params = resolveToolParams(toolName, prompt);
@@ -166,30 +145,19 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
             }
             return null;
         });
-
         const settled = await Promise.allSettled(fetchPromises);
-        settled.forEach(s => {
-            if (s.status === 'fulfilled' && s.value) {
-                toolResults.push(s.value);
-            }
+        settled.forEach((s) => {
+            if (s.status === 'fulfilled' && s.value) toolResults.push(s.value);
         });
     }
 
-    // 3. 질문 의도에 따른 모델 및 파라미터 사전 선택 (모델에 맞는 최적 프롬프트 주입 목적)
     const picked = selectChatModel(prompt, preference);
     const activeModel = picked.model || getChatModel() || 'exaone4:opt';
     const isReasoning = (picked.mode === 'reasoning' || activeModel.toLowerCase().includes('exaone'));
-
-    // 4. 모델별 맞춤 경량 시스템 프롬프트 빌드 (Gemma 대화 모델은 토큰 60% 절약)
     const systemPrompt = buildSystemPrompt(user, activeModel);
 
-    // 5. 대화 이력 구성 (컨텍스트 창 고갈 방지를 위한 스마트 토큰 버짓 제어)
-    const messages = [
-        { role: 'system', content: systemPrompt }
-    ];
-
+    const messages = [{ role: 'system', content: systemPrompt }];
     if (Array.isArray(history) && history.length > 0) {
-        // 최근 4턴 이내, 총 1,200자 이내로 스마트 슬라이싱하여 신규 답변 생성 공간을 충분히 확보
         const recentHistory = history.slice(-4);
         let accumulatedChars = 0;
         const validItems = [];
@@ -208,6 +176,77 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
         }
         messages.push(...validItems);
     }
+
+    const { text: safePrompt, scrubbed: piiScrubbed } = scrubPromptPii(prompt, 2000);
+    let finalUserMessage = safePrompt;
+    if (toolResults.length > 0) {
+        finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 제공된 데이터에 없는 날짜·수치·약품 용량·전화번호는 절대 추측해서 지어내지 마시고, 대화 길이를 요약하거나 축소하지 말고 필요한 세부 사항을 충실히 설명해 주세요. (시스템 함수명이나 영단어를 섞지 마시고, 100% 매끄럽고 친근한 순수 우리말 한국어로 설명해 주세요):\n"${safePrompt}"`;
+    } else if (neededTools.length > 0) {
+        finalUserMessage = `[포털 데이터 조회 결과]\n관련된 실시간 등록 데이터를 찾지 못했습니다. 없는 일정·위키·메모 정보를 임의로 지어내지 말고, 확인된 등록 정보가 없음을 솔직히 안내해 주세요.\n\n[사용자 질문]\n"${safePrompt}"`;
+    }
+    if (piiScrubbed) {
+        finalUserMessage += `\n\n(보안 안내: 입력에 포함된 민감 개인정보는 자동으로 마스킹 처리되었습니다. 마스킹된 정보는 추측하거나 복원하려 하지 마세요.)`;
+    }
+    if (isReasoning) {
+        finalUserMessage += `\n\n(작성 지침: 생각과 답변 모두 100% 한국어로 진행하세요. 생각은 1~2문장으로 한국어로만 간결히 정리하고, 본문에서는 표나 'Done!' 메모만 남기지 말고 곧바로 사용자에게 건네는 완성된 한국어 존댓말 본문으로 충실하게 작성해 주세요.)`;
+    }
+    messages.push({ role: 'user', content: finalUserMessage });
+
+    return {
+        blocked: false,
+        neededTools,
+        toolResults,
+        picked,
+        activeModel,
+        isReasoning,
+        messages,
+        streamOptions: {
+            num_ctx: Math.max(Number(picked.numCtx) || 4096, 2048)
+        }
+    };
+}
+
+/**
+ * 🚀 전체 대화 요청 오케스트레이션 메인 함수 (HTTP SSE)
+ */
+async function orchestrateChatRequest({ req, res, prompt, history = [], user, preference = 'auto' }) {
+    const reqStartMs = Date.now();
+    // 1. 프롬프트 인젝션 / 비인가 관리자 데이터 질의 사전 차단 (SSE 헤더 전 빠른 차단)
+    const injectionCheck = detectPromptInjection(prompt);
+    const earlyUnauthorized = injectionCheck.blocked ? injectionCheck.message : checkUnauthorizedAdminQuery(prompt, user);
+    if (earlyUnauthorized) {
+        recordAiAuditLog({
+            user,
+            requestType: injectionCheck.blocked ? 'injection_blocked' : 'policy_blocked',
+            routedMode: 'policy',
+            model: 'policy-guard',
+            toolsUsed: [],
+            prompt,
+            durationMs: Date.now() - reqStartMs,
+            status: 'BLOCKED'
+        });
+        if (!res.headersSent) {
+            res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+        }
+        res.write(`data: ${JSON.stringify({ type: 'start', model: 'policy-guard' })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'content', delta: earlyUnauthorized })}\n\n`);
+        res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+        return res.end();
+    }
+
+    // ⚡ SSE 실시간 스트리밍 응답 헤더 즉시 수립 (프록시/클라우드플레어 1차 타임아웃 차단)
+    if (!res.headersSent) {
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders?.();
+    }
+
+    const ctx = await prepareOrchestrationContext({ prompt, history, user, preference });
+    const { neededTools, picked, activeModel, isReasoning, messages, streamOptions } = ctx;
 
     // ⚡ 주기적 하트비트 (: keepalive) 가동 (Ollama 모델 로딩/생성 중 네트워크 타임아웃 원천 차단)
     const heartbeatTimer = setInterval(() => {
@@ -228,27 +267,6 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
             })}\n\n`);
             if (typeof res.flush === 'function') res.flush();
         }
-
-        const streamOptions = {
-            num_ctx: Math.max(Number(picked.numCtx) || 4096, 2048)
-        };
-
-        // 6. [실측 최적화 & PII 가드레일] LLM 전달 전 개인정보 마스킹 및 근거 기반 답변 지침 보강
-        const { text: safePrompt, scrubbed: piiScrubbed } = scrubPromptPii(prompt, 2000);
-        let finalUserMessage = safePrompt;
-        if (toolResults.length > 0) {
-            finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 제공된 데이터에 없는 날짜·수치·약품 용량·전화번호는 절대 추측해서 지어내지 마시고, 대화 길이를 요약하거나 축소하지 말고 필요한 세부 사항을 충실히 설명해 주세요. (시스템 함수명이나 영단어를 섞지 마시고, 100% 매끄럽고 친근한 순수 우리말 한국어로 설명해 주세요):\n"${safePrompt}"`;
-        } else if (neededTools.length > 0) {
-            finalUserMessage = `[포털 데이터 조회 결과]\n관련된 실시간 등록 데이터를 찾지 못했습니다. 없는 일정·위키·메모 정보를 임의로 지어내지 말고, 확인된 등록 정보가 없음을 솔직히 안내해 주세요.\n\n[사용자 질문]\n"${safePrompt}"`;
-        }
-        if (piiScrubbed) {
-            finalUserMessage += `\n\n(보안 안내: 입력에 포함된 민감 개인정보는 자동으로 마스킹 처리되었습니다. 마스킹된 정보는 추측하거나 복원하려 하지 마세요.)`;
-        }
-        if (isReasoning) {
-            finalUserMessage += `\n\n(작성 지침: 생각과 답변 모두 100% 한국어로 진행하세요. 생각은 1~2문장으로 한국어로만 간결히 정리하고, 본문에서는 표나 'Done!' 메모만 남기지 말고 곧바로 사용자에게 건네는 완성된 한국어 존댓말 본문으로 충실하게 작성해 주세요.)`;
-        }
-
-        messages.push({ role: 'user', content: finalUserMessage });
 
         // 7. SSE 실시간 스트리밍 실행 (대화 길이 제한 없이 풍부하게 끝까지 생성)
         await streamChatToClient({
@@ -287,8 +305,127 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
     }
 }
 
+/**
+ * 🤖 텔레그램 등 비-SSE 채널용 AI 단일 완성 응답 실행기
+ * - 동일 RBAC·도구·PII 마스킹·감사 로그 파이프라인 공유
+ * - Ollama 오프라인 시 수집된 포털 실시간 데이터 기반 안전 요약 자동 폴백
+ */
+async function runChatCompletion({ prompt, history = [], user, preference = 'auto', requestType = 'telegram_chat', timeoutMs = 45000 }) {
+    const reqStartMs = Date.now();
+    const ctx = await prepareOrchestrationContext({ prompt, history, user, preference });
+    if (ctx.blocked) {
+        recordAiAuditLog({
+            user,
+            requestType: ctx.blockReason,
+            routedMode: 'policy',
+            model: 'policy-guard',
+            toolsUsed: [],
+            prompt,
+            durationMs: Date.now() - reqStartMs,
+            status: 'BLOCKED'
+        });
+        return { ok: true, blocked: true, answer: ctx.unauthorizedMsg, model: 'policy-guard', toolsUsed: [] };
+    }
+
+    const { neededTools, toolResults, picked, activeModel, isReasoning, messages, streamOptions } = ctx;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        await ensureModelSlot(activeModel).catch(() => {});
+        const ollamaRes = await fetch(`${DEFAULT_OLLAMA_HOST}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: activeModel,
+                messages,
+                stream: false,
+                keep_alive: picked.keepAlive || '24h',
+                options: {
+                    temperature: 0.65,
+                    top_p: 0.9,
+                    num_predict: 900,
+                    ...streamOptions
+                }
+            }),
+            signal: controller.signal,
+            dispatcher: ollamaDispatcher
+        });
+
+        if (!ollamaRes.ok) {
+            throw new Error(`HTTP_${ollamaRes.status}`);
+        }
+        const json = await ollamaRes.json();
+        const rawContent = json?.message?.content || json?.response || '';
+        const parsed = splitThinkStream(rawContent, true, isReasoning, Boolean(json?.message?.thinking));
+        const answer = ensureKoreanEnglishPair((parsed.answer || rawContent || '').trim());
+
+        if (!answer) {
+            throw new Error('EMPTY_ANSWER');
+        }
+
+        recordAiAuditLog({
+            user,
+            requestType,
+            routedMode: picked.mode || 'balanced',
+            model: activeModel,
+            toolsUsed: neededTools,
+            prompt,
+            durationMs: Date.now() - reqStartMs,
+            status: 'SUCCESS'
+        });
+        return { ok: true, blocked: false, answer, model: activeModel, toolsUsed: neededTools };
+    } catch (err) {
+        if (toolResults.length > 0) {
+            const fallbackSummary = toolResults
+                .join('\n\n')
+                .replace(/^\[[^\]]+\]\s*/gm, '• ')
+                .slice(0, 1500);
+            recordAiAuditLog({
+                user,
+                requestType,
+                routedMode: 'rule_fallback',
+                model: 'portal-data-fallback',
+                toolsUsed: neededTools,
+                prompt,
+                durationMs: Date.now() - reqStartMs,
+                status: 'SUCCESS'
+            });
+            return {
+                ok: true,
+                blocked: false,
+                fallback: true,
+                answer: `지금 AI 모델이 잠시 바빠서 실시간 포털 데이터로 먼저 정리해 드릴게요 😊\n\n${fallbackSummary}`,
+                model: 'portal-data-fallback',
+                toolsUsed: neededTools
+            };
+        }
+
+        recordAiAuditLog({
+            user,
+            requestType,
+            routedMode: picked?.mode || 'balanced',
+            model: activeModel,
+            toolsUsed: neededTools,
+            prompt,
+            durationMs: Date.now() - reqStartMs,
+            status: 'ERROR'
+        });
+        return {
+            ok: false,
+            blocked: false,
+            answer: '지금 AI 비서 연결이 잠시 지연되고 있어요. `/도움말`, `/일정`, `/메모`, `/장보기`, `/혈압` 같은 빠른 명령을 바로 쓰실 수 있어요!',
+            model: activeModel,
+            toolsUsed: neededTools
+        };
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 module.exports = {
     resolveNeededTools,
     checkUnauthorizedAdminQuery,
-    orchestrateChatRequest
+    orchestrateChatRequest,
+    runChatCompletion
 };

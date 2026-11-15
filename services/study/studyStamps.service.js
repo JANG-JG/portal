@@ -142,6 +142,15 @@ async function awardStamp({ childId, sourceType = 'online', sheetId = null, note
     if (reachedTen) {
         await notifyTenStamps(cid, boardAfter);
     }
+    if (pokemonEggResult?.newlyHatched && pokemonEggResult?.egg) {
+        const { notifyEggHatchedToParents } = require('./studyTelegramNotify.service');
+        notifyEggHatchedToParents({
+            childId: cid,
+            cycleNo: pokemonEggResult.egg.cycle_no,
+            pokemonId: pokemonEggResult.egg.target_pokemon_id,
+            totalEarned: boardAfter.totalEarned
+        }).catch(() => {});
+    }
 
     return { alreadyAwarded: false, reachedTen, board: boardAfter, pokemonEggResult };
 }

@@ -708,5 +708,8 @@ async function streamChatToClient({ req, res, model, messages, tools = null, opt
 module.exports = {
     DEFAULT_OLLAMA_HOST,
     checkOllamaHealth,
-    streamChatToClient
+    streamChatToClient,
+    ensureKoreanEnglishPair,
+    splitThinkStream,
+    ollamaDispatcher
 };

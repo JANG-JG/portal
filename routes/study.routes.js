@@ -414,6 +414,17 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
             note: `${sheet.title} 완료 🌟`
         });
         scheduleReplenish(sheet.child_id, sheet.subject);
+        setImmediate(() => {
+            const { notifyWorksheetCompletedToParents } = require('../services/study/studyTelegramNotify.service');
+            notifyWorksheetCompletedToParents({
+                childId: sheet.child_id,
+                sheetTitle: sheet.title,
+                subject: sheet.subject,
+                level: sheet.level,
+                earnedCount: result.board?.earnedCount || 0,
+                alreadyAwarded: result.alreadyAwarded
+            }).catch(() => {});
+        });
         res.json({
             success: true,
             message: result.reachedTen

@@ -105,6 +105,12 @@ router.get('/overview', async (req, res) => {
         const pregen = await getPreGenStatus();
         const stampBoardsMap = Object.fromEntries(children.map((c) => [c.id, c.stampBoard]));
         const pokemon = await getAdminPokemonOverview(profiles, stampBoardsMap).catch(() => null);
+        const interactiveConfig = {
+            telegramAiEnabled: (await getSystemConfig('telegram_ai_enabled', '1')) !== '0',
+            telegramBloodAlertEnabled: (await getSystemConfig('telegram_blood_alert_enabled', '1')) !== '0',
+            telegramStudyNotifyEnabled: (await getSystemConfig('telegram_study_notify_enabled', '1')) !== '0',
+            portalStudyBuddyWidgetEnabled: (await getSystemConfig('portal_study_buddy_widget_enabled', '1')) !== '0'
+        };
 
         res.json({
             success: true,
@@ -113,6 +119,7 @@ router.get('/overview', async (req, res) => {
             lanInfo,
             pregen,
             pokemon,
+            interactiveConfig,
             config: {
                 geminiModel,
                 dailyLimit: quota.dailyLimit,
@@ -450,6 +457,46 @@ router.post('/tablet-config', async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ success: false, message: '태블릿 앱 설정 저장에 실패했습니다.' });
+    }
+});
+
+router.get('/interactive-config', async (req, res) => {
+    try {
+        const interactiveConfig = {
+            telegramAiEnabled: (await getSystemConfig('telegram_ai_enabled', '1')) !== '0',
+            telegramBloodAlertEnabled: (await getSystemConfig('telegram_blood_alert_enabled', '1')) !== '0',
+            telegramStudyNotifyEnabled: (await getSystemConfig('telegram_study_notify_enabled', '1')) !== '0',
+            portalStudyBuddyWidgetEnabled: (await getSystemConfig('portal_study_buddy_widget_enabled', '1')) !== '0'
+        };
+        res.json({ success: true, config: interactiveConfig });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '양방향 연동 설정 조회에 실패했습니다.' });
+    }
+});
+
+router.post('/interactive-config', async (req, res) => {
+    try {
+        const body = req.body || {};
+        const pairs = [
+            ['telegramAiEnabled', 'telegram_ai_enabled'],
+            ['telegramBloodAlertEnabled', 'telegram_blood_alert_enabled'],
+            ['telegramStudyNotifyEnabled', 'telegram_study_notify_enabled'],
+            ['portalStudyBuddyWidgetEnabled', 'portal_study_buddy_widget_enabled']
+        ];
+        const nextConfig = {};
+        for (const [prop, dbKey] of pairs) {
+            const currentVal = (await getSystemConfig(dbKey, '1')) !== '0';
+            const nextVal = typeof body[prop] === 'boolean' ? body[prop] : currentVal;
+            await setSystemConfig(dbKey, nextVal ? '1' : '0');
+            nextConfig[prop] = nextVal;
+        }
+        res.json({
+            success: true,
+            message: '양방향 텔레그램·대시보드 연동 설정이 저장되었습니다.',
+            config: nextConfig
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '양방향 연동 설정 저장에 실패했습니다.' });
     }
 });
 

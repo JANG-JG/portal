@@ -308,6 +308,39 @@
                     </div>
                 </div>
 
+                <div id="studyInteractiveConfigPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3>🤖 알림 비서 봇 양방향 AI &amp; 가족 위젯 제어</h3>
+                            <p id="studyInteractiveStateBadge" style="font-size:0.8rem; color:#4f46e5; font-weight:700; margin:0.25rem 0 0;">
+                                설정 상태를 불러오는 중...
+                            </p>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadStudyInteractiveConfig()">🔄 상태 동기화</button>
+                    </div>
+                    <form onsubmit="saveStudyInteractiveConfig(event)" style="display:grid; gap:0.6rem; margin-top:0.75rem; box-sizing:border-box;">
+                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;">
+                            <input id="studyInteractiveAiChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;">
+                            <span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">🤖 <b>알림 비서 자연어 AI 대화</b> — <code>/</code> 없는 질문(약 복용, 일정, 장보기 등)에 AI가 바로 응답</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;">
+                            <input id="studyInteractiveBloodChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;">
+                            <span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">💊 <b>약 챙겨먹기 · 혈압 텔레그램 버튼 알림</b> — 정시 알림에 [약 먹었어요 ✅] · [15분 뒤 다시 알림] 버튼 발송</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;">
+                            <input id="studyInteractiveStudyChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;">
+                            <span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">🎒 <b>학습지 완료 · 포켓몬 부화 부모님 알림</b> — 아이 완료/부화 시 텔레그램 알림 및 보상 승인 버튼 발송</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;">
+                            <input id="studyInteractiveWidgetChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;">
+                            <span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">✨ <b>포털 메인 대시보드 &ldquo;오늘의 아이들 단짝 포켓몬&rdquo; 위젯</b> — 메인 화면에 부화 중인 알·단짝 포켓몬 표시</span>
+                        </label>
+                        <div>
+                            <button id="studyInteractiveSaveBtn" type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:42px;">💾 양방향 비서·위젯 설정 저장</button>
+                        </div>
+                    </form>
+                </div>
+
                 <div class="admin-card" style="box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header">
                         <h3>📋 최근 텔레그램 봇 명령 실행 이력 (최대 25건)</h3>

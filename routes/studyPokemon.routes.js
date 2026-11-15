@@ -67,17 +67,33 @@ router.post('/api/study/pokemon/partner', authenticateToken, async (req, res) =>
     }
 });
 
-router.get('/api/study/pokemon/sprite/:id', authenticateToken, async (req, res) => {
+async function servePokemonSprite(req, res, { isPublic = false } = {}) {
+    const idNum = Math.round(Number(req.params.id));
+    if (!Number.isInteger(idNum) || idNum < 1 || idNum > 1025) {
+        return res.status(400).send('올바른 포켓몬 번호가 아닙니다.');
+    }
     try {
         const kind = req.query.kind === 'artwork' ? 'artwork' : 'animated';
-        const sprite = await getOrCachePokemonSprite(req.params.id, kind);
+        const sprite = await getOrCachePokemonSprite(idNum, kind);
         res.setHeader('Content-Type', sprite.contentType);
-        res.setHeader('Cache-Control', 'private, max-age=604800');
+        res.setHeader('Cache-Control', isPublic ? 'public, max-age=604800' : 'private, max-age=604800');
         res.setHeader('X-Content-Type-Options', 'nosniff');
+        if (isPublic) {
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+        }
         res.send(sprite.buffer);
     } catch (err) {
         res.status(404).send('포켓몬 이미지를 불러올 수 없습니다.');
     }
+}
+
+router.get('/api/study/pokemon/sprite/:id', authenticateToken, (req, res) => {
+    servePokemonSprite(req, res, { isPublic: false });
+});
+
+router.get('/api/public/pokemon/sprite/:id', (req, res) => {
+    servePokemonSprite(req, res, { isPublic: true });
 });
 
 module.exports = router;

@@ -158,6 +158,48 @@ async function listRecentTelegramLogs(limit = 30) {
     );
 }
 
+/**
+ * 📤 서버 내부 발송 전용: 활성화된 화이트리스트 수신자(복호화된 chatId) 목록 조회
+ * - 외부/관리자 HTTP 응답에는 절대 노출하지 않고 텔레그램 봇 발송 직전에만 사용
+ */
+async function listAuthorizedTelegramRecipients({ role = null } = {}) {
+    const rows = await dbAll(
+        'SELECT id, telegram_id_enc, label, portal_username, role FROM telegram_allowed_users WHERE enabled = 1 ORDER BY id ASC'
+    );
+    const out = [];
+    const seen = new Set();
+    for (const r of rows) {
+        if (role && r.role !== role) continue;
+        const chatId = decryptSecret(r.telegram_id_enc, 'telegram');
+        if (!chatId || !/^-?\d+$/.test(chatId) || seen.has(chatId)) continue;
+        seen.add(chatId);
+        out.push({
+            id: r.id,
+            chatId,
+            label: r.label,
+            portalUsername: r.portal_username || 'upt0731',
+            role: r.role || 'family'
+        });
+    }
+
+    if (out.length === 0 && (!role || role === 'admin')) {
+        const envRaw = process.env.TELEGRAM_ALLOWED_IDS || '';
+        const envList = envRaw.split(',').map((s) => s.trim()).filter((s) => /^-?\d+$/.test(s));
+        for (const cid of envList) {
+            if (seen.has(cid)) continue;
+            seen.add(cid);
+            out.push({
+                id: 0,
+                chatId: cid,
+                label: '환경변수 관리자',
+                portalUsername: process.env.TELEGRAM_DEFAULT_PORTAL_USER || 'upt0731',
+                role: 'admin'
+            });
+        }
+    }
+    return out;
+}
+
 module.exports = {
     isAuthorizedTelegramUser,
     addAllowedTelegramUser,
@@ -165,5 +207,6 @@ module.exports = {
     toggleAllowedTelegramUser,
     removeAllowedTelegramUser,
     logTelegramCommand,
-    listRecentTelegramLogs
+    listRecentTelegramLogs,
+    listAuthorizedTelegramRecipients
 };

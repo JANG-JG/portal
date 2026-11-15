@@ -5,6 +5,9 @@ const axios = require('axios');
 const { exec } = require('child_process');
 const { portalDb } = require('./db');
 const { ipv4HttpsAgent, sendServerTelegram } = require('./telegramAlert.service');
+const { getAssistantBotToken, sendAssistantTelegramToAdmins } = require('./telegram/telegramTransport.service');
+const { processDueTelegramSnoozeJobs } = require('./telegram/telegramBlood.service');
+const { getSystemConfig } = require('./study/studyDb.service');
 const { checkAndDispatchHospitalVisit } = require('./scheduler/hospitalVisit.scheduler');
 const { checkAndDispatchCalendarEvents } = require('./scheduler/calendarEvent.scheduler');
 const { checkAndDispatchWikiDday } = require('./scheduler/wikiDday.scheduler');
@@ -140,6 +143,11 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
         if (lastExecutedMinuteStr === minuteKey) return;
         lastExecutedMinuteStr = minuteKey;
 
+        // ⏰ 텔레그램 약 복용 '1시간 뒤 다시 알림' 예약 큐 점검
+        processDueTelegramSnoozeJobs(getAssistantBotToken()).catch((sErr) => {
+            console.warn('[UnifiedScheduler] 텔레그램 다시 알림 처리 오류:', sErr.message);
+        });
+
         const kstNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
         const dayOfWeek = kstNow.getDay();
         const currentTargetDateTime = `${kstDateStr} ${kstTimeStr}:00`;
@@ -267,6 +275,25 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                             tag: 'jg-medication',
                             userId
                         });
+
+                        const tgKey = `tg_blood:med:${kstDateStr}_${kstTimeStr}`;
+                        if (!sentHistoryCache.has(tgKey)) {
+                            sentHistoryCache.add(tgKey);
+                            getSystemConfig('telegram_blood_alert_enabled', '1').then((flag) => {
+                                if (flag === '0') return;
+                                return sendAssistantTelegramToAdmins(
+                                    `💊 <b>약 챙겨드실 시간이에요! (${kstTimeStr})</b>\n물 한 잔과 함께 혈압약을 복용하신 뒤 아래 버튼을 눌러주세요.`,
+                                    {
+                                        replyMarkup: {
+                                            inline_keyboard: [[
+                                                { text: '약 먹었어요 ✅', callback_data: 'cb:blood:med_done:today' },
+                                                { text: '1시간 뒤 알림 ⏰', callback_data: 'cb:blood:med_snooze:60' }
+                                            ]]
+                                        }
+                                    }
+                                );
+                            }).catch(() => {});
+                        }
                     }
                 }
 
@@ -285,6 +312,24 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                             tag: 'jg-blood-pressure',
                             userId
                         });
+
+                        const tgKey = `tg_blood:bp:${kstDateStr}_${kstTimeStr}`;
+                        if (!sentHistoryCache.has(tgKey)) {
+                            sentHistoryCache.add(tgKey);
+                            getSystemConfig('telegram_blood_alert_enabled', '1').then((flag) => {
+                                if (flag === '0') return;
+                                return sendAssistantTelegramToAdmins(
+                                    `🩸 <b>혈압 측정 시간이에요 (${kstTimeStr})</b>\n편안하게 자리에 앉아 혈압을 측정해 보세요!`,
+                                    {
+                                        replyMarkup: {
+                                            inline_keyboard: [[
+                                                { text: '혈압·건강 관리 열기 ↗', url: 'https://blood.j-jg.cc/dashboard.html' }
+                                            ]]
+                                        }
+                                    }
+                                );
+                            }).catch(() => {});
+                        }
                     }
                 }
 
@@ -310,6 +355,25 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                                         tag: 'jg-evening-bp-remind',
                                         userId
                                     });
+
+                                    const tgKey = `tg_blood:evening:${kstDateStr}_${targetBpTime}`;
+                                    if (!sentHistoryCache.has(tgKey)) {
+                                        sentHistoryCache.add(tgKey);
+                                        getSystemConfig('telegram_blood_alert_enabled', '1').then((flag) => {
+                                            if (flag === '0') return;
+                                            return sendAssistantTelegramToAdmins(
+                                                `🌙 <b>오늘 아직 혈압 측정 기록이 없어요</b>\n잠자리에 들기 전 가볍게 혈압을 재고 건강 단짝을 응원해 주세요!`,
+                                                {
+                                                    replyMarkup: {
+                                                        inline_keyboard: [[
+                                                            { text: '약 먹었어요 ✅', callback_data: 'cb:blood:med_done:today' },
+                                                            { text: '혈압 기록하러 가기 ↗', url: 'https://blood.j-jg.cc/dashboard.html' }
+                                                        ]]
+                                                    }
+                                                }
+                                            );
+                                        }).catch(() => {});
+                                    }
                                 }
                             }
                         );

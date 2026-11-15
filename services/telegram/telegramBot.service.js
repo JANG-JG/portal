@@ -6,76 +6,22 @@
  * ==============================================================================
  */
 
-const https = require('https');
 const { isAuthorizedTelegramUser, logTelegramCommand } = require('./telegramAuth.service');
 const { executeTelegramCommand } = require('./telegramCommands.service');
-
-const ipv4HttpsAgent = new https.Agent({ family: 4 });
+const { handleNaturalTelegramMessage } = require('./telegramAi.service');
+const { handleTelegramCallbackQuery } = require('./telegramCallbacks.service');
+const {
+    getAssistantBotToken,
+    callTelegramApi,
+    sendTelegramReply
+} = require('./telegramTransport.service');
 
 let isPollingStarted = false;
 let stopRequested = false;
 let currentOffset = 0;
 
 function getBotToken() {
-    return (
-        process.env.STUDY_TELEGRAM_BOT_TOKEN ||
-        process.env.SERVER_TELEGRAM_BOT_TOKEN ||
-        process.env.TELEGRAM_BOT_TOKEN ||
-        ''
-    ).trim();
-}
-
-function callTelegramApi(token, method, payload = null, timeoutMs = 35000) {
-    return new Promise((resolve, reject) => {
-        const bodyStr = payload ? JSON.stringify(payload) : '';
-        const req = https.request(
-            {
-                hostname: 'api.telegram.org',
-                path: `/bot${token}/${method}`,
-                method: 'POST',
-                agent: ipv4HttpsAgent,
-                timeout: timeoutMs,
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(bodyStr)
-                }
-            },
-            (res) => {
-                let raw = '';
-                res.on('data', (chunk) => { raw += chunk; });
-                res.on('end', () => {
-                    try {
-                        resolve({ status: res.statusCode || 500, data: JSON.parse(raw) });
-                    } catch (e) {
-                        resolve({ status: res.statusCode || 500, data: null });
-                    }
-                });
-            }
-        );
-        req.on('timeout', () => req.destroy(new Error('TELEGRAM_TIMEOUT')));
-        req.on('error', reject);
-        if (bodyStr) req.write(bodyStr);
-        req.end();
-    });
-}
-
-async function sendTelegramReply(token, chatId, htmlText) {
-    if (!token || !chatId || !htmlText) return;
-    try {
-        await callTelegramApi(
-            token,
-            'sendMessage',
-            {
-                chat_id: chatId,
-                text: htmlText,
-                parse_mode: 'HTML',
-                disable_web_page_preview: false
-            },
-            10000
-        );
-    } catch (e) {
-        console.warn('⚠️ [Telegram Bot] 응답 발송 실패:', e.message);
-    }
+    return getAssistantBotToken();
 }
 
 async function pollLoop(token) {
@@ -88,7 +34,7 @@ async function pollLoop(token) {
                 {
                     offset: currentOffset,
                     timeout: 25,
-                    allowed_updates: ['message']
+                    allowed_updates: ['message', 'callback_query']
                 },
                 32000
             );
@@ -99,19 +45,25 @@ async function pollLoop(token) {
             } else if (res.data && res.data.ok && Array.isArray(res.data.result)) {
                 for (const update of res.data.result) {
                     currentOffset = Math.max(currentOffset, update.update_id + 1);
+
+                    if (update.callback_query) {
+                        await handleTelegramCallbackQuery(token, update.callback_query);
+                        continue;
+                    }
+
                     const msg = update.message;
                     if (!msg || !msg.text || !msg.from) continue;
 
                     const senderId = String(msg.from.id);
                     const chatId = String(msg.chat.id);
                     const text = String(msg.text || '').trim();
-                    if (!text.startsWith('/')) continue;
+                    if (!text) continue;
 
                     const authUser = await isAuthorizedTelegramUser(senderId);
                     if (!authUser) {
                         await logTelegramCommand({
                             senderId,
-                            command: text.split(/\s+/)[0],
+                            command: text.startsWith('/') ? text.split(/\s+/)[0] : 'natural_denied',
                             status: 'denied',
                             detail: 'unauthorized_sender'
                         });
@@ -123,8 +75,19 @@ async function pollLoop(token) {
                         continue;
                     }
 
+                    if (!text.startsWith('/')) {
+                        handleNaturalTelegramMessage({ token, chatId, senderId, text, authUser }).catch((aiErr) => {
+                            console.warn('⚠️ [Telegram Bot] 자연어 처리 비동기 오류:', aiErr.message);
+                        });
+                        continue;
+                    }
+
                     const reply = await executeTelegramCommand(text, authUser, senderId);
-                    if (reply) {
+                    if (reply && typeof reply === 'object' && reply.text) {
+                        await sendTelegramReply(token, chatId, reply.text, {
+                            replyMarkup: reply.replyMarkup
+                        });
+                    } else if (typeof reply === 'string' && reply) {
                         await sendTelegramReply(token, chatId, reply);
                     }
                 }
@@ -155,7 +118,7 @@ function initTelegramBotPolling() {
     }
     isPollingStarted = true;
     stopRequested = false;
-    console.log('🤖 [Telegram Bot] 양방향 제어 폴링 시작 (암호화 화이트리스트 인증 활성)');
+    console.log('🤖 [Telegram Bot] 양방향 제어 + AI 대화 + 인라인 버튼 폴링 시작 (암호화 화이트리스트 인증 활성)');
     pollLoop(token).catch((err) => console.error('❌ [Telegram Bot] 치명적 오류:', err));
 }
 

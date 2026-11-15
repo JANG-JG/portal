@@ -34,6 +34,10 @@ const {
     handleDoneCommand,
     deleteFamilyTodo
 } = require('./telegramWiki.service');
+const {
+    getBloodStatusPayload,
+    recordQuickMedicationFromTelegram
+} = require('./telegramBlood.service');
 
 function pGet(sql, params = []) {
     return new Promise((resolve, reject) => {
@@ -77,15 +81,20 @@ function cleanScheduleTitle(rawText) {
 
 function buildHelpText() {
     return [
-        '🤖 <b>[JG 포털] 가족 비서 & 학습실 명령 안내</b>',
+        '🤖 <b>[JG 포털] 알림 비서 &amp; AI 도우미 안내</b>',
         '',
+        '💬 <b>자연어 대화 (슬래시 / 없이 바로 질문 가능!)</b>',
+        '• <i>"오늘 날씨랑 뉴스 요약해줘"</i> / <i>"이번 주 일정 알려줘"</i> / <i>"약 먹었어"</i>',
+        '',
+        '⚡ <b>빠른 명령어</b>',
+        '• <code>/혈압</code> / <code>/약</code> / <code>/약먹음</code> — 혈압·복약 상태 조회 및 원탭 체크 (관리자)',
         '• <code>/메모 장보기 우유, 계란</code> — 포털 메모장에 암호화 저장',
         '• <code>/일정 내일 오후 3시 첫째 소아과</code> — 가족 캘린더 일정 등록',
         '• <code>/조회</code> (<code>메모</code> | <code>일정</code> | <code>장보기</code> | <code>할일</code> | <code>위키</code>) — 최근 목록 조회',
         '• <code>/삭제 메모 12</code> / <code>/삭제 일정 5</code> / <code>/삭제 할일 3</code> — 해당 번호 삭제',
         '• <code>/위키 공기청정기</code> / <code>/위키등록 제목 | 내용</code> — 가족 위키 검색·등록',
-        '• <code>/장보기 우유, 계란</code> / <code>/할일 필터 청소</code> / <code>/완료 3</code> — 위키 장보기·할일 연동',
-        '• <code>/학습지 첫째 공룡</code> (또는 <code>/학습지 둘째 한글 딸기</code>) — 태블릿 학습지 생성 후 바로가기 링크 발송'
+        '• <code>/장보기 우유, 계란</code> / <code>/할일 필터 청소</code> / <code>/완료 3</code> — 위키 버튼 원탭 완료 연동',
+        '• <code>/학습지 첫째 공룡</code> (또는 <code>/학습지 둘째 한글 딸기</code>) — 태블릿 학습지 생성 후 링크 발송'
     ].join('\n');
 }
 
@@ -311,6 +320,16 @@ async function executeTelegramCommand(rawText, authUser, senderId) {
             reply = await handleTodoCommand(argText);
         } else if (cmd === '/완료' || cmd === '/체크' || cmd === '/done') {
             reply = await handleDoneCommand(argText);
+        } else if (cmd === '/혈압' || cmd === '/약' || cmd === '/약먹음' || cmd === '/blood' || cmd === '/med') {
+            if (authUser.role !== 'admin') {
+                reply = '🔒 혈압 및 약 복용 관리는 관리자 계정 전용 기능이에요.';
+            } else if (cmd === '/약먹음' || argText.includes('완료') || argText.includes('먹었')) {
+                const res = await recordQuickMedicationFromTelegram();
+                reply = { text: res.messageHtml, replyMarkup: res.replyMarkup };
+            } else {
+                const card = await getBloodStatusPayload();
+                reply = { text: card.text, replyMarkup: card.replyMarkup };
+            }
         } else {
             reply = `❓ 알 수 없는 명령어예요.\n\n${buildHelpText()}`;
         }

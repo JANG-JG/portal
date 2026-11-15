@@ -289,6 +289,101 @@ async function handleDoneCommand(argText) {
     return `<b>${statusLabel}</b> 처리했어요! (번호: <b>#${todoId}</b>)${titlePart}`;
 }
 
+function buildTodoButtonsRows(items, scope, stripShopPrefix = false) {
+    const rows = [];
+    const pending = (items || []).filter((it) => it.is_completed !== 1).slice(0, 6);
+    for (let i = 0; i < pending.length; i += 2) {
+        const pair = pending.slice(i, i + 2).map((it) => {
+            let label = String(it.content || '').trim();
+            if (stripShopPrefix) label = label.replace(/^\[장보기\]\s*/, '');
+            if (label.length > 14) label = `${label.slice(0, 13)}…`;
+            return {
+                text: `✅ ${label}`,
+                callback_data: `cb:wiki:done:${it.id}:${scope}`
+            };
+        });
+        rows.push(pair);
+    }
+    rows.push([{ text: '🔄 목록 새로고침', callback_data: `cb:wiki:refresh:${scope}` }]);
+    return rows;
+}
+
+async function buildInteractiveShoppingReply() {
+    const baseUrl = getBaseUrl();
+    const { items } = await listFamilyTodos();
+    const shopItems = items.filter((it) => String(it.content || '').startsWith('[장보기]'));
+    const pending = shopItems.filter((it) => it.is_completed !== 1);
+    const done = shopItems.filter((it) => it.is_completed === 1).slice(0, 3);
+
+    const lines = ['🛒 <b>우리 집 장보기 목록</b>'];
+    if (pending.length === 0) {
+        lines.push('  • 지금 사야 할 장보기 품목이 없어요!');
+    } else {
+        pending.slice(0, 12).forEach((it) => {
+            const label = String(it.content || '').replace(/^\[장보기\]\s*/, '');
+            lines.push(`  ⬜ <b>#${it.id}</b> ${escapeHtml(label)}`);
+        });
+    }
+    if (done.length > 0) {
+        lines.push('', '<b>최근 완료</b>');
+        done.forEach((it) => {
+            const label = String(it.content || '').replace(/^\[장보기\]\s*/, '');
+            lines.push(`  ✅ #${it.id} ${escapeHtml(label)}`);
+        });
+    }
+    lines.push(
+        '',
+        '💡 아래 버튼을 누르면 바로 완료 처리돼요! (추가: <code>/장보기 우유, 계란</code>)',
+        `👉 <a href="${baseUrl}/wiki">가족 위키에서 보기</a>`
+    );
+    return {
+        text: lines.join('\n'),
+        replyMarkup: { inline_keyboard: buildTodoButtonsRows(pending, 'shop', true) }
+    };
+}
+
+async function buildInteractiveTodoReply() {
+    const baseUrl = getBaseUrl();
+    const { items, routineStats } = await listFamilyTodos();
+    const activeItems = items.filter((it) => (it.is_active_today !== false || it.is_routine !== 1));
+    const routines = activeItems.filter((it) => it.is_routine === 1).slice(0, 8);
+    const todos = activeItems.filter((it) => it.is_routine !== 1 && !String(it.content || '').startsWith('[장보기]')).slice(0, 10);
+
+    const lines = ['✅ <b>가족 위키 할일 &amp; 오늘 루틴</b>'];
+    if (routineStats && routineStats.total > 0) {
+        lines.push(`• 오늘 루틴 달성률: <b>${routineStats.completed}/${routineStats.total} (${routineStats.percent}%)</b>`);
+    }
+
+    if (routines.length > 0) {
+        lines.push('', '<b>🔁 오늘의 루틴</b>');
+        routines.forEach((r) => {
+            const icon = r.is_completed === 1 ? '✅' : '⬜';
+            lines.push(`  ${icon} <b>#${r.id}</b> ${escapeHtml(r.content)}`);
+        });
+    }
+
+    lines.push('', '<b>📝 일반 할일</b>');
+    if (todos.length === 0) {
+        lines.push('  • 등록된 일반 할일이 없어요.');
+    } else {
+        todos.forEach((t) => {
+            const icon = t.is_completed === 1 ? '✅' : '⬜';
+            lines.push(`  ${icon} <b>#${t.id}</b> ${escapeHtml(t.content)}`);
+        });
+    }
+
+    lines.push(
+        '',
+        '💡 아래 버튼을 누르면 바로 완료 체크돼요! (추가: <code>/할일 필터 청소</code>)',
+        `👉 <a href="${baseUrl}/wiki">가족 위키 보드 열기</a>`
+    );
+    const pendingButtonsSource = [...routines, ...todos].filter((it) => it.is_completed !== 1);
+    return {
+        text: lines.join('\n'),
+        replyMarkup: { inline_keyboard: buildTodoButtonsRows(pendingButtonsSource, 'todo', false) }
+    };
+}
+
 async function handleShoppingCommand(argText) {
     const parsed = parseTodoSubCommand(argText);
     const baseUrl = getBaseUrl();
@@ -302,33 +397,7 @@ async function handleShoppingCommand(argText) {
     }
 
     if (parsed.action === 'list') {
-        const { items } = await listFamilyTodos();
-        const shopItems = items.filter((it) => String(it.content || '').startsWith('[장보기]'));
-        const pending = shopItems.filter((it) => it.is_completed !== 1);
-        const done = shopItems.filter((it) => it.is_completed === 1).slice(0, 3);
-
-        const lines = ['🛒 <b>우리 집 장보기 목록</b>'];
-        if (pending.length === 0) {
-            lines.push('  • 지금 사야 할 장보기 품목이 없어요!');
-        } else {
-            pending.slice(0, 12).forEach((it) => {
-                const label = String(it.content || '').replace(/^\[장보기\]\s*/, '');
-                lines.push(`  ⬜ <b>#${it.id}</b> ${escapeHtml(label)}`);
-            });
-        }
-        if (done.length > 0) {
-            lines.push('', '<b>최근 완료</b>');
-            done.forEach((it) => {
-                const label = String(it.content || '').replace(/^\[장보기\]\s*/, '');
-                lines.push(`  ✅ #${it.id} ${escapeHtml(label)}`);
-            });
-        }
-        lines.push(
-            '',
-            '💡 추가: <code>/장보기 우유, 계란</code> | 완료: <code>/완료 번호</code>',
-            `👉 <a href="${baseUrl}/wiki">가족 위키에서 보기</a>`
-        );
-        return lines.join('\n');
+        return buildInteractiveShoppingReply();
     }
 
     const rawItems = parsed.text
@@ -367,40 +436,7 @@ async function handleTodoCommand(argText) {
     }
 
     if (parsed.action === 'list') {
-        const { items, routineStats } = await listFamilyTodos();
-        const activeItems = items.filter((it) => (it.is_active_today !== false || it.is_routine !== 1));
-        const routines = activeItems.filter((it) => it.is_routine === 1).slice(0, 8);
-        const todos = activeItems.filter((it) => it.is_routine !== 1 && !String(it.content || '').startsWith('[장보기]')).slice(0, 10);
-
-        const lines = ['✅ <b>가족 위키 할일 & 오늘 루틴</b>'];
-        if (routineStats && routineStats.total > 0) {
-            lines.push(`• 오늘 루틴 달성률: <b>${routineStats.completed}/${routineStats.total} (${routineStats.percent}%)</b>`);
-        }
-
-        if (routines.length > 0) {
-            lines.push('', '<b>🔁 오늘의 루틴</b>');
-            routines.forEach((r) => {
-                const icon = r.is_completed === 1 ? '✅' : '⬜';
-                lines.push(`  ${icon} <b>#${r.id}</b> ${escapeHtml(r.content)}`);
-            });
-        }
-
-        lines.push('', '<b>📝 일반 할일</b>');
-        if (todos.length === 0) {
-            lines.push('  • 등록된 일반 할일이 없어요.');
-        } else {
-            todos.forEach((t) => {
-                const icon = t.is_completed === 1 ? '✅' : '⬜';
-                lines.push(`  ${icon} <b>#${t.id}</b> ${escapeHtml(t.content)}`);
-            });
-        }
-
-        lines.push(
-            '',
-            '💡 등록: <code>/할일 에어컨 필터 청소</code> | 완료: <code>/완료 번호</code>',
-            `👉 <a href="${baseUrl}/wiki">가족 위키 보드 열기</a>`
-        );
-        return lines.join('\n');
+        return buildInteractiveTodoReply();
     }
 
     const saved = await addFamilyTodo(parsed.text, { isRoutine: 0, assignee: '전체' });
@@ -418,5 +454,8 @@ module.exports = {
     handleTodoCommand,
     handleDoneCommand,
     deleteFamilyTodo,
+    toggleFamilyTodo,
+    buildInteractiveShoppingReply,
+    buildInteractiveTodoReply,
     parseTodoSubCommand
 };
