@@ -1,6 +1,6 @@
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth(); // 0-indexed
-        let selectedDateStr = new Date().toISOString().slice(0, 10);
+        let selectedDateStr = formatLocalIsoDate(new Date());
         let allEvents = [];
         let currentUsername = '';
         let currentUserRole = '';
@@ -39,7 +39,7 @@
             const lastDate = new Date(currentYear, currentMonth + 1, 0).getDate();
             const prevLastDate = new Date(currentYear, currentMonth, 0).getDate();
 
-            const todayStr = new Date().toISOString().slice(0, 10);
+            const todayStr = formatLocalIsoDate(new Date());
 
             // 이전 달 날짜 채우기
             for (let i = firstDayIndex - 1; i >= 0; i--) {
@@ -360,7 +360,7 @@
             const today = new Date();
             currentYear = today.getFullYear();
             currentMonth = today.getMonth();
-            selectedDateStr = today.toISOString().slice(0, 10);
+            selectedDateStr = formatLocalIsoDate(today);
             renderCalendar();
             renderSelectedDateEvents();
         }
