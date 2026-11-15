@@ -20,22 +20,31 @@ const {
     updateStampEntry,
     listRecentStamps
 } = require('../../services/study/studyDb.service');
+const {
+    getAdminPokemonOverview,
+    setPokemonFeatureEnabled,
+    rerollUnhatchedEgg
+} = require('../../services/study/studyPokemon.service');
 
 router.get('/', async (req, res) => {
     try {
         const profiles = await getProfiles();
         const children = [];
+        const stampBoardsMap = {};
         for (const p of profiles) {
+            const stampBoard = await getActiveStampBoard(p.id);
+            stampBoardsMap[p.id] = stampBoard;
             children.push({
                 id: p.id,
                 displayName: p.display_name,
                 avatarEmoji: p.avatar_emoji || '🌟',
                 targetReward: p.target_reward || '',
-                stampBoard: await getActiveStampBoard(p.id)
+                stampBoard
             });
         }
         const recentStamps = await listRecentStamps(req.query.childId || 'all', 30);
-        res.json({ success: true, children, recentStamps });
+        const pokemon = await getAdminPokemonOverview(profiles, stampBoardsMap).catch(() => null);
+        res.json({ success: true, children, recentStamps, pokemon });
     } catch (err) {
         console.error('관리자 도장판 현황 조회 오류:', err);
         res.status(500).json({ success: false, message: '도장판 현황을 불러오지 못했습니다.' });
@@ -126,6 +135,36 @@ router.delete('/:stampId', async (req, res) => {
         res.json({ success: true, message: '선택한 도장을 삭제했습니다.', ...out });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message || '도장 삭제 실패' });
+    }
+});
+
+router.post('/pokemon/toggle', async (req, res) => {
+    try {
+        const nextEnabled = await setPokemonFeatureEnabled(Boolean(req.body?.enabled));
+        res.json({
+            success: true,
+            enabled: nextEnabled,
+            message: nextEnabled
+                ? '학습실 포켓몬 알 부화·도감 기능을 켰습니다.'
+                : '학습실 포켓몬 알 부화·도감 기능을 껐습니다.'
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '포켓몬 기능 전환 실패' });
+    }
+});
+
+router.post('/pokemon/reroll', async (req, res) => {
+    try {
+        const cid = normalizeChildId(req.body?.childId);
+        const board = await getActiveStampBoard(cid);
+        const nextPokemon = await rerollUnhatchedEgg(cid, board.cycleNo);
+        res.json({
+            success: true,
+            nextPokemon,
+            message: `현재 알 속 포켓몬을 "${nextPokemon.nameKo}" 후보로 다시 뽑았습니다.`
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '알 다시 뽑기 실패' });
     }
 });
 

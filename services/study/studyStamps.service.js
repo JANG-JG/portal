@@ -9,6 +9,7 @@
 
 const { portalDb } = require('../db');
 const { sendServerTelegram } = require('../telegramAlert.service');
+const { syncEggProgressWithBoard } = require('./studyPokemon.service');
 
 function dbGet(sql, params = []) {
     return new Promise((resolve, reject) => {
@@ -133,12 +134,16 @@ async function awardStamp({ childId, sourceType = 'online', sheetId = null, note
     }
 
     const boardAfter = await getActiveStampBoard(cid);
+    const pokemonEggResult = await syncEggProgressWithBoard(cid, boardAfter).catch((err) => {
+        console.warn('포켓몬 알 동기화 오류 무시:', err?.message || err);
+        return null;
+    });
     const reachedTen = boardAfter.earnedCount === 10;
     if (reachedTen) {
         await notifyTenStamps(cid, boardAfter);
     }
 
-    return { alreadyAwarded: false, reachedTen, board: boardAfter };
+    return { alreadyAwarded: false, reachedTen, board: boardAfter, pokemonEggResult };
 }
 
 async function deleteStampById(childId, stampId) {
@@ -212,6 +217,7 @@ async function setStampBoardCount(childId, targetCount, { sourceType = 'paper', 
     }
 
     const boardAfter = await getActiveStampBoard(cid);
+    await syncEggProgressWithBoard(cid, boardAfter).catch(() => null);
     return { previousCount: current, currentCount: boardAfter.earnedCount, board: boardAfter };
 }
 

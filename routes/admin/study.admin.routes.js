@@ -41,6 +41,7 @@ const {
     removeAllowedTelegramUser,
     listRecentTelegramLogs
 } = require('../../services/telegram/telegramAuth.service');
+const { getAdminPokemonOverview } = require('../../services/study/studyPokemon.service');
 
 router.get('/overview', async (req, res) => {
     try {
@@ -102,6 +103,8 @@ router.get('/overview', async (req, res) => {
         const telegramUsers = await listAllowedTelegramUsers();
         const telegramLogs = await listRecentTelegramLogs(25);
         const pregen = await getPreGenStatus();
+        const stampBoardsMap = Object.fromEntries(children.map((c) => [c.id, c.stampBoard]));
+        const pokemon = await getAdminPokemonOverview(profiles, stampBoardsMap).catch(() => null);
 
         res.json({
             success: true,
@@ -109,6 +112,7 @@ router.get('/overview', async (req, res) => {
             quota,
             lanInfo,
             pregen,
+            pokemon,
             config: {
                 geminiModel,
                 dailyLimit: quota.dailyLimit,

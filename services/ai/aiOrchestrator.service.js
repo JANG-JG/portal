@@ -12,6 +12,7 @@ const { buildSystemPrompt, formatToolDataToContext } = require('./aiPromptBuilde
 const { streamChatToClient } = require('./aiStreamClient.service');
 const { getChatModel, selectChatModel, ensureModelSlot } = require('../aiModelRouter.service');
 const { recordAiAuditLog } = require('../aiAuditLog.service');
+const { detectPromptInjection, scrubPromptPii } = require('./aiGuardrails.service');
 
 /** 🔍 사용자 질문에서 필요한 도구 목록 지능형 선별 */
 function resolveNeededTools(prompt, user) {
@@ -118,12 +119,13 @@ function checkUnauthorizedAdminQuery(prompt, user) {
  */
 async function orchestrateChatRequest({ req, res, prompt, history = [], user, preference = 'auto' }) {
     const reqStartMs = Date.now();
-    // 1. 비인가 관리자 데이터 질의 사전 차단
-    const unauthorizedMsg = checkUnauthorizedAdminQuery(prompt, user);
+    // 1. 프롬프트 인젝션 / 비인가 관리자 데이터 질의 사전 차단
+    const injectionCheck = detectPromptInjection(prompt);
+    const unauthorizedMsg = injectionCheck.blocked ? injectionCheck.message : checkUnauthorizedAdminQuery(prompt, user);
     if (unauthorizedMsg) {
         recordAiAuditLog({
             user,
-            requestType: 'policy_blocked',
+            requestType: injectionCheck.blocked ? 'injection_blocked' : 'policy_blocked',
             routedMode: 'policy',
             model: 'policy-guard',
             toolsUsed: [],
@@ -194,7 +196,8 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
         for (let i = recentHistory.length - 1; i >= 0; i--) {
             const item = recentHistory[i];
             if (item && item.role && item.content) {
-                const text = String(item.content).slice(0, 500);
+                const { text } = scrubPromptPii(String(item.content), 500);
+                if (!text) continue;
                 if (accumulatedChars + text.length > 1200) break;
                 accumulatedChars += text.length;
                 validItems.unshift({
@@ -230,10 +233,16 @@ async function orchestrateChatRequest({ req, res, prompt, history = [], user, pr
             num_ctx: Math.max(Number(picked.numCtx) || 4096, 2048)
         };
 
-        // 6. [실측 최적화] EXAONE 4.0 1.2B가 데이터를 100% 인용하고 본문 출력을 누락하지 않도록 User 메시지 지침 보강
-        let finalUserMessage = prompt;
+        // 6. [실측 최적화 & PII 가드레일] LLM 전달 전 개인정보 마스킹 및 근거 기반 답변 지침 보강
+        const { text: safePrompt, scrubbed: piiScrubbed } = scrubPromptPii(prompt, 2000);
+        let finalUserMessage = safePrompt;
         if (toolResults.length > 0) {
-            finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 대화 길이를 요약하거나 축소하지 말고, 필요한 세부 사항과 수치를 충분히 담아 풍부하고 상세하게 설명해 주세요. (시스템 함수명이나 영단어를 섞지 마시고, 100% 매끄럽고 친근한 순수 우리말 한국어로 설명해 주세요):\n"${prompt}"`;
+            finalUserMessage = `[참고용 실시간 포털 데이터]\n${toolResults.join('\n\n')}\n\n[사용자 질문]\n위 [참고용 실시간 포털 데이터]를 바탕으로 사용자에게 친절하고 다정한 한국어로 답변해 주세요. 제공된 데이터에 없는 날짜·수치·약품 용량·전화번호는 절대 추측해서 지어내지 마시고, 대화 길이를 요약하거나 축소하지 말고 필요한 세부 사항을 충실히 설명해 주세요. (시스템 함수명이나 영단어를 섞지 마시고, 100% 매끄럽고 친근한 순수 우리말 한국어로 설명해 주세요):\n"${safePrompt}"`;
+        } else if (neededTools.length > 0) {
+            finalUserMessage = `[포털 데이터 조회 결과]\n관련된 실시간 등록 데이터를 찾지 못했습니다. 없는 일정·위키·메모 정보를 임의로 지어내지 말고, 확인된 등록 정보가 없음을 솔직히 안내해 주세요.\n\n[사용자 질문]\n"${safePrompt}"`;
+        }
+        if (piiScrubbed) {
+            finalUserMessage += `\n\n(보안 안내: 입력에 포함된 민감 개인정보는 자동으로 마스킹 처리되었습니다. 마스킹된 정보는 추측하거나 복원하려 하지 마세요.)`;
         }
         if (isReasoning) {
             finalUserMessage += `\n\n(작성 지침: 생각과 답변 모두 100% 한국어로 진행하세요. 생각은 1~2문장으로 한국어로만 간결히 정리하고, 본문에서는 표나 'Done!' 메모만 남기지 말고 곧바로 사용자에게 건네는 완성된 한국어 존댓말 본문으로 충실하게 작성해 주세요.)`;

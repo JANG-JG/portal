@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="/css/study.css">
     <link rel="stylesheet" href="/css/study-visuals.css">
     <link rel="stylesheet" href="/css/study-tablet.css">
+    <link rel="stylesheet" href="/css/study-pokemon.css">
 </head>
 <body>
     <div class="study-shell">
@@ -79,6 +80,24 @@
             </section>
 
             <div class="study-dash-col study-dash-col--left">
+            <!-- 포켓몬 알 부화 & 내 단짝 놀이터 -->
+            <section id="pokemonCompanionCard" class="study-card pokemon-card" hidden aria-label="포켓몬 알과 단짝 놀이터">
+                <div class="pokemon-head">
+                    <div class="pokemon-head__title">
+                        <h2>🥚 알 부화 &amp; 내 단짝</h2>
+                        <span id="pokemonDexCountBadge" class="pokemon-dex-badge">도감 0/40</span>
+                    </div>
+                    <div class="pokemon-head__actions">
+                        <button type="button" id="btnPokemonMotionToggle" class="pokemon-btn-ctrl">⏸️ 멈춤</button>
+                        <button type="button" id="btnPokemonOpenDex" class="pokemon-btn-ctrl pokemon-btn-dex">📖 도감 보기</button>
+                    </div>
+                </div>
+                <div class="pokemon-habitats">
+                    <button type="button" id="btnPokemonEggStage" class="pokemon-stage pokemon-stage--egg" data-stage="0"></button>
+                    <button type="button" id="btnPokemonPartnerStage" class="pokemon-stage pokemon-stage--partner"></button>
+                </div>
+            </section>
+
             <!-- 영역별 현재 레벨 + 부모 잠금 해제 스테퍼 -->
             <section class="study-card">
                 <div class="study-card-head">
@@ -262,6 +281,34 @@
         </form>
     </dialog>
 
+    <!-- 포켓몬 도감 모달 (Native dialog) -->
+    <dialog id="pokemonDexDialog" class="study-dialog pokemon-dialog" closedby="any" aria-labelledby="pokemonDexTitle">
+        <div class="pokemon-dialog__inner">
+            <div class="pokemon-dialog__head">
+                <div>
+                    <h3 id="pokemonDexTitle">📖 나의 포켓몬 도감</h3>
+                    <div id="pokemonDexSubtitle" style="font-size:0.78rem; color:#475569; margin-top:2px;">0/40마리 수집</div>
+                </div>
+                <form method="dialog">
+                    <button type="submit" value="close" class="study-btn study-btn-outline" style="min-height:38px; padding:0.3rem 0.75rem;">닫기</button>
+                </form>
+            </div>
+            <div id="pokemonDexBody" class="pokemon-dialog__body"></div>
+        </div>
+    </dialog>
+
+    <!-- 알 부화 축하 모달 (Native dialog) -->
+    <dialog id="pokemonHatchDialog" class="study-dialog pokemon-dialog pokemon-hatch-dialog" closedby="any" aria-labelledby="pokemonHatchHeading">
+        <div class="pokemon-dialog__inner">
+            <h2 id="pokemonHatchHeading" style="position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%);">알 부화 축하</h2>
+            <div id="pokemonHatchHero" class="pokemon-hatch-hero"></div>
+            <form method="dialog" class="pokemon-hatch-actions">
+                <button type="submit" value="partner" class="pokemon-hatch-btn pokemon-hatch-btn--primary" autofocus>⭐ 내 단짝으로 데려가기</button>
+                <button type="submit" value="ack" class="pokemon-hatch-btn">📖 도감에만 넣어두기</button>
+            </form>
+        </div>
+    </dialog>
+
     <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
 
     <script src="/js/study-pwa.js" defer></script>
@@ -269,6 +316,7 @@
     <script src="/vendor/study/canvas-confetti.min.js" defer></script>
     <script src="/js/study-fx.js" defer></script>
     <script src="/js/study-stamps.js" defer></script>
+    <script src="/js/study-pokemon.js" defer></script>
     <script src="/js/study-dashboard.js" defer></script>
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
 </body>

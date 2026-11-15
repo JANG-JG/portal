@@ -19,6 +19,7 @@ const {
     updateStampEntry,
     listRecentStamps
 } = require('./studyStamps.service');
+const { getPokemonStateForBoard } = require('./studyPokemon.service');
 
 const VALID_CHILDREN = new Set(['first', 'second']);
 const VALID_SUBJECTS = new Set(['korean', 'math', 'english']);
@@ -310,12 +311,17 @@ async function getChildDashboardState(childId, viewerUser = null) {
         getSystemConfig('study_parent_pin', ''),
         getDailyQuotaStatus()
     ]);
+    const pokemon = await getPokemonStateForBoard(cid, stampBoard).catch((err) => {
+        console.warn('포켓몬 알 상태 조회 무시:', err?.message || err);
+        return null;
+    });
 
     return {
         profiles,
         activeChild: profile,
         levels,
         stampBoard,
+        pokemon,
         weeklyBalance,
         recentSheets,
         hasParentPin: Boolean(parentPinCfg),

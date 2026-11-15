@@ -124,6 +124,9 @@
 
         renderLevels(data.levels || { korean: 1, math: 1, english: 1 });
         renderStampBoard(data.stampBoard, data.activeChild);
+        if (window.StudyPokemon && typeof window.StudyPokemon.render === 'function') {
+            window.StudyPokemon.render(data.pokemon, data.activeChild);
+        }
         renderArchive(data.recentSheets || []);
     }
 
@@ -404,6 +407,16 @@
                 openParentPinDialog,
                 touchParentActivity,
                 lockParentMode: (notify) => applyParentLockState(false, notify ? '부모 잠금이 다시 잠겼어요.' : '')
+            });
+        }
+
+        // 포켓몬 알 부화 & 도감 모듈 바인딩
+        if (window.StudyPokemon && typeof window.StudyPokemon.bindEvents === 'function') {
+            window.StudyPokemon.bindEvents({
+                state,
+                showToast,
+                escapeHtml,
+                reloadDashboard: loadDashboard
             });
         }
 

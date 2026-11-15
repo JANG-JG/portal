@@ -494,5 +494,6 @@ router.get('/api/study/tts', authenticateToken, async (req, res) => {
 });
 
 router.use(require('./studyArtwork.routes'));
+router.use(require('./studyPokemon.routes'));
 
 module.exports = router;

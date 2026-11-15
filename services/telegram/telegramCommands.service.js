@@ -26,6 +26,14 @@ const {
 } = require('../study/studyDb.service');
 const { generateAndSaveWorksheet } = require('../study/geminiWorksheet.service');
 const { logTelegramCommand } = require('./telegramAuth.service');
+const {
+    handleWikiCommand,
+    handleWikiCreateCommand,
+    handleShoppingCommand,
+    handleTodoCommand,
+    handleDoneCommand,
+    deleteFamilyTodo
+} = require('./telegramWiki.service');
 
 function pGet(sql, params = []) {
     return new Promise((resolve, reject) => {
@@ -73,8 +81,10 @@ function buildHelpText() {
         '',
         '• <code>/메모 장보기 우유, 계란</code> — 포털 메모장에 암호화 저장',
         '• <code>/일정 내일 오후 3시 첫째 소아과</code> — 가족 캘린더 일정 등록',
-        '• <code>/조회</code> (또는 <code>/조회 메모</code>, <code>/조회 일정</code>) — 최근 목록 조회',
-        '• <code>/삭제 메모 12</code> / <code>/삭제 일정 5</code> — 해당 번호 삭제',
+        '• <code>/조회</code> (<code>메모</code> | <code>일정</code> | <code>장보기</code> | <code>할일</code> | <code>위키</code>) — 최근 목록 조회',
+        '• <code>/삭제 메모 12</code> / <code>/삭제 일정 5</code> / <code>/삭제 할일 3</code> — 해당 번호 삭제',
+        '• <code>/위키 공기청정기</code> / <code>/위키등록 제목 | 내용</code> — 가족 위키 검색·등록',
+        '• <code>/장보기 우유, 계란</code> / <code>/할일 필터 청소</code> / <code>/완료 3</code> — 위키 장보기·할일 연동',
         '• <code>/학습지 첫째 공룡</code> (또는 <code>/학습지 둘째 한글 딸기</code>) — 태블릿 학습지 생성 후 바로가기 링크 발송'
     ].join('\n');
 }
@@ -122,6 +132,10 @@ async function handleScheduleCommand(argText, authUser) {
 
 async function handleQueryCommand(argText, authUser) {
     const mode = argText.trim();
+    if (mode.includes('장보기')) return handleShoppingCommand('조회');
+    if (mode.includes('할일') || mode.includes('루틴')) return handleTodoCommand('조회');
+    if (mode.includes('위키')) return handleWikiCommand('');
+
     const today = getKstDate();
     const lines = [];
 
@@ -176,12 +190,19 @@ async function handleQueryCommand(argText, authUser) {
 async function handleDeleteCommand(argText, authUser) {
     const tokens = argText.trim().split(/\s+/).filter(Boolean);
     if (tokens.length < 2) {
-        return '🗑️ 삭제할 구분과 번호를 입력해 주세요.\n예: <code>/삭제 메모 12</code> 또는 <code>/삭제 일정 5</code>';
+        return '🗑️ 삭제할 구분과 번호를 입력해 주세요.\n예: <code>/삭제 메모 12</code>, <code>/삭제 일정 5</code> 또는 <code>/삭제 할일 3</code>';
     }
     const kind = tokens[0];
     const targetId = Number(String(tokens[1]).replace('#', ''));
     if (!Number.isInteger(targetId) || targetId <= 0) {
         return '⚠️ 올바른 숫자 번호를 입력해 주세요.';
+    }
+
+    if (kind.includes('할일') || kind.includes('장보기') || kind.includes('루틴')) {
+        const ok = await deleteFamilyTodo(targetId);
+        return ok
+            ? `🗑️ 위키 할일·장보기 <b>#${targetId}</b>를 삭제했습니다.`
+            : `⚠️ 할일·장보기 #${targetId}을 찾을 수 없어요.`;
     }
 
     if (kind.includes('메모')) {
@@ -204,7 +225,7 @@ async function handleDeleteCommand(argText, authUser) {
         return `🗑️ 일정 <b>#${targetId}</b>를 삭제했습니다.`;
     }
 
-    return '⚠️ 구분은 <code>메모</code> 또는 <code>일정</code>으로 입력해 주세요.';
+    return '⚠️ 구분은 <code>메모</code>, <code>일정</code> 또는 <code>할일</code>로 입력해 주세요.';
 }
 
 async function handleStudySheetCommand(argText, authUser) {
@@ -280,6 +301,16 @@ async function executeTelegramCommand(rawText, authUser, senderId) {
             reply = await handleDeleteCommand(argText, authUser);
         } else if (cmd === '/학습지' || cmd === '/study') {
             reply = await handleStudySheetCommand(argText, authUser);
+        } else if (cmd === '/위키' || cmd === '/wiki') {
+            reply = await handleWikiCommand(argText);
+        } else if (cmd === '/위키등록' || cmd === '/위키저장' || cmd === '/위키추가') {
+            reply = await handleWikiCreateCommand(argText);
+        } else if (cmd === '/장보기' || cmd === '/shop') {
+            reply = await handleShoppingCommand(argText);
+        } else if (cmd === '/할일' || cmd === '/todo' || cmd === '/루틴') {
+            reply = await handleTodoCommand(argText);
+        } else if (cmd === '/완료' || cmd === '/체크' || cmd === '/done') {
+            reply = await handleDoneCommand(argText);
         } else {
             reply = `❓ 알 수 없는 명령어예요.\n\n${buildHelpText()}`;
         }

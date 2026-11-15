@@ -14,6 +14,7 @@ const { refineMemoToWiki, smartMergeOrDraftWiki, stripThinkTags } = require('./a
 const { describeFeelKo, koreanizeWeatherWords } = require('./weatherKo.util');
 const { handleActionIntent } = require('./aiActionAgent.service');
 const { buildAiChatPrompt } = require('./aiContextRouter.service');
+const { detectPromptInjection, scrubPromptPii } = require('./ai/aiGuardrails.service');
 
 const { OLLAMA_HOST, getChatModel, selectChatModel, ensureModelSlot } = require('./aiModelRouter.service');
 // 브리핑·상태 점검·위키 처리는 평상시 대화 모델 사용 (getChatModel: 관리자 설정 즉시 반영)
@@ -299,6 +300,17 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
     const cleanPrompt = sanitizeInputText(prompt, 1000);
     if (!cleanPrompt) throw new Error('유효한 질문 내용을 입력해 주세요.');
 
+    const injectionCheck = detectPromptInjection(cleanPrompt);
+    if (injectionCheck.blocked) {
+        return {
+            success: true,
+            answer: injectionCheck.message,
+            action: 'policy_blocked',
+            model: 'policy-guard',
+            modelMode: 'policy'
+        };
+    }
+
     // ⚡ [액션 에이전트] 자연어 액션 의도 감지 (일정/혈압/메모 등록)
     const actionResult = await handleActionIntent({ prompt: cleanPrompt, user, userName });
     if (actionResult && actionResult.handled) {
@@ -430,9 +442,10 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
         }
     }
 
-    // 질문 의도 기반 최적화 프롬프트 및 타깃 RAG 빌드
+    // 질문 의도 기반 최적화 프롬프트 및 타깃 RAG 빌드 (전달 전 PII 마스킹)
+    const { text: safeChatPrompt } = scrubPromptPii(cleanPrompt, 1000);
     const { messages } = await buildAiChatPrompt({
-        prompt: cleanPrompt,
+        prompt: safeChatPrompt,
         history,
         summaryContext,
         userName,
@@ -440,7 +453,7 @@ async function askAiAssistant({ prompt, history = [], summaryContext = null, use
     });
 
     // 🔀 질문 내용에 따라 대화 모델(평상시) / 추론 모델(분석·계산 등) 자동 선택
-    const picked = selectChatModel(cleanPrompt);
+    const picked = selectChatModel(safeChatPrompt);
 
     const result = await sendOllamaRequest('/api/chat', {
         model: picked.model,

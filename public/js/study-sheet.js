@@ -477,7 +477,9 @@
                 showToast(data.message || '칭찬 도장을 받았어요!');
                 if (data.success) {
                     if (window.StudyFx) { window.StudyFx.fanfare(); window.StudyFx.celebrate({ big: Boolean(data.reachedTen) }); }
-                    btn.textContent = '✅ 칭찬 도장을 받았어요! (학습실로 가기)';
+                    btn.textContent = data.reachedTen
+                        ? '🎉 도장 10칸 완성! 알 부화 보러 가기 🥚✨'
+                        : '✅ 칭찬 도장을 받았어요! (학습실로 가기)';
                     btn.disabled = false;
                     btn.onclick = () => { window.location.href = `/study?childId=${encodeURIComponent(currentSheet?.child_id || 'first')}`; };
                 }

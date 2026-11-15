@@ -470,6 +470,31 @@ const portalDb = new sqlite3.Database(PORTAL_DB_PATH, (err) => {
                 updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
             )`);
 
+            portalDb.run(`CREATE TABLE IF NOT EXISTS study_pokemon_eggs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                child_id TEXT NOT NULL,
+                cycle_no INTEGER NOT NULL DEFAULT 1,
+                target_pokemon_id INTEGER NOT NULL,
+                current_steps INTEGER NOT NULL DEFAULT 0,
+                required_steps INTEGER NOT NULL DEFAULT 10,
+                hatched INTEGER NOT NULL DEFAULT 0,
+                hatch_acknowledged INTEGER NOT NULL DEFAULT 0,
+                hatched_at DATETIME,
+                created_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                UNIQUE(child_id, cycle_no)
+            )`);
+
+            portalDb.run(`CREATE TABLE IF NOT EXISTS study_pokemon_pokedex (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                child_id TEXT NOT NULL,
+                pokemon_id INTEGER NOT NULL,
+                count INTEGER NOT NULL DEFAULT 1,
+                is_partner INTEGER NOT NULL DEFAULT 0,
+                first_hatched_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                last_hatched_at DATETIME DEFAULT (datetime('now', 'localtime')),
+                UNIQUE(child_id, pokemon_id)
+            )`);
+
             // 6. 텔레그램 양방향 제어 화이트리스트 (AES-256-GCM 암호화 + HMAC 블라인드 인덱스)
             portalDb.run(`CREATE TABLE IF NOT EXISTS telegram_allowed_users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
