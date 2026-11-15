@@ -137,6 +137,21 @@ async function toggleAllowedTelegramUser(id, enabled) {
     await dbRun('UPDATE telegram_allowed_users SET enabled = ? WHERE id = ?', [enabled ? 1 : 0, Number(id)]);
 }
 
+async function updateAllowedTelegramUserRole(id, role) {
+    const numId = Number(id);
+    if (!Number.isInteger(numId) || numId <= 0) {
+        throw new Error('올바른 텔레그램 사용자 ID가 아닙니다.');
+    }
+    if (role !== 'admin' && role !== 'family') {
+        throw new Error('권한은 관리자(admin) 또는 가족(family)만 설정할 수 있습니다.');
+    }
+    const res = await dbRun('UPDATE telegram_allowed_users SET role = ? WHERE id = ?', [role, numId]);
+    if (!res.changes) {
+        throw new Error('대상 텔레그램 사용자를 찾을 수 없습니다.');
+    }
+    return { id: numId, role };
+}
+
 async function removeAllowedTelegramUser(id) {
     await dbRun('DELETE FROM telegram_allowed_users WHERE id = ?', [Number(id)]);
 }
@@ -152,10 +167,22 @@ async function logTelegramCommand({ senderId, command, status = 'ok', detail = '
 }
 
 async function listRecentTelegramLogs(limit = 30) {
-    return dbAll(
-        'SELECT id, sender_hash, command, status, detail, created_at FROM telegram_bot_logs ORDER BY id DESC LIMIT ?',
-        [Number(limit)]
-    );
+    const [logs, users] = await Promise.all([
+        dbAll(
+            'SELECT id, sender_hash, command, status, detail, created_at FROM telegram_bot_logs ORDER BY id DESC LIMIT ?',
+            [Number(limit)]
+        ),
+        dbAll('SELECT telegram_id_hash, label FROM telegram_allowed_users')
+    ]);
+    return logs.map((row) => {
+        const match = row.sender_hash
+            ? users.find((u) => String(u.telegram_id_hash || '').startsWith(row.sender_hash))
+            : null;
+        return {
+            ...row,
+            user_label: match ? match.label : (row.sender_hash ? '미등록' : '시스템')
+        };
+    });
 }
 
 /**
@@ -205,6 +232,7 @@ module.exports = {
     addAllowedTelegramUser,
     listAllowedTelegramUsers,
     toggleAllowedTelegramUser,
+    updateAllowedTelegramUserRole,
     removeAllowedTelegramUser,
     logTelegramCommand,
     listRecentTelegramLogs,

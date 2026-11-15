@@ -191,22 +191,33 @@ function renderStudyTelegramUsers(users) {
         return;
     }
 
-    tbody.innerHTML = users.map((u) => `
+    tbody.innerHTML = users.map((u) => {
+        const uid = Number(u.id);
+        const curRole = u.role === 'admin' ? 'admin' : 'family';
+        return `
         <tr>
             <td><strong>${escStudyAdmin(u.label)}</strong></td>
-            <td><code>${escStudyAdmin(u.maskedId)}</code></td>
+            <td><code>${escStudyAdmin(u.maskedTelegramId || u.maskedId || '-')}</code></td>
             <td>${escStudyAdmin(u.portalUsername || '-')}</td>
-            <td>${escStudyAdmin(u.role || 'parent')}</td>
+            <td>
+                <div style="display:flex; gap:0.3rem; align-items:center; flex-wrap:nowrap;">
+                    <select id="tgUserRoleSelect_${uid}" aria-label="${escStudyAdmin(u.label)} 권한 선택" style="padding:0.28rem 0.45rem; border:1px solid #cbd5e1; border-radius:0.4rem; font-size:0.82rem; background:#fff; min-height:32px;">
+                        <option value="family" ${curRole === 'family' ? 'selected' : ''}>👨‍👩‍👧 가족</option>
+                        <option value="admin" ${curRole === 'admin' ? 'selected' : ''}>🛡️ 관리자</option>
+                    </select>
+                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="updateAdminTelegramUserRole(${uid}, this)">적용</button>
+                </div>
+            </td>
             <td>${u.enabled ? '🟢 허용' : '⏸️ 중지'}</td>
-            <td style="font-size:0.78rem; color:#64748b;">${escStudyAdmin(u.lastUsedAt || '-')}</td>
+            <td style="font-size:0.78rem; color:#64748b;">${escStudyAdmin(u.createdAt || u.lastUsedAt || '-')}</td>
             <td style="display:flex; gap:0.35rem; flex-wrap:wrap;">
-                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="toggleAdminTelegramUser(${Number(u.id)}, ${u.enabled ? 'false' : 'true'})">
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="toggleAdminTelegramUser(${uid}, ${u.enabled ? 'false' : 'true'})">
                     ${u.enabled ? '일시 중지' : '다시 허용'}
                 </button>
-                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="color:#dc2626;" onclick="deleteAdminTelegramUser(${Number(u.id)})">삭제</button>
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="color:#dc2626;" onclick="deleteAdminTelegramUser(${uid})">삭제</button>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 function renderStudyTelegramLogs(logs) {
@@ -222,8 +233,8 @@ function renderStudyTelegramLogs(logs) {
             <td style="font-size:0.78rem; color:#64748b;">${escStudyAdmin(l.created_at || '')}</td>
             <td><strong>${escStudyAdmin(l.command)}</strong></td>
             <td>${escStudyAdmin(l.user_label || '미등록')}</td>
-            <td>${escStudyAdmin(l.summary || '')}</td>
-            <td>${l.status === 'blocked' ? '🚫 차단' : (l.status === 'error' ? '❌ 오류' : '✅ 성공')}</td>
+            <td>${escStudyAdmin(l.detail || l.summary || '')}</td>
+            <td>${l.status === 'blocked' ? '🚫 차단' : (l.status === 'error' ? '❌ 오류' : (l.status === 'fallback' ? '⚠️ 폴백' : '✅ 성공'))}</td>
         </tr>
     `).join('');
 }
@@ -391,13 +402,14 @@ async function addAdminTelegramUser(event) {
     const telegramId = String(document.getElementById('tgUserIdInput')?.value || '').trim();
     const label = String(document.getElementById('tgUserLabelInput')?.value || '').trim();
     const portalUsername = String(document.getElementById('tgPortalUsernameInput')?.value || '').trim();
+    const role = document.getElementById('tgUserRoleSelect')?.value === 'admin' ? 'admin' : 'family';
 
     try {
         const res = await fetch('/api/admin/study/telegram/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ telegramId, label, portalUsername, role: 'parent' })
+            body: JSON.stringify({ telegramId, label, portalUsername, role })
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || '등록 실패');
@@ -406,6 +418,27 @@ async function addAdminTelegramUser(event) {
         await loadAdminStudyOverview();
     } catch (err) {
         studyToast(err.message || '텔레그램 사용자 등록 실패', true);
+    }
+}
+
+async function updateAdminTelegramUserRole(id, btnEl) {
+    const role = document.getElementById(`tgUserRoleSelect_${Number(id)}`)?.value === 'admin' ? 'admin' : 'family';
+    if (btnEl) btnEl.disabled = true;
+    try {
+        const res = await fetch(`/api/admin/study/telegram/users/${encodeURIComponent(id)}/role`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ role })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || '권한 변경 실패');
+        studyToast(data.message || '권한이 변경되었습니다.');
+        await loadAdminStudyOverview();
+    } catch (err) {
+        studyToast(err.message || '권한 변경 실패', true);
+    } finally {
+        if (btnEl) btnEl.disabled = false;
     }
 }
 
@@ -495,6 +528,6 @@ Object.assign(window, {
     loadAdminStudyOverview, toggleAddStudyProfileForm, onKidProfileModeChange,
     createAdminStudyProfile, createProfileFromKidAccount, saveAdminStudyConfig,
     saveAdminStudyProfile, deleteAdminStudyProfile, addAdminTelegramUser,
-    toggleAdminTelegramUser, deleteAdminTelegramUser, createAdminKidAccount,
-    copyStudyInviteUrl, copyStudyLanUrl
+    updateAdminTelegramUserRole, toggleAdminTelegramUser, deleteAdminTelegramUser,
+    createAdminKidAccount, copyStudyInviteUrl, copyStudyLanUrl
 });

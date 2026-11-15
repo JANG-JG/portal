@@ -38,6 +38,7 @@ const {
     listAllowedTelegramUsers,
     addAllowedTelegramUser,
     toggleAllowedTelegramUser,
+    updateAllowedTelegramUserRole,
     removeAllowedTelegramUser,
     listRecentTelegramLogs
 } = require('../../services/telegram/telegramAuth.service');
@@ -247,6 +248,21 @@ router.post('/telegram/users/:id/toggle', async (req, res) => {
         res.json({ success: true, message: '텔레그램 사용자 상태가 변경되었습니다.' });
     } catch (err) {
         res.status(500).json({ success: false, message: '상태 변경 실패' });
+    }
+});
+
+router.post('/telegram/users/:id/role', async (req, res) => {
+    try {
+        const updated = await updateAllowedTelegramUserRole(req.params.id, req.body?.role);
+        res.json({
+            success: true,
+            message: updated.role === 'admin'
+                ? '권한이 [관리자]로 변경되었습니다.'
+                : '권한이 [가족]으로 변경되었습니다.',
+            user: updated
+        });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message || '권한 변경 실패' });
     }
 });
 

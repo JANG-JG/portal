@@ -265,23 +265,31 @@
                             <h3>✈️ 암호화 텔레그램 봇 사용자 화이트리스트</h3>
                             <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
                                 입력한 텔레그램 Chat ID는 AES-256-GCM 암호화 + HMAC 블라인드 인덱스로 DB에 저장되며 평문은 다시 조회되지 않습니다.
+                                <br>권한 안내: <b>관리자</b>는 약·혈압·자산·시스템 조회 및 보상 승인까지 가능하며, <b>가족</b>은 일정·메모·장보기·학습·일반 대화를 이용할 수 있습니다.
                             </p>
                         </div>
                         <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyOverview()">🔄 새로고침</button>
                     </div>
 
-                    <form id="studyTelegramAddForm" onsubmit="addAdminTelegramUser(event)" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:0.7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.9rem; margin-top:0.75rem; box-sizing:border-box;">
+                    <form id="studyTelegramAddForm" onsubmit="addAdminTelegramUser(event)" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(155px, 1fr)); gap:0.7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.9rem; margin-top:0.75rem; box-sizing:border-box;">
                         <div style="min-width:0;">
                             <label for="tgUserIdInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">텔레그램 숫자 ID</label>
-                            <input id="tgUserIdInput" type="text" inputmode="numeric" required placeholder="예: 123456789" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
+                            <input id="tgUserIdInput" name="telegramId" type="text" inputmode="numeric" required placeholder="예: 123456789" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
                         </div>
                         <div style="min-width:0;">
                             <label for="tgUserLabelInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">호칭 / 별명</label>
-                            <input id="tgUserLabelInput" type="text" required placeholder="예: 아빠, 엄마" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
+                            <input id="tgUserLabelInput" name="label" type="text" required placeholder="예: 아빠, 엄마" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
                         </div>
                         <div style="min-width:0;">
                             <label for="tgPortalUsernameInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">연결 포털 아이디 (선택)</label>
-                            <input id="tgPortalUsernameInput" type="text" placeholder="예: admin" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
+                            <input id="tgPortalUsernameInput" name="portalUsername" type="text" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="예: upt0731" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
+                        </div>
+                        <div style="min-width:0;">
+                            <label for="tgUserRoleSelect" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">권한</label>
+                            <select id="tgUserRoleSelect" name="role" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem; background:#fff; min-height:40px;">
+                                <option value="family" selected>👨‍👩‍👧 가족 (일정·학습·일반)</option>
+                                <option value="admin">🛡️ 관리자 (약·혈압·자산·승인)</option>
+                            </select>
                         </div>
                         <div style="display:flex; align-items:flex-end;">
                             <button type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:40px;">🔐 암호화 등록</button>
@@ -295,9 +303,9 @@
                                     <th>호칭</th>
                                     <th>마스킹 ID</th>
                                     <th>포털 계정</th>
-                                    <th>권한</th>
+                                    <th>권한 설정</th>
                                     <th>상태</th>
-                                    <th>최근 사용</th>
+                                    <th>등록일</th>
                                     <th>관리</th>
                                 </tr>
                             </thead>
