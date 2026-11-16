@@ -11,33 +11,13 @@
 (function () {
     'use strict';
 
-    const CRAYONS = [
+    const CRAYONS = window.StudyColorFlood?.DEFAULT_CRAYONS || [
         { name: '빨강', hex: '#ef4444' },
-        { name: '주황', hex: '#fb923c' },
         { name: '노랑', hex: '#facc15' },
-        { name: '초록', hex: '#22c55e' },
-        { name: '파랑', hex: '#3b82f6' },
-        { name: '보라', hex: '#a855f7' },
-        { name: '분홍', hex: '#f472b6' },
-        { name: '하양', hex: '#ffffff' }
+        { name: '파랑', hex: '#3b82f6' }
     ];
 
-    /**
-     * 도안 검은 윤곽선과 표정만 투명 채우기로 복제해 캔버스 위에 얹는다.
-     */
-    function buildOutlineOverlay(svgEl) {
-        if (!svgEl) return null;
-        const clone = svgEl.cloneNode(true);
-        clone.classList.add('coloring-outline-svg');
-        clone.setAttribute('aria-hidden', 'true');
-        clone.querySelectorAll('[data-color-part]').forEach((el) => el.removeAttribute('data-color-part'));
-        clone.querySelectorAll('path, rect, circle, ellipse, polygon, polyline').forEach((el) => {
-            if (!el.hasAttribute('data-keep-white') && (el.getAttribute('fill') || '').toLowerCase() === '#ffffff') {
-                el.setAttribute('fill', 'none');
-            }
-        });
-        return clone;
-    }
+    const buildOutlineOverlay = (svgEl) => window.StudyColorFlood?.buildOutlineOverlay?.(svgEl) || null;
 
     function fillFreehandStroke(ctx, rawPoints, hex, baseSize, useRealPressure) {
         return window.StudyTablet?.drawFreehandStroke?.(ctx, rawPoints, hex, baseSize, useRealPressure) || false;
@@ -131,6 +111,9 @@
         palette.className = 'color-palette no-print';
         palette.setAttribute('role', 'group');
         palette.setAttribute('aria-label', '색연필 고르기');
+        const recPaletteBar = document.createElement('div');
+        recPaletteBar.className = 'pokemon-rec-palette no-print';
+        recPaletteBar.hidden = true;
 
         const stage = document.createElement('div');
         stage.className = 'coloring-stage';
@@ -147,6 +130,7 @@
         let baseSvg = null;
         let outlineSvg = null;
         let parts = [];
+        let floodSession = null;
         const isPokemonSheet = Number(blk?.pokemonId) > 0 && window.StudyPokemonColoring;
         if (!isPokemonSheet) {
             wrap.innerHTML = window.StudyIllustrations
@@ -163,7 +147,7 @@
         banner.className = 'play-feedback';
         banner.textContent = defaultHint;
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const applyCanvasStyle = () => {
             if (!ctx) return;
             ctx.lineCap = 'round';
@@ -214,6 +198,14 @@
             else syncBrushUi();
         }));
 
+        const selectColor = (hex, activeSw) => {
+            activeHex = hex;
+            palette.querySelectorAll('.color-swatch').forEach((b) => b.classList.toggle('active', b === activeSw));
+            recPaletteBar.querySelectorAll('.color-swatch').forEach((b) => b.classList.toggle('active', b === activeSw));
+            if (activeMode === 'eraser') setMode(lastPaintMode === 'fill' ? 'brush' : lastPaintMode);
+            else applyCanvasStyle();
+        };
+
         CRAYONS.forEach((c, idx) => {
             const sw = document.createElement('button');
             sw.type = 'button';
@@ -221,12 +213,7 @@
             sw.style.backgroundColor = c.hex;
             sw.setAttribute('aria-label', `${c.name} 색연필`);
             sw.title = c.name;
-            sw.addEventListener('click', () => {
-                activeHex = c.hex;
-                palette.querySelectorAll('.color-swatch').forEach((b) => b.classList.toggle('active', b === sw));
-                if (activeMode === 'eraser') setMode(lastPaintMode === 'fill' ? 'brush' : lastPaintMode);
-                else applyCanvasStyle();
-            });
+            sw.addEventListener('click', () => selectColor(c.hex, sw));
             palette.appendChild(sw);
         });
 
@@ -255,18 +242,11 @@
             applyCanvasStyle();
         };
         requestAnimationFrame(resizeCanvas);
-        if (typeof ResizeObserver === 'function') {
-            new ResizeObserver(resizeCanvas).observe(wrap);
-        } else {
-            window.addEventListener('resize', resizeCanvas);
-        }
+        if (typeof ResizeObserver === 'function') new ResizeObserver(resizeCanvas).observe(wrap);
+        else window.addEventListener('resize', resizeCanvas);
 
         const syncUndoBtn = () => { undoBtn.disabled = undoStack.length === 0; };
-        const pushUndo = (entry) => {
-            undoStack.push(entry);
-            if (undoStack.length > MAX_UNDO) undoStack.shift();
-            syncUndoBtn();
-        };
+        const pushUndo = (entry) => { undoStack.push(entry); if (undoStack.length > MAX_UNDO) undoStack.shift(); syncUndoBtn(); };
 
         const triggerPraise = () => {
             if (cheered) return;
@@ -277,10 +257,7 @@
             if (speakFn) speakFn('우와! 정말 예쁘게 칠하고 있네요!', 'ko-KR');
         };
 
-        const getPos = (e) => {
-            const r = canvas.getBoundingClientRect();
-            return { x: e.clientX - r.left, y: e.clientY - r.top };
-        };
+        const getPos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
         const getPointerPressure = (e) => {
             if (!e) return { pressure: 0.5, isPen: false };
             const isPen = e.pointerType === 'pen';
@@ -389,15 +366,37 @@
             });
         };
 
+        window.StudyColorFlood?.bindCanvasTapFill?.(canvas, {
+            canFill: () => activeMode === 'fill' && Boolean(floodSession),
+            getSession: () => floodSession,
+            getHex: () => activeHex,
+            onBeforeFill: () => ({ snap: snapshotCanvas(canvas), prevInk: hasCanvasInk }),
+            onAfterFill: (info) => {
+                if (info?.snap) pushUndo({ kind: 'canvas', snapshot: info.snap, prevInk: info.prevInk });
+                if (activeHex !== '#ffffff') { hasCanvasInk = true; paintedCount += 1; if (paintedCount === 3) triggerPraise(); }
+                if (window.StudyFx) window.StudyFx.crayon();
+            }
+        });
+
         const hydrateSvg = (svgEl) => {
             baseSvg = svgEl;
             if (!canvas.parentElement) wrap.appendChild(canvas);
             if (outlineSvg) outlineSvg.remove();
             outlineSvg = buildOutlineOverlay(baseSvg);
             if (outlineSvg) wrap.appendChild(outlineSvg);
-            parts = baseSvg ? Array.from(baseSvg.querySelectorAll('[data-color-part]')) : [];
-            bindParts(parts);
-            requestAnimationFrame(resizeCanvas);
+            const useFlood = baseSvg?.dataset?.fillMode === 'flood' && window.StudyColorFlood?.createFloodFillSession;
+            wrap.dataset.fillEngine = useFlood ? 'flood' : 'svg';
+            window.StudyColorFlood?.renderRecommendedPalette?.(recPaletteBar, baseSvg, selectColor);
+            if (useFlood) {
+                parts = [];
+                floodSession = window.StudyColorFlood.createFloodFillSession(baseSvg, canvas);
+                requestAnimationFrame(() => { resizeCanvas(); floodSession?.ensureMask?.(); });
+            } else {
+                floodSession = null;
+                parts = baseSvg ? Array.from(baseSvg.querySelectorAll('[data-color-part]')) : [];
+                bindParts(parts);
+                requestAnimationFrame(resizeCanvas);
+            }
         };
 
         if (isPokemonSheet) {
@@ -436,10 +435,7 @@
         });
 
         clearBtn.addEventListener('click', () => {
-            parts.forEach((p) => {
-                p.setAttribute('fill', '#ffffff');
-                delete p.dataset.painted;
-            });
+            parts.forEach((p) => { p.setAttribute('fill', '#ffffff'); delete p.dataset.painted; });
             if (ctx) {
                 ctx.save();
                 ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -487,7 +483,7 @@
 
         syncBrushUi();
         syncUndoBtn();
-        container.append(modeBar, palette, stage, banner);
+        container.append(modeBar, recPaletteBar, palette, stage, banner);
         if (isPokemonSheet) container.appendChild(hintHost);
         if (artworkBar.children.length > 0) container.appendChild(artworkBar);
     }

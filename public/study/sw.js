@@ -28,7 +28,9 @@ const PRECACHE_ASSETS = [
     '/js/study-hangul-trace.js',
     '/js/study-artwork.js',
     '/js/pokemon-meadow.js',
-    '/js/study-pokemon-coloring.js'
+    '/js/study-pokemon-coloring.js',
+    '/js/study-color-flood.js',
+    '/js/study-color-block.js'
 ];
 
 self.addEventListener('install', (event) => {

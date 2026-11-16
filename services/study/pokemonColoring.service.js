@@ -15,6 +15,14 @@ const path = require('path');
 const https = require('https');
 const { getPokemonById, listEnrichedCatalog, POPULAR_GEN1_IDS } = require('./pokemonCatalog.data');
 const { getPokemonCacheEntry, setPokemonCacheEntry } = require('./studyPokemonCache.service');
+const {
+    parseRgbColor,
+    colorLuminance,
+    colorChroma,
+    isTrueInkColor,
+    extractSignaturePalette,
+    extractUnoutlinedMarkingPaths
+} = require('./pokemonLineArt.helper');
 
 const SVG_CACHE_DIR = path.join(__dirname, '..', '..', 'public', 'img', 'pokemon');
 const SPECIES_CACHE_DIR = path.join(__dirname, '..', '..', 'data', 'pokemon-cache');
@@ -84,31 +92,6 @@ function extractStyleProp(styleStr, propName) {
     return m ? m[1].trim() : '';
 }
 
-function parseRgbColor(val) {
-    const s = String(val || '').trim().toLowerCase();
-    if (!s || s === 'none' || s === 'transparent') return null;
-    if (s === 'black') return [0, 0, 0];
-    if (s === 'white') return [255, 255, 255];
-    if (s.startsWith('#')) {
-        const hex = s.slice(1);
-        if (hex.length === 3) {
-            return [parseInt(hex[0] + hex[0], 16), parseInt(hex[1] + hex[1], 16), parseInt(hex[2] + hex[2], 16)];
-        }
-        if (hex.length >= 6) {
-            return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
-        }
-    }
-    const rgb = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
-    if (rgb) {
-        return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
-    }
-    return [180, 180, 180];
-}
-
-function colorLuminance(rgb) {
-    if (!rgb || rgb.some((n) => !Number.isFinite(n))) return 180;
-    return rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
-}
 
 function estimateShapeMaxSpan(tag, attrs) {
     if (tag === 'circle') return (Number(attrs.r) || 0) * 2;
@@ -142,7 +125,7 @@ function buildSafeAttrString(attrs) {
     return parts.join(' ');
 }
 
-function convertDreamWorldSvgToColoring(rawSvg, pokemonMeta) {
+async function convertDreamWorldSvgToColoring(rawSvg, pokemonMeta) {
     const svgMatch = String(rawSvg || '').match(/<svg([^>]*)>([\s\S]*?)<\/svg>/i);
     if (!svgMatch) return null;
 
@@ -168,13 +151,15 @@ function convertDreamWorldSvgToColoring(rawSvg, pokemonMeta) {
     const scale = Math.min(276 / vbW, 188 / vbH);
     const tx = (320 - vbW * scale) / 2 - vbX * scale;
     const ty = (220 - vbH * scale) / 2 - vbY * scale;
-    const strokeW = Number(Math.min(4.2, Math.max(0.85, 1.55 / scale)).toFixed(3));
+    const strokeW = Number(Math.min(3.2, Math.max(0.95, 1.55 / scale)).toFixed(3));
+    const inkBoostW = Number(Math.min(0.75, Math.max(0.22, 0.36 / scale)).toFixed(3));
     const maxDim = Math.max(vbW, vbH);
 
     const tokenRe = /<(\/?)([a-zA-Z0-9:-]+)([^>]*?)(\/?)>/g;
-    const outChunks = [];
+    const bwChunks = [];
+    const colorChunks = [];
     let skipDepth = 0;
-    let partIdx = 0;
+    let shapeCount = 0;
     let m;
 
     while ((m = tokenRe.exec(svgMatch[2])) !== null) {
@@ -192,13 +177,15 @@ function convertDreamWorldSvgToColoring(rawSvg, pokemonMeta) {
 
         if (tag === 'g') {
             if (isClose) {
-                outChunks.push('</g>');
+                bwChunks.push('</g>');
+                colorChunks.push('</g>');
             } else if (!isSelfClose) {
                 const attrs = parseAttributes(attrRaw);
                 const tAttr = attrs.transform && SAFE_TRANSFORM_RE.test(attrs.transform)
                     ? ` transform="${escapeXml(attrs.transform.trim())}"`
                     : '';
-                outChunks.push(`<g${tAttr}>`);
+                bwChunks.push(`<g${tAttr}>`);
+                colorChunks.push(`<g${tAttr}>`);
             }
             continue;
         }
@@ -210,43 +197,67 @@ function convertDreamWorldSvgToColoring(rawSvg, pokemonMeta) {
 
         const rawFill = attrs.fill || extractStyleProp(attrs.style, 'fill') || '#000000';
         const rgb = parseRgbColor(rawFill);
+        shapeCount += 1;
 
         if (!rgb) {
-            outChunks.push(`<${tag} ${geo} fill="none" stroke="#1e293b" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round" data-outline-part="1"/>`);
+            bwChunks.push(`<${tag} ${geo} fill="none" stroke="#1e293b" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round" data-outline-part="1"/>`);
+            colorChunks.push(`<${tag} ${geo} fill="none" stroke="#000000" stroke-width="${strokeW}"/>`);
             continue;
         }
 
+        colorChunks.push(`<${tag} ${geo} fill="${escapeXml(rawFill)}" stroke="none"/>`);
         const lum = colorLuminance(rgb);
-        if (lum < 58) {
-            outChunks.push(`<${tag} ${geo} fill="#1e293b" stroke="none" data-outline-part="1"/>`);
-            continue;
-        }
-
+        const ch = colorChroma(rgb);
         const span = estimateShapeMaxSpan(tag, attrs);
-        if (lum >= 248 && span <= maxDim * 0.095) {
-            outChunks.push(`<${tag} ${geo} fill="#ffffff" stroke="none" data-keep-white="1" data-outline-part="1"/>`);
+
+        if (isTrueInkColor(rgb)) {
+            const boost = span >= maxDim * 0.05
+                ? ` stroke="#1e293b" stroke-width="${inkBoostW}" stroke-linejoin="round"`
+                : ' stroke="none"';
+            bwChunks.push(`<${tag} ${geo} fill="#1e293b"${boost} data-outline-part="1"/>`);
             continue;
         }
 
-        outChunks.push(
-            `<${tag} ${geo} data-color-part="${partIdx++}" fill="#ffffff" stroke="#1e293b" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round"/>`
-        );
+        if (lum >= 248 && ch < 16 && span <= maxDim * 0.08) {
+            bwChunks.push(`<${tag} ${geo} fill="#ffffff" stroke="none" data-keep-white="1" data-outline-part="1"/>`);
+            continue;
+        }
+
+        bwChunks.push(`<${tag} ${geo} fill="#ffffff" stroke="none"/>`);
     }
 
-    if (partIdx === 0 && outChunks.length === 0) return null;
+    if (shapeCount === 0 || bwChunks.length === 0) return null;
+
+    const transformWrap = `<g transform="translate(${tx.toFixed(2)}, ${ty.toFixed(2)}) scale(${scale.toFixed(4)})">`;
+    const bwSvg = [
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220">',
+        transformWrap,
+        ...bwChunks,
+        '</g></svg>'
+    ].join('');
+    const colorSvg = [
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220">',
+        transformWrap,
+        ...colorChunks,
+        '</g></svg>'
+    ].join('');
+
+    const markingLayer = await extractUnoutlinedMarkingPaths(colorSvg, bwSvg);
+    const palette = extractSignaturePalette(rawSvg);
 
     return [
-        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="${escapeXml(pokemonMeta.nameKo)} 포켓몬 색칠 도안">`,
-        `<g transform="translate(${tx.toFixed(2)}, ${ty.toFixed(2)}) scale(${scale.toFixed(4)})">`,
-        ...outChunks,
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" data-coloring-v="2" data-fill-mode="flood" data-palette="${escapeXml(palette.join(','))}" role="img" aria-label="${escapeXml(pokemonMeta.nameKo)} 포켓몬 색칠 도안">`,
+        transformWrap,
+        ...bwChunks,
         '</g>',
+        markingLayer,
         '</svg>'
     ].join('');
 }
 
 function buildFallbackPokemonColoringSvg(pokemonMeta) {
     return [
-        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="${escapeXml(pokemonMeta.nameKo)} 색칠 도안">`,
+        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" data-coloring-v="2" role="img" aria-label="${escapeXml(pokemonMeta.nameKo)} 색칠 도안">`,
         '<circle data-color-part="0" cx="160" cy="110" r="82" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>',
         '<path data-color-part="1" d="M78 110 A82 82 0 0 1 242 110 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>',
         '<line x1="78" y1="110" x2="242" y2="110" stroke="#1e293b" stroke-width="6"/>',
@@ -264,13 +275,13 @@ async function getOrBuildPokemonColoringSvg(pokemonId) {
     const convertedPath = path.join(SVG_CACHE_DIR, `coloring-${idNum}.svg`);
     if (fs.existsSync(convertedPath)) {
         const cached = fs.readFileSync(convertedPath, 'utf8');
-        if (cached.includes('class="coloring-svg"')) return cached;
+        if (cached.includes('data-coloring-v="2"')) return cached;
     }
 
     const dbSvg = await getPokemonCacheEntry(`coloring_svg:${idNum}`);
     if (dbSvg?.buffer?.length > 40) {
         const cached = dbSvg.buffer.toString('utf8');
-        if (cached.includes('class="coloring-svg"')) {
+        if (cached.includes('data-coloring-v="2"')) {
             try { fs.writeFileSync(convertedPath, cached, 'utf8'); } catch (_) {}
             return cached;
         }
@@ -279,7 +290,7 @@ async function getOrBuildPokemonColoringSvg(pokemonId) {
     try {
         const rawUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/dream-world/${idNum}.svg`;
         const rawSvg = await fetchTextHttps(rawUrl, 5000);
-        const converted = convertDreamWorldSvgToColoring(rawSvg, meta);
+        const converted = await convertDreamWorldSvgToColoring(rawSvg, meta);
         if (converted) {
             try { fs.writeFileSync(convertedPath, converted, 'utf8'); } catch (_) {}
             await setPokemonCacheEntry(`coloring_svg:${idNum}`, 'image/svg+xml', converted, rawUrl);

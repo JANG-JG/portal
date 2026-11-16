@@ -185,10 +185,10 @@
 }
 
 .color-swatch {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    min-height: 42px;
     border-radius: 999px;
     border: 3px solid #cbd5e1;
     cursor: pointer;
@@ -202,20 +202,37 @@
     box-shadow: 0 0 0 3px rgba(255, 122, 69, 0.35);
 }
 
+.pokemon-rec-palette {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border-radius: 12px;
+    background: #fffbeb;
+    border: 1.5px solid #fde68a;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.pokemon-rec-label { font-size: 0.78rem; font-weight: 800; color: #92400e; margin-right: 2px; }
+.color-swatch--rec { width: 38px; height: 38px; min-width: 38px; min-height: 38px; border-width: 2.5px; }
+
 .coloring-stage {
     width: 100%; max-width: 100%; box-sizing: border-box;
     background: #ffffff; border: 2px solid #e2e8f0; border-radius: 18px; padding: 10px; text-align: center;
 }
 .coloring-canvas-wrap {
     position: relative; width: 100%; max-width: 440px; aspect-ratio: 320 / 220;
-    margin: 0 auto; border-radius: 12px; overflow: hidden; background: #ffffff;
+    margin: 0 auto; border-radius: 12px; overflow: hidden; background: #ffffff; isolation: isolate;
 }
 .coloring-svg,
 .coloring-draw-canvas { display: block; width: 100%; height: 100%; }
 .coloring-svg { position: relative; z-index: 1; }
 .coloring-draw-canvas { position: absolute; inset: 0; z-index: 2; touch-action: none; cursor: crosshair; }
 .coloring-outline-svg { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
-.coloring-canvas-wrap[data-color-mode="fill"] .coloring-draw-canvas,
+.coloring-outline-svg.is-multiply-outline { mix-blend-mode: multiply; }
+.coloring-canvas-wrap[data-color-mode="fill"]:not([data-fill-engine="flood"]) .coloring-draw-canvas,
 .coloring-canvas-wrap[data-color-mode="brush"] .coloring-svg,
 .coloring-canvas-wrap[data-color-mode="eraser"] .coloring-svg { pointer-events: none; }
 .coloring-canvas-wrap[data-color-mode="eraser"] .coloring-draw-canvas { cursor: cell; }

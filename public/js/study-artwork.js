@@ -57,7 +57,13 @@
 
         // 4. 최상단 검은 윤곽선 레이어
         const outlineImg = await loadSvgAsImage(outlineSvg, outW, outH);
-        if (outlineImg) ctx.drawImage(outlineImg, 0, 0, outW, outH);
+        if (outlineImg) {
+            const useMultiply = outlineSvg.classList.contains('is-multiply-outline');
+            ctx.save();
+            if (useMultiply) ctx.globalCompositeOperation = 'multiply';
+            ctx.drawImage(outlineImg, 0, 0, outW, outH);
+            ctx.restore();
+        }
 
         // 5. 귀여운 하단 서명 배지
         ctx.save();
