@@ -275,13 +275,13 @@
         group.innerHTML = `
             <button type="button" id="btnLiveDashboardEdit" onclick="if(typeof toggleDashboardEditMode==='function')toggleDashboardEditMode(true)" 
                 title="메인 화면에서 카드를 직접 배치하고 조절합니다"
-                style="font-size:0.75rem; color:#fff; background:#2563eb; border:none; display:inline-flex; align-items:center; gap:4px; font-weight:700; padding:2px 9px; border-radius:4px; cursor:pointer; box-shadow:0 1px 4px rgba(37,99,235,0.3);">
-                <span>🎨</span><span>화면 편집</span>
+                style="font-size:0.76rem; color:#1d4ed8; background:#eff6ff; border:1px solid #bfdbfe; display:inline-flex; align-items:center; gap:5px; font-weight:700; min-height:28px; padding:4px 12px; border-radius:9999px; cursor:pointer; box-shadow:0 1px 3px rgba(37,99,235,0.08); transition:background-color 0.15s ease, border-color 0.15s ease;">
+                <span aria-hidden="true">🎨</span><span>화면 편집</span>
             </button>
             <a href="/admin#tab-modules:subpane-modules-widgets" id="adminWidgetQuickConfigBtn" 
                 title="관리자 센터 대시보드 위젯 설정으로 이동"
-                style="font-size:0.72rem; color:#64748b; text-decoration:none; display:inline-flex; align-items:center; gap:2px; font-weight:500; padding:2px 6px; border-radius:4px; background:#f1f5f9; border:1px solid #e2e8f0;">
-                <span>⚙️</span><span>설정</span>
+                style="font-size:0.75rem; color:#475569; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600; min-height:28px; padding:4px 10px; border-radius:9999px; background:#f8fafc; border:1px solid #e2e8f0; transition:background-color 0.15s ease, border-color 0.15s ease;">
+                <span aria-hidden="true">⚙️</span><span>설정</span>
             </a>
         `;
 

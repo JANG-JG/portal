@@ -22,36 +22,25 @@
     "isModuleWidget": false
   },
   {
-    "id": "homarrHeroCard",
-    "title": "일과 & 활동 링 / 복약 요약",
-    "icon": "🌟",
-    "enabled": true,
-    "order": 30,
-    "colSpan": 2,
-    "selector": "#homarrHeroCard",
-    "desc": "Apple Activity Ring 일과 달성률 및 복약 퀵체크",
-    "isModuleWidget": false
-  },
-  {
     "id": "breakingBannerBar",
     "title": "실시간 속보 배너",
     "icon": "🚨",
     "enabled": true,
-    "order": 40,
+    "order": 30,
     "colSpan": 2,
     "selector": "#breakingBannerBar",
     "desc": "실시간 주요 속보 롤링 티커",
     "isModuleWidget": false
   },
   {
-    "id": "bento-album",
-    "title": "가족 앨범 최신 사진",
-    "icon": "📸",
+    "id": "portalStudyBuddyStrip",
+    "title": "오늘의 우리 아이 학습 단짝",
+    "icon": "🐣",
     "enabled": true,
-    "order": 50,
+    "order": 40,
     "colSpan": 1,
-    "selector": "#bento-album",
-    "desc": "최근 등록된 가족 사진 썸네일 스트립",
+    "selector": "#portalStudyBuddyStrip",
+    "desc": "아이별 학습 도장 진행률 및 단짝 포켓몬 현황",
     "isModuleWidget": false
   },
   {
@@ -59,10 +48,21 @@
     "title": "실시간 주요 뉴스",
     "icon": "📰",
     "enabled": true,
-    "order": 60,
+    "order": 50,
     "colSpan": 1,
     "selector": "#bento-news",
     "desc": "분야별 주요 뉴스 및 시장 지표",
+    "isModuleWidget": false
+  },
+  {
+    "id": "bento-album",
+    "title": "가족 앨범 최신 사진",
+    "icon": "📸",
+    "enabled": true,
+    "order": 60,
+    "colSpan": 1,
+    "selector": "#bento-album",
+    "desc": "최근 등록된 가족 사진 썸네일 스트립",
     "isModuleWidget": false
   },
   {
@@ -88,11 +88,22 @@
     "isModuleWidget": false
   },
   {
+    "id": "homarrHeroCard",
+    "title": "일과 & 활동 링 / 복약 요약",
+    "icon": "🌟",
+    "enabled": true,
+    "order": 90,
+    "colSpan": 2,
+    "selector": "#homarrHeroCard",
+    "desc": "Apple Activity Ring 일과 달성률 및 복약 퀵체크",
+    "isModuleWidget": false
+  },
+  {
     "id": "card-dday",
     "title": "소모품 & 계약 D-Day",
     "icon": "⏳",
     "enabled": true,
-    "order": 90,
+    "order": 100,
     "colSpan": 1,
     "selector": ".card-dday",
     "desc": "정기 결제 및 소모품 교체 주기 D-Day",
@@ -103,7 +114,7 @@
     "title": "총 자산 포트폴리오",
     "icon": "💰",
     "enabled": true,
-    "order": 100,
+    "order": 110,
     "colSpan": 1,
     "selector": "#bento-asset",
     "desc": "총 자산 평가액 및 시장 지표 요약",
@@ -114,7 +125,7 @@
     "title": "서버 인프라 관리 (듀얼)",
     "icon": "🖥️",
     "enabled": true,
-    "order": 110,
+    "order": 120,
     "colSpan": 2,
     "selector": "#bento-ops",
     "desc": "주서버(노트9) & 보조서버(노트북) 클러스터 상태",

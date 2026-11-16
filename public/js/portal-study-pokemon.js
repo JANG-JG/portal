@@ -34,36 +34,61 @@
                 margin-bottom: 0;
             }
             .portal-study-buddy-card {
-                background: linear-gradient(135deg, #fffbeb 0%, #ffffff 55%, #f0fdf4 100%);
-                border: 1px solid rgba(245, 158, 11, 0.28);
-                border-radius: 16px;
-                padding: 0.75rem 0.9rem;
-                margin-bottom: 0.9rem;
-                box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+                background: var(--hm-bg-card, #ffffff);
+                border: 1px solid var(--hm-border, #e2e8f0);
+                border-radius: var(--hm-radius-card, 16px);
+                padding: 1.25rem;
+                margin-bottom: 1rem;
+                box-shadow: var(--hm-shadow-md, 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03));
                 box-sizing: border-box;
                 max-width: 100%;
+                min-width: 0;
+            }
+            @media (prefers-reduced-motion: no-preference) {
+                .portal-study-buddy-card {
+                    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+                }
+            }
+            @media (hover: hover) {
+                .portal-study-buddy-card:hover {
+                    border-color: var(--hm-border-strong, #cbd5e1);
+                    box-shadow: var(--hm-shadow-lg, 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04));
+                }
+            }
+            [data-theme="dark"] .portal-study-buddy-card {
+                background: var(--hm-bg-card, #1e293b);
+                border-color: var(--hm-border, rgba(255, 255, 255, 0.08));
+                box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
             }
             .portal-study-buddy-head {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
                 gap: 0.5rem;
-                margin-bottom: 0.55rem;
+                padding-bottom: 0.7rem;
+                margin-bottom: 0.85rem;
+                border-bottom: 1px solid var(--hm-border-subtle, #f1f5f9);
             }
             .portal-study-buddy-title {
-                font-size: 0.86rem;
-                font-weight: 800;
-                color: #0f172a;
+                font-size: 0.95rem;
+                font-weight: 700;
+                color: var(--hm-text-main, #0f172a);
                 display: flex;
                 align-items: center;
-                gap: 0.35rem;
+                gap: 0.4rem;
+                min-width: 0;
             }
             .portal-study-buddy-link {
-                font-size: 0.76rem;
-                font-weight: 700;
-                color: #d97706;
+                font-size: 0.78rem;
+                font-weight: 600;
+                color: var(--hm-blue, #2563eb);
                 text-decoration: none;
                 flex-shrink: 0;
+            }
+            @media (max-width: 480px) {
+                .portal-study-buddy-card {
+                    padding: 0.95rem 1rem;
+                }
             }
             .portal-study-buddy-grid {
                 display: grid;

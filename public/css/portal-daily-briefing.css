@@ -6,36 +6,36 @@
  * ============================================================================== */
 
 .card-daily-briefing {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.98) 100%);
+    background: var(--hm-bg-card, #ffffff);
     border: 1px solid var(--hm-border, #e2e8f0);
     border-radius: var(--hm-radius-card, 16px);
-    padding: 1.15rem 1.25rem;
-    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+    padding: 1.25rem;
+    box-shadow: var(--hm-shadow-md, 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03));
     margin-bottom: 1rem;
     position: relative;
     overflow: hidden;
     box-sizing: border-box;
     width: 100%;
     min-width: 0;
-    transition: all 0.25s ease;
 }
 
-/* 상단 은은한 그라디언트 하이라이트 바 */
-.card-daily-briefing::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #3b82f6 0%, #10b981 50%, #f59e0b 100%);
-    opacity: 0.9;
+@media (prefers-reduced-motion: no-preference) {
+    .card-daily-briefing {
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+}
+
+@media (hover: hover) {
+    .card-daily-briefing:hover {
+        border-color: var(--hm-border-strong, #cbd5e1);
+        box-shadow: var(--hm-shadow-lg, 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.04));
+    }
 }
 
 /* 다크 테마 대응 */
 [data-theme="dark"] .card-daily-briefing {
-    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
-    border-color: rgba(255, 255, 255, 0.08);
+    background: var(--hm-bg-card, #1e293b);
+    border-color: var(--hm-border, rgba(255, 255, 255, 0.08));
     box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
 }
 

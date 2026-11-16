@@ -55,16 +55,45 @@
         isEditMode = false;
         document.documentElement.classList.remove('bento-editing-active');
 
-        // 툴바 제거
         const tb = document.getElementById('dashboardLiveEditorToolbar');
         if (tb) tb.remove();
 
-        // 오버레이 및 임시 스타일 제거
         document.querySelectorAll('.bento-edit-overlay').forEach(el => el.remove());
         document.querySelectorAll('.bento-card-editing').forEach(el => {
             el.classList.remove('bento-card-editing');
             el.style.border = '';
             el.style.position = '';
+        });
+    }
+
+    function announceEditorStatus(msg) {
+        const statusEl = document.getElementById('liveEditorAriaStatus');
+        if (statusEl) statusEl.textContent = msg;
+    }
+
+    function bindToolbarKeyboardFallback(toolbar) {
+        if (!toolbar || ('focusGroup' in HTMLElement.prototype)) return;
+        const items = Array.from(toolbar.querySelectorAll(':scope > button, :scope > .jg-dock-group > button'));
+        if (items.length === 0) return;
+        items.forEach((b, i) => { b.tabIndex = i === 0 ? 0 : -1; });
+        toolbar.addEventListener('focusin', (e) => {
+            if (items.includes(e.target)) {
+                items.forEach(b => { b.tabIndex = (b === e.target) ? 0 : -1; });
+            }
+        });
+        toolbar.addEventListener('keydown', (e) => {
+            const rtl = getComputedStyle(toolbar).direction === 'rtl';
+            const step = e.key === 'ArrowRight' ? (rtl ? -1 : 1) : (e.key === 'ArrowLeft' ? (rtl ? 1 : -1) : 0);
+            const cur = items.indexOf(document.activeElement);
+            if (cur === -1) return;
+            let next = -1;
+            if (step !== 0) next = (cur + step + items.length) % items.length;
+            else if (e.key === 'Home') next = 0;
+            else if (e.key === 'End') next = items.length - 1;
+            if (next !== -1) {
+                e.preventDefault();
+                items[next].focus();
+            }
         });
     }
 
@@ -76,25 +105,6 @@
 
         const tb = document.createElement('div');
         tb.id = 'dashboardLiveEditorToolbar';
-        tb.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 99999;
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(12px);
-            color: #fff;
-            padding: 0.75rem 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-            border-bottom: 2px solid #3b82f6;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-            animation: slideDown 0.2s ease-out;
-        `;
 
         updateToolbarContent(tb);
         document.body.prepend(tb);
@@ -110,39 +120,49 @@
         const hiddenWidgets = workingWidgets.filter(w => w.enabled === false);
 
         tb.innerHTML = `
-            <div style="display:flex; align-items:center; gap:0.6rem;">
-                <span style="font-size:1.1rem;">🎨</span>
-                <div>
-                    <div style="font-weight:700; font-size:0.92rem; color:#60a5fa;">실시간 대시보드 화면 구성 모드</div>
-                    <div style="font-size:0.75rem; color:#94a3b8;">각 카드의 버튼으로 순서·너비·노출을 자유롭게 조절하세요.</div>
+            <div class="jg-editor-dock-info">
+                <div class="jg-editor-dock-badge" aria-hidden="true">🎨</div>
+                <div style="min-width:0;">
+                    <div class="jg-editor-dock-title">대시보드 화면 편집</div>
+                    <div class="jg-editor-dock-sub">카드 상단 칩으로 순서·너비·노출을 조절하세요</div>
                 </div>
             </div>
 
-            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
-                <div style="position:relative;">
-                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" 
-                        onclick="toggleHiddenWidgetsDropdown(event)" 
-                        style="color:#e2e8f0; border-color:#475569; background:#1e293b; padding:4px 10px; font-size:0.8rem;">
-                        ➕ 숨긴 위젯 (${hiddenWidgets.length})
+            <div class="jg-editor-dock-actions" role="toolbar" focusgroup="toolbar wrap" aria-label="대시보드 화면 편집 도구 모음">
+                <div class="jg-dock-group" role="group" aria-label="숨긴 위젯 관리" style="position:relative;">
+                    <button type="button" id="btnHiddenWidgetsToggle" class="jg-chip-btn jg-chip-slate"
+                        aria-haspopup="menu" aria-expanded="false" aria-controls="hiddenWidgetsDropdown"
+                        onclick="toggleHiddenWidgetsDropdown(event)">
+                        <span aria-hidden="true">🧩</span>
+                        <span>숨긴 위젯</span>
+                        <span class="jg-chip-count">${hiddenWidgets.length}</span>
                     </button>
-                    <div id="hiddenWidgetsDropdown" style="display:none; position:absolute; right:0; top:calc(100% + 6px); background:#1e293b; border:1px solid #475569; border-radius:0.5rem; padding:0.5rem; min-width:210px; box-shadow:0 10px 25px rgba(0,0,0,0.5); z-index:100000;">
-                        ${hiddenWidgets.length === 0 ? '<div style="font-size:0.78rem; color:#94a3b8; padding:0.5rem; text-align:center;">숨겨진 위젯이 없습니다.</div>' : hiddenWidgets.map(hw => `
-                            <button type="button" onclick="restoreWidget('${hw.id}')" style="display:flex; align-items:center; justify-content:space-between; width:100%; padding:0.45rem 0.6rem; border:none; background:transparent; color:#f8fafc; font-size:0.8rem; text-align:left; border-radius:4px; cursor:pointer; gap:6px;">
+                    <div id="hiddenWidgetsDropdown" class="jg-hidden-dropdown">
+                        ${hiddenWidgets.length === 0 ? '<div style="font-size:0.78rem; color:#64748b; padding:0.65rem; text-align:center;">숨겨진 위젯이 없습니다.</div>' : hiddenWidgets.map(hw => `
+                            <button type="button" class="jg-hidden-restore-btn" onclick="restoreWidget('${hw.id}')">
                                 <span>${hw.icon || '📦'} ${hw.title}</span>
-                                <span style="font-size:0.7rem; color:#38bdf8; background:rgba(56,189,248,0.15); padding:1px 5px; border-radius:3px;">복원</span>
+                                <span class="jg-hidden-restore-pill">복원</span>
                             </button>
                         `).join('')}
                     </div>
                 </div>
 
-                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="cancelDashboardEdit()" style="color:#cbd5e1; border-color:#475569; padding:4px 10px; font-size:0.8rem;">
-                    ✕ 취소
-                </button>
-                <button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="saveLiveDashboardLayout()" style="background:#2563eb; color:#fff; font-weight:700; padding:4px 14px; font-size:0.82rem; box-shadow:0 2px 8px rgba(37,99,235,0.4);">
-                    💾 화면 저장 완료
-                </button>
+                <span class="jg-dock-sep" role="separator" aria-orientation="vertical"></span>
+
+                <div class="jg-dock-group" role="group" aria-label="편집 종료">
+                    <button type="button" class="jg-chip-btn jg-chip-rose" onclick="cancelDashboardEdit()">
+                        <span aria-hidden="true">✕</span><span>취소</span>
+                    </button>
+                    <button type="button" class="jg-chip-btn jg-chip-sky" onclick="saveLiveDashboardLayout()">
+                        <span aria-hidden="true">💾</span><span>저장 완료</span>
+                    </button>
+                </div>
             </div>
+            <p id="liveEditorAriaStatus" class="jg-sr-only" role="status"></p>
         `;
+
+        const toolbarEl = tb.querySelector('[role="toolbar"]');
+        bindToolbarKeyboardFallback(toolbarEl);
     }
 
     /**
@@ -167,39 +187,21 @@
 
             const overlay = document.createElement('div');
             overlay.className = 'bento-edit-overlay';
-            overlay.style.cssText = `
-                position: absolute;
-                top: 8px;
-                right: 8px;
-                z-index: 1000;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                background: rgba(15, 23, 42, 0.88);
-                backdrop-filter: blur(8px);
-                padding: 3px 6px;
-                border-radius: 6px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-            `;
 
             overlay.innerHTML = `
-                <button type="button" onclick="event.stopPropagation(); moveWidgetOrder('${w.id}', 'up')" title="순서 위로 / 앞으로" 
-                    style="background:#334155; color:#fff; border:none; border-radius:4px; padding:2px 7px; font-size:0.75rem; cursor:pointer;">
-                    ▲
+                <button type="button" class="jg-overlay-chip" onclick="event.stopPropagation(); moveWidgetOrder('${w.id}', 'up')" title="순서 위로 / 앞으로" aria-label="${w.title} 위로 이동">
+                    <span aria-hidden="true">▲</span>
                 </button>
-                <button type="button" onclick="event.stopPropagation(); moveWidgetOrder('${w.id}', 'down')" title="순서 아래로 / 뒤로" 
-                    style="background:#334155; color:#fff; border:none; border-radius:4px; padding:2px 7px; font-size:0.75rem; cursor:pointer;">
-                    ▼
+                <button type="button" class="jg-overlay-chip" onclick="event.stopPropagation(); moveWidgetOrder('${w.id}', 'down')" title="순서 아래로 / 뒤로" aria-label="${w.title} 아래로 이동">
+                    <span aria-hidden="true">▼</span>
                 </button>
                 ${isHomarrChild ? `
-                    <button type="button" onclick="event.stopPropagation(); toggleWidgetWidth('${w.id}')" title="카드 너비 전환 (반폭 ↔ 전폭)" 
-                        style="background:${isFull ? '#2563eb' : '#334155'}; color:#fff; border:none; border-radius:4px; padding:2px 7px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+                    <button type="button" class="jg-overlay-chip ${isFull ? 'is-active' : ''}" aria-pressed="${isFull}" onclick="event.stopPropagation(); toggleWidgetWidth('${w.id}')" title="카드 너비 전환 (반폭 ↔ 전폭)">
                         ${isFull ? '↔️ 전폭' : '▫️ 반폭'}
                     </button>
                 ` : ''}
-                <button type="button" onclick="event.stopPropagation(); hideWidget('${w.id}')" title="이 위젯 숨기기" 
-                    style="background:#dc2626; color:#fff; border:none; border-radius:4px; padding:2px 6px; font-size:0.75rem; cursor:pointer;">
-                    ✕
+                <button type="button" class="jg-overlay-chip is-danger" onclick="event.stopPropagation(); hideWidget('${w.id}')" title="이 위젯 숨기기" aria-label="${w.title} 숨기기">
+                    <span aria-hidden="true">✕</span>
                 </button>
             `;
 
@@ -296,6 +298,7 @@
 
         updateToolbarContent();
         injectCardEditOverlays();
+        announceEditorStatus(`${item.title || item.id} 위젯이 숨겨졌습니다.`);
     };
 
     /**
@@ -328,6 +331,7 @@
 
         updateToolbarContent();
         injectCardEditOverlays();
+        announceEditorStatus(`${item.title || item.id} 위젯이 복원되었습니다.`);
     };
 
     /**
@@ -336,14 +340,19 @@
     window.toggleHiddenWidgetsDropdown = function(e) {
         e.stopPropagation();
         const drop = document.getElementById('hiddenWidgetsDropdown');
+        const toggleBtn = document.getElementById('btnHiddenWidgetsToggle');
         if (!drop) return;
-        drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+        const willOpen = drop.style.display !== 'block';
+        drop.style.display = willOpen ? 'block' : 'none';
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', String(willOpen));
     };
 
     // 문서 클릭 시 드롭다운 닫기
     document.addEventListener('click', () => {
         const drop = document.getElementById('hiddenWidgetsDropdown');
+        const toggleBtn = document.getElementById('btnHiddenWidgetsToggle');
         if (drop) drop.style.display = 'none';
+        if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'false');
     });
 
     /**
