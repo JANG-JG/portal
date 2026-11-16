@@ -3,8 +3,18 @@ const sqlite3 = require('sqlite3').verbose();
 const { BLOOD_DB_PATH, ASSET_DB_PATH, NEWS_DB_PATH, ALBUM_DB_PATH, WIKI_DB_PATH, PORTAL_DB_PATH, ADMIN_USERS } = require('../config/constants');
 
 
+// DB 인스턴스 비동기 error 이벤트 미처리로 인한 프로세스 종료 방지 헬퍼
+function attachDbErrorHandler(instance, label) {
+    if (instance && typeof instance.on === 'function') {
+        instance.on('error', (err) => {
+            console.error(`⚠️ [DB Error:${label}]`, err && err.message ? err.message : err);
+        });
+    }
+    return instance;
+}
+
 // 마스터 계정 DB 연결 (혈압 앱 health.db)
-const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
+const db = attachDbErrorHandler(new sqlite3.Database(BLOOD_DB_PATH, (err) => {
     if (err) console.error('❌ 혈압 DB 연결 실패:', err);
     else {
         console.log('✅ 마스터 계정 DB 로드 완료:', BLOOD_DB_PATH);
@@ -202,10 +212,10 @@ const db = new sqlite3.Database(BLOOD_DB_PATH, (err) => {
             db.run(`CREATE INDEX IF NOT EXISTS idx_bp_ocr_logs_created ON bp_ocr_logs (created_at DESC)`);
         });
     }
-});
+}), 'healthDb');
 
 // 자산관리 DB 연결 (asset.db)
-const assetDb = new sqlite3.Database(ASSET_DB_PATH, (err) => {
+const assetDb = attachDbErrorHandler(new sqlite3.Database(ASSET_DB_PATH, (err) => {
     if (err) console.error('❌ 자산 DB 연결 실패:', err);
     else {
         console.log('✅ 자산 DB 로드 완료:', ASSET_DB_PATH);
@@ -228,70 +238,82 @@ const assetDb = new sqlite3.Database(ASSET_DB_PATH, (err) => {
             assetDb.run(`CREATE INDEX IF NOT EXISTS idx_ocr_logs_date ON ocr_logs (created_at DESC)`);
         });
     }
-});
+}), 'assetDb');
 
 // 뉴스 대시보드 DB 연결 (briefing.db)
-const newsDb = new sqlite3.Database(NEWS_DB_PATH, (err) => {
+const newsDb = attachDbErrorHandler(new sqlite3.Database(NEWS_DB_PATH, (err) => {
     if (err) console.error('❌ 뉴스 DB 연결 실패:', err);
     else {
         console.log('✅ 뉴스 DB 로드 완료:', NEWS_DB_PATH);
-        newsDb.run('PRAGMA journal_mode = WAL;');
-        newsDb.run('PRAGMA synchronous = NORMAL;');
-        newsDb.run('PRAGMA busy_timeout = 5000;');
-        newsDb.run('PRAGMA temp_store = MEMORY;');
-        newsDb.run('PRAGMA cache_size = -8000;');
+        newsDb.serialize(() => {
+            newsDb.run('PRAGMA journal_mode = WAL;');
+            newsDb.run('PRAGMA synchronous = NORMAL;');
+            newsDb.run('PRAGMA busy_timeout = 5000;');
+            newsDb.run('PRAGMA temp_store = MEMORY;');
+            newsDb.run('PRAGMA cache_size = -8000;');
+        });
     }
-});
+}), 'newsDb');
 
 // 가족 사진첩 DB 연결 (album.db)
-const albumDb = new sqlite3.Database(ALBUM_DB_PATH, (err) => {
+const albumDb = attachDbErrorHandler(new sqlite3.Database(ALBUM_DB_PATH, (err) => {
     if (err) console.error('❌ 사진첩 DB 연결 실패:', err);
     else {
         console.log('✅ 사진첩 DB 로드 완료:', ALBUM_DB_PATH);
-        albumDb.run('PRAGMA journal_mode = WAL;');
-        albumDb.run('PRAGMA synchronous = NORMAL;');
-        albumDb.run('PRAGMA busy_timeout = 5000;');
-        albumDb.run('PRAGMA temp_store = MEMORY;');
-        albumDb.run('PRAGMA cache_size = -8000;');
+        albumDb.serialize(() => {
+            albumDb.run('PRAGMA journal_mode = WAL;');
+            albumDb.run('PRAGMA synchronous = NORMAL;');
+            albumDb.run('PRAGMA busy_timeout = 5000;');
+            albumDb.run('PRAGMA temp_store = MEMORY;');
+            albumDb.run('PRAGMA cache_size = -8000;');
+        });
     }
-});
+}), 'albumDb');
 
 // 가족 위키 DB 연결 (wiki.db - 안전 연결 및 온디맨드 폴백)
 let wikiDb = null;
 if (fs.existsSync(WIKI_DB_PATH)) {
-    wikiDb = new sqlite3.Database(WIKI_DB_PATH, (err) => {
+    wikiDb = attachDbErrorHandler(new sqlite3.Database(WIKI_DB_PATH, (err) => {
         if (err) console.error('❌ 가족 위키 DB 연결 실패:', err);
         else {
             console.log('✅ 가족 위키 DB 로드 완료:', WIKI_DB_PATH);
-            wikiDb.run('PRAGMA journal_mode = WAL;');
-            wikiDb.run('PRAGMA synchronous = NORMAL;');
-            wikiDb.run('PRAGMA busy_timeout = 5000;');
+            wikiDb.serialize(() => {
+                wikiDb.run('PRAGMA journal_mode = WAL;');
+                wikiDb.run('PRAGMA synchronous = NORMAL;');
+                wikiDb.run('PRAGMA busy_timeout = 5000;');
+            });
         }
-    });
+    }), 'wikiDb');
 } else {
     wikiDb = {
         all: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (fs.existsSync(WIKI_DB_PATH)) {
-                const realDb = new sqlite3.Database(WIKI_DB_PATH);
-                realDb.run('PRAGMA busy_timeout = 5000;');
-                return realDb.all(sql, params, (err, rows) => { realDb.close(); cb(err, rows); });
+                const realDb = attachDbErrorHandler(new sqlite3.Database(WIKI_DB_PATH), 'wikiDb-fallback');
+                realDb.serialize(() => {
+                    realDb.run('PRAGMA busy_timeout = 5000;');
+                    realDb.all(sql, params, (err, rows) => { realDb.close(); cb(err, rows); });
+                });
+                return;
             }
             cb(null, []);
         },
         get: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (fs.existsSync(WIKI_DB_PATH)) {
-                const realDb = new sqlite3.Database(WIKI_DB_PATH);
-                realDb.run('PRAGMA busy_timeout = 5000;');
-                return realDb.get(sql, params, (err, row) => { realDb.close(); cb(err, row); });
+                const realDb = attachDbErrorHandler(new sqlite3.Database(WIKI_DB_PATH), 'wikiDb-fallback');
+                realDb.serialize(() => {
+                    realDb.run('PRAGMA busy_timeout = 5000;');
+                    realDb.get(sql, params, (err, row) => { realDb.close(); cb(err, row); });
+                });
+                return;
             }
             cb(null, null);
         },
         run: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (fs.existsSync(WIKI_DB_PATH)) {
-                const realDb = new sqlite3.Database(WIKI_DB_PATH);
+                const realDb = attachDbErrorHandler(new sqlite3.Database(WIKI_DB_PATH), 'wikiDb-fallback');
                 realDb.serialize(() => {
                     realDb.run('PRAGMA journal_mode = WAL;');
                     realDb.run('PRAGMA synchronous = NORMAL;');
@@ -306,7 +328,7 @@ if (fs.existsSync(WIKI_DB_PATH)) {
 }
 
 // 포털 전용 DB 연결 (portal.db - 메모, 캘린더, 시스템 설정 독립 분리)
-const portalDb = new sqlite3.Database(PORTAL_DB_PATH, (err) => {
+const portalDb = attachDbErrorHandler(new sqlite3.Database(PORTAL_DB_PATH, (err) => {
 
     if (err) console.error('❌ 포털 DB 연결 실패:', err);
     else {
@@ -520,7 +542,7 @@ const portalDb = new sqlite3.Database(PORTAL_DB_PATH, (err) => {
             migrateFromHealthDb();
         });
     }
-});
+}), 'portalDb');
 
 function migrateFromHealthDb() {
     // health.db의 user_memos 이전

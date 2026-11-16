@@ -204,6 +204,9 @@ router.put('/members/:username', (req, res) => {
                         });
                     }
                 });
+                albumDb.on('error', (aDbErr) => {
+                    console.warn('family.admin albumDb 경고:', aDbErr.message);
+                });
             }
 
             res.json({ success: true, message: '가족 정보가 성공적으로 수정되었습니다.' });

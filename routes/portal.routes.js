@@ -284,14 +284,15 @@ router.post('/api/portal/user/weather-city', authenticateToken, async (req, res)
 
             // 2) briefing.db(newsDb) system_settings 테이블에도 즉시 동기화 저장 (날씨 브리핑과 100% 자동 연동)
             if (newsDb) {
-                try {
-                    newsDb.run(
-                        "INSERT INTO system_settings (key, value, updated_at) VALUES ('weather_city', ?, datetime('now', '+9 hours')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-                        [cityCode]
-                    );
-                } catch (dbErr) {
-                    console.warn('newsDb system_settings 동기화 경고:', dbErr.message);
-                }
+                newsDb.run(
+                    "INSERT INTO system_settings (key, value, updated_at) VALUES ('weather_city', ?, datetime('now', '+9 hours')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+                    [cityCode],
+                    (dbErr) => {
+                        if (dbErr) {
+                            console.warn('newsDb system_settings 동기화 경고:', dbErr.message);
+                        }
+                    }
+                );
             }
 
             // 3) 캐시 즉시 무효화 (하단 뉴스바 및 메인 화면 즉시 갱신)
