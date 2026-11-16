@@ -53,16 +53,18 @@
      */
     function exitDashboardEditMode() {
         isEditMode = false;
-        document.documentElement.classList.remove('bento-editing-active');
+        document.documentElement.classList.remove('bento-editing-active', 'bento-dnd-dragging');
 
         const tb = document.getElementById('dashboardLiveEditorToolbar');
         if (tb) tb.remove();
 
         document.querySelectorAll('.bento-edit-overlay').forEach(el => el.remove());
         document.querySelectorAll('.bento-card-editing').forEach(el => {
-            el.classList.remove('bento-card-editing');
+            el.classList.remove('bento-card-editing', 'is-dnd-source');
+            el.removeAttribute('data-drop-pos');
             el.style.border = '';
             el.style.position = '';
+            el.style.transform = '';
         });
     }
 
@@ -124,12 +126,12 @@
                 <div class="jg-editor-dock-badge" aria-hidden="true">🎨</div>
                 <div style="min-width:0;">
                     <div class="jg-editor-dock-title">대시보드 화면 편집</div>
-                    <div class="jg-editor-dock-sub">카드 상단 칩으로 순서·너비·노출을 조절하세요</div>
+                    <div class="jg-editor-dock-sub">⋮⋮ 드래그하거나 칩으로 순서·반폭/전폭·노출을 조절하세요</div>
                 </div>
             </div>
 
             <div class="jg-editor-dock-actions" role="toolbar" focusgroup="toolbar wrap" aria-label="대시보드 화면 편집 도구 모음">
-                <div class="jg-dock-group" role="group" aria-label="숨긴 위젯 관리" style="position:relative;">
+                <div class="jg-dock-group" role="group" aria-label="위젯 관리" style="position:relative;">
                     <button type="button" id="btnHiddenWidgetsToggle" class="jg-chip-btn jg-chip-slate"
                         aria-haspopup="menu" aria-expanded="false" aria-controls="hiddenWidgetsDropdown"
                         onclick="toggleHiddenWidgetsDropdown(event)">
@@ -145,6 +147,12 @@
                             </button>
                         `).join('')}
                     </div>
+                    <button type="button" id="btnResetDashboardLayout" class="jg-chip-btn jg-chip-slate"
+                        title="위젯 순서와 크기를 기본 구성으로 초기화합니다"
+                        onclick="resetDashboardEditLayout()">
+                        <span aria-hidden="true">↺</span>
+                        <span>초기화</span>
+                    </button>
                 </div>
 
                 <span class="jg-dock-sep" role="separator" aria-orientation="vertical"></span>
@@ -166,7 +174,7 @@
     }
 
     /**
-     * 각 Bento 카드에 라이브 편집 컨트롤 오버레이 부착
+     * 각 Bento 카드에 라이브 편집 컨트롤 오버레이 부착 (전 카드 반폭/전폭 + 드래그 핸들 지원)
      */
     function injectCardEditOverlays() {
         workingWidgets.forEach(w => {
@@ -183,23 +191,23 @@
             if (oldOverlay) oldOverlay.remove();
 
             const isFull = w.colSpan === 2;
-            const isHomarrChild = el.parentElement && el.parentElement.id === 'portalHomarrGrid';
 
             const overlay = document.createElement('div');
             overlay.className = 'bento-edit-overlay';
 
             overlay.innerHTML = `
+                <button type="button" class="jg-overlay-chip jg-drag-handle" data-widget-id="${w.id}" onclick="event.stopPropagation();" title="드래그하여 카드 순서 이동" aria-label="${w.title} 드래그하여 순서 이동">
+                    <span aria-hidden="true">⋮⋮</span>
+                </button>
                 <button type="button" class="jg-overlay-chip" onclick="event.stopPropagation(); moveWidgetOrder('${w.id}', 'up')" title="순서 위로 / 앞으로" aria-label="${w.title} 위로 이동">
                     <span aria-hidden="true">▲</span>
                 </button>
                 <button type="button" class="jg-overlay-chip" onclick="event.stopPropagation(); moveWidgetOrder('${w.id}', 'down')" title="순서 아래로 / 뒤로" aria-label="${w.title} 아래로 이동">
                     <span aria-hidden="true">▼</span>
                 </button>
-                ${isHomarrChild ? `
-                    <button type="button" class="jg-overlay-chip ${isFull ? 'is-active' : ''}" aria-pressed="${isFull}" onclick="event.stopPropagation(); toggleWidgetWidth('${w.id}')" title="카드 너비 전환 (반폭 ↔ 전폭)">
-                        ${isFull ? '↔️ 전폭' : '▫️ 반폭'}
-                    </button>
-                ` : ''}
+                <button type="button" class="jg-overlay-chip ${isFull ? 'is-active' : ''}" aria-pressed="${isFull}" onclick="event.stopPropagation(); toggleWidgetWidth('${w.id}')" title="카드 너비 전환 (반폭 ↔ 전폭)">
+                    ${isFull ? '↔️ 전폭' : '▫️ 반폭'}
+                </button>
                 <button type="button" class="jg-overlay-chip is-danger" onclick="event.stopPropagation(); hideWidget('${w.id}')" title="이 위젯 숨기기" aria-label="${w.title} 숨기기">
                     <span aria-hidden="true">✕</span>
                 </button>
@@ -216,6 +224,32 @@
         return window.getComputedStyle(el).display !== 'none';
     }
 
+    function commitWorkingLayout(options) {
+        const opts = options || {};
+        workingWidgets.forEach((w, i) => {
+            w.order = (i + 1) * 10;
+        });
+
+        const finalizeOverlays = () => {
+            if (opts.refreshToolbar) updateToolbarContent();
+            injectCardEditOverlays();
+            if (opts.focusWidgetId && opts.focusSelector) {
+                const el = document.querySelector(`[data-widget-id="${opts.focusWidgetId}"]`) || document.getElementById(opts.focusWidgetId);
+                const btn = el && el.querySelector(opts.focusSelector);
+                if (btn) btn.focus({ preventScroll: true });
+            }
+        };
+
+        if (typeof window.applyDashboardWidgetsToDOM === 'function') {
+            window.applyDashboardWidgetsToDOM(workingWidgets, {
+                animate: opts.animate !== false,
+                afterUpdate: finalizeOverlays
+            });
+        } else {
+            finalizeOverlays();
+        }
+    }
+
     /**
      * 위젯 순서 이동 (▲/▼)
      */
@@ -227,56 +261,68 @@
         const activeIdx = targetPool.findIndex(w => w.id === widgetId);
         if (activeIdx === -1) return;
 
+        let movedWidget = null;
         if (direction === 'up' && activeIdx > 0) {
-            const targetWidget = targetPool[activeIdx];
+            movedWidget = targetPool[activeIdx];
             const prevWidget = targetPool[activeIdx - 1];
-            const origIdx = workingWidgets.indexOf(targetWidget);
+            const origIdx = workingWidgets.indexOf(movedWidget);
             const prevOrigIdx = workingWidgets.indexOf(prevWidget);
             workingWidgets[origIdx] = prevWidget;
-            workingWidgets[prevOrigIdx] = targetWidget;
+            workingWidgets[prevOrigIdx] = movedWidget;
         } else if (direction === 'down' && activeIdx < targetPool.length - 1) {
-            const targetWidget = targetPool[activeIdx];
+            movedWidget = targetPool[activeIdx];
             const nextWidget = targetPool[activeIdx + 1];
-            const origIdx = workingWidgets.indexOf(targetWidget);
+            const origIdx = workingWidgets.indexOf(movedWidget);
             const nextOrigIdx = workingWidgets.indexOf(nextWidget);
             workingWidgets[origIdx] = nextWidget;
-            workingWidgets[nextOrigIdx] = targetWidget;
+            workingWidgets[nextOrigIdx] = movedWidget;
         } else {
             return;
         }
 
-        // 전체 order 정규화 (10, 20, 30...)
-        workingWidgets.forEach((w, i) => {
-            w.order = (i + 1) * 10;
+        commitWorkingLayout({
+            animate: true,
+            focusWidgetId: widgetId,
+            focusSelector: direction === 'up'
+                ? '.bento-edit-overlay button[onclick*="\'up\'"]'
+                : '.bento-edit-overlay button[onclick*="\'down\'"]'
         });
-
-        // 실시간 물리적 DOM 재배치 및 스타일 동기화
-        if (typeof window.applyDashboardWidgetsToDOM === 'function') {
-            window.applyDashboardWidgetsToDOM(workingWidgets);
-        } else {
-            workingWidgets.forEach(w => {
-                const el = document.querySelector(w.selector) || document.getElementById(w.id);
-                if (el) el.style.order = String(w.order);
-            });
-        }
-
-        injectCardEditOverlays();
+        announceEditorStatus(`${movedWidget.title || movedWidget.id} 카드가 ${direction === 'up' ? '위로' : '아래로'} 이동되었습니다.`);
     };
 
     /**
-     * 위젯 너비 토글 (1열 반폭 ↔ 2열 전폭)
+     * 드래그 앤 드롭 결과 기반 특정 위젯 앞/뒤 배치
+     */
+    window.reorderDashboardWidgetTo = function(sourceId, targetId, position) {
+        if (!sourceId || !targetId || sourceId === targetId) return false;
+        const sourceIdx = workingWidgets.findIndex(w => w.id === sourceId);
+        const targetIdx = workingWidgets.findIndex(w => w.id === targetId);
+        if (sourceIdx === -1 || targetIdx === -1) return false;
+
+        const [moved] = workingWidgets.splice(sourceIdx, 1);
+        const newTargetIdx = workingWidgets.findIndex(w => w.id === targetId);
+        const insertIdx = position === 'after' ? newTargetIdx + 1 : newTargetIdx;
+        workingWidgets.splice(insertIdx, 0, moved);
+
+        commitWorkingLayout({ animate: true });
+        announceEditorStatus(`${moved.title || moved.id} 카드 위치가 변경되었습니다.`);
+        return true;
+    };
+
+    /**
+     * 위젯 너비 토글 (1열 반폭 ↔ 2열 전폭, 전 카드 공통 지원)
      */
     window.toggleWidgetWidth = function(widgetId) {
         const item = workingWidgets.find(w => w.id === widgetId);
         if (!item) return;
 
         item.colSpan = (item.colSpan === 2) ? 1 : 2;
-        const el = document.querySelector(item.selector) || document.getElementById(item.id);
-        if (el && el.parentElement && el.parentElement.id === 'portalHomarrGrid') {
-            el.style.gridColumn = item.colSpan === 2 ? '1 / -1' : 'span 1';
-        }
-
-        injectCardEditOverlays();
+        commitWorkingLayout({
+            animate: true,
+            focusWidgetId: widgetId,
+            focusSelector: '.bento-edit-overlay button[onclick*="toggleWidgetWidth"]'
+        });
+        announceEditorStatus(`${item.title || item.id} 너비가 ${item.colSpan === 2 ? '전폭' : '반폭'}으로 전환되었습니다.`);
     };
 
     /**
@@ -287,17 +333,7 @@
         if (!item) return;
 
         item.enabled = false;
-        if (typeof window.applyDashboardWidgetsToDOM === 'function') {
-            window.applyDashboardWidgetsToDOM(workingWidgets);
-        } else {
-            const el = document.querySelector(item.selector) || document.getElementById(item.id);
-            if (el) {
-                el.style.setProperty('display', 'none', 'important');
-            }
-        }
-
-        updateToolbarContent();
-        injectCardEditOverlays();
+        commitWorkingLayout({ animate: true, refreshToolbar: true });
         announceEditorStatus(`${item.title || item.id} 위젯이 숨겨졌습니다.`);
     };
 
@@ -309,29 +345,49 @@
         if (!item) return;
 
         item.enabled = true;
-        if (typeof window.applyDashboardWidgetsToDOM === 'function') {
-            window.applyDashboardWidgetsToDOM(workingWidgets);
-        } else {
-            const el = document.querySelector(item.selector) || document.getElementById(item.id);
-            if (el) {
-                el.style.display = '';
-                if (el.parentElement && el.parentElement.id === 'portalHomarrGrid') {
-                    el.style.gridColumn = item.colSpan === 2 ? '1 / -1' : 'span 1';
-                }
-            }
-        }
-
-        const restoredEl = document.querySelector(item.selector) || document.getElementById(item.id);
-        if (restoredEl) {
-            restoredEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-
         const drop = document.getElementById('hiddenWidgetsDropdown');
         if (drop) drop.style.display = 'none';
 
-        updateToolbarContent();
-        injectCardEditOverlays();
+        commitWorkingLayout({ animate: true, refreshToolbar: true });
+
+        setTimeout(() => {
+            const restoredEl = document.querySelector(item.selector) || document.getElementById(item.id);
+            if (restoredEl) {
+                restoredEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 60);
+
         announceEditorStatus(`${item.title || item.id} 위젯이 복원되었습니다.`);
+    };
+
+    /**
+     * 기본 위젯 배치로 초기화 (서버 기본값 복원 + 즉시 동기화)
+     */
+    window.resetDashboardEditLayout = async function() {
+        if (!confirm('대시보드 카드 순서와 반폭/전폭 구성을 기본값으로 초기화하시겠습니까?')) {
+            return;
+        }
+        try {
+            const res = await fetch('/api/modules/dashboard/reset', { method: 'POST' });
+            const data = await res.json();
+            if (data.success && Array.isArray(data.widgets)) {
+                originalConfig = JSON.parse(JSON.stringify(data.widgets));
+                workingWidgets = JSON.parse(JSON.stringify(data.widgets));
+                try {
+                    localStorage.setItem('jg_dashboard_config_cache', JSON.stringify(data.widgets));
+                } catch (e) {}
+
+                commitWorkingLayout({ animate: true, refreshToolbar: true });
+                announceEditorStatus('대시보드 배치가 기본값으로 복원되었습니다.');
+                if (typeof showToast === 'function') {
+                    showToast('↺ 대시보드 기본 배치로 초기화되었습니다.');
+                }
+            } else {
+                alert(data.message || '초기화 실패');
+            }
+        } catch (e) {
+            alert('초기화 중 통신 오류가 발생했습니다.');
+        }
     };
 
     /**

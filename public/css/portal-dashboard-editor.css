@@ -1,0 +1,166 @@
+/* ==============================================================================
+ * 🍱 JG 포털 통합 Bento Grid, View Transitions & 드래그 앤 드롭 스타일
+ * - [규칙 3] 500줄 이하 모듈화 준수
+ * - [규칙 6] 360px 초소형 모바일 뷰포트 무넘침 보장
+ * ============================================================================== */
+
+/* 1. 단일 통합 그리드(#portalHomarrGrid) 일관 간격 & 기본 전폭 가드 */
+.homarr-grid > * {
+    margin-bottom: 0 !important;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.homarr-grid > .card-daily-briefing,
+.homarr-grid > .homarr-hero-card,
+.homarr-grid > .cmd-strip,
+.homarr-grid > #portalStudyBuddyStrip,
+.homarr-grid > .breaking-banner-bar {
+    grid-column: 1 / -1;
+}
+
+/* 2. 상단 특화 위젯 반폭(colSpan=1) 전환 시 내부 컴팩트 적응 */
+.homarr-hero-card[data-col-span="1"] {
+    grid-template-columns: 1fr !important;
+    gap: 0.9rem !important;
+    padding: 1.15rem !important;
+}
+
+.homarr-hero-card[data-col-span="1"] .homarr-ring-box {
+    border-right: none !important;
+    border-bottom: 1px solid var(--hm-border);
+    padding-right: 0 !important;
+    padding-bottom: 0.85rem;
+}
+
+.homarr-hero-card[data-col-span="1"] .homarr-health-summary-box {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+}
+
+.cmd-strip[data-col-span="1"] .cmd-strip-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.card-daily-briefing[data-col-span="1"] .briefing-chips-grid {
+    grid-template-columns: 1fr;
+}
+
+@media (max-width: 900px) {
+    .cmd-strip[data-col-span="1"] .cmd-strip-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+}
+
+/* 3. View Transitions API: 카드 & 상단 탭 동시 부드러운 재배치 */
+:root {
+    view-transition-name: none;
+}
+
+::view-transition {
+    pointer-events: none;
+}
+
+.bento-vt-card {
+    view-transition-class: bento-card-vt;
+}
+
+.bento-vt-tab {
+    view-transition-class: bento-tab-vt;
+}
+
+::view-transition-group(.bento-card-vt),
+::view-transition-group(.bento-tab-vt) {
+    animation-duration: 0.28s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation: none !important;
+    }
+}
+
+/* 4. 포인터 기반 2D Bento 드래그 앤 드롭 (전용 그립 핸들 한정) */
+.jg-drag-handle {
+    cursor: grab;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    background: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border-color: #bfdbfe !important;
+    font-weight: 800;
+    letter-spacing: -0.05em;
+}
+
+.jg-drag-handle:hover,
+.jg-drag-handle:focus-visible {
+    background: #dbeafe !important;
+    border-color: #93c5fd !important;
+}
+
+html.bento-dnd-dragging,
+html.bento-dnd-dragging * {
+    cursor: grabbing !important;
+}
+
+.bento-card-editing {
+    scroll-margin: 84px 16px;
+}
+
+.bento-card-editing.is-dnd-source {
+    position: relative !important;
+    z-index: 60 !important;
+    opacity: 0.94;
+    box-shadow: 0 18px 40px -8px rgba(37, 99, 235, 0.28) !important;
+    border: 2px solid #3b82f6 !important;
+    pointer-events: none !important;
+    transition: none !important;
+}
+
+.bento-card-editing[data-drop-pos="before"],
+.bento-card-editing[data-drop-pos="after"] {
+    outline: 2px solid rgba(59, 130, 246, 0.45);
+    outline-offset: 2px;
+    background-color: rgba(239, 246, 255, 0.35);
+}
+
+.bento-card-editing[data-drop-pos="before"]::before,
+.bento-card-editing[data-drop-pos="after"]::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    height: 4px;
+    border-radius: 9999px;
+    background: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    pointer-events: none;
+    z-index: 55;
+}
+
+.bento-card-editing[data-drop-pos="before"]::before {
+    top: -6px;
+}
+
+.bento-card-editing[data-drop-pos="after"]::after {
+    bottom: -6px;
+}
+
+@media (max-width: 380px) {
+    .bento-edit-overlay {
+        top: 6px !important;
+        right: 6px !important;
+        gap: 3px !important;
+        padding: 3px 5px !important;
+    }
+    .jg-overlay-chip {
+        min-height: 28px !important;
+        padding: 3px 7px !important;
+        font-size: 0.7rem !important;
+    }
+}

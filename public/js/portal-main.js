@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 4-2. URL 해시 기반 탭 자동 이동
     const hash = window.location.hash.replace('#', '');
-    if (hash && ['home', 'blood', 'asset', 'album', 'calendar', 'med', 'news', 'ops'].includes(hash)) {
+    if (hash && ['home', 'blood', 'wiki', 'asset', 'album', 'calendar', 'med', 'news', 'ops'].includes(hash)) {
         setTimeout(() => switchPortalTab(hash, false), 150);
     }
 

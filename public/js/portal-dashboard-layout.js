@@ -23,6 +23,25 @@
         return null;
     }
 
+    function prefersReducedMotion() {
+        return typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    }
+
+    function runWithViewTransition(mutator) {
+        if (typeof mutator !== 'function') return;
+        if (!prefersReducedMotion() && typeof document.startViewTransition === 'function') {
+            try {
+                document.startViewTransition(mutator);
+                return;
+            } catch (e) {}
+        }
+        mutator();
+    }
+
+    function toSafeVtToken(raw) {
+        return String(raw || 'item').replace(/[^a-zA-Z0-9_-]/g, '-');
+    }
+
     /**
      * 위젯 순서에 맞춰 상단 탭 메뉴(데스크톱 및 모바일) 버튼 순서 동기화
      */
@@ -30,15 +49,16 @@
         if (!Array.isArray(sortedWidgets) || sortedWidgets.length === 0) return;
 
         const navContainers = [
-            document.getElementById('portal-tab-nav'),
-            document.querySelector('.cmd-nav-mobile-strip')
-        ].filter(Boolean);
+            { el: document.getElementById('portal-tab-nav'), scope: 'desk' },
+            { el: document.querySelector('.cmd-nav-mobile-strip'), scope: 'mob' }
+        ].filter(item => Boolean(item.el));
 
         if (navContainers.length === 0) return;
 
-        // 1. 활성/전체 위젯 순서에서 탭 키 배열 추출 (중복 제거)
+        // 1. 실제 노출/활성 위젯 순서에서 탭 키 배열 추출 (중복 제거)
         const orderedTabKeys = [];
         sortedWidgets.forEach(w => {
+            if (w.enabled === false) return;
             const tabKey = getTabKeyFromWidget(w);
             if (tabKey && !orderedTabKeys.includes(tabKey)) {
                 orderedTabKeys.push(tabKey);
@@ -46,35 +66,52 @@
         });
 
         // 2. 각 컨테이너(데스크톱, 모바일)의 탭 버튼들을 위젯 순서와 동일하게 재배치
-        navContainers.forEach(container => {
+        navContainers.forEach(({ el: container, scope }) => {
             const btns = Array.from(container.querySelectorAll('.portal-tab-btn'));
             if (btns.length === 0) return;
+
+            const setTabVt = (btn, tabKey) => {
+                btn.classList.add('bento-vt-tab');
+                btn.style.viewTransitionName = btn.style.display === 'none'
+                    ? ''
+                    : `bento-nav-${scope}-${toSafeVtToken(tabKey)}`;
+            };
 
             // 1) 'home'(대시보드 홈) 탭은 언제나 최상단 맨 앞 고정
             const homeBtn = btns.find(b => b.getAttribute('data-tab') === 'home');
             if (homeBtn) {
-                container.appendChild(homeBtn);
+                setTabVt(homeBtn, 'home');
+                moveNodeBefore(container, homeBtn, null);
             }
 
             // 2) 위젯 순서에 매핑된 탭 버튼들을 순서대로 재배치
             orderedTabKeys.forEach(tabKey => {
                 const btn = btns.find(b => b.getAttribute('data-tab') === tabKey);
                 if (btn) {
-                    container.appendChild(btn);
+                    setTabVt(btn, tabKey);
+                    moveNodeBefore(container, btn, null);
                 }
             });
 
-            // 3) 위젯 목록에 포함되지 않은 기타 탭 버튼들(있는 경우) 기존 순서대로 맨 뒤에 유지
+            // 3) 위젯 목록에 포함되지 않거나 비활성 상태인 기타 탭 버튼들 맨 뒤에 유지
             btns.forEach(btn => {
                 const tabKey = btn.getAttribute('data-tab');
                 if (tabKey !== 'home' && !orderedTabKeys.includes(tabKey)) {
-                    container.appendChild(btn);
+                    setTabVt(btn, tabKey);
+                    moveNodeBefore(container, btn, null);
                 }
             });
         });
     }
 
-    const FLEX_CONTAINER_IDS = new Set(['portalStudyBuddyStrip']);
+    const DEFAULT_FULL_WIDTH_IDS = new Set([
+        'smartDailyBriefingCard',
+        'homarrHeroCard',
+        'cmd-strip',
+        'portalStudyBuddyStrip',
+        'breakingBannerBar',
+        'bento-ops'
+    ]);
     const supportsMoveBefore = typeof Element !== 'undefined' && Object.hasOwn(Element.prototype, 'moveBefore');
 
     function resolveWidgetElement(w) {
@@ -102,130 +139,109 @@
     }
 
     /**
-     * DOM에 위젯 레이아웃(순서, 너비, 노출) 실제 물리적 적용
+     * DOM에 위젯 레이아웃(단일 통합 그리드 순서, 반폭/전폭, 노출, 상단 탭) 적용
      */
-    function applyWidgetsConfig(widgets) {
+    function applyWidgetsConfig(widgets, options) {
         if (!Array.isArray(widgets) || widgets.length === 0) return;
 
-        const isRoleAdmin = document.documentElement.classList.contains('role-admin');
-        const isHideBlood = document.documentElement.classList.contains('hide-blood');
-        const isHideOps = document.documentElement.classList.contains('hide-ops');
-        const isHideAsset = document.documentElement.classList.contains('hide-asset');
+        const opts = options && typeof options === 'object' ? options : {};
 
-        const homarrGrid = document.getElementById('portalHomarrGrid');
-        const bentoRoot = document.getElementById('portal-bento-root');
+        const applyDOM = () => {
+            const isRoleAdmin = document.documentElement.classList.contains('role-admin');
+            const isHideBlood = document.documentElement.classList.contains('hide-blood');
+            const isHideOps = document.documentElement.classList.contains('hide-ops');
+            const isHideAsset = document.documentElement.classList.contains('hide-asset');
 
-        // 순서 기준 정렬
-        const sortedWidgets = [...widgets].sort((a, b) => (a.order || 0) - (b.order || 0));
+            const homarrGrid = document.getElementById('portalHomarrGrid');
 
-        let firstGridOrder = Infinity;
-        let lastGridOrder = -Infinity;
+            // 순서 기준 정렬
+            const sortedWidgets = [...widgets].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        // 1. 개별 위젯 상태(노출, 원 소속 존 기록) 적용
-        sortedWidgets.forEach(w => {
-            const el = resolveWidgetElement(w);
-            if (!el) return;
+            // 1. 개별 위젯 노출 상태 및 권한 가드 적용
+            sortedWidgets.forEach(w => {
+                const el = resolveWidgetElement(w);
+                if (!el) return;
 
-            if (!el.dataset.originZone) {
-                if (FLEX_CONTAINER_IDS.has(w.id)) {
-                    el.dataset.originZone = 'flex';
-                } else if (homarrGrid && el.parentElement === homarrGrid) {
-                    el.dataset.originZone = 'grid';
-                } else if (bentoRoot && el.parentElement === bentoRoot && el !== homarrGrid) {
-                    el.dataset.originZone = 'top';
+                // 권한 기반 은폐 우선 존중
+                if ((w.id === 'homarrHeroCard' || w.id === 'bento-blood') && isHideBlood) return;
+                if (w.id === 'bento-ops' && isHideOps) return;
+                if (w.id === 'bento-asset' && isHideAsset) return;
+
+                const tabKey = getTabKeyFromWidget(w);
+                if (w.enabled === false) {
+                    el.dataset.dashboardHidden = '1';
+                    el.style.setProperty('display', 'none', 'important');
+                    if (tabKey) {
+                        document.querySelectorAll(`.portal-tab-btn[data-tab="${tabKey}"]`).forEach(btn => {
+                            btn.style.display = 'none';
+                        });
+                    }
+                    return;
                 }
-            }
 
-            // 권한 기반 은폐 우선 존중
-            if (w.id === 'homarrHeroCard' || w.id === 'bento-blood') {
-                if (isHideBlood) return;
-            }
-            if (w.id === 'bento-ops' && isHideOps) {
-                return;
-            }
-            if (w.id === 'bento-asset' && isHideAsset) {
-                return;
-            }
+                delete el.dataset.dashboardHidden;
 
-            // 노출 On/Off
-            const tabKey = getTabKeyFromWidget(w);
-            if (w.enabled === false) {
-                el.dataset.dashboardHidden = '1';
-                el.style.setProperty('display', 'none', 'important');
+                // 노출 복원 (비동기 학습 위젯은 데이터가 있을 때만 노출)
+                if (el.id === 'portalStudyBuddyStrip') {
+                    el.style.display = el.classList.contains('has-study-buddies') ? '' : 'none';
+                } else if (el.style.display === 'none' && !el.getAttribute('data-hidden-by-auth')) {
+                    el.style.display = '';
+                }
+
                 if (tabKey) {
-                    document.querySelectorAll(`.portal-tab-btn[data-tab="${tabKey}"]`).forEach(btn => {
-                        btn.style.display = 'none';
-                    });
-                }
-                return;
-            }
-
-            delete el.dataset.dashboardHidden;
-
-            // 노출 복원 (비동기 학습 위젯은 데이터가 있을 때만 노출)
-            if (el.id === 'portalStudyBuddyStrip') {
-                el.style.display = el.classList.contains('has-study-buddies') ? '' : 'none';
-            } else if (el.style.display === 'none' && !el.getAttribute('data-hidden-by-auth')) {
-                el.style.display = '';
-            }
-            if (tabKey) {
-                let canShow = true;
-                if (tabKey === 'blood' && isHideBlood) canShow = false;
-                if (tabKey === 'ops' && isHideOps) canShow = false;
-                if (tabKey === 'asset' && isHideAsset) canShow = false;
-                if (canShow) {
-                    document.querySelectorAll(`.portal-tab-btn[data-tab="${tabKey}"]`).forEach(btn => {
-                        if (btn.style.display === 'none' && !btn.getAttribute('data-hidden-by-auth')) {
-                            btn.style.display = '';
-                        }
-                    });
-                }
-            }
-
-            const ord = Number(w.order || 0);
-            if (el.dataset.originZone === 'grid') {
-                if (ord < firstGridOrder) firstGridOrder = ord;
-                if (ord > lastGridOrder) lastGridOrder = ord;
-            }
-        });
-
-        if (lastGridOrder === -Infinity) {
-            lastGridOrder = Infinity;
-        }
-
-        // 2. 물리적 DOM 재배치 (시각 순서와 DOM 순서 일치 + 유동 위젯의 그리드 안팎 자유 이동 지원)
-        sortedWidgets.forEach(w => {
-            const el = resolveWidgetElement(w);
-            if (!el) return;
-
-            const zone = el.dataset.originZone;
-            const ord = Number(w.order || 0);
-
-            if (zone === 'grid' || (zone === 'flex' && homarrGrid && ord > firstGridOrder)) {
-                if (homarrGrid) {
-                    moveNodeBefore(homarrGrid, el, null);
-                    if (w.colSpan === 2) {
-                        el.style.gridColumn = '1 / -1';
-                    } else if (w.colSpan === 1) {
-                        el.style.gridColumn = 'span 1';
+                    let canShow = true;
+                    if (tabKey === 'blood' && isHideBlood) canShow = false;
+                    if (tabKey === 'ops' && isHideOps) canShow = false;
+                    if (tabKey === 'asset' && isHideAsset) canShow = false;
+                    if (canShow) {
+                        document.querySelectorAll(`.portal-tab-btn[data-tab="${tabKey}"]`).forEach(btn => {
+                            if (btn.style.display === 'none' && !btn.getAttribute('data-hidden-by-auth')) {
+                                btn.style.display = '';
+                            }
+                        });
                     }
                 }
-            } else if ((zone === 'top' || zone === 'flex') && bentoRoot) {
-                el.style.gridColumn = '';
-                if (zone === 'top' && ord > lastGridOrder) {
-                    moveNodeBefore(bentoRoot, el, null);
-                } else {
-                    moveNodeBefore(bentoRoot, el, homarrGrid);
+            });
+
+            // 2. 단일 통합 그리드(#portalHomarrGrid) 내 모든 위젯 물리적 DOM 재배치 및 반폭/전폭 통일
+            sortedWidgets.forEach(w => {
+                const el = resolveWidgetElement(w);
+                if (!el) return;
+
+                if (homarrGrid) {
+                    moveNodeBefore(homarrGrid, el, null);
                 }
+
+                const span = [1, 2].includes(Number(w.colSpan))
+                    ? Number(w.colSpan)
+                    : (DEFAULT_FULL_WIDTH_IDS.has(w.id) ? 2 : 1);
+
+                el.style.gridColumn = span === 2 ? '1 / -1' : 'span 1';
+                el.dataset.colSpan = String(span);
+                el.dataset.widgetId = w.id;
+
+                const isHidden = w.enabled === false || window.getComputedStyle(el).display === 'none';
+                el.classList.add('bento-vt-card');
+                el.style.viewTransitionName = isHidden ? '' : `bento-card-${toSafeVtToken(w.id)}`;
+            });
+
+            // 3. 상단 탭 메뉴(데스크톱 및 모바일) 순서 실시간 동기화
+            syncNavTabsOrder(sortedWidgets);
+
+            // 관리자인 경우 빠른 위젯 설정 바로가기 링크 유지
+            if (isRoleAdmin) {
+                renderAdminWidgetQuickLink();
             }
-        });
 
-        // 3. 상단 탭 메뉴(데스크톱 및 모바일) 순서 실시간 동기화
-        syncNavTabsOrder(sortedWidgets);
+            if (typeof opts.afterUpdate === 'function') {
+                opts.afterUpdate();
+            }
+        };
 
-        // 관리자인 경우 빠른 위젯 설정 바로가기 링크 유지
-        if (isRoleAdmin) {
-            renderAdminWidgetQuickLink();
+        if (opts.animate === true) {
+            runWithViewTransition(applyDOM);
+        } else {
+            applyDOM();
         }
     }
 
@@ -297,4 +313,5 @@
     // 전역 함수 노출
     window.applyDashboardWidgetsToDOM = applyWidgetsConfig;
     window.refreshDashboardLayout = loadAndApplyDashboardConfig;
+    window.runBentoViewTransition = runWithViewTransition;
 })();
