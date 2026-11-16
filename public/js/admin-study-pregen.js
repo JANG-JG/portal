@@ -89,8 +89,65 @@
         try {
             const res = await fetch('/api/admin/study/pregen', { credentials: 'same-origin' });
             const data = await res.json();
-            if (data.success && data.pregen) renderStudyPreGenPanel(data.pregen);
+        if (data.success && data.pregen) renderStudyPreGenPanel(data.pregen);
         } catch (e) {}
+        loadAdminStudyTts();
+    }
+
+    let adminTtsAudio = null;
+
+    async function loadAdminStudyTts() {
+        const koSel = document.getElementById('studyTtsKoSelect');
+        const enSel = document.getElementById('studyTtsEnSelect');
+        if (!koSel || !enSel) return;
+        try {
+            const res = await fetch('/api/admin/study/tts', { credentials: 'same-origin' });
+            const data = await res.json();
+            if (!res.ok || !data.success) return;
+            if (data.settings?.koVoice) koSel.value = data.settings.koVoice;
+            if (data.settings?.enVoice) enSel.value = data.settings.enVoice;
+        } catch (e) {}
+    }
+
+    function previewAdminStudyTts(kind) {
+        const isEn = kind === 'en';
+        const voice = document.getElementById(isEn ? 'studyTtsEnSelect' : 'studyTtsKoSelect')?.value || (isEn ? 'ana' : 'sunhi');
+        const text = isEn ? 'Apple! Great job finding the matching word!' : '사과! 그림과 어울리는 낱말을 찾아 보아요!';
+        const lang = isEn ? 'en-US' : 'ko-KR';
+        if (!adminTtsAudio) adminTtsAudio = new Audio();
+        adminTtsAudio.pause();
+        adminTtsAudio.src = `/api/study/tts?text=${encodeURIComponent(text)}&lang=${lang}&voice=${encodeURIComponent(voice)}`;
+        adminTtsAudio.play().catch(() => toast('미리 듣기 재생에 실패했습니다.', true));
+    }
+
+    async function saveAdminStudyTts() {
+        const koVoice = document.getElementById('studyTtsKoSelect')?.value || 'sunhi';
+        const enVoice = document.getElementById('studyTtsEnSelect')?.value || 'ana';
+        try {
+            const res = await fetch('/api/admin/study/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ koVoice, enVoice })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || '저장 실패');
+            toast(data.message || '목소리 설정을 저장했습니다.');
+        } catch (err) {
+            toast(err.message || '음성 설정 저장 실패', true);
+        }
+    }
+
+    async function purgeAdminStudyTtsCache() {
+        try {
+            const res = await fetch('/api/admin/study/tts/purge', { method: 'POST', credentials: 'same-origin' });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.message || '캐시 삭제 실패');
+            toast(data.message || '음성 캐시를 정리했습니다.');
+            refreshAdminStudyPreGen();
+        } catch (err) {
+            toast(err.message || '캐시 정리 실패', true);
+        }
     }
 
     async function toggleAdminStudyPreGen() {
@@ -129,10 +186,15 @@
         }
     }
 
+    document.addEventListener('DOMContentLoaded', () => { setTimeout(loadAdminStudyTts, 350); });
+
     Object.assign(window, {
         renderStudyPreGenPanel,
         refreshAdminStudyPreGen,
         toggleAdminStudyPreGen,
-        triggerAdminStudyWarmup
+        triggerAdminStudyWarmup,
+        previewAdminStudyTts,
+        saveAdminStudyTts,
+        purgeAdminStudyTtsCache
     });
 })();

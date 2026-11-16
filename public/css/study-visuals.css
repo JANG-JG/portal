@@ -103,9 +103,34 @@
 }
 
 .match-node--visual {
+    position: relative;
     font-size: clamp(2.35rem, 7.5vw, 3.1rem);
     line-height: 1.15;
     padding: 8px 12px;
+}
+
+.match-sound-badge {
+    position: absolute;
+    top: 5px;
+    right: 7px;
+    font-size: 0.88rem;
+    line-height: 1;
+    opacity: 0.78;
+    pointer-events: none;
+}
+
+.match-node.is-speaking {
+    box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.35);
+    border-color: #f97316;
+}
+
+.quiz-visual-hero.is-speakable {
+    cursor: pointer;
+    transition: transform 0.14s ease;
+}
+
+.quiz-visual-hero.is-speakable:active {
+    transform: scale(0.95);
 }
 
 /* 학습지/색칠놀이 분리 탭 & 색칠 카테고리 서브 탭 */

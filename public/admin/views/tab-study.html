@@ -91,6 +91,30 @@
                             </div>
                         </div>
                         <div id="studyPreGenSlotGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.5rem; margin-top:0.65rem;"></div>
+                        <div id="studyTtsVoiceBar" style="margin-top:0.75rem; padding-top:0.7rem; border-top:1px dashed #cbd5e1; display:flex; flex-wrap:wrap; align-items:flex-end; gap:0.55rem;">
+                            <div style="flex:1 1 170px; min-width:0;">
+                                <label for="studyTtsKoSelect" style="display:block; font-size:0.74rem; font-weight:700; color:#334155; margin-bottom:0.2rem;">🇰🇷 한국어 자연 음성 (Neural)</label>
+                                <select id="studyTtsKoSelect" style="width:100%; box-sizing:border-box; padding:0.4rem 0.5rem; border:1px solid #cbd5e1; border-radius:0.45rem; font-size:0.8rem; background:#fff;">
+                                    <option value="sunhi">선희 (따뜻한 선생님 · 추천)</option>
+                                    <option value="injoon">인준 (다정한 삼촌 톤)</option>
+                                    <option value="hyunsu">현수 (차분한 다국어 톤)</option>
+                                </select>
+                            </div>
+                            <div style="flex:1 1 170px; min-width:0;">
+                                <label for="studyTtsEnSelect" style="display:block; font-size:0.74rem; font-weight:700; color:#334155; margin-bottom:0.2rem;">🇺🇸 영어 자연 음성 (Neural)</label>
+                                <select id="studyTtsEnSelect" style="width:100%; box-sizing:border-box; padding:0.4rem 0.5rem; border:1px solid #cbd5e1; border-radius:0.45rem; font-size:0.8rem; background:#fff;">
+                                    <option value="ana">Ana (귀엽고 또렷한 · 추천)</option>
+                                    <option value="emma">Emma (밝고 명확한 원어민)</option>
+                                    <option value="ava">Ava (다정하고 부드러운 톤)</option>
+                                </select>
+                            </div>
+                            <div style="display:flex; gap:0.35rem; flex-wrap:wrap;">
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;" onclick="previewAdminStudyTts('ko')">🔊 한</button>
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;" onclick="previewAdminStudyTts('en')">🔊 영</button>
+                                <button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="saveAdminStudyTts()">💾 목소리 저장</button>
+                                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;" onclick="purgeAdminStudyTtsCache()">🧹 캐시 비우기</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="studyTabletPwaPanel" style="margin-top:0.75rem; background:#fff7ed; border:1px solid #fdba74; border-radius:0.75rem; padding:0.85rem 0.9rem; box-sizing:border-box;">

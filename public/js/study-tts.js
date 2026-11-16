@@ -12,8 +12,8 @@
 (function () {
     'use strict';
 
-    const MODE_STORAGE_KEY = 'jg_study_tts_mode'; // 'auto' | 'server' | 'device'
-    const MAX_PREFETCH_CACHE = 24;
+    const MODE_STORAGE_KEY = 'jg_study_tts_mode_v2'; // 'server' | 'device'
+    const MAX_PREFETCH_CACHE = 32;
     const prefetchedUrls = new Map();
     const inflightPrefetch = new Map();
     let prefetchWorkerActive = false;
@@ -38,13 +38,13 @@
     function getMode() {
         try {
             const saved = localStorage.getItem(MODE_STORAGE_KEY);
-            if (saved === 'server' || saved === 'device' || saved === 'auto') return saved;
+            if (saved === 'server' || saved === 'device') return saved;
         } catch (e) {}
-        return 'auto';
+        return 'server';
     }
 
     function setMode(nextMode) {
-        const clean = (nextMode === 'server' || nextMode === 'device') ? nextMode : 'auto';
+        const clean = nextMode === 'device' ? 'device' : 'server';
         try {
             localStorage.setItem(MODE_STORAGE_KEY, clean);
         } catch (e) {}
@@ -55,14 +55,14 @@
 
     function toggleMode() {
         const cur = getMode();
-        const next = cur === 'server' ? 'auto' : 'server';
+        const next = cur === 'server' ? 'device' : 'server';
         return setMode(next);
     }
 
     function updateModeButtons() {
         const mode = getMode();
         document.querySelectorAll('#btnTtsModeToggle, [data-tts-mode-btn]').forEach((btn) => {
-            btn.textContent = mode === 'server' ? '🎙️ 서버 음성' : '🔊 음성: 자동';
+            btn.textContent = mode === 'server' ? '🎙️ AI 자연 음성' : '📱 기기 음성';
             btn.setAttribute('aria-pressed', mode === 'server' ? 'true' : 'false');
         });
     }
@@ -100,7 +100,7 @@
     function clearVisualSpeaking() {
         if (currentTriggerBtn) {
             currentTriggerBtn.classList.remove('is-speaking');
-            if (currentTriggerBtn.dataset.origLabel) {
+            if (currentTriggerBtn.dataset.preserveLabel !== '1' && currentTriggerBtn.dataset.origLabel) {
                 currentTriggerBtn.textContent = currentTriggerBtn.dataset.origLabel;
             }
             currentTriggerBtn = null;
@@ -110,12 +110,13 @@
     function setVisualSpeaking(btn) {
         clearVisualSpeaking();
         if (!btn) return;
-        if (!btn.dataset.origLabel) {
+        const preserve = btn.dataset.preserveLabel === '1';
+        if (!preserve && !btn.dataset.origLabel) {
             btn.dataset.origLabel = btn.textContent;
         }
         currentTriggerBtn = btn;
         btn.classList.add('is-speaking');
-        btn.textContent = '🔈 읽는 중...';
+        if (!preserve) btn.textContent = '🔈 읽는 중...';
     }
 
     function stop() {
@@ -216,12 +217,44 @@
         }
     }
 
-    function playServerAudio(cleanText, lang, triggerBtn) {
+    function speakDeviceFallbackOnce(cleanText, lang, triggerBtn) {
+        if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
+            clearVisualSpeaking();
+            showToastFallback('음성을 재생할 수 없어요. 기기 음량을 확인해 주세요 🔇');
+            return;
+        }
+        try {
+            const synth = window.speechSynthesis;
+            const u = new SpeechSynthesisUtterance(cleanText);
+            activeUtterance = u;
+            u.lang = lang;
+            const v = findVoiceForLang(lang);
+            if (v) u.voice = v;
+            u.rate = 0.92;
+            u.onend = () => { activeUtterance = null; clearVisualSpeaking(); };
+            u.onerror = () => { activeUtterance = null; clearVisualSpeaking(); };
+            if (synth.paused) synth.resume();
+            synth.speak(u);
+        } catch (e) {
+            clearVisualSpeaking();
+        }
+    }
+
+    function playServerAudio(cleanText, lang, triggerBtn, allowDeviceFallback = true) {
         const audio = ensureAudio();
         const remoteUrl = `/api/study/tts?text=${encodeURIComponent(cleanText)}&lang=${encodeURIComponent(lang)}`;
         const key = `${lang}:${cleanText}`;
         const cachedBlobUrl = prefetchedUrls.get(key);
         let retriedRemote = false;
+
+        const handleFailure = () => {
+            if (allowDeviceFallback) {
+                speakDeviceFallbackOnce(cleanText, lang, triggerBtn);
+                return;
+            }
+            clearVisualSpeaking();
+            showToastFallback('음성을 재생할 수 없어요. 기기 음량을 확인해 주세요 🔇');
+        };
 
         try {
             audio.pause();
@@ -232,26 +265,26 @@
                     prefetchedUrls.delete(key);
                     try { URL.revokeObjectURL(cachedBlobUrl); } catch (e) {}
                     audio.src = remoteUrl;
-                    audio.play().catch(() => {
-                        clearVisualSpeaking();
-                        showToastFallback('음성을 재생할 수 없어요. 기기 음량을 확인해 주세요 🔇');
-                    });
+                    audio.play().catch(handleFailure);
                     return;
                 }
-                clearVisualSpeaking();
-                showToastFallback('음성을 재생할 수 없어요. 기기 음량을 확인해 주세요 🔇');
+                handleFailure();
             };
             audio.src = cachedBlobUrl || remoteUrl;
             setVisualSpeaking(triggerBtn);
             const p = audio.play();
             if (p && typeof p.catch === 'function') {
                 p.catch(() => {
-                    clearVisualSpeaking();
-                    showToastFallback('🔊 버튼을 한 번 더 누르면 음성이 나와요!');
+                    if (allowDeviceFallback) {
+                        speakDeviceFallbackOnce(cleanText, lang, triggerBtn);
+                    } else {
+                        clearVisualSpeaking();
+                        showToastFallback('🔊 버튼을 한 번 더 누르면 음성이 나와요!');
+                    }
                 });
             }
         } catch (e) {
-            clearVisualSpeaking();
+            handleFailure();
         }
     }
 
@@ -269,14 +302,14 @@
         const hasWebSpeech = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
         const matchedVoice = hasWebSpeech ? findVoiceForLang(lang) : null;
 
-        // 1) 서버 모드 선택 / 기기 음성 미지원 / 해당 언어 보이스 미설치 시 -> 클릭 즉시 동기 서버 오디오 재생
+        // 1) 기본 'server' 모드 (자연 AI 음성) 또는 기기 음성 미지원 시 -> 클릭 즉시 서버 신경망 음성 재생
         const shouldUseServerDirect = mode === 'server'
             || !hasWebSpeech
-            || (mode === 'auto' && runtimeDeviceBroken)
-            || (mode === 'auto' && voicesLoaded && !matchedVoice);
+            || runtimeDeviceBroken
+            || (voicesLoaded && !matchedVoice);
 
         if (shouldUseServerDirect) {
-            playServerAudio(cleanText, lang, triggerBtn);
+            playServerAudio(cleanText, lang, triggerBtn, mode === 'server' && hasWebSpeech && !runtimeDeviceBroken);
             return;
         }
 
@@ -346,7 +379,7 @@
             }
         } catch (e) {
             runtimeDeviceBroken = true;
-            playServerAudio(cleanText, lang, triggerBtn);
+            playServerAudio(cleanText, lang, triggerBtn, false);
         }
     }
 
@@ -365,8 +398,8 @@
             btn.addEventListener('click', () => {
                 const next = toggleMode();
                 showToastFallback(next === 'server'
-                    ? '🎙️ 서버 또렷한 음성 모드로 바꿨어요!'
-                    : '🔊 자동 음성 모드로 바꿨어요!');
+                    ? '🎙️ 자연스러운 AI 선생님 음성으로 바꿨어요!'
+                    : '📱 기기 기본 음성으로 바꿨어요!');
             });
         });
     });

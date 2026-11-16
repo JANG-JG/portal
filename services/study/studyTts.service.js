@@ -1,11 +1,12 @@
 /**
  * ==============================================================================
- * 유아 학습실 서버 음성 합성(TTS) 폴백 & 디스크 캐시 서비스 (studyTts.service.js)
+ * 유아 학습실 자연 신경망 음성 합성(Neural TTS) & 디스크 캐시 서비스 (studyTts.service.js)
  * ------------------------------------------------------------------------------
- * [규칙 3] 500줄 이하 모듈화 | 외부 API 실패 시에도 안정적인 이중 음성 엔진 제공
+ * [규칙 3] 500줄 이하 모듈화 | 자연스러운 아이 친화 음성 엔진 우선 + 이중 안전 폴백
  * - 1순위: 디스크 영구 캐시 (portal/data/tts-cache) 즉시 서빙 (지연 0ms)
- * - 2순위: Google Translate TTS MP3 (IPv4 HTTPS)
- * - 3순위: Gemini 2.5 Flash TTS (24kHz PCM -> 44B WAV 헤더 조립)
+ * - 2순위: Microsoft Edge Neural TTS (ko-KR-SunHiNeural / en-US-AnaNeural)
+ * - 3순위: Gemini 2.5 Flash TTS (24kHz PCM -> WAV)
+ * - 4순위: Google Translate TTS (최후 비상 폴백)
  * ==============================================================================
  */
 
@@ -14,15 +15,49 @@ const path = require('path');
 const https = require('https');
 const crypto = require('crypto');
 const { resolveGeminiApiKey } = require('./geminiWorksheet.service');
+const { getSystemConfig, setSystemConfig } = require('./studyDb.service');
+const { TTS_VOICE_PRESETS, resolveVoicePreset, synthesizeEdgeNeuralTts } = require('./edgeTts.helper');
 
 const CACHE_DIR = path.join(__dirname, '..', '..', 'data', 'tts-cache');
 const ipv4Agent = new https.Agent({ family: 4 });
 const inflightRequests = new Map();
+let cachedVoicePrefs = { koVoice: 'sunhi', enVoice: 'ana', expiresAt: 0 };
 
 function ensureCacheDir() {
     if (!fs.existsSync(CACHE_DIR)) {
         fs.mkdirSync(CACHE_DIR, { recursive: true });
     }
+}
+
+async function getTtsVoiceSettings() {
+    const now = Date.now();
+    if (now < cachedVoicePrefs.expiresAt) {
+        return { koVoice: cachedVoicePrefs.koVoice, enVoice: cachedVoicePrefs.enVoice };
+    }
+    try {
+        const [koRaw, enRaw] = await Promise.all([
+            getSystemConfig('study_tts_ko_voice', 'sunhi'),
+            getSystemConfig('study_tts_en_voice', 'ana')
+        ]);
+        const koVoice = TTS_VOICE_PRESETS.ko[koRaw] ? koRaw : 'sunhi';
+        const enVoice = TTS_VOICE_PRESETS.en[enRaw] ? enRaw : 'ana';
+        cachedVoicePrefs = { koVoice, enVoice, expiresAt: now + 60000 };
+        return { koVoice, enVoice };
+    } catch (e) {
+        return { koVoice: 'sunhi', enVoice: 'ana' };
+    }
+}
+
+async function setTtsVoiceSettings({ koVoice, enVoice } = {}) {
+    const cur = await getTtsVoiceSettings();
+    const nextKo = TTS_VOICE_PRESETS.ko[koVoice] ? koVoice : cur.koVoice;
+    const nextEn = TTS_VOICE_PRESETS.en[enVoice] ? enVoice : cur.enVoice;
+    await Promise.all([
+        setSystemConfig('study_tts_ko_voice', nextKo),
+        setSystemConfig('study_tts_en_voice', nextEn)
+    ]);
+    cachedVoicePrefs = { koVoice: nextKo, enVoice: nextEn, expiresAt: Date.now() + 60000 };
+    return { koVoice: nextKo, enVoice: nextEn };
 }
 
 function normalizeTtsInput(rawText, rawLang = 'ko-KR') {
@@ -40,8 +75,8 @@ function normalizeTtsInput(rawText, rawLang = 'ko-KR') {
     };
 }
 
-function getCachePaths(text, lang) {
-    const hash = crypto.createHash('sha1').update(`${lang}:${text}`).digest('hex');
+function getCachePaths(text, lang, voiceId = 'sunhi') {
+    const hash = crypto.createHash('sha1').update(`neural-v2:${voiceId}:${lang}:${text}`).digest('hex');
     return {
         hash,
         mp3: path.join(CACHE_DIR, `${hash}.mp3`),
@@ -184,20 +219,30 @@ async function fetchGeminiTts(text, lang) {
     return { buffer: wrapPcmAsWav(rawBytes, sampleRate), mimeType: 'audio/wav', ext: 'wav' };
 }
 
-async function synthesizeStudySpeech(rawText, rawLang = 'ko-KR') {
+function getCachedVoiceIdForLang(lang = 'ko-KR', overrideId = '') {
+    const isEn = String(lang || '').toLowerCase().startsWith('en');
+    const selectedId = overrideId || (isEn ? cachedVoicePrefs.enVoice : cachedVoicePrefs.koVoice);
+    return resolveVoicePreset(lang, selectedId).id;
+}
+
+async function synthesizeStudySpeech(rawText, rawLang = 'ko-KR', options = {}) {
     const { text, lang, shortLang } = normalizeTtsInput(rawText, rawLang);
     if (!text) {
         return { ok: false, status: 400, reason: 'empty_text' };
     }
 
+    const prefs = await getTtsVoiceSettings();
+    const overrideId = typeof options?.voice === 'string' ? options.voice.trim() : '';
+    const preset = resolveVoicePreset(lang, overrideId || (lang.startsWith('en') ? prefs.enVoice : prefs.koVoice));
+
     ensureCacheDir();
-    const paths = getCachePaths(text, lang);
+    const paths = getCachePaths(text, lang, preset.id);
 
     if (fs.existsSync(paths.mp3)) {
-        return { ok: true, buffer: fs.readFileSync(paths.mp3), mimeType: 'audio/mpeg', cached: true };
+        return { ok: true, buffer: fs.readFileSync(paths.mp3), mimeType: 'audio/mpeg', cached: true, engine: 'cache', voice: preset.voice };
     }
     if (fs.existsSync(paths.wav)) {
-        return { ok: true, buffer: fs.readFileSync(paths.wav), mimeType: 'audio/wav', cached: true };
+        return { ok: true, buffer: fs.readFileSync(paths.wav), mimeType: 'audio/wav', cached: true, engine: 'cache', voice: preset.voice };
     }
 
     if (inflightRequests.has(paths.hash)) {
@@ -208,12 +253,18 @@ async function synthesizeStudySpeech(rawText, rawLang = 'ko-KR') {
         try {
             let audio = null;
             try {
-                audio = await fetchGoogleTranslateTts(text, shortLang);
+                audio = await synthesizeEdgeNeuralTts({ text, lang, voicePreset: preset.id });
             } catch (e) {}
+
+            if (!audio && text.length >= 4) {
+                try {
+                    audio = await fetchGeminiTts(text, lang);
+                } catch (e) {}
+            }
 
             if (!audio) {
                 try {
-                    audio = await fetchGeminiTts(text, lang);
+                    audio = await fetchGoogleTranslateTts(text, shortLang);
                 } catch (e) {}
             }
 
@@ -226,7 +277,14 @@ async function synthesizeStudySpeech(rawText, rawLang = 'ko-KR') {
                 fs.writeFileSync(outPath, audio.buffer);
             } catch (e) {}
 
-            return { ok: true, buffer: audio.buffer, mimeType: audio.mimeType, cached: false };
+            return {
+                ok: true,
+                buffer: audio.buffer,
+                mimeType: audio.mimeType,
+                cached: false,
+                engine: audio.engine || 'fallback',
+                voice: audio.voice || preset.voice
+            };
         } finally {
             inflightRequests.delete(paths.hash);
         }
@@ -239,8 +297,23 @@ async function synthesizeStudySpeech(rawText, rawLang = 'ko-KR') {
 function hasCachedTts(rawText, rawLang = 'ko-KR') {
     const { text, lang } = normalizeTtsInput(rawText, rawLang);
     if (!text) return false;
-    const paths = getCachePaths(text, lang);
+    const paths = getCachePaths(text, lang, getCachedVoiceIdForLang(lang));
     return fs.existsSync(paths.mp3) || fs.existsSync(paths.wav);
+}
+
+function purgeTtsCache() {
+    let removed = 0;
+    try {
+        ensureCacheDir();
+        const files = fs.readdirSync(CACHE_DIR).filter((f) => f.endsWith('.mp3') || f.endsWith('.wav'));
+        for (const f of files) {
+            try {
+                fs.unlinkSync(path.join(CACHE_DIR, f));
+                removed += 1;
+            } catch (e) {}
+        }
+    } catch (e) {}
+    return removed;
 }
 
 function getTtsCacheStats() {
@@ -258,8 +331,12 @@ function getTtsCacheStats() {
 }
 
 module.exports = {
+    TTS_VOICE_PRESETS,
     normalizeTtsInput,
+    getTtsVoiceSettings,
+    setTtsVoiceSettings,
     synthesizeStudySpeech,
     hasCachedTts,
+    purgeTtsCache,
     getTtsCacheStats
 };

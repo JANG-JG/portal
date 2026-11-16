@@ -153,7 +153,7 @@
             const bodyEl = card.querySelector('.block-body');
             if (blk.type === 'trace') renderTraceBlock(bodyEl, blk);
             else if (blk.type === 'count') renderCountBlock(bodyEl, blk);
-            else if (blk.type === 'match') renderMatchBlock(bodyEl, blk);
+            else if (blk.type === 'match' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMatchBlock(bodyEl, blk, speakText, showToast, sheet);
             else if (blk.type === 'dot_to_dot' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderDotToDotBlock(bodyEl, blk, speakText, showToast);
             else if (blk.type === 'maze' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMazeBlock(bodyEl, blk, speakText, showToast);
             else if (blk.type === 'color' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderColorBlock(bodyEl, blk, speakText, showToast, sheet);
@@ -174,7 +174,15 @@
         } else if (compBtn && sheet.completed_at) {
             compBtn.textContent = '✅ 이미 완료해서 칭찬 도장을 받았어요!';
         }
-        window.StudyTTS?.prefetch?.(blocks.map((b) => ({ text: b.ttsText || b.prompt, lang: b.ttsLang || 'ko-KR' })));
+        const ttsItems = [];
+        blocks.forEach((b) => {
+            ttsItems.push({ text: b.ttsText || b.prompt, lang: b.ttsLang || 'ko-KR' });
+            if (b.type === 'match' && Array.isArray(b.pairs)) {
+                const isLang = sheet.subject === 'korean' || sheet.subject === 'english';
+                b.pairs.forEach((p) => { const w = p.ttsText || (isLang ? p.right : ''); if (w) ttsItems.push({ text: w, lang: p.ttsLang || (sheet.subject === 'english' ? 'en-US' : 'ko-KR') }); });
+            }
+        });
+        window.StudyTTS?.prefetch?.(ttsItems);
     }
 
     function blockTypeLabel(type) {
@@ -360,8 +368,10 @@
             } else if (blk.visualLeft || blk.visualRight) {
                 const text = String(blk.visualLeft || blk.visualRight).trim();
                 const vis = document.createElement('div');
-                vis.className = !/\s/.test(text) ? 'quiz-visual-hero' : 'quiz-visual-group';
+                const isLangQuiz = (currentSheet?.subject === 'korean' || currentSheet?.subject === 'english') && blk.ttsText;
+                vis.className = (!/\s/.test(text) ? 'quiz-visual-hero' : 'quiz-visual-group') + (isLangQuiz ? ' is-speakable' : '');
                 vis.textContent = text;
+                if (isLangQuiz) vis.addEventListener('click', () => speakText(blk.ttsText, blk.ttsLang || 'ko-KR'));
                 box.appendChild(vis);
             }
             if (blk.equationText) {
@@ -395,81 +405,6 @@
             grid.appendChild(btn);
         });
         container.append(grid, feedback);
-    }
-
-    function renderMatchBlock(container, blk) {
-        const board = document.createElement('div');
-        board.className = 'match-board';
-
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('class', 'match-svg');
-
-        const leftCol = document.createElement('div');
-        leftCol.className = 'match-col';
-        const rightCol = document.createElement('div');
-        rightCol.className = 'match-col';
-
-        let selectedLeft = null;
-        const pairs = blk.pairs || [];
-        const rights = blk.shuffledRights || pairs.map((p) => p.right);
-
-        const drawLineBetween = (elA, elB, color = '#10b981') => {
-            const bRect = board.getBoundingClientRect();
-            const aRect = elA.getBoundingClientRect();
-            const cRect = elB.getBoundingClientRect();
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('x1', String(aRect.right - bRect.left));
-            line.setAttribute('y1', String(aRect.top + aRect.height / 2 - bRect.top));
-            line.setAttribute('x2', String(cRect.left - bRect.left));
-            line.setAttribute('y2', String(cRect.top + cRect.height / 2 - bRect.top));
-            line.setAttribute('stroke', color);
-            line.setAttribute('stroke-width', '5');
-            line.setAttribute('stroke-linecap', 'round');
-            svg.appendChild(line);
-        };
-
-        pairs.forEach((p) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            const isVisual = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(String(p.left || ''));
-            btn.className = isVisual ? 'match-node match-node--visual' : 'match-node';
-            btn.textContent = p.left;
-            btn.dataset.answer = p.right;
-            btn.addEventListener('click', () => {
-                if (btn.classList.contains('matched')) return;
-                leftCol.querySelectorAll('.match-node').forEach((n) => n.classList.remove('selected'));
-                selectedLeft = btn;
-                btn.classList.add('selected');
-            });
-            leftCol.appendChild(btn);
-        });
-
-        rights.forEach((rVal) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'match-node';
-            btn.textContent = rVal;
-            btn.addEventListener('click', () => {
-                if (!selectedLeft || btn.classList.contains('matched')) return;
-                if (selectedLeft.dataset.answer === rVal) {
-                    selectedLeft.classList.remove('selected');
-                    selectedLeft.classList.add('matched');
-                    btn.classList.add('matched');
-                    drawLineBetween(selectedLeft, btn, '#10b981');
-                    selectedLeft = null;
-                    if (window.StudyFx) window.StudyFx.correct();
-                    showToast('짝꿍 찾기 성공! 🌟');
-                } else {
-                    selectedLeft.classList.remove('selected');
-                    selectedLeft = null;
-                    if (window.StudyFx) window.StudyFx.retry();
-                    showToast('다른 짝꿍을 찾아 볼까요?');
-                }
-            });
-            rightCol.appendChild(btn);
-        });
-        board.append(svg, leftCol, rightCol);
-        container.appendChild(board);
     }
 
     document.addEventListener('DOMContentLoaded', () => {

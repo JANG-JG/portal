@@ -25,12 +25,15 @@ const PRECACHE_ASSETS = [
     '/vendor/study/hangul-writer.min.js',
     '/vendor/study/perfect-freehand.min.js',
     '/js/study-fx.js',
+    '/js/study-tts.js',
     '/js/study-hangul-trace.js',
     '/js/study-artwork.js',
     '/js/pokemon-meadow.js',
     '/js/study-pokemon-coloring.js',
     '/js/study-color-flood.js',
-    '/js/study-color-block.js'
+    '/js/study-color-block.js',
+    '/js/study-play-blocks.js',
+    '/js/study-sheet.js'
 ];
 
 self.addEventListener('install', (event) => {

@@ -99,18 +99,30 @@ async function setPreGenEnabled(enabled) {
 
 async function warmWorksheetTts(contentOrSheet) {
     const content = contentOrSheet && contentOrSheet.content ? contentOrSheet.content : contentOrSheet;
+    const subject = String(contentOrSheet?.subject || content?.subject || '').trim();
     const blocks = Array.isArray(content?.blocks) ? content.blocks : [];
     const seen = new Set();
     const entries = [];
-
-    for (const blk of blocks) {
-        const text = String(blk?.ttsText || blk?.prompt || '').trim();
-        const lang = String(blk?.ttsLang || 'ko-KR').trim() || 'ko-KR';
-        if (!text) continue;
+    const pushEntry = (rawText, rawLang) => {
+        const text = String(rawText || '').trim();
+        const lang = String(rawLang || 'ko-KR').trim() || 'ko-KR';
+        if (!text) return;
         const key = `${lang}:${text}`;
-        if (seen.has(key)) continue;
+        if (seen.has(key)) return;
         seen.add(key);
         entries.push({ text, lang });
+    };
+
+    for (const blk of blocks) {
+        pushEntry(blk?.ttsText || blk?.prompt, blk?.ttsLang || 'ko-KR');
+        if (blk?.type === 'match' && Array.isArray(blk.pairs)) {
+            const fallbackLang = subject === 'english' ? 'en-US' : 'ko-KR';
+            const isLangSheet = subject === 'korean' || subject === 'english';
+            blk.pairs.forEach((p) => {
+                const pairText = p?.ttsText || (isLangSheet ? p?.right : '');
+                if (pairText) pushEntry(pairText, p?.ttsLang || fallbackLang);
+            });
+        }
     }
 
     let warmed = 0;

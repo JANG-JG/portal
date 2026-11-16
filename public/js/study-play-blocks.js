@@ -298,10 +298,86 @@
         }
     }
 
+    function renderMatchBlock(container, blk, speakFn, toastFn, sheetMeta) {
+        const board = Object.assign(document.createElement('div'), { className: 'match-board' });
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'match-svg');
+        const leftCol = Object.assign(document.createElement('div'), { className: 'match-col' });
+        const rightCol = Object.assign(document.createElement('div'), { className: 'match-col' });
+        let selectedLeft = null;
+        const pairs = blk.pairs || [];
+        const rights = blk.shuffledRights || pairs.map((p) => p.right);
+        const subj = sheetMeta?.subject || '';
+
+        const drawLineBetween = (elA, elB, color = '#10b981') => {
+            const bRect = board.getBoundingClientRect();
+            const aRect = elA.getBoundingClientRect();
+            const cRect = elB.getBoundingClientRect();
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            const attrs = {
+                x1: aRect.right - bRect.left, y1: aRect.top + aRect.height / 2 - bRect.top,
+                x2: cRect.left - bRect.left, y2: cRect.top + cRect.height / 2 - bRect.top,
+                stroke: color, 'stroke-width': 5, 'stroke-linecap': 'round'
+            };
+            Object.entries(attrs).forEach(([k, v]) => line.setAttribute(k, String(v)));
+            svg.appendChild(line);
+        };
+
+        pairs.forEach((p) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            const isVisual = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(String(p.left || ''));
+            const isLangMatch = subj === 'korean' || subj === 'english' || Boolean(p.ttsText);
+            const wordSpeech = String(p.ttsText || (isLangMatch ? p.right : '') || '').trim();
+            const wordLang = String(p.ttsLang || (subj === 'english' ? 'en-US' : 'ko-KR'));
+            btn.className = isVisual ? 'match-node match-node--visual' : 'match-node';
+            btn.textContent = p.left;
+            btn.dataset.answer = p.right;
+            if (wordSpeech) {
+                btn.dataset.preserveLabel = '1';
+                btn.setAttribute('aria-label', `${wordSpeech} 그림 듣기`);
+                if (isVisual) btn.appendChild(Object.assign(document.createElement('span'), { className: 'match-sound-badge', textContent: '🔊' })).setAttribute('aria-hidden', 'true');
+            }
+            btn.addEventListener('click', () => {
+                if (wordSpeech && typeof speakFn === 'function') speakFn(wordSpeech, wordLang, btn);
+                if (btn.classList.contains('matched')) return;
+                leftCol.querySelectorAll('.match-node').forEach((n) => n.classList.remove('selected'));
+                selectedLeft = btn;
+                btn.classList.add('selected');
+            });
+            leftCol.appendChild(btn);
+        });
+
+        rights.forEach((rVal) => {
+            const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'match-node', textContent: rVal });
+            btn.addEventListener('click', () => {
+                if (!selectedLeft || btn.classList.contains('matched')) return;
+                if (selectedLeft.dataset.answer === rVal) {
+                    selectedLeft.classList.remove('selected');
+                    selectedLeft.classList.add('matched');
+                    btn.classList.add('matched');
+                    drawLineBetween(selectedLeft, btn, '#10b981');
+                    selectedLeft = null;
+                    if (window.StudyFx) window.StudyFx.correct();
+                    if (typeof toastFn === 'function') toastFn('짝꿍 찾기 성공! 🌟');
+                } else {
+                    selectedLeft.classList.remove('selected');
+                    selectedLeft = null;
+                    if (window.StudyFx) window.StudyFx.retry();
+                    if (typeof toastFn === 'function') toastFn('다른 짝꿍을 찾아 볼까요?');
+                }
+            });
+            rightCol.appendChild(btn);
+        });
+        board.append(svg, leftCol, rightCol);
+        container.appendChild(board);
+    }
+
     window.StudyPlayBlocks = {
         typeLabel,
         renderDotToDotBlock,
         renderMazeBlock,
-        renderColorBlock
+        renderColorBlock,
+        renderMatchBlock
     };
 })();
