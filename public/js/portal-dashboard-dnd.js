@@ -1,7 +1,7 @@
 /**
- * 🖱️ JG 포털 통합 Bento Grid 드래그 앤 드롭 엔진 (portal-dashboard-dnd.js)
+ * 🖱️ JG 포털 다중 섹션 Bento Grid 드래그 앤 드롭 엔진 (portal-dashboard-dnd.js)
  * - 전용 그립 핸들(.jg-drag-handle) 기반 포인터 드래그 (마우스 + 모바일 터치 공용)
- * - 드래그 중 형제 카드 DOM 이동/지터 없이 드롭 인디케이터 표시, 드롭 시 View Transition 원자적 재배치
+ * - Home Assistant Sections View + SortableJS 방식 섹션 간 자유 이동 (접힌 섹션 자동 펼침 & 빈 섹션 드롭)
  * - [규칙 3] 500줄 이하 모듈화 | [규칙 6] 스크롤/터치 충돌 차단
  */
 (function() {
@@ -13,28 +13,98 @@
     function clearDropIndicators() {
         document.querySelectorAll('.bento-card-editing[data-drop-pos]').forEach(el => {
             el.removeAttribute('data-drop-pos');
+            el.removeAttribute('data-drop-axis');
+        });
+        document.querySelectorAll('.bento-section[data-section-drop]').forEach(el => {
+            el.removeAttribute('data-section-drop');
         });
     }
 
+    function getDropSections() {
+        const stack = document.getElementById('portalSectionsStack');
+        if (stack) {
+            return Array.from(stack.querySelectorAll(':scope > .bento-section'))
+                .filter(sec => window.getComputedStyle(sec).display !== 'none');
+        }
+        return [];
+    }
+
+    function getAllEditableSiblings() {
+        const sections = getDropSections();
+        if (sections.length > 0) {
+            const list = [];
+            sections.forEach(sec => {
+                const grid = sec.querySelector('.bento-section-grid');
+                if (!grid) return;
+                Array.from(grid.children).forEach(el => {
+                    if (
+                        el !== state.sourceEl &&
+                        el.classList.contains('bento-card-editing') &&
+                        window.getComputedStyle(el).display !== 'none'
+                    ) {
+                        list.push({ el, sectionId: sec.dataset.sectionId });
+                    }
+                });
+            });
+            return list;
+        }
+
+        const fallbackGrid = document.getElementById('portalHomarrGrid');
+        if (!fallbackGrid) return [];
+        return Array.from(fallbackGrid.children)
+            .filter(el =>
+                el !== state.sourceEl &&
+                el.classList.contains('bento-card-editing') &&
+                window.getComputedStyle(el).display !== 'none'
+            )
+            .map(el => ({ el, sectionId: el.dataset.sectionId || null }));
+    }
+
+    function checkHoveredSection(clientX, clientY) {
+        const sections = getDropSections();
+        for (const sec of sections) {
+            const rect = sec.getBoundingClientRect();
+            if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+                const details = sec.querySelector(':scope > .bento-section-details');
+                if (details && !details.open) {
+                    details.open = true;
+                }
+                return sec;
+            }
+        }
+        return null;
+    }
+
     function findDropCandidate(clientX, clientY) {
-        if (!state || !state.grid) return null;
-        const siblings = Array.from(state.grid.children).filter(el =>
-            el !== state.sourceEl &&
-            el.classList.contains('bento-card-editing') &&
-            window.getComputedStyle(el).display !== 'none'
-        );
+        if (!state) return null;
+
+        const hoveredSec = checkHoveredSection(clientX, clientY);
+        const hoveredSecId = hoveredSec ? hoveredSec.dataset.sectionId : null;
+        if (hoveredSec) {
+            const grid = hoveredSec.querySelector('.bento-section-grid');
+            const hasOtherCards = grid && Array.from(grid.children).some(child =>
+                child !== state.sourceEl &&
+                child.classList.contains('bento-card-editing') &&
+                window.getComputedStyle(child).display !== 'none'
+            );
+            if (!hasOtherCards && hoveredSecId) {
+                return { el: null, sectionEl: hoveredSec, sectionId: hoveredSecId, pos: 'inside', axis: 'block' };
+            }
+        }
+
+        const siblings = getAllEditableSiblings();
         if (siblings.length === 0) return null;
 
         let chosen = null;
         let minDist = Infinity;
 
-        for (const el of siblings) {
-            const rect = el.getBoundingClientRect();
+        for (const item of siblings) {
+            const rect = item.el.getBoundingClientRect();
             const insideX = clientX >= rect.left && clientX <= rect.right;
             const insideY = clientY >= rect.top && clientY <= rect.bottom;
 
             if (insideX && insideY) {
-                chosen = { el, rect };
+                chosen = { ...item, rect };
                 break;
             }
 
@@ -43,18 +113,20 @@
             const dist = Math.abs(clientX - cx) * 0.65 + Math.abs(clientY - cy);
             if (dist < minDist) {
                 minDist = dist;
-                chosen = { el, rect };
+                chosen = { ...item, rect };
             }
         }
 
         if (!chosen) return null;
-        const { el, rect } = chosen;
-        const isHalfDesktop = el.dataset.colSpan === '1' && window.innerWidth > 900;
-        const pos = isHalfDesktop
+        const { el, rect, sectionId } = chosen;
+        const spanMode = el.dataset.spanMode || (el.dataset.colSpan === '2' ? 'full' : 'half');
+        const isInlineDesktop = spanMode !== 'full' && window.innerWidth > 900;
+        const axis = isInlineDesktop ? 'inline' : 'block';
+        const pos = isInlineDesktop
             ? (clientX < rect.left + rect.width / 2 ? 'before' : 'after')
             : (clientY < rect.top + rect.height / 2 ? 'before' : 'after');
 
-        return { el, pos };
+        return { el, sectionEl: null, sectionId: sectionId || hoveredSecId, pos, axis };
     }
 
     function updateDraggedPosition() {
@@ -65,12 +137,21 @@
 
         const candidate = findDropCandidate(state.lastX, state.lastY);
         clearDropIndicators();
-        if (candidate && candidate.el.dataset.widgetId) {
+
+        if (candidate && candidate.el && candidate.el.dataset.widgetId) {
             state.dropTargetEl = candidate.el;
+            state.dropSectionId = candidate.sectionId || null;
             state.dropPos = candidate.pos;
             candidate.el.setAttribute('data-drop-pos', candidate.pos);
+            candidate.el.setAttribute('data-drop-axis', candidate.axis || 'block');
+        } else if (candidate && candidate.sectionEl && candidate.sectionId) {
+            state.dropTargetEl = null;
+            state.dropSectionId = candidate.sectionId;
+            state.dropPos = 'inside';
+            candidate.sectionEl.setAttribute('data-section-drop', 'active');
         } else {
             state.dropTargetEl = null;
+            state.dropSectionId = null;
             state.dropPos = null;
         }
     }
@@ -105,7 +186,7 @@
         }
 
         const {
-            handle, pointerId, sourceEl, sourceId, dropTargetEl, dropPos
+            handle, pointerId, sourceEl, sourceId, dropTargetEl, dropSectionId, dropPos
         } = state;
         state = null;
 
@@ -121,10 +202,11 @@
             try { handle.releasePointerCapture(pointerId); } catch (e) {}
         }
 
-        if (commit && sourceId && dropTargetEl && dropTargetEl.dataset.widgetId) {
-            const targetId = dropTargetEl.dataset.widgetId;
-            if (typeof window.reorderDashboardWidgetTo === 'function') {
-                window.reorderDashboardWidgetTo(sourceId, targetId, dropPos || 'before');
+        if (commit && sourceId && typeof window.reorderDashboardWidgetTo === 'function') {
+            if (dropTargetEl && dropTargetEl.dataset.widgetId) {
+                window.reorderDashboardWidgetTo(sourceId, dropTargetEl.dataset.widgetId, dropPos || 'before', dropSectionId);
+            } else if (dropSectionId) {
+                window.reorderDashboardWidgetTo(sourceId, null, 'inside', dropSectionId);
             }
         }
     }
@@ -137,10 +219,9 @@
         const handle = e.target.closest('.jg-drag-handle');
         if (!handle) return;
 
-        const grid = document.getElementById('portalHomarrGrid');
         const sourceEl = handle.closest('.bento-card-editing');
         const sourceId = handle.getAttribute('data-widget-id') || (sourceEl && sourceEl.dataset.widgetId);
-        if (!grid || !sourceEl || !sourceId || sourceEl.parentElement !== grid) return;
+        if (!sourceEl || !sourceId) return;
 
         e.preventDefault();
         e.stopPropagation();
@@ -148,7 +229,6 @@
         state = {
             pointerId: e.pointerId,
             handle,
-            grid,
             sourceEl,
             sourceId,
             startX: e.clientX,
@@ -157,6 +237,7 @@
             lastY: e.clientY,
             startScrollY: window.scrollY,
             dropTargetEl: null,
+            dropSectionId: null,
             dropPos: null
         };
 

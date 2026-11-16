@@ -7,8 +7,22 @@
 (function() {
     'use strict';
 
+    const SPAN_CYCLE = ['third', 'half', 'wide', 'full'];
+    const SPAN_LABELS = {
+        third: '◧ 1/3 폭',
+        half:  '▫️ 반폭 (1/2)',
+        wide:  '◨ 2/3 폭',
+        full:  '↔️ 전폭 (100%)'
+    };
+
     let currentWidgets = [];
+    let currentSections = [];
     let isSaving = false;
+
+    function getSpanMode(w) {
+        if (w && SPAN_CYCLE.includes(w.spanMode)) return w.spanMode;
+        return Number(w && w.colSpan) === 2 ? 'full' : 'half';
+    }
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -56,11 +70,12 @@
             const data = await res.json();
 
             if (!data.success || !Array.isArray(data.widgets)) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#ef4444;">${data.message || '설정 불러오기 실패'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:#ef4444;">${escapeHtml(data.message || '설정 불러오기 실패')}</td></tr>`;
                 return;
             }
 
             currentWidgets = data.widgets;
+            currentSections = Array.isArray(data.sections) ? data.sections : [];
             renderWidgetsTable(currentWidgets);
             updateWidgetSummaryStats(currentWidgets);
         } catch (err) {
@@ -74,7 +89,7 @@
     function updateWidgetSummaryStats(widgets) {
         const total = widgets.length;
         const active = widgets.filter(w => w.enabled !== false).length;
-        const fullWidth = widgets.filter(w => w.colSpan === 2).length;
+        const fullWidth = widgets.filter(w => getSpanMode(w) === 'full').length;
 
         const elTotal = document.getElementById('widgetStatTotal');
         const elActive = document.getElementById('widgetStatActive');
@@ -102,7 +117,8 @@
             const isFirst = idx === 0;
             const isLast = idx === widgets.length - 1;
             const orderNum = idx + 1;
-            const isFullWidth = w.colSpan === 2;
+            const spanMode = getSpanMode(w);
+            const isFullWidth = spanMode === 'full';
 
             const toggleBtn = isEnabled ? `
                 <button type="button" class="btn-admin btn-admin-success btn-admin-sm" style="padding:2px 8px; font-size:0.75rem;" onclick="toggleWidgetItemEnabled(${idx})">
@@ -114,15 +130,24 @@
                 </button>
             `;
 
-            const colSpanBtn = isFullWidth ? `
-                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; padding:2px 7px; font-size:0.75rem; font-weight:700;" onclick="toggleWidgetItemColSpan(${idx})" title="클릭하여 1열(반폭)로 변경">
-                    ↔️ 2열 (전폭 100%)
-                </button>
-            ` : `
-                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" style="padding:2px 7px; font-size:0.75rem;" onclick="toggleWidgetItemColSpan(${idx})" title="클릭하여 2열(전폭)로 변경">
-                    ▫️ 1열 (반폭 50%)
+            const colSpanBtn = `
+                <button type="button" class="btn-admin btn-admin-outline btn-admin-sm"
+                    style="${isFullWidth ? 'background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; font-weight:700;' : ''} padding:2px 8px; font-size:0.75rem;"
+                    onclick="toggleWidgetItemColSpan(${idx})" title="클릭하여 너비 순환 (1/3 → 1/2 → 2/3 → 전폭)">
+                    ${SPAN_LABELS[spanMode] || SPAN_LABELS.half}
                 </button>
             `;
+
+            const sectionSelect = currentSections.length > 0 ? `
+                <select aria-label="소속 섹션 선택" onchange="changeWidgetItemSection(${idx}, this.value)"
+                    style="width:100%; font-size:0.76rem; padding:4px 6px; border-radius:6px; border:1px solid #cbd5e1; background:#fff; color:#0f172a;">
+                    ${currentSections.map(s => `
+                        <option value="${escapeHtml(s.id)}" ${w.sectionId === s.id ? 'selected' : ''}>
+                            ${escapeHtml((s.icon || '📁') + ' ' + s.title)}
+                        </option>
+                    `).join('')}
+                </select>
+            ` : `<span style="font-size:0.75rem; color:#64748b;">${escapeHtml(w.sectionId || '기본')}</span>`;
 
             const badgeModule = w.isModuleWidget ? `
                 <span class="badge" style="background:#f3e8ff; color:#7e22ce; font-size:0.7rem; padding:1px 5px;">신규 모듈</span>
@@ -159,6 +184,9 @@
                             ${escapeHtml(w.desc || '')}
                         </div>
                     </td>
+                    <td>
+                        ${sectionSelect}
+                    </td>
                     <td style="font-family:monospace; font-size:0.75rem; color:#64748b;">
                         <code>${escapeHtml(w.selector || '#' + w.id)}</code>
                     </td>
@@ -173,9 +201,11 @@
         }).join('');
     }
 
-    /**
-     * 위젯 노출 On/Off 토글
-     */
+    window.changeWidgetItemSection = function(idx, sectionId) {
+        if (!currentWidgets[idx] || !sectionId) return;
+        currentWidgets[idx].sectionId = sectionId;
+    };
+
     window.toggleWidgetItemEnabled = function(idx) {
         if (!currentWidgets[idx]) return;
         currentWidgets[idx].enabled = !currentWidgets[idx].enabled;
@@ -183,19 +213,16 @@
         updateWidgetSummaryStats(currentWidgets);
     };
 
-    /**
-     * 위젯 너비 (1열 반폭 <-> 2열 전폭) 토글
-     */
     window.toggleWidgetItemColSpan = function(idx) {
         if (!currentWidgets[idx]) return;
-        currentWidgets[idx].colSpan = (currentWidgets[idx].colSpan === 2) ? 1 : 2;
+        const curMode = getSpanMode(currentWidgets[idx]);
+        const nextMode = SPAN_CYCLE[(SPAN_CYCLE.indexOf(curMode) + 1) % SPAN_CYCLE.length];
+        currentWidgets[idx].spanMode = nextMode;
+        currentWidgets[idx].colSpan = nextMode === 'full' ? 2 : 1;
         renderWidgetsTable(currentWidgets);
         updateWidgetSummaryStats(currentWidgets);
     };
 
-    /**
-     * 위젯 순서 위/아래 이동
-     */
     window.moveWidgetItem = function(idx, direction) {
         if (direction === 'up' && idx > 0) {
             const temp = currentWidgets[idx];
@@ -209,9 +236,6 @@
         renderWidgetsTable(currentWidgets);
     };
 
-    /**
-     * 변경된 대시보드 위젯 설정 서버 저장
-     */
     window.saveDashboardWidgetsConfig = async function() {
         if (isSaving) return;
         isSaving = true;
@@ -224,14 +248,15 @@
             const res = await fetch('/api/modules/dashboard/config', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ widgets: currentWidgets })
+                body: JSON.stringify({ widgets: currentWidgets, sections: currentSections })
             });
             const data = await res.json();
 
             if (data.success) {
                 currentWidgets = data.widgets || currentWidgets;
+                currentSections = data.sections || currentSections;
                 try {
-                    localStorage.setItem('jg_dashboard_config_cache', JSON.stringify(currentWidgets));
+                    localStorage.setItem('jg_dashboard_config_cache', JSON.stringify({ sections: currentSections, widgets: currentWidgets }));
                 } catch (e) {}
 
                 if (typeof showToast === 'function') {
@@ -252,11 +277,8 @@
         }
     };
 
-    /**
-     * 대시보드 위젯 기본 배치로 초기화
-     */
     window.resetDashboardWidgetsConfig = async function() {
-        if (!confirm('대시보드 위젯 배치를 시스템 기본값으로 초기화하시겠습니까?')) {
+        if (!confirm('대시보드 섹션·위젯 배치를 시스템 기본값으로 초기화하시겠습니까?')) {
             return;
         }
 
@@ -277,6 +299,7 @@
                     alert(data.message || '기본값으로 복원되었습니다.');
                 }
                 currentWidgets = data.widgets || [];
+                currentSections = data.sections || [];
                 renderWidgetsTable(currentWidgets);
                 updateWidgetSummaryStats(currentWidgets);
             } else {

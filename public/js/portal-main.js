@@ -314,8 +314,10 @@ async function loadDynamicQuickStrip() {
 
 // 🌟 6. 모듈 레지스트리 기반 메인 대시보드 벤토 위젯 동적 마운트 (신규 모듈 슬롯 자동 렌더링)
 async function syncDynamicBentoWidgets() {
-    const grid = document.getElementById('portalHomarrGrid');
+    const grids = document.querySelectorAll('.bento-section-grid');
+    const grid = (grids.length > 0 ? grids[grids.length - 1] : null) || document.getElementById('portalHomarrGrid');
     if (!grid) return;
+    let mountedAny = false;
     try {
         const res = await fetch('/api/modules');
         if (!res.ok) return;
@@ -356,7 +358,9 @@ async function syncDynamicBentoWidgets() {
                     <a href="${viewMoreUrl}" style="color:var(--hm-blue); text-decoration:none; font-weight:600;">열기 ↗</a>
                 </div>
             `;
-            grid.appendChild(card);
+            const emptyHint = grid.querySelector(':scope > .bento-section-empty-hint');
+            grid.insertBefore(card, emptyHint || null);
+            mountedAny = true;
 
             if (apiEndpoint && apiEndpoint.startsWith('/') && !apiEndpoint.startsWith('//')) {
                 fetch(apiEndpoint, { credentials: 'include' })
@@ -384,6 +388,9 @@ async function syncDynamicBentoWidgets() {
                         if (bodyEl) bodyEl.innerHTML = `<div style="font-size:0.85rem; color:#64748b;">${escapePortalMainHtml(mod.description || '정상 운영 중')}</div>`;
                     });
             }
+        }
+        if (mountedAny && typeof window.refreshDashboardLayout === 'function') {
+            window.refreshDashboardLayout();
         }
     } catch (e) {}
 }

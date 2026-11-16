@@ -229,6 +229,9 @@
             if (container.dataset.dashboardHidden !== '1') {
                 container.style.display = '';
             }
+            if (typeof window.refreshBentoSectionStates === 'function') {
+                window.refreshBentoSectionStates();
+            }
 
             container.querySelectorAll('img[data-fallback]').forEach((img) => {
                 img.addEventListener('error', () => {
@@ -240,6 +243,9 @@
         } catch (_) {
             container.classList.remove('has-study-buddies');
             container.style.display = 'none';
+            if (typeof window.refreshBentoSectionStates === 'function') {
+                window.refreshBentoSectionStates();
+            }
         }
     }
 

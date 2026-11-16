@@ -1,17 +1,63 @@
 /* ==============================================================================
- * 🍱 JG 포털 통합 Bento Grid, View Transitions & 드래그 앤 드롭 스타일
+ * 🍱 JG 포털 통합 Bento Grid (Home Assistant Sections + Homarr + Multi-Section DnD)
  * - [규칙 3] 500줄 이하 모듈화 준수
  * - [규칙 6] 360px 초소형 모바일 뷰포트 무넘침 보장
  * ============================================================================== */
 
-/* 1. 단일 통합 그리드(#portalHomarrGrid) 일관 간격 & 기본 전폭 가드 */
+/* 1. 다중 섹션 컨테이너 & 기본 그리드 호환 */
+.bento-sections-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+#portalHomarrGrid:empty {
+    display: none;
+}
+
 .homarr-grid > * {
     margin-bottom: 0 !important;
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
+    container: bento-card / inline-size;
 }
 
+.homarr-grid #portalStudyBuddyStrip .portal-study-buddy-card {
+    margin-bottom: 0;
+}
+
+/* 기본 6트랙 4단계 크기 프리셋 (1/3 · 1/2 · 2/3 · 전폭) */
+@media (min-width: 960px) {
+    .homarr-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+    .homarr-grid > [data-span-mode="third"] { grid-column: span 2; }
+    .homarr-grid > [data-span-mode="half"]  { grid-column: span 3; }
+    .homarr-grid > [data-span-mode="wide"]  { grid-column: span 4; }
+    .homarr-grid > [data-span-mode="full"]  { grid-column: 1 / -1; }
+}
+
+@media (min-width: 769px) and (max-width: 959px) {
+    .homarr-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .homarr-grid > [data-span-mode="third"],
+    .homarr-grid > [data-span-mode="half"] { grid-column: span 1; }
+    .homarr-grid > [data-span-mode="wide"],
+    .homarr-grid > [data-span-mode="full"] { grid-column: 1 / -1; }
+}
+
+@media (max-width: 768px) {
+    .homarr-grid > [data-span-mode] {
+        grid-column: 1 / -1;
+    }
+}
+
+/* 기본 폴백 (JS 초기화 전 정적 마크업 보호) */
 .homarr-grid > .card-daily-briefing,
 .homarr-grid > .homarr-hero-card,
 .homarr-grid > .cmd-strip,
@@ -20,31 +66,52 @@
     grid-column: 1 / -1;
 }
 
-/* 2. 상단 특화 위젯 반폭(colSpan=1) 전환 시 내부 컴팩트 적응 */
+/* 2. 카드 자체 폭 기반 적응형 레이아웃 (@container + 구형 브라우저 폴백) */
 .homarr-hero-card[data-col-span="1"] {
     grid-template-columns: 1fr !important;
     gap: 0.9rem !important;
     padding: 1.15rem !important;
 }
 
-.homarr-hero-card[data-col-span="1"] .homarr-ring-box {
-    border-right: none !important;
-    border-bottom: 1px solid var(--hm-border);
-    padding-right: 0 !important;
-    padding-bottom: 0.85rem;
+@container bento-card (max-width: 560px) {
+    .homarr-hero-card {
+        grid-template-columns: 1fr !important;
+        gap: 0.9rem !important;
+        padding: 1.1rem !important;
+    }
+    .homarr-hero-card .homarr-ring-box {
+        border-right: none !important;
+        border-bottom: 1px solid var(--hm-border);
+        padding-right: 0 !important;
+        padding-bottom: 0.85rem;
+        justify-content: center;
+    }
+    .homarr-hero-card .homarr-health-summary-box {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+    }
+    .card-daily-briefing .briefing-chips-grid {
+        grid-template-columns: 1fr;
+    }
+    .cmd-strip .cmd-strip-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
 
-.homarr-hero-card[data-col-span="1"] .homarr-health-summary-box {
-    grid-template-columns: 1fr;
-    gap: 0.65rem;
-}
-
-.cmd-strip[data-col-span="1"] .cmd-strip-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.card-daily-briefing[data-col-span="1"] .briefing-chips-grid {
-    grid-template-columns: 1fr;
+@container bento-card (max-width: 420px) {
+    .homarr-card,
+    .card-daily-briefing,
+    .cmd-strip {
+        padding: 0.95rem !important;
+    }
+    .cmd-strip .cmd-strip-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem;
+    }
+    .homarr-card-header {
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+    }
 }
 
 @media (max-width: 900px) {
@@ -53,7 +120,174 @@
     }
 }
 
-/* 3. View Transitions API: 카드 & 상단 탭 동시 부드러운 재배치 */
+/* 3. Home Assistant Sections View + Homarr 섹션 아코디언 */
+.bento-section {
+    min-width: 0;
+    max-width: 100%;
+    transition: opacity 0.2s ease;
+}
+
+.bento-section-details {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.bento-section-summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.38rem 0.6rem;
+    margin-bottom: 0.7rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid var(--hm-border, #e2e8f0);
+    cursor: pointer;
+    user-select: none;
+    min-block-size: 38px;
+    box-sizing: border-box;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.bento-section-summary::-webkit-details-marker {
+    display: none;
+}
+
+.bento-section-summary:hover {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: var(--hm-border-strong, #cbd5e1);
+}
+
+.bento-section-summary:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.bento-section-heading-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.bento-section-heading-group::before {
+    content: "";
+    inline-size: 0.95rem;
+    block-size: 0.95rem;
+    flex-shrink: 0;
+    background-color: var(--hm-text-muted, #64748b);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E") no-repeat center / contain;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z' clip-rule='evenodd'/%3E%3C/svg%3E") no-repeat center / contain;
+    rotate: -90deg;
+}
+
+.bento-section-details[open] > .bento-section-summary .bento-section-heading-group::before {
+    rotate: 0deg;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .bento-section-heading-group::before {
+        transition: rotate 0.2s ease;
+    }
+}
+
+.bento-section-icon {
+    font-size: 1rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.bento-section-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--hm-text-main, #0f172a);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bento-section-count {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--hm-text-muted, #64748b);
+    background: var(--hm-bg-body, #f1f5f9);
+    border: 1px solid var(--hm-border, #e2e8f0);
+    border-radius: 9999px;
+    padding: 1px 8px;
+    flex-shrink: 0;
+}
+
+.bento-section-controls {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+html.bento-editing-active .bento-section-controls {
+    display: inline-flex;
+}
+
+html.bento-editing-active .bento-section-summary {
+    border-style: dashed;
+    border-color: #93c5fd;
+    background: rgba(239, 246, 255, 0.75);
+}
+
+.bento-section-details::details-content {
+    interpolate-size: allow-keywords;
+    overflow: clip;
+    contain: layout;
+}
+
+.bento-section-details:not([open])::details-content {
+    block-size: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .bento-section-details::details-content {
+        transition: block-size 0.26s ease, content-visibility 0.26s ease, display 0.26s ease;
+        transition-behavior: allow-discrete;
+    }
+}
+
+.bento-section-empty-hint {
+    display: none;
+    grid-column: 1 / -1;
+    padding: 1.25rem;
+    border-radius: 14px;
+    border: 2px dashed #cbd5e1;
+    color: #64748b;
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-align: center;
+    background: rgba(248, 250, 252, 0.75);
+}
+
+html.bento-editing-active .bento-section.is-empty-section .bento-section-empty-hint {
+    display: block;
+}
+
+.bento-section[data-section-drop="active"] > .bento-section-details > .bento-section-summary,
+.bento-section[data-section-drop="active"] .bento-section-empty-hint {
+    border-color: #2563eb !important;
+    background: rgba(219, 234, 254, 0.65) !important;
+    color: #1d4ed8;
+}
+
+[data-theme="dark"] .bento-section-summary {
+    background: rgba(30, 41, 59, 0.78);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .bento-section-empty-hint {
+    background: rgba(15, 23, 42, 0.45);
+    border-color: rgba(148, 163, 184, 0.3);
+}
+
+/* 4. View Transitions API: 섹션 · 카드 · 상단 탭 동시 부드러운 재배치 */
 :root {
     view-transition-name: none;
 }
@@ -62,13 +296,8 @@
     pointer-events: none;
 }
 
-.bento-vt-card {
-    view-transition-class: bento-card-vt;
-}
-
-.bento-vt-tab {
-    view-transition-class: bento-tab-vt;
-}
+.bento-vt-card { view-transition-class: bento-card-vt; }
+.bento-vt-tab { view-transition-class: bento-tab-vt; }
 
 ::view-transition-group(.bento-card-vt),
 ::view-transition-group(.bento-tab-vt) {
@@ -84,7 +313,7 @@
     }
 }
 
-/* 4. 포인터 기반 2D Bento 드래그 앤 드롭 (전용 그립 핸들 한정) */
+/* 5. 포인터 기반 다중 섹션 2D 드래그 앤 드롭 */
 .jg-drag-handle {
     cursor: grab;
     touch-action: none;
@@ -143,12 +372,56 @@ html.bento-dnd-dragging * {
     z-index: 55;
 }
 
-.bento-card-editing[data-drop-pos="before"]::before {
-    top: -6px;
+.bento-card-editing[data-drop-pos="before"]::before { top: -6px; }
+.bento-card-editing[data-drop-pos="after"]::after { bottom: -6px; }
+
+.bento-card-editing[data-drop-axis="inline"][data-drop-pos="before"]::before,
+.bento-card-editing[data-drop-axis="inline"][data-drop-pos="after"]::after {
+    top: 10px;
+    bottom: 10px;
+    width: 4px;
+    height: auto;
+}
+.bento-card-editing[data-drop-axis="inline"][data-drop-pos="before"]::before { left: -6px; right: auto; }
+.bento-card-editing[data-drop-axis="inline"][data-drop-pos="after"]::after { right: -6px; left: auto; }
+
+/* 6. 섹션 추가/수정 모달 (<dialog>) */
+.jg-section-dialog {
+    border: 1px solid var(--hm-border, #e2e8f0);
+    border-radius: 18px;
+    padding: 1.15rem;
+    width: min(400px, calc(100vw - 24px));
+    background: var(--hm-bg-card, #ffffff);
+    color: var(--hm-text-main, #0f172a);
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+    box-sizing: border-box;
 }
 
-.bento-card-editing[data-drop-pos="after"]::after {
-    bottom: -6px;
+.jg-section-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
+}
+
+.jg-section-icon-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 0.75rem;
+}
+
+.jg-icon-pick-btn {
+    min-inline-size: 38px;
+    min-block-size: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--hm-border, #e2e8f0);
+    background: var(--hm-bg-body, #f8fafc);
+    font-size: 1.05rem;
+    cursor: pointer;
+}
+
+.jg-icon-pick-btn.is-selected {
+    background: #dbeafe;
+    border-color: #3b82f6;
 }
 
 @media (max-width: 380px) {
@@ -162,5 +435,8 @@ html.bento-dnd-dragging * {
         min-height: 28px !important;
         padding: 3px 7px !important;
         font-size: 0.7rem !important;
+    }
+    .bento-section-summary {
+        padding: 0.35rem 0.5rem;
     }
 }

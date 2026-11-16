@@ -16,7 +16,7 @@ const {
     CORE_MODULE_IDS
 } = require('../services/moduleRegistry.service');
 const { getModuleMetrics, getAllModulesKpiSummary } = require('../services/moduleMetrics.service');
-const { getDashboardConfig, saveDashboardConfig, resetDashboardConfig } = require('../services/dashboardConfig.service');
+const { getDashboardState, saveDashboardConfig, resetDashboardConfig } = require('../services/dashboardConfig.service');
 
 /**
  * DB에서 사용자의 최신 allowed_services 및 role을 가져오는 헬퍼
@@ -240,28 +240,29 @@ router.get('/admin/kpis', authenticateToken, requireAdmin, async (req, res) => {
     }
 });
 
-// 14. 공통: 대시보드 위젯 배치 설정 조회 (인증 필수)
+// 14. 공통: 대시보드 위젯 + 섹션 배치 설정 조회 (인증 필수)
 router.get('/dashboard/config', authenticateToken, (req, res) => {
     try {
-        const widgets = getDashboardConfig();
-        res.json({ success: true, count: widgets.length, widgets });
+        const { widgets, sections } = getDashboardState();
+        res.json({ success: true, count: widgets.length, widgets, sections });
     } catch (err) {
         res.status(500).json({ success: false, message: '대시보드 위젯 설정 조회 실패' });
     }
 });
 
-// 13. 관리자: 대시보드 위젯 배치 일괄 저장
+// 13. 관리자: 대시보드 위젯 + 섹션 배치 일괄 저장
 router.put('/dashboard/config', authenticateToken, requireAdmin, (req, res) => {
     try {
-        const { widgets } = req.body;
+        const { widgets, sections } = req.body;
         if (!Array.isArray(widgets)) {
             return res.status(400).json({ success: false, message: 'widgets 배열이 필요합니다.' });
         }
-        const saved = saveDashboardConfig(widgets);
+        const saved = saveDashboardConfig(widgets, sections);
         res.json({
             success: true,
-            message: '메인 대시보드 위젯 설정이 성공적으로 저장되었습니다.',
-            widgets: saved
+            message: '메인 대시보드 화면 구성이 성공적으로 저장되었습니다.',
+            widgets: saved.widgets,
+            sections: saved.sections
         });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message || '대시보드 설정 저장 실패' });
@@ -274,8 +275,9 @@ router.post('/dashboard/reset', authenticateToken, requireAdmin, (req, res) => {
         const restored = resetDashboardConfig();
         res.json({
             success: true,
-            message: '대시보드 위젯 배치가 기본값으로 복원되었습니다.',
-            widgets: restored
+            message: '대시보드 화면 구성이 기본값으로 복원되었습니다.',
+            widgets: restored.widgets,
+            sections: restored.sections
         });
     } catch (err) {
         res.status(500).json({ success: false, message: '기본값 복원 실패' });

@@ -1,25 +1,67 @@
 /**
- * 🍱 JG 포털 메인 대시보드 동적 레이아웃 엔진 (portal-dashboard-layout.js)
- * - /api/modules/dashboard/config 설정을 읽어 메인 홈의 위젯 순서(물리적 DOM 재배치 + CSS order), 노출(display), 너비(gridColumn) 동적 적용
- * - SWR(Stale-While-Revalidate) 로컬 캐시로 페이지 새로고침 시 깜빡임(0ms 즉시 렌더링) 차단
+ * 🍱 JG 포털 메인 대시보드 동적 섹션·레이아웃 엔진 (portal-dashboard-layout.js)
+ * - Home Assistant Sections View + Homarr 스타일 다중 섹션 Bento Grid 오케스트레이션
+ * - SWR(Stale-While-Revalidate) 로컬 캐시로 페이지 새로고침 시 깜빡임 차단
  * - 기존 DOM ID, 이벤트 바인딩, 실시간 차트/소켓 로직 100% 무결성 보존 ([규칙 3], [규칙 5])
- * - [규칙 2] 한국어 인터페이스 | [규칙 6] 360px 모바일 완벽 호환
+ * - [규칙 2] 100% 한국어 인터페이스 | [규칙 6] 360px 모바일 완벽 호환
  */
 (function() {
     'use strict';
 
     const CACHE_KEY = 'jg_dashboard_config_cache';
+    const COLLAPSE_KEY = 'jg_dashboard_collapsed_sections';
+    const VALID_SPAN_MODES = ['third', 'half', 'wide', 'full'];
 
-    /**
-     * 위젯 ID로부터 상단 탭 키 도출
-     */
+    const DEFAULT_SECTIONS = [
+        { id: 'today', title: '오늘의 요약 · 빠른 실행', icon: '🌅', order: 10 },
+        { id: 'life', title: '우리 가족 생활 · 기록', icon: '🏡', order: 20 },
+        { id: 'info', title: '자산 · 뉴스 · 서버 관리', icon: '📊', order: 30 }
+    ];
+
+    const DEFAULT_SECTION_BY_WIDGET = {
+        smartDailyBriefingCard: 'today', homarrHeroCard: 'today', 'cmd-strip': 'today',
+        portalStudyBuddyStrip: 'today', breakingBannerBar: 'today',
+        'bento-wiki': 'life', 'card-dday': 'life', 'bento-calendar': 'life', 'bento-album': 'life',
+        'bento-asset': 'info', 'bento-news': 'info', 'bento-ops': 'info'
+    };
+
+    const DEFAULT_FULL_WIDTH_IDS = new Set([
+        'smartDailyBriefingCard', 'homarrHeroCard', 'cmd-strip', 'portalStudyBuddyStrip', 'breakingBannerBar', 'bento-ops'
+    ]);
+
+    const supportsMoveBefore = typeof Element !== 'undefined' && Object.hasOwn(Element.prototype, 'moveBefore');
+
+    function getCollapsedMap() {
+        try {
+            const raw = localStorage.getItem(COLLAPSE_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function saveCollapsedState(sectionId, isCollapsed) {
+        if (!sectionId) return;
+        try {
+            const map = getCollapsedMap();
+            if (isCollapsed) map[sectionId] = true;
+            else delete map[sectionId];
+            localStorage.setItem(COLLAPSE_KEY, JSON.stringify(map));
+        } catch (e) {}
+    }
+
+    function normalizeSpanMode(w) {
+        if (w && VALID_SPAN_MODES.includes(w.spanMode)) return w.spanMode;
+        if (w && Number(w.colSpan) === 2) return 'full';
+        if (w && Number(w.colSpan) === 1) return 'half';
+        return w && DEFAULT_FULL_WIDTH_IDS.has(w.id) ? 'full' : 'half';
+    }
+
     function getTabKeyFromWidget(w) {
         if (!w || !w.id) return null;
         if (w.tabKey) return w.tabKey;
         if (w.id === 'homarrHeroCard' || w.id === 'bento-blood') return 'blood';
-        if (w.id.startsWith('bento-')) {
-            return w.id.replace('bento-', '');
-        }
+        if (w.id.startsWith('bento-')) return w.id.replace('bento-', '');
         return null;
     }
 
@@ -41,78 +83,6 @@
     function toSafeVtToken(raw) {
         return String(raw || 'item').replace(/[^a-zA-Z0-9_-]/g, '-');
     }
-
-    /**
-     * 위젯 순서에 맞춰 상단 탭 메뉴(데스크톱 및 모바일) 버튼 순서 동기화
-     */
-    function syncNavTabsOrder(sortedWidgets) {
-        if (!Array.isArray(sortedWidgets) || sortedWidgets.length === 0) return;
-
-        const navContainers = [
-            { el: document.getElementById('portal-tab-nav'), scope: 'desk' },
-            { el: document.querySelector('.cmd-nav-mobile-strip'), scope: 'mob' }
-        ].filter(item => Boolean(item.el));
-
-        if (navContainers.length === 0) return;
-
-        // 1. 실제 노출/활성 위젯 순서에서 탭 키 배열 추출 (중복 제거)
-        const orderedTabKeys = [];
-        sortedWidgets.forEach(w => {
-            if (w.enabled === false) return;
-            const tabKey = getTabKeyFromWidget(w);
-            if (tabKey && !orderedTabKeys.includes(tabKey)) {
-                orderedTabKeys.push(tabKey);
-            }
-        });
-
-        // 2. 각 컨테이너(데스크톱, 모바일)의 탭 버튼들을 위젯 순서와 동일하게 재배치
-        navContainers.forEach(({ el: container, scope }) => {
-            const btns = Array.from(container.querySelectorAll('.portal-tab-btn'));
-            if (btns.length === 0) return;
-
-            const setTabVt = (btn, tabKey) => {
-                btn.classList.add('bento-vt-tab');
-                btn.style.viewTransitionName = btn.style.display === 'none'
-                    ? ''
-                    : `bento-nav-${scope}-${toSafeVtToken(tabKey)}`;
-            };
-
-            // 1) 'home'(대시보드 홈) 탭은 언제나 최상단 맨 앞 고정
-            const homeBtn = btns.find(b => b.getAttribute('data-tab') === 'home');
-            if (homeBtn) {
-                setTabVt(homeBtn, 'home');
-                moveNodeBefore(container, homeBtn, null);
-            }
-
-            // 2) 위젯 순서에 매핑된 탭 버튼들을 순서대로 재배치
-            orderedTabKeys.forEach(tabKey => {
-                const btn = btns.find(b => b.getAttribute('data-tab') === tabKey);
-                if (btn) {
-                    setTabVt(btn, tabKey);
-                    moveNodeBefore(container, btn, null);
-                }
-            });
-
-            // 3) 위젯 목록에 포함되지 않거나 비활성 상태인 기타 탭 버튼들 맨 뒤에 유지
-            btns.forEach(btn => {
-                const tabKey = btn.getAttribute('data-tab');
-                if (tabKey !== 'home' && !orderedTabKeys.includes(tabKey)) {
-                    setTabVt(btn, tabKey);
-                    moveNodeBefore(container, btn, null);
-                }
-            });
-        });
-    }
-
-    const DEFAULT_FULL_WIDTH_IDS = new Set([
-        'smartDailyBriefingCard',
-        'homarrHeroCard',
-        'cmd-strip',
-        'portalStudyBuddyStrip',
-        'breakingBannerBar',
-        'bento-ops'
-    ]);
-    const supportsMoveBefore = typeof Element !== 'undefined' && Object.hasOwn(Element.prototype, 'moveBefore');
 
     function resolveWidgetElement(w) {
         if (!w) return null;
@@ -138,31 +108,197 @@
         parent.insertBefore(node, targetRef);
     }
 
+    function normalizeSectionsList(sectionsInput) {
+        const base = Array.isArray(sectionsInput) && sectionsInput.length > 0
+            ? sectionsInput
+            : DEFAULT_SECTIONS;
+        return [...base]
+            .filter(s => s && s.id)
+            .sort((a, b) => (a.order || 0) - (b.order || 0))
+            .map((s, idx) => ({
+                id: String(s.id),
+                title: String(s.title || '섹션'),
+                icon: String(s.icon || '📁'),
+                order: Number(s.order || (idx + 1) * 10)
+            }));
+    }
+
+    function ensureSectionsStack(root, homarrGrid) {
+        let stack = document.getElementById('portalSectionsStack');
+        if (!stack && root) {
+            stack = document.createElement('div');
+            stack.id = 'portalSectionsStack';
+            stack.className = 'bento-sections-stack';
+            if (homarrGrid && homarrGrid.parentElement === root) {
+                root.insertBefore(stack, homarrGrid);
+            } else {
+                root.appendChild(stack);
+            }
+        }
+        return stack;
+    }
+
+    function ensureSectionNode(stack, sec, collapsedMap) {
+        let sectionEl = stack.querySelector(`:scope > .bento-section[data-section-id="${CSS.escape(sec.id)}"]`);
+        if (!sectionEl) {
+            sectionEl = document.createElement('div');
+            sectionEl.className = 'bento-section';
+            sectionEl.dataset.sectionId = sec.id;
+            sectionEl.innerHTML = `
+                <details class="bento-section-details"${collapsedMap[sec.id] ? '' : ' open'}>
+                    <summary class="bento-section-summary">
+                        <span class="bento-section-heading-group">
+                            <span class="bento-section-icon" aria-hidden="true"></span>
+                            <span class="bento-section-title"></span>
+                            <span class="bento-section-count"></span>
+                        </span>
+                        <span class="bento-section-controls"></span>
+                    </summary>
+                    <div class="homarr-grid bento-section-grid" data-section-id="${String(sec.id).replace(/"/g, '&quot;')}">
+                        <div class="bento-section-empty-hint">이 섹션으로 카드를 드래그해 배치하세요</div>
+                    </div>
+                </details>`;
+            sectionEl.querySelector('.bento-section-controls').addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            const details = sectionEl.querySelector('.bento-section-details');
+            details.addEventListener('toggle', () => saveCollapsedState(sec.id, !details.open));
+            stack.appendChild(sectionEl);
+        }
+        sectionEl.querySelector('.bento-section-icon').textContent = sec.icon || '📁';
+        sectionEl.querySelector('.bento-section-title').textContent = sec.title || sec.id;
+        return sectionEl;
+    }
+
     /**
-     * DOM에 위젯 레이아웃(단일 통합 그리드 순서, 반폭/전폭, 노출, 상단 탭) 적용
+     * 섹션 순서 + 위젯 순서에 맞춰 상단 탭 메뉴(데스크톱 및 모바일) 버튼 순서 동기화
      */
-    function applyWidgetsConfig(widgets, options) {
+    function syncNavTabsOrder(orderedWidgets) {
+        if (!Array.isArray(orderedWidgets) || orderedWidgets.length === 0) return;
+
+        const navContainers = [
+            { el: document.getElementById('portal-tab-nav'), scope: 'desk' },
+            { el: document.querySelector('.cmd-nav-mobile-strip'), scope: 'mob' }
+        ].filter(item => Boolean(item.el));
+
+        if (navContainers.length === 0) return;
+
+        const orderedTabKeys = [];
+        orderedWidgets.forEach(w => {
+            if (w.enabled === false) return;
+            const tabKey = getTabKeyFromWidget(w);
+            if (tabKey && !orderedTabKeys.includes(tabKey)) {
+                orderedTabKeys.push(tabKey);
+            }
+        });
+
+        navContainers.forEach(({ el: container, scope }) => {
+            const btns = Array.from(container.querySelectorAll('.portal-tab-btn'));
+            if (btns.length === 0) return;
+
+            const setTabVt = (btn, tabKey) => {
+                btn.classList.add('bento-vt-tab');
+                btn.style.viewTransitionName = btn.style.display === 'none'
+                    ? ''
+                    : `bento-nav-${scope}-${toSafeVtToken(tabKey)}`;
+            };
+
+            const homeBtn = btns.find(b => b.getAttribute('data-tab') === 'home');
+            if (homeBtn) {
+                setTabVt(homeBtn, 'home');
+                moveNodeBefore(container, homeBtn, null);
+            }
+
+            orderedTabKeys.forEach(tabKey => {
+                const btn = btns.find(b => b.getAttribute('data-tab') === tabKey);
+                if (btn) {
+                    setTabVt(btn, tabKey);
+                    moveNodeBefore(container, btn, null);
+                }
+            });
+
+            btns.forEach(btn => {
+                const tabKey = btn.getAttribute('data-tab');
+                if (tabKey !== 'home' && !orderedTabKeys.includes(tabKey)) {
+                    setTabVt(btn, tabKey);
+                    moveNodeBefore(container, btn, null);
+                }
+            });
+        });
+    }
+
+    function refreshSectionCountsAndVisibility(stack, isEditing) {
+        if (!stack) return;
+        stack.querySelectorAll(':scope > .bento-section').forEach(sectionEl => {
+            const grid = sectionEl.querySelector('.bento-section-grid');
+            const countEl = sectionEl.querySelector('.bento-section-count');
+            if (!grid) return;
+
+            const activeCards = Array.from(grid.children).filter(child =>
+                !child.classList.contains('bento-section-empty-hint') &&
+                child.dataset.dashboardHidden !== '1' &&
+                !child.getAttribute('data-hidden-by-auth')
+            );
+            const visibleCards = activeCards.filter(child =>
+                window.getComputedStyle(child).display !== 'none'
+            );
+
+            const count = isEditing ? activeCards.length : visibleCards.length;
+            if (countEl) countEl.textContent = `${count}개`;
+
+            const isEmpty = count === 0;
+            sectionEl.classList.toggle('is-empty-section', isEmpty);
+            sectionEl.style.display = (isEmpty && !isEditing) ? 'none' : '';
+        });
+    }
+
+    /**
+     * DOM에 섹션 + 위젯 레이아웃 적용
+     */
+    function applyWidgetsConfig(widgets, options, sectionsInput) {
         if (!Array.isArray(widgets) || widgets.length === 0) return;
 
         const opts = options && typeof options === 'object' ? options : {};
+        const sections = normalizeSectionsList(sectionsInput || opts.sections);
 
         const applyDOM = () => {
             const isRoleAdmin = document.documentElement.classList.contains('role-admin');
             const isHideBlood = document.documentElement.classList.contains('hide-blood');
             const isHideOps = document.documentElement.classList.contains('hide-ops');
             const isHideAsset = document.documentElement.classList.contains('hide-asset');
+            const isEditing = document.documentElement.classList.contains('bento-editing-active');
 
+            const root = document.getElementById('portal-bento-root');
             const homarrGrid = document.getElementById('portalHomarrGrid');
+            const stack = ensureSectionsStack(root, homarrGrid);
+            const collapsedMap = getCollapsedMap();
 
-            // 순서 기준 정렬
+            // 1. 섹션 노드 생성·정렬 및 불필요 섹션 제거
+            const sectionGridMap = new Map();
+            const activeSectionIds = new Set(sections.map(s => s.id));
+            if (stack) {
+                Array.from(stack.querySelectorAll(':scope > .bento-section')).forEach(existing => {
+                    if (!activeSectionIds.has(existing.dataset.sectionId)) {
+                        existing.remove();
+                    }
+                });
+                sections.forEach(sec => {
+                    const secNode = ensureSectionNode(stack, sec, collapsedMap);
+                    moveNodeBefore(stack, secNode, null);
+                    const secGrid = secNode.querySelector('.bento-section-grid');
+                    if (secGrid) sectionGridMap.set(sec.id, secGrid);
+                });
+            }
+
+            const defaultSectionId = sections[0] ? sections[0].id : 'today';
             const sortedWidgets = [...widgets].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-            // 1. 개별 위젯 노출 상태 및 권한 가드 적용
+            // 2. 개별 위젯 노출 상태 및 권한 가드 적용
             sortedWidgets.forEach(w => {
                 const el = resolveWidgetElement(w);
                 if (!el) return;
 
-                // 권한 기반 은폐 우선 존중
                 if ((w.id === 'homarrHeroCard' || w.id === 'bento-blood') && isHideBlood) return;
                 if (w.id === 'bento-ops' && isHideOps) return;
                 if (w.id === 'bento-asset' && isHideAsset) return;
@@ -181,7 +317,6 @@
 
                 delete el.dataset.dashboardHidden;
 
-                // 노출 복원 (비동기 학습 위젯은 데이터가 있을 때만 노출)
                 if (el.id === 'portalStudyBuddyStrip') {
                     el.style.display = el.classList.contains('has-study-buddies') ? '' : 'none';
                 } else if (el.style.display === 'none' && !el.getAttribute('data-hidden-by-auth')) {
@@ -203,21 +338,32 @@
                 }
             });
 
-            // 2. 단일 통합 그리드(#portalHomarrGrid) 내 모든 위젯 물리적 DOM 재배치 및 반폭/전폭 통일
+            // 3. 각 위젯을 소속 섹션 그리드로 이동 & 4단계 크기(spanMode) 적용
+            const sectionBuckets = new Map();
+            sections.forEach(sec => sectionBuckets.set(sec.id, []));
+
             sortedWidgets.forEach(w => {
                 const el = resolveWidgetElement(w);
                 if (!el) return;
 
-                if (homarrGrid) {
-                    moveNodeBefore(homarrGrid, el, null);
+                const targetSecId = activeSectionIds.has(w.sectionId)
+                    ? w.sectionId
+                    : (activeSectionIds.has(DEFAULT_SECTION_BY_WIDGET[w.id]) ? DEFAULT_SECTION_BY_WIDGET[w.id] : defaultSectionId);
+
+                const targetGrid = sectionGridMap.get(targetSecId) || homarrGrid;
+                if (targetGrid) {
+                    const emptyHint = targetGrid.querySelector(':scope > .bento-section-empty-hint');
+                    moveNodeBefore(targetGrid, el, emptyHint || null);
+                }
+                if (sectionBuckets.has(targetSecId)) {
+                    sectionBuckets.get(targetSecId).push(w);
                 }
 
-                const span = [1, 2].includes(Number(w.colSpan))
-                    ? Number(w.colSpan)
-                    : (DEFAULT_FULL_WIDTH_IDS.has(w.id) ? 2 : 1);
-
-                el.style.gridColumn = span === 2 ? '1 / -1' : 'span 1';
-                el.dataset.colSpan = String(span);
+                const spanMode = normalizeSpanMode(w);
+                el.style.gridColumn = '';
+                el.dataset.spanMode = spanMode;
+                el.dataset.colSpan = spanMode === 'full' ? '2' : '1';
+                el.dataset.sectionId = targetSecId;
                 el.dataset.widgetId = w.id;
 
                 const isHidden = w.enabled === false || window.getComputedStyle(el).display === 'none';
@@ -225,10 +371,16 @@
                 el.style.viewTransitionName = isHidden ? '' : `bento-card-${toSafeVtToken(w.id)}`;
             });
 
-            // 3. 상단 탭 메뉴(데스크톱 및 모바일) 순서 실시간 동기화
-            syncNavTabsOrder(sortedWidgets);
+            refreshSectionCountsAndVisibility(stack, isEditing);
 
-            // 관리자인 경우 빠른 위젯 설정 바로가기 링크 유지
+            // 4. 화면에 배치된 섹션 순서 -> 위젯 순서 기준으로 상단 탭 동기화
+            const flattenedOrdered = [];
+            sections.forEach(sec => {
+                const list = sectionBuckets.get(sec.id) || [];
+                list.forEach(w => flattenedOrdered.push(w));
+            });
+            syncNavTabsOrder(flattenedOrdered.length > 0 ? flattenedOrdered : sortedWidgets);
+
             if (isRoleAdmin) {
                 renderAdminWidgetQuickLink();
             }
@@ -245,30 +397,44 @@
         }
     }
 
+    function readCachedBundle() {
+        try {
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (!cached) return null;
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed)) {
+                return { widgets: parsed, sections: DEFAULT_SECTIONS };
+            }
+            if (parsed && Array.isArray(parsed.widgets)) {
+                return {
+                    widgets: parsed.widgets,
+                    sections: Array.isArray(parsed.sections) ? parsed.sections : DEFAULT_SECTIONS
+                };
+            }
+        } catch (e) {}
+        return null;
+    }
+
     /**
      * 서버 설정 조회 및 캐시 갱신 (SWR 패턴)
      */
     async function loadAndApplyDashboardConfig() {
-        // 1단계: 로컬 캐시가 있으면 즉시 0ms 적용 (새로고침 깜빡임 방지)
-        try {
-            const cached = localStorage.getItem(CACHE_KEY);
-            if (cached) {
-                const parsed = JSON.parse(cached);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    applyWidgetsConfig(parsed);
-                }
-            }
-        } catch (e) {}
+        const cached = readCachedBundle();
+        if (cached && cached.widgets.length > 0) {
+            applyWidgetsConfig(cached.widgets, null, cached.sections);
+        }
 
-        // 2단계: 서버 최신 설정 비동기 조회 후 재적용 및 캐시 동기화
         try {
             const res = await fetch('/api/modules/dashboard/config');
             if (!res.ok) return;
             const data = await res.json();
             if (data.success && Array.isArray(data.widgets)) {
-                applyWidgetsConfig(data.widgets);
+                const sections = Array.isArray(data.sections) && data.sections.length > 0
+                    ? data.sections
+                    : DEFAULT_SECTIONS;
+                applyWidgetsConfig(data.widgets, null, sections);
                 try {
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(data.widgets));
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({ sections, widgets: data.widgets }));
                 } catch (e) {}
             }
         } catch (e) {
@@ -290,7 +456,7 @@
 
         group.innerHTML = `
             <button type="button" id="btnLiveDashboardEdit" onclick="if(typeof toggleDashboardEditMode==='function')toggleDashboardEditMode(true)" 
-                title="메인 화면에서 카드를 직접 배치하고 조절합니다"
+                title="메인 화면에서 섹션과 카드를 직접 배치하고 조절합니다"
                 style="font-size:0.76rem; color:#1d4ed8; background:#eff6ff; border:1px solid #bfdbfe; display:inline-flex; align-items:center; gap:5px; font-weight:700; min-height:28px; padding:4px 12px; border-radius:9999px; cursor:pointer; box-shadow:0 1px 3px rgba(37,99,235,0.08); transition:background-color 0.15s ease, border-color 0.15s ease;">
                 <span aria-hidden="true">🎨</span><span>화면 편집</span>
             </button>
@@ -310,8 +476,13 @@
         loadAndApplyDashboardConfig();
     }
 
-    // 전역 함수 노출
     window.applyDashboardWidgetsToDOM = applyWidgetsConfig;
     window.refreshDashboardLayout = loadAndApplyDashboardConfig;
     window.runBentoViewTransition = runWithViewTransition;
+    window.getDashboardDefaultSections = () => DEFAULT_SECTIONS.map(s => ({ ...s }));
+    window.refreshBentoSectionStates = () => {
+        const stack = document.getElementById('portalSectionsStack');
+        const isEditing = document.documentElement.classList.contains('bento-editing-active');
+        refreshSectionCountsAndVisibility(stack, isEditing);
+    };
 })();
