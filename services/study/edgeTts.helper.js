@@ -11,13 +11,16 @@
 const crypto = require('crypto');
 const { WebSocket } = require('undici');
 
-const TRUSTED_CLIENT_TOKEN = '6A5AA1D4EAFF4E9FB37E23D68491D6F4';
 const CHROMIUM_VERSION = '143.0.3650.75';
 const SEC_MS_GEC_VERSION = `2-${CHROMIUM_VERSION}`;
 const WIN_EPOCH_SEC = 11644473600;
 const WSS_BASE = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
 const CHROME_ORIGIN = 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold';
 const UA_HEADER = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0';
+
+function resolveEdgeClientToken() {
+    return String(process.env.EDGE_TTS_CLIENT_TOKEN || '').trim();
+}
 
 const TTS_VOICE_PRESETS = {
     ko: {
@@ -174,10 +177,10 @@ function cs64Digest(buf, digest) {
     return out;
 }
 
-function generateSecMsGecV2() {
+function generateSecMsGecV2(clientToken) {
     let ticks = Math.floor(Date.now() / 1000) + WIN_EPOCH_SEC;
     ticks -= ticks % 300;
-    const raw = String(BigInt(ticks) * 10000000n) + TRUSTED_CLIENT_TOKEN;
+    const raw = String(BigInt(ticks) * 10000000n) + clientToken;
     const buf = Buffer.from(raw, 'ascii');
     const digest = customSha256(buf);
     const cs64 = cs64Digest(buf, digest);
@@ -201,12 +204,15 @@ function resolveVoicePreset(lang = 'ko-KR', presetId = '') {
 }
 
 function synthesizeEdgeNeuralTts({ text, lang = 'ko-KR', voicePreset = '', timeoutMs = 7000 } = {}) {
+    const clientToken = resolveEdgeClientToken();
+    if (!clientToken) return Promise.resolve(null);
+
     const preset = resolveVoicePreset(lang, voicePreset);
     const xmlLang = String(lang || '').toLowerCase().startsWith('en') ? 'en-US' : 'ko-KR';
     const connId = crypto.randomUUID().replace(/-/g, '');
     const muid = crypto.randomBytes(16).toString('hex').toUpperCase();
-    const gec = generateSecMsGecV2();
-    const wsUrl = `${WSS_BASE}?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}&Sec-MS-GEC=${gec}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}&ConnectionId=${connId}`;
+    const gec = generateSecMsGecV2(clientToken);
+    const wsUrl = `${WSS_BASE}?TrustedClientToken=${encodeURIComponent(clientToken)}&Sec-MS-GEC=${gec}&Sec-MS-GEC-Version=${SEC_MS_GEC_VERSION}&ConnectionId=${connId}`;
 
     return new Promise((resolve) => {
         const chunks = [];
