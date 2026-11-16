@@ -5,6 +5,8 @@ const PRECACHE_ASSETS = [
     '/offline.html',
     '/css/pretendard.css',
     '/css/unified-nav.css',
+    '/css/pokemon-meadow.css',
+    '/js/pokemon-meadow.js',
     '/fonts/Pretendard-Regular.subset.woff2',
     '/fonts/Pretendard-Medium.subset.woff2',
     '/fonts/Pretendard-SemiBold.subset.woff2',

@@ -78,6 +78,29 @@
                 gap: 0.4rem;
                 min-width: 0;
             }
+            .portal-study-buddy-actions {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+                flex-shrink: 0;
+            }
+            .portal-study-buddy-motion-btn {
+                border: 1px solid var(--hm-border, #cbd5e1);
+                background: var(--hm-bg-card, #ffffff);
+                color: var(--hm-text-sub, #334155);
+                border-radius: 999px;
+                padding: 0.24rem 0.62rem;
+                font-size: 0.74rem;
+                font-weight: 700;
+                cursor: pointer;
+                font-family: inherit;
+                min-height: 30px;
+            }
+            [data-theme="dark"] .portal-study-buddy-motion-btn {
+                background: rgba(15, 23, 42, 0.72);
+                border-color: rgba(148, 163, 184, 0.3);
+                color: #e2e8f0;
+            }
             .portal-study-buddy-link {
                 font-size: 0.78rem;
                 font-weight: 600;
@@ -216,13 +239,22 @@
                 `;
             }).join('');
 
+            let motionPaused = false;
+            try {
+                motionPaused = window.localStorage.getItem('study_pokemon_motion_paused') === '1';
+            } catch (_) {}
+
             container.innerHTML = `
                 <div class="portal-study-buddy-card">
                     <div class="portal-study-buddy-head">
                         <div class="portal-study-buddy-title">🐣 오늘의 우리 아이 학습 단짝</div>
-                        <a href="/study" class="portal-study-buddy-link">학습실 열기 →</a>
+                        <div class="portal-study-buddy-actions">
+                            <button type="button" id="btnPortalPokemonMotion" class="portal-study-buddy-motion-btn">${motionPaused ? '▶️ 움직임 켜기' : '⏸️ 멈춤'}</button>
+                            <a href="/study" class="portal-study-buddy-link">학습실 열기 →</a>
+                        </div>
                     </div>
                     <div class="portal-study-buddy-grid">${itemsHtml}</div>
+                    <div id="portalPokemonMeadow" class="pokemon-meadow-mount"></div>
                 </div>
             `;
             container.classList.add('has-study-buddies');
@@ -240,6 +272,51 @@
                     if (img.dataset.fallback) img.src = img.dataset.fallback;
                 });
             });
+
+            const meadowMount = document.getElementById('portalPokemonMeadow');
+            if (meadowMount && window.PokemonMeadow) {
+                const meadowBuddies = [];
+                data.buddies.forEach((b) => {
+                    const list = Array.isArray(b.collectedBuddies) && b.collectedBuddies.length > 0
+                        ? b.collectedBuddies
+                        : (b.partner ? [b.partner] : []);
+                    list.forEach((c, idx) => {
+                        if (meadowBuddies.length >= 6) return;
+                        meadowBuddies.push({
+                            id: c.id,
+                            nameKo: c.nameKo,
+                            label: `${b.displayName}·${c.nameKo}`,
+                            isPartner: idx === 0 || Boolean(c.isPartner),
+                            animatedUrl: c.animatedUrl,
+                            artworkUrl: c.artworkUrl,
+                            cheers: [
+                                `${b.displayName}야, 오늘도 파이팅! ✨`,
+                                `${c.nameKo}와(과) 초원 산책 중! 🌿`,
+                                '칭찬 도장 모으러 가자! ❤️'
+                            ]
+                        });
+                    });
+                });
+
+                const meadowCtrl = window.PokemonMeadow.mount(meadowMount, {
+                    buddies: meadowBuddies,
+                    compact: true,
+                    paused: motionPaused,
+                    title: '🌿 우리 집 포켓몬 초원 놀이터',
+                    emptyText: '학습실에서 칭찬 도장 10칸을 모으면 첫 포켓몬이 초원에 찾아와요!',
+                    footerHint: '초원에서 뛰어노는 단짝 포켓몬을 톡 눌러 보세요!'
+                });
+
+                const motionBtn = document.getElementById('btnPortalPokemonMotion');
+                motionBtn?.addEventListener('click', () => {
+                    motionPaused = !motionPaused;
+                    try {
+                        window.localStorage.setItem('study_pokemon_motion_paused', motionPaused ? '1' : '0');
+                    } catch (_) {}
+                    motionBtn.textContent = motionPaused ? '▶️ 움직임 켜기' : '⏸️ 멈춤';
+                    meadowCtrl?.setPaused(motionPaused);
+                });
+            }
         } catch (_) {
             container.classList.remove('has-study-buddies');
             container.style.display = 'none';

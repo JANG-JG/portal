@@ -348,7 +348,16 @@ router.get('/api/portal/study-buddies', authenticateToken, async (req, res) => {
                         animatedUrl: pokeState.partnerPokemon.animatedUrl,
                         artworkUrl: pokeState.partnerPokemon.artworkUrl
                     }
-                    : null
+                    : null,
+                collectedBuddies: (Array.isArray(pokeState.collected) ? pokeState.collected : [])
+                    .slice(0, 4)
+                    .map((c) => ({
+                        id: c.id,
+                        nameKo: c.nameKo,
+                        isPartner: Boolean(c.isPartner),
+                        animatedUrl: c.animatedUrl,
+                        artworkUrl: c.artworkUrl
+                    }))
             });
         }
         res.json({ success: true, enabled: true, buddies });

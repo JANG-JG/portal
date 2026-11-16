@@ -1,0 +1,382 @@
+/* ==========================================================================
+ * 포켓몬 초원 들판 놀이터 공통 스타일 (pokemon-meadow.css)
+ * - 학습실(/study) & 포털 메인(/) 공용 초원 산책 스테이지
+ * - [규칙 6] 360px 모바일 무넘침 & 터치 타겟 >= 48px 보장
+ * - [접근성] prefers-reduced-motion & 수동 멈춤(.is-motion-paused) 완벽 대응
+ * ========================================================================== */
+
+.pokemon-meadow-mount {
+    margin-top: 0.78rem;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.pokemon-meadow {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    height: 164px;
+    border-radius: 1rem;
+    overflow: hidden;
+    border: 1.5px solid #bbf7d0;
+    background: linear-gradient(180deg, #dff3ff 0%, #effafc 52%, #dcfce7 66%, #bbf7d0 100%);
+    box-shadow: inset 0 -10px 20px rgba(34, 197, 94, 0.14);
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.pokemon-meadow--compact {
+    height: 148px;
+}
+
+[data-theme="dark"] .pokemon-meadow {
+    border-color: rgba(74, 222, 128, 0.28);
+    background: linear-gradient(180deg, #172554 0%, #1e3a5f 48%, #14532d 68%, #166534 100%);
+    box-shadow: inset 0 -10px 22px rgba(2, 6, 23, 0.35);
+}
+
+.pokemon-meadow__sky {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.pokemon-meadow__sun {
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: radial-gradient(circle, #fef08a 30%, #fde047 68%, rgba(253, 224, 71, 0) 100%);
+    box-shadow: 0 0 18px rgba(250, 204, 21, 0.55);
+}
+
+[data-theme="dark"] .pokemon-meadow__sun {
+    background: radial-gradient(circle, #fef9c3 40%, #fde68a 75%, rgba(253, 230, 138, 0) 100%);
+    box-shadow: 0 0 16px rgba(254, 240, 138, 0.45);
+}
+
+.pokemon-meadow__cloud {
+    position: absolute;
+    opacity: 0.88;
+    will-change: transform;
+}
+
+.pokemon-meadow__cloud--1 {
+    top: 12px;
+    left: 6%;
+    width: 66px;
+    height: 24px;
+}
+
+.pokemon-meadow__cloud--2 {
+    top: 26px;
+    left: 52%;
+    width: 54px;
+    height: 20px;
+    opacity: 0.72;
+}
+
+.pokemon-meadow__hills {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 98px;
+    pointer-events: none;
+    display: block;
+}
+
+.pokemon-meadow__header {
+    position: absolute;
+    top: 8px;
+    left: 10px;
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1px solid rgba(134, 239, 172, 0.7);
+    color: #166534;
+    font-size: 0.72rem;
+    font-weight: 800;
+    backdrop-filter: blur(4px);
+    max-width: calc(100% - 76px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+[data-theme="dark"] .pokemon-meadow__header {
+    background: rgba(15, 23, 42, 0.72);
+    border-color: rgba(74, 222, 128, 0.35);
+    color: #bbf7d0;
+}
+
+.pokemon-meadow__actors {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 8px;
+    height: 104px;
+    z-index: 4;
+}
+
+.pokemon-meadow__walker {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 78px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    will-change: transform;
+}
+
+.pokemon-meadow__walker[data-lane="back"] {
+    bottom: 18px;
+    z-index: 2;
+}
+
+.pokemon-meadow__walker[data-lane="front"] {
+    bottom: 4px;
+    z-index: 4;
+}
+
+.pokemon-meadow__btn {
+    position: relative;
+    width: 64px;
+    height: 60px;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.pokemon-meadow__btn:focus-visible {
+    outline: 2.5px solid #2563eb;
+    outline-offset: 2px;
+    border-radius: 12px;
+}
+
+.pokemon-meadow__shadow {
+    position: absolute;
+    bottom: 2px;
+    width: 40px;
+    height: 9px;
+    border-radius: 50%;
+    background: rgba(21, 128, 61, 0.24);
+    pointer-events: none;
+}
+
+.pokemon-meadow__sprite-flip {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 56px;
+    height: 54px;
+    transform-origin: center bottom;
+    transition: transform 0.22s ease;
+}
+
+.pokemon-meadow__sprite-img {
+    max-width: 54px;
+    max-height: 52px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    image-rendering: pixelated;
+    transform-origin: center bottom;
+    filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.16));
+}
+
+.pokemon-meadow__tag {
+    margin-top: 2px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(203, 213, 225, 0.85);
+    color: #0f172a;
+    font-size: 0.66rem;
+    font-weight: 800;
+    line-height: 1.25;
+    max-width: 82px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.pokemon-meadow__walker.is-partner .pokemon-meadow__tag {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+[data-theme="dark"] .pokemon-meadow__tag {
+    background: rgba(15, 23, 42, 0.86);
+    border-color: rgba(148, 163, 184, 0.35);
+    color: #f8fafc;
+}
+
+.pokemon-meadow__bubble {
+    position: absolute;
+    bottom: 62px;
+    left: 50%;
+    transform: translate(-50%, 6px) scale(0.92);
+    padding: 0.22rem 0.55rem;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    color: #0f172a;
+    font-size: 0.7rem;
+    font-weight: 800;
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.25s ease;
+    z-index: 8;
+}
+
+.pokemon-meadow__walker.has-bubble .pokemon-meadow__bubble {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+}
+
+.pokemon-meadow__fx {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 9;
+}
+
+.pokemon-meadow__spark {
+    position: absolute;
+    font-size: 0.95rem;
+    pointer-events: none;
+}
+
+.pokemon-meadow__empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0.85rem 1rem 1rem;
+    text-align: center;
+    z-index: 5;
+}
+
+.pokemon-meadow__empty-nest {
+    font-size: 1.85rem;
+    line-height: 1;
+    margin-bottom: 0.28rem;
+}
+
+.pokemon-meadow__empty-text {
+    padding: 0.24rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #166534;
+    font-size: 0.75rem;
+    font-weight: 800;
+    max-width: 100%;
+    word-break: keep-all;
+}
+
+.pokemon-meadow__hint-footer {
+    margin-top: 0.35rem;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: #475569;
+    text-align: center;
+    word-break: keep-all;
+}
+
+[data-theme="dark"] .pokemon-meadow__hint-footer {
+    color: #94a3b8;
+}
+
+@media (max-width: 420px) {
+    .pokemon-meadow {
+        height: 152px;
+    }
+
+    .pokemon-meadow__walker {
+        width: 70px;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__cloud--1 {
+        animation: meadowCloudDrift 26s ease-in-out infinite alternate;
+    }
+
+    .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__cloud--2 {
+        animation: meadowCloudDrift 34s ease-in-out infinite alternate-reverse;
+    }
+
+    .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__walker.is-walking .pokemon-meadow__sprite-img {
+        animation: meadowWalkStep 0.44s ease-in-out infinite alternate;
+    }
+
+    .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__walker.is-resting .pokemon-meadow__sprite-img {
+        animation: meadowIdleBreathe 2.3s ease-in-out infinite;
+    }
+
+    .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__walker.is-tapped .pokemon-meadow__sprite-img {
+        animation: meadowTapJump 0.5s ease-out 1;
+    }
+
+    .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__empty-nest {
+        animation: meadowIdleBreathe 2.6s ease-in-out infinite;
+    }
+
+    .pokemon-meadow__spark {
+        animation: meadowSparkRise 0.85s ease-out forwards;
+    }
+}
+
+@keyframes meadowCloudDrift {
+    0% { transform: translateX(-8px); }
+    100% { transform: translateX(26px); }
+}
+
+@keyframes meadowWalkStep {
+    0% { transform: translateY(0) rotate(-2deg); }
+    100% { transform: translateY(-4px) rotate(2deg); }
+}
+
+@keyframes meadowIdleBreathe {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-2.5px) scale(1.03); }
+}
+
+@keyframes meadowTapJump {
+    0% { transform: translateY(0) scale(1); }
+    40% { transform: translateY(-16px) scale(1.09); }
+    75% { transform: translateY(1px) scale(1.04, 0.94); }
+    100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes meadowSparkRise {
+    0% { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
+    25% { transform: translate(calc(-50% + var(--mdx, 0px)), -12px) scale(1.1); opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--mdx, 0px)), -42px) scale(0.8); opacity: 0; }
+}
