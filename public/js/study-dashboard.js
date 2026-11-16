@@ -197,7 +197,9 @@
             return;
         }
         list.innerHTML = sheets.map((s) => {
-            const doneText = s.completed_at ? '✅ 완료함' : '📝 풀기 전';
+            const doneText = s.subject === 'coloring'
+                ? (s.completed_at ? '🎨 색칠 완료' : '🖍️ 자유 색칠')
+                : (s.completed_at ? '✅ 완료함' : '📝 풀기 전');
             const subjText = SUBJECT_LABELS[s.subject] || s.subject;
             const metaText = s.subject === 'coloring' ? subjText : `${subjText} · Lv.${s.level}`;
             return `
@@ -230,6 +232,15 @@
         const genBtn = document.getElementById('btnGenerateSheet');
         if (coloringBox) coloringBox.hidden = !isColoring;
         if (playRow) playRow.hidden = isColoring;
+        if (isColoring && window.StudyPokemonColoring) {
+            window.StudyPokemonColoring.initDashboardPicker({
+                getSelectedMode: () => state.selectedColoringMode,
+                onSelectMode: (mode) => {
+                    state.selectedColoringMode = mode;
+                    document.querySelectorAll('.coloring-tpl-pill').forEach((p) => p.classList.toggle('active', p.dataset.coloringMode === mode));
+                }
+            });
+        }
         if (genBtn && !genBtn.disabled) {
             genBtn.textContent = isColoring ? '🖍️ 색칠놀이 바로 만들기!' : '🎨 학습지 바로 만들기!';
         }
@@ -255,6 +266,7 @@
             btn.addEventListener('click', () => {
                 state.selectedColoringMode = btn.dataset.coloringMode || 'auto_3';
                 document.querySelectorAll('.coloring-tpl-pill').forEach((p) => p.classList.toggle('active', p === btn));
+                if (window.StudyPokemonColoring) window.StudyPokemonColoring.syncDashboardSelection();
             });
         });
 

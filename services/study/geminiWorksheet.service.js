@@ -89,7 +89,7 @@ function buildGeminiPromptAndSchema({ childName, birthYear, subject, level, them
     if (subject === 'math') {
         const prompt =
             `유아 학습지 디자이너 역할입니다. 대상: ${birthYear}년생(${childName}), 테마: "${theme}", 난이도: Lv.${level}/5.\n` +
-            `수학 계산과 숫자 문제는 서버가 직접 생성하므로, "${theme}" 테마에 어울리는 친근한 학습지 제목 1개와 유아 친화적인 표준 단일 유니코드 이모지 4개만 JSON으로 주세요.\n` +
+            `수학 계산과 숫자 문제는 서버가 직접 생성하므로, "${theme}" 테마에 어울리는 친근한 학습지 제목 1개와 유아 친화적인 표준 단일 유니코드 이모지 6개만 JSON으로 주세요.\n` +
             `금지어(폭력/어려운 한자어/부정적 단어)는 절대 쓰지 마세요.`;
 
         const schema = {
@@ -107,13 +107,13 @@ function buildGeminiPromptAndSchema({ childName, birthYear, subject, level, them
     }
 
     const levelGuide = subject === 'english'
-        ? (level === 1 ? '알파벳 대문자 A~Z 1글자 4개와 대표 뜻'
-            : level <= 3 ? '3~5글자 기초 영단어 4개(예: CAT, SUN, APPLE)'
-                : '5~9글자 어린이 친숙 영단어 4개')
-        : (level === 1 ? '음절 1~2글자 순수 한글 단어 4개(받침 없는 쉬운 단어 위주)'
-            : level <= 3 ? '2~3글자 친숙한 순수 한글 단어 4개'
-                : level === 4 ? '3~4글자 받침 포함 순수 한글 단어 4개'
-                    : '짧은 2어절 순수 한글 표현 4개(예: 반짝이는 별)');
+        ? (level === 1 ? '알파벳 대문자 A~Z 1글자 6개와 대표 뜻'
+            : level <= 3 ? '3~5글자 기초 영단어 6개(예: CAT, SUN, APPLE)'
+                : '5~9글자 어린이 친숙 영단어 6개')
+        : (level === 1 ? '음절 1~2글자 순수 한글 단어 6개(받침 없는 쉬운 단어 위주)'
+            : level <= 3 ? '2~3글자 친숙한 순수 한글 단어 6개'
+                : level === 4 ? '3~4글자 받침 포함 순수 한글 단어 6개'
+                    : '짧은 2어절 순수 한글 표현 6개(예: 반짝이는 별)');
 
     const prompt =
         `유아 학습지 교사 역할입니다. 대상: ${birthYear}년생 유아(${childName}), 과목: ${subject === 'english' ? '영어' : '한글'}, ` +
@@ -122,7 +122,7 @@ function buildGeminiPromptAndSchema({ childName, birthYear, subject, level, them
         `1) ${levelGuide}를 생성하세요.\n` +
         `2) ${subject === 'english' ? 'word와 distractors는 반드시 순수 영문(A-Z)만 쓰고, hint에 짧은 한국어 뜻을 적으세요.' : 'word와 distractors는 반드시 순수 한글만 쓰세요(영어/숫자/특수문자 혼합 금지).'}\n` +
         `3) 각 항목의 emoji는 표준 유니코드 이모지 1개만 넣으세요.\n` +
-        `4) 서로 중복되지 않는 단어 4개와, 각 단어당 오답 보기 2개(distractors)를 만드세요.`;
+        `4) 서로 중복되지 않는 단어 6개와, 각 단어당 오답 보기 2개(distractors)를 만드세요.`;
 
     const schema = {
         type: 'OBJECT',

@@ -22,6 +22,7 @@ const {
     setChildLevel,
     adjustChildLevel,
     awardStamp,
+    markWorksheetCompletedOnly,
     deleteStampById,
     removeLastStamp,
     setStampBoardCount,
@@ -34,8 +35,6 @@ const {
 } = require('../services/study/studyDb.service');
 const { generateAndSaveWorksheet } = require('../services/study/geminiWorksheet.service');
 const { regenerateSingleBlock } = require('../services/study/worksheetValidator.service');
-const { startLevelTest, submitLevelTestAnswer } = require('../services/study/adaptiveLevel.service');
-const { synthesizeStudySpeech } = require('../services/study/studyTts.service');
 const {
     consumePregeneratedWorksheet,
     scheduleReplenish,
@@ -103,6 +102,7 @@ router.get('/api/study/tablet-config', authenticateToken, async (req, res) => {
         const sfxRaw = await getSystemConfig('study_tablet_sound_fx_default', '1');
         const hangulRaw = await getSystemConfig('study_hangul_guide_enabled', '1');
         const albumShareRaw = await getSystemConfig('study_kid_album_share_enabled', '1');
+        const pokeColorRaw = await getSystemConfig('study_pokemon_coloring_enabled', '1');
         res.json({
             success: true,
             config: {
@@ -110,7 +110,8 @@ router.get('/api/study/tablet-config', authenticateToken, async (req, res) => {
                 penOnlyDefault: penRaw === '1',
                 soundFxDefault: sfxRaw !== '0',
                 hangulGuideEnabled: hangulRaw !== '0',
-                kidAlbumShareEnabled: albumShareRaw !== '0'
+                kidAlbumShareEnabled: albumShareRaw !== '0',
+                pokemonColoringEnabled: pokeColorRaw !== '0'
             }
         });
     } catch (err) {
@@ -351,7 +352,7 @@ router.post('/api/study/sheets/generate', authenticateToken, async (req, res) =>
             sheet = await generateAndSaveWorksheet(opts);
             setImmediate(() => {
                 warmWorksheetTts(sheet.content).catch(() => {});
-                scheduleReplenish(opts.childId, opts.subject);
+                if (opts.subject !== 'coloring') scheduleReplenish(opts.childId, opts.subject);
             });
         }
         res.json({ success: true, sheet });
@@ -407,6 +408,18 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
         if (!sheet) {
             return res.status(404).json({ success: false, message: '학습지를 찾을 수 없습니다.' });
         }
+        if (sheet.subject === 'coloring') {
+            const done = await markWorksheetCompletedOnly(sheet.id);
+            return res.json({
+                success: true,
+                noStampForColoring: true,
+                stampAwarded: false,
+                alreadyAwarded: false,
+                reachedTen: false,
+                alreadyCompleted: done.alreadyCompleted,
+                message: '알록달록 멋진 색칠놀이 완성! 🎨 (색칠놀이는 별·도장 없이 자유롭게 즐겨요)'
+            });
+        }
         const result = await awardStamp({
             childId: sheet.child_id,
             sourceType: 'online',
@@ -427,6 +440,7 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
         });
         res.json({
             success: true,
+            stampAwarded: true,
             message: result.reachedTen
                 ? '축하해요! 도장판 10칸을 모두 채웠어요! 🎉'
                 : (result.alreadyAwarded ? '이미 도장을 받은 학습지예요! 정말 잘했어요!' : '학습 완료! 칭찬 도장을 쾅! 찍었어요 🌟'),
@@ -438,73 +452,8 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
     }
 });
 
-// ------------------------------------------------------------------------------
-// 4. 5분 탐험 수준 테스트 & 서버 폴백 음성(TTS) API
-// ------------------------------------------------------------------------------
-router.post('/api/study/test/start', authenticateToken, async (req, res) => {
-    try {
-        const childId = normalizeChildId(req.body?.childId || 'first');
-        const session = await startLevelTest(childId);
-        res.json({ success: true, ...session });
-    } catch (err) {
-        console.error('수준 테스트 시작 오류:', err);
-        res.status(500).json({ success: false, message: '수준 테스트를 시작하지 못했습니다.' });
-    }
-});
-
-router.post('/api/study/test/:testId/answer', authenticateToken, async (req, res) => {
-    try {
-        const { choice } = req.body || {};
-        const outcome = await submitLevelTestAnswer(req.params.testId, choice);
-        res.json({ success: true, ...outcome });
-    } catch (err) {
-        console.error('수준 테스트 채점 오류:', err);
-        res.status(500).json({ success: false, message: err.message || '채점 처리 중 오류가 발생했습니다.' });
-    }
-});
-
-router.get('/api/study/tts', authenticateToken, async (req, res) => {
-    try {
-        const text = String(req.query.text || '').trim();
-        const lang = String(req.query.lang || 'ko-KR').trim();
-        const out = await synthesizeStudySpeech(text, lang);
-        if (!out.ok) {
-            return res.status(out.status || 503).json({
-                success: false,
-                message: '음성 합성에 일시적인 문제가 있습니다.'
-            });
-        }
-
-        const buf = out.buffer;
-        const total = buf.length;
-        res.setHeader('Content-Type', out.mimeType);
-        res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Cache-Control', 'private, max-age=86400');
-
-        const rangeHeader = req.headers.range;
-        if (rangeHeader && rangeHeader.startsWith('bytes=')) {
-            const [sStr, eStr] = rangeHeader.replace('bytes=', '').split('-');
-            const start = Math.max(0, parseInt(sStr, 10) || 0);
-            const end = eStr ? Math.min(total - 1, parseInt(eStr, 10)) : total - 1;
-            if (start >= total || start > end) {
-                return res.status(416).setHeader('Content-Range', `bytes */${total}`).end();
-            }
-            const chunk = buf.subarray(start, end + 1);
-            res.status(206);
-            res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
-            res.setHeader('Content-Length', chunk.length);
-            return res.send(chunk);
-        }
-
-        res.setHeader('Content-Length', total);
-        return res.send(buf);
-    } catch (err) {
-        console.error('학습실 TTS 스트리밍 오류:', err);
-        return res.status(500).json({ success: false, message: '음성 생성 중 오류가 발생했습니다.' });
-    }
-});
-
 router.use(require('./studyArtwork.routes'));
 router.use(require('./studyPokemon.routes'));
+router.use(require('./studyMedia.routes'));
 
 module.exports = router;

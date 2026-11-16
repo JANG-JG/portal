@@ -172,7 +172,7 @@ async function consumePregeneratedWorksheet({
 
     let content = null;
     try { content = JSON.parse(row.content_json); } catch (e) { content = null; }
-    if (!content) return null;
+    if (!content || !Array.isArray(content.blocks) || content.blocks.length < 6) return null;
 
     const sheetId = await saveWorksheet({
         childId: cid,

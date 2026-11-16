@@ -189,7 +189,7 @@
                 </div>
 
                 <div id="coloringPickerBox" class="coloring-picker-box" hidden>
-                    <p class="coloring-picker-label">🖍️ 원하는 색칠 도안이나 묶음을 골라 보세요! (AI 횟수 차감 없이 바로 만들어져요)</p>
+                    <p class="coloring-picker-label">🖍️ 색칠놀이는 별·도장·AI 횟수 차감 없이 자유롭게 즐길 수 있어요!</p>
                     <div class="coloring-picker-grid" role="group" aria-label="색칠 도안 선택">
                         <button type="button" class="coloring-tpl-pill active" data-coloring-mode="auto_3">🎲 테마 맞춤 3장 모음</button>
                         <button type="button" class="coloring-tpl-pill" data-coloring-mode="bundle_5">📚 인기 도안 5장 색칠책</button>
@@ -204,6 +204,7 @@
                         <button type="button" class="coloring-tpl-pill" data-coloring-mode="butterfly">🦋 예쁜 나비</button>
                         <button type="button" class="coloring-tpl-pill" data-coloring-mode="strawberry">🍓 달콤 딸기</button>
                     </div>
+                    <div id="pokemonColoringMount" class="pokemon-coloring-mount"></div>
                 </div>
 
                 <div class="theme-custom-row">
@@ -287,7 +288,7 @@
             <div class="pokemon-dialog__head">
                 <div>
                     <h3 id="pokemonDexTitle">📖 나의 포켓몬 도감</h3>
-                    <div id="pokemonDexSubtitle" style="font-size:0.78rem; color:#475569; margin-top:2px;">0/40마리 수집</div>
+                    <div id="pokemonDexSubtitle" style="font-size:0.78rem; color:#475569; margin-top:2px;">0/150마리 수집</div>
                 </div>
                 <form method="dialog">
                     <button type="submit" value="close" class="study-btn study-btn-outline" style="min-height:38px; padding:0.3rem 0.75rem;">닫기</button>
@@ -317,6 +318,7 @@
     <script src="/js/study-fx.js" defer></script>
     <script src="/js/study-stamps.js" defer></script>
     <script src="/js/study-pokemon.js" defer></script>
+    <script src="/js/study-pokemon-coloring.js" defer></script>
     <script src="/js/study-dashboard.js" defer></script>
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
 </body>

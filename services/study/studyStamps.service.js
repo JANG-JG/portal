@@ -286,9 +286,21 @@ async function listRecentStamps(childId = 'all', limit = 25) {
     );
 }
 
+async function markWorksheetCompletedOnly(sheetId) {
+    const idNum = Number(sheetId);
+    const existing = await dbGet('SELECT completed_at FROM study_sheets WHERE id = ?', [idNum]);
+    const alreadyCompleted = Boolean(existing && existing.completed_at);
+    await dbRun(
+        "UPDATE study_sheets SET completed_at = COALESCE(completed_at, datetime('now', 'localtime')) WHERE id = ?",
+        [idNum]
+    );
+    return { alreadyCompleted };
+}
+
 module.exports = {
     getActiveStampBoard,
     awardStamp,
+    markWorksheetCompletedOnly,
     deleteStampById,
     removeLastStamp,
     setStampBoardCount,

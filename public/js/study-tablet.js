@@ -281,9 +281,36 @@
         syncServerTabletConfig();
     }
 
+    function drawFreehandStroke(ctx, rawPoints, hex, baseSize, useRealPressure) {
+        if (!ctx || !rawPoints.length || !window.PerfectFreehand) return false;
+        const pts = window.PerfectFreehand.getStroke(rawPoints, {
+            size: baseSize,
+            thinning: useRealPressure ? 0.65 : 0.35,
+            smoothing: 0.55,
+            streamline: 0.45,
+            simulatePressure: !useRealPressure
+        });
+        if (!pts.length) return false;
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = hex;
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 0; i < pts.length - 1; i++) {
+            const [x0, y0] = pts[i];
+            const [x1, y1] = pts[i + 1];
+            ctx.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        return true;
+    }
+
     window.StudyTablet = {
         shouldAcceptCanvasPointer,
         bindDrawingCanvas,
+        drawFreehandStroke,
         setWakeLockEnabled,
         setPenOnlyMode,
         getState: () => ({

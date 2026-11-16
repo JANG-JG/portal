@@ -32,7 +32,7 @@
         clone.setAttribute('aria-hidden', 'true');
         clone.querySelectorAll('[data-color-part]').forEach((el) => el.removeAttribute('data-color-part'));
         clone.querySelectorAll('path, rect, circle, ellipse, polygon, polyline').forEach((el) => {
-            if ((el.getAttribute('fill') || '').toLowerCase() === '#ffffff') {
+            if (!el.hasAttribute('data-keep-white') && (el.getAttribute('fill') || '').toLowerCase() === '#ffffff') {
                 el.setAttribute('fill', 'none');
             }
         });
@@ -40,30 +40,7 @@
     }
 
     function fillFreehandStroke(ctx, rawPoints, hex, baseSize, useRealPressure) {
-        if (!ctx || !rawPoints.length || !window.PerfectFreehand) return false;
-        const pts = window.PerfectFreehand.getStroke(rawPoints, {
-            size: baseSize,
-            thinning: useRealPressure ? 0.65 : 0.35,
-            smoothing: 0.55,
-            streamline: 0.45,
-            simulatePressure: !useRealPressure
-        });
-        if (!pts.length) return false;
-        ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = hex;
-        ctx.beginPath();
-        const len = pts.length;
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        for (let i = 0; i < len - 1; i++) {
-            const [x0, y0] = pts[i];
-            const [x1, y1] = pts[i + 1];
-            ctx.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-        return true;
+        return window.StudyTablet?.drawFreehandStroke?.(ctx, rawPoints, hex, baseSize, useRealPressure) || false;
     }
 
     function snapshotCanvas(canvas) {
@@ -160,17 +137,26 @@
         const wrap = document.createElement('div');
         wrap.className = 'coloring-canvas-wrap';
         wrap.dataset.colorMode = activeMode;
-        wrap.innerHTML = window.StudyIllustrations
-            ? window.StudyIllustrations.getColoringSvg(blk.templateId || 'dino')
-            : '<p>색칠 도안을 불러오지 못했어요.</p>';
 
-        const baseSvg = wrap.querySelector('.coloring-svg');
         const canvas = document.createElement('canvas');
         canvas.className = 'coloring-draw-canvas';
         canvas.setAttribute('aria-label', '자유 색칠 영역');
-        wrap.appendChild(canvas);
-        const outlineSvg = buildOutlineOverlay(baseSvg);
-        if (outlineSvg) wrap.appendChild(outlineSvg);
+        const hintHost = document.createElement('div');
+        hintHost.className = 'pokemon-hint-host';
+
+        let baseSvg = null;
+        let outlineSvg = null;
+        let parts = [];
+        const isPokemonSheet = Number(blk?.pokemonId) > 0 && window.StudyPokemonColoring;
+        if (!isPokemonSheet) {
+            wrap.innerHTML = window.StudyIllustrations
+                ? window.StudyIllustrations.getColoringSvg(blk.templateId || 'dino')
+                : '<p>색칠 도안을 불러오지 못했어요.</p>';
+            baseSvg = wrap.querySelector('.coloring-svg');
+            wrap.appendChild(canvas);
+            outlineSvg = buildOutlineOverlay(baseSvg);
+            if (outlineSvg) wrap.appendChild(outlineSvg);
+        }
         stage.appendChild(wrap);
 
         const banner = document.createElement('p');
@@ -380,27 +366,51 @@
             canvas.addEventListener('pointercancel', endDraw);
         }
 
-        const parts = baseSvg ? baseSvg.querySelectorAll('[data-color-part]') : [];
-        parts.forEach((part) => {
-            part.addEventListener('click', () => {
-                if (activeMode !== 'fill') return;
-                const prevFill = part.getAttribute('fill') || '#ffffff';
-                const prevPainted = Boolean(part.dataset.painted);
-                if (prevFill === activeHex && (activeHex === '#ffffff' || prevPainted)) return;
+        const bindParts = (targetParts) => {
+            targetParts.forEach((part) => {
+                part.addEventListener('click', () => {
+                    if (activeMode !== 'fill') return;
+                    const prevFill = part.getAttribute('fill') || '#ffffff';
+                    const prevPainted = Boolean(part.dataset.painted);
+                    if (prevFill === activeHex && (activeHex === '#ffffff' || prevPainted)) return;
 
-                pushUndo({ kind: 'fill', part, prevFill, prevPainted });
-                part.setAttribute('fill', activeHex);
-                if (window.StudyFx) window.StudyFx.crayon();
-                if (activeHex !== '#ffffff' && !part.dataset.painted) {
-                    part.dataset.painted = '1';
-                    paintedCount += 1;
-                    if (paintedCount === 3) triggerPraise();
-                } else if (activeHex === '#ffffff' && part.dataset.painted) {
-                    delete part.dataset.painted;
-                    paintedCount = Math.max(0, paintedCount - 1);
-                }
+                    pushUndo({ kind: 'fill', part, prevFill, prevPainted });
+                    part.setAttribute('fill', activeHex);
+                    if (window.StudyFx) window.StudyFx.crayon();
+                    if (activeHex !== '#ffffff' && !part.dataset.painted) {
+                        part.dataset.painted = '1';
+                        paintedCount += 1;
+                        if (paintedCount === 3) triggerPraise();
+                    } else if (activeHex === '#ffffff' && part.dataset.painted) {
+                        delete part.dataset.painted;
+                        paintedCount = Math.max(0, paintedCount - 1);
+                    }
+                });
             });
-        });
+        };
+
+        const hydrateSvg = (svgEl) => {
+            baseSvg = svgEl;
+            if (!canvas.parentElement) wrap.appendChild(canvas);
+            if (outlineSvg) outlineSvg.remove();
+            outlineSvg = buildOutlineOverlay(baseSvg);
+            if (outlineSvg) wrap.appendChild(outlineSvg);
+            parts = baseSvg ? Array.from(baseSvg.querySelectorAll('[data-color-part]')) : [];
+            bindParts(parts);
+            requestAnimationFrame(resizeCanvas);
+        };
+
+        if (isPokemonSheet) {
+            window.StudyPokemonColoring.mountPokemonColoringSvg({
+                wrap,
+                blk,
+                hintHost,
+                onSvgReady: hydrateSvg
+            });
+        } else {
+            parts = baseSvg ? Array.from(baseSvg.querySelectorAll('[data-color-part]')) : [];
+            bindParts(parts);
+        }
 
         undoBtn.addEventListener('click', () => {
             const item = undoStack.pop();
@@ -463,7 +473,7 @@
                     childName: sheetMeta?.child_name || '',
                     sheetId: sheetMeta?.id || 0,
                     templateId: blk.templateId || '',
-                    title: blk.title || sheetMeta?.title || '내가 칠한 그림',
+                    title: blk.templateTitle || blk.title || sheetMeta?.title || '내가 칠한 그림',
                     hasAnyPaint: paintedCount > 0 || hasCanvasInk,
                     onSaved: (art) => {
                         banner.style.color = '#047857';
@@ -477,14 +487,10 @@
 
         syncBrushUi();
         syncUndoBtn();
-        container.appendChild(modeBar);
-        container.appendChild(palette);
-        container.appendChild(stage);
-        container.appendChild(banner);
+        container.append(modeBar, palette, stage, banner);
+        if (isPokemonSheet) container.appendChild(hintHost);
         if (artworkBar.children.length > 0) container.appendChild(artworkBar);
     }
 
-    window.StudyColorBlock = {
-        renderColorBlock
-    };
+    window.StudyColorBlock = { renderColorBlock };
 })();

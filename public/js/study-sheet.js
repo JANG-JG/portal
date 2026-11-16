@@ -162,13 +162,19 @@
             container.appendChild(card);
         });
 
+        const encEl = document.getElementById('sheetEncouragement');
         const compBtn = document.getElementById('btnCompleteSheet');
-        if (sheet.completed_at && compBtn) {
+        if (encEl) {
+            encEl.textContent = isColoringSheet
+                ? '색칠놀이는 별·도장 없이 자유롭게 즐기는 시간이에요! 다 칠했으면 저장하고 마무리해 보아요 🎨'
+                : '모든 문제를 다 풀었다면 아래 버튼을 눌러 칭찬 도장을 받아 보세요!';
+        }
+        if (compBtn && isColoringSheet) {
+            compBtn.textContent = sheet.completed_at ? '✅ 색칠 완료! (학습실로 가기)' : '🎨 색칠놀이 완성! (별 없이 마무리)';
+        } else if (compBtn && sheet.completed_at) {
             compBtn.textContent = '✅ 이미 완료해서 칭찬 도장을 받았어요!';
         }
-        if (window.StudyTTS && typeof window.StudyTTS.prefetch === 'function') {
-            window.StudyTTS.prefetch(blocks.map((b) => ({ text: b.ttsText || b.prompt, lang: b.ttsLang || 'ko-KR' })));
-        }
+        window.StudyTTS?.prefetch?.(blocks.map((b) => ({ text: b.ttsText || b.prompt, lang: b.ttsLang || 'ko-KR' })));
     }
 
     function blockTypeLabel(type) {
@@ -474,19 +480,18 @@
             try {
                 const res = await fetch(`/api/study/sheets/${sheetId}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include' });
                 const data = await res.json();
-                showToast(data.message || '칭찬 도장을 받았어요!');
+                showToast(data.message || '완료되었어요!');
                 if (data.success) {
-                    if (window.StudyFx) { window.StudyFx.fanfare(); window.StudyFx.celebrate({ big: Boolean(data.reachedTen) }); }
-                    btn.textContent = data.reachedTen
-                        ? '🎉 도장 10칸 완성! 알 부화 보러 가기 🥚✨'
-                        : '✅ 칭찬 도장을 받았어요! (학습실로 가기)';
+                    const noStamp = Boolean(data.noStampForColoring || currentSheet?.subject === 'coloring');
+                    window.StudyFx?.[noStamp ? 'tap' : 'fanfare']?.();
+                    window.StudyFx?.celebrate?.({ big: !noStamp && Boolean(data.reachedTen) });
+                    btn.textContent = noStamp
+                        ? '✅ 색칠 완성! (학습실로 가기)'
+                        : (data.reachedTen ? '🎉 도장 10칸 완성! 알 부화 보러 가기 🥚✨' : '✅ 칭찬 도장을 받았어요! (학습실로 가기)');
                     btn.disabled = false;
                     btn.onclick = () => { window.location.href = `/study?childId=${encodeURIComponent(currentSheet?.child_id || 'first')}`; };
                 }
-            } catch (e) {
-                btn.disabled = false;
-                showToast('완료 저장 중 문제가 생겼어요.');
-            }
+            } catch (e) { btn.disabled = false; showToast('완료 저장 중 문제가 생겼어요.'); }
         });
         loadSheet();
     });

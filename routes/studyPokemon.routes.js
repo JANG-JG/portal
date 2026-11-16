@@ -10,8 +10,10 @@ const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const {
+    normalizeChildId,
     resolveChildProfileId,
-    getActiveStampBoard
+    getActiveStampBoard,
+    getSystemConfig
 } = require('../services/study/studyDb.service');
 const {
     getPokemonStateForBoard,
@@ -19,6 +21,11 @@ const {
     setPartnerPokemon,
     getOrCachePokemonSprite
 } = require('../services/study/studyPokemon.service');
+const {
+    getOrBuildPokemonColoringSvg,
+    getPokeApiSpeciesInfo,
+    listGen1ColoringCatalog
+} = require('../services/study/pokemonColoring.service');
 
 router.get('/api/study/pokemon/state', authenticateToken, async (req, res) => {
     try {
@@ -87,6 +94,51 @@ async function servePokemonSprite(req, res, { isPublic = false } = {}) {
         res.status(404).send('포켓몬 이미지를 불러올 수 없습니다.');
     }
 }
+
+router.get('/api/study/pokemon/gen1-list', authenticateToken, async (req, res) => {
+    try {
+        const enabledRaw = await getSystemConfig('study_pokemon_coloring_enabled', '1');
+        const enabled = enabledRaw !== '0';
+        const q = String(req.query.q || '').trim();
+        const type = String(req.query.type || '').trim();
+        const list = enabled ? listGen1ColoringCatalog({ q, type }) : [];
+        res.json({ success: true, enabled, total: list.length, list });
+    } catch (err) {
+        console.error('1세대 포켓몬 목록 조회 오류:', err);
+        res.status(500).json({ success: false, message: '1세대 포켓몬 목록을 불러오지 못했어요.' });
+    }
+});
+
+router.get('/api/study/pokemon/species/:id', authenticateToken, async (req, res) => {
+    const idNum = Math.round(Number(req.params.id));
+    if (!Number.isInteger(idNum) || idNum < 1 || idNum > 150) {
+        return res.status(400).json({ success: false, message: '1~150번 초기 포켓몬만 지원합니다.' });
+    }
+    try {
+        const species = await getPokeApiSpeciesInfo(idNum);
+        res.json({ success: true, species });
+    } catch (err) {
+        console.error('포켓몬 종 정보 조회 오류:', err);
+        res.status(500).json({ success: false, message: '포켓몬 정보를 불러오지 못했어요.' });
+    }
+});
+
+router.get('/api/study/pokemon/coloring-svg/:id', authenticateToken, async (req, res) => {
+    const idNum = Math.round(Number(req.params.id));
+    if (!Number.isInteger(idNum) || idNum < 1 || idNum > 150) {
+        return res.status(400).send('1~150번 초기 포켓몬 번호만 색칠할 수 있습니다.');
+    }
+    try {
+        const svg = await getOrBuildPokemonColoringSvg(idNum);
+        res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+        res.setHeader('Cache-Control', 'private, max-age=604800');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.send(svg);
+    } catch (err) {
+        console.error('포켓몬 색칠 도안 생성 오류:', err);
+        res.status(500).send('포켓몬 색칠 도안을 불러오지 못했습니다.');
+    }
+});
 
 router.get('/api/study/pokemon/sprite/:id', authenticateToken, (req, res) => {
     servePokemonSprite(req, res, { isPublic: false });

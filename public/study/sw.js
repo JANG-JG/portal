@@ -25,7 +25,8 @@ const PRECACHE_ASSETS = [
     '/vendor/study/perfect-freehand.min.js',
     '/js/study-fx.js',
     '/js/study-hangul-trace.js',
-    '/js/study-artwork.js'
+    '/js/study-artwork.js',
+    '/js/study-pokemon-coloring.js'
 ];
 
 self.addEventListener('install', (event) => {

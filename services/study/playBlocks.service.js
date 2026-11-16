@@ -7,6 +7,8 @@
  * ==============================================================================
  */
 
+const { getPokemonById, listEnrichedCatalog, POPULAR_GEN1_IDS } = require('./pokemonCatalog.data');
+
 function clampLevel(level) {
     const n = Number(level);
     return Number.isFinite(n) ? Math.min(5, Math.max(1, Math.round(n))) : 1;
@@ -284,6 +286,45 @@ function buildMazeBlock({ subject, level, theme }) {
     };
 }
 
+function pickRandomGen1Ids(count = 3, excludeIds = []) {
+    const ex = new Set((excludeIds || []).map(Number));
+    const allIds = listEnrichedCatalog().map((p) => p.id).filter((id) => id >= 1 && id <= 150 && !ex.has(id));
+    const pool = allIds.length ? [...allIds] : [...POPULAR_GEN1_IDS];
+    for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, count);
+}
+
+function buildPokemonColoringBlock({ pokemonId, excludePokemonId = 0, blockId = 'block-1' } = {}) {
+    let pid = Math.round(Number(pokemonId));
+    if (!Number.isInteger(pid) || pid < 1 || pid > 150) {
+        pid = pickRandomGen1Ids(1, excludePokemonId ? [excludePokemonId] : [])[0] || 25;
+    }
+    const poke = getPokemonById(pid);
+    const numLabel = String(pid).padStart(3, '0');
+    return {
+        id: blockId,
+        type: 'color',
+        sourceKind: 'pokeapi_gen1',
+        pokemonId: pid,
+        pokemonNameKo: poke.nameKo,
+        typeLabel: poke.typeLabel,
+        themeKey: 'pokemon',
+        templateId: `pokemon_${pid}`,
+        templateTitle: `#${numLabel} ${poke.nameKo}`,
+        shapeEmoji: poke.typeEmoji || '⚡',
+        artworkUrl: `/api/study/pokemon/sprite/${pid}?kind=artwork`,
+        coloringSvgUrl: `/api/study/pokemon/coloring-svg/${pid}`,
+        level: 1,
+        prompt: `${poke.typeEmoji} #${numLabel} ${poke.nameKo} 색칠하기! 톡 채우기와 색연필로 멋지게 칠해 보세요.`,
+        ttsText: `포켓몬 ${poke.nameKo} 도안이에요! 좋아하는 색깔로 예쁘게 색칠해 보아요!`,
+        ttsLang: 'ko-KR',
+        hint: `${poke.flavorKo || ''} (💡 오른쪽 아래 '원래 색깔' 버튼으로 참고할 수 있어요!)`.trim()
+    };
+}
+
 function buildColoringBlock({ level = 1, theme, templateId = '', excludeTemplateId = '' }) {
     const category = resolveThemeCategory(theme);
     const explicit = templateId ? COLOR_TEMPLATES.find((c) => c.templateId === templateId) : null;
@@ -292,7 +333,7 @@ function buildColoringBlock({ level = 1, theme, templateId = '', excludeTemplate
     const tpl = explicit || (preferred.length ? pickRandom(preferred) : pickRandom(pool.length ? pool : COLOR_TEMPLATES));
 
     return {
-        id: 'block-5',
+        id: 'block-7',
         type: 'color',
         themeKey: category,
         templateId: tpl.templateId,
@@ -309,6 +350,47 @@ function buildColoringBlock({ level = 1, theme, templateId = '', excludeTemplate
 function buildColoringWorksheet({ theme = '동물 친구', coloringMode = 'auto_3' } = {}) {
     const mode = String(coloringMode || 'auto_3').trim();
     const cleanTheme = String(theme || '동물 친구').trim().slice(0, 24) || '동물 친구';
+    const pokeMatch = mode.match(/^pokemon:(\d{1,3})$/);
+
+    if (pokeMatch) {
+        const pid = Number(pokeMatch[1]);
+        const block = buildPokemonColoringBlock({ pokemonId: pid, blockId: 'block-1' });
+        return {
+            title: `🎨 ${block.templateTitle} 포켓몬 색칠놀이`,
+            encouragement: '나만의 멋진 1세대 포켓몬 그림이 완성되었어요! 🌈',
+            blocks: [block]
+        };
+    }
+
+    if (mode === 'pokemon_random_1') {
+        const block = buildPokemonColoringBlock({ blockId: 'block-1' });
+        return {
+            title: `🎨 랜덤 포켓몬 · ${block.templateTitle}`,
+            encouragement: '멋진 포켓몬 색칠 그림이 완성되었어요! 🌈',
+            blocks: [block]
+        };
+    }
+
+    if (mode === 'pokemon_starters') {
+        const starterIds = [25, 1, 4, 7];
+        const blocks = starterIds.map((pid, idx) => buildPokemonColoringBlock({ pokemonId: pid, blockId: `block-${idx + 1}` }));
+        return {
+            title: '🎨 관동 스타터 포켓몬 색칠북 (4장)',
+            encouragement: '피카츄, 이상해씨, 파이리, 꼬부기를 모두 예쁘게 칠했어요! 🌟',
+            blocks
+        };
+    }
+
+    if (mode === 'pokemon_random_3' || (/포켓몬|피카츄|파이리|꼬부기|이상해|관동/i.test(cleanTheme) && mode === 'auto_3')) {
+        const ids = pickRandomGen1Ids(3);
+        const blocks = ids.map((pid, idx) => buildPokemonColoringBlock({ pokemonId: pid, blockId: `block-${idx + 1}` }));
+        return {
+            title: '🎨 1세대 포켓몬 (#1~150) 랜덤 색칠 모음 (3장)',
+            encouragement: '와! 1세대 포켓몬 친구들을 모두 예쁘게 색칠했어요! 🌟',
+            blocks
+        };
+    }
+
     const category = resolveThemeCategory(cleanTheme);
     const explicitTpl = COLOR_TEMPLATES.find((c) => c.templateId === mode);
 
@@ -383,6 +465,12 @@ function appendOptionalPlayBlock(baseBlocks, { subject, level, theme, includePla
 function trySwapPlayBlock(existingBlock, idx, { subject, level, theme }) {
     const playTypes = new Set(['dot_to_dot', 'maze', 'color']);
     if (!playTypes.has(existingBlock?.type)) return null;
+    if (existingBlock?.sourceKind === 'pokeapi_gen1' || Number(existingBlock?.pokemonId) > 0) {
+        return buildPokemonColoringBlock({
+            excludePokemonId: Number(existingBlock.pokemonId) || 0,
+            blockId: existingBlock.id || `block-${idx + 1}`
+        });
+    }
     const preferredType = subject === 'coloring' ? 'color' : '';
     const nextPlay = buildPlayBlock({ subject, level, theme, preferredType, currentBlock: existingBlock });
     return { ...nextPlay, id: existingBlock.id || `block-${idx + 1}` };
@@ -394,6 +482,7 @@ module.exports = {
     buildDotToDotBlock,
     buildMazeBlock,
     buildColoringBlock,
+    buildPokemonColoringBlock,
     buildColoringWorksheet,
     buildPlayBlock,
     appendOptionalPlayBlock,

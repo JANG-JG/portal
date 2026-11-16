@@ -128,11 +128,13 @@
             const sfxChk = document.getElementById('chkTabletSoundFxDefault');
             const hangulChk = document.getElementById('chkTabletHangulGuideEnabled');
             const albumChk = document.getElementById('chkTabletKidAlbumShareEnabled');
+            const pokeColorChk = document.getElementById('chkTabletPokemonColoringEnabled');
             if (wakeChk) wakeChk.checked = Boolean(cfg.wakeLockDefault);
             if (penChk) penChk.checked = Boolean(cfg.penOnlyDefault);
             if (sfxChk) sfxChk.checked = cfg.soundFxDefault !== false;
             if (hangulChk) hangulChk.checked = cfg.hangulGuideEnabled !== false;
             if (albumChk) albumChk.checked = cfg.kidAlbumShareEnabled !== false;
+            if (pokeColorChk) pokeColorChk.checked = cfg.pokemonColoringEnabled !== false;
 
             const extEl = document.getElementById('studyTabletExtLoginText');
             const lanEl = document.getElementById('studyTabletLanLoginText');
@@ -152,6 +154,7 @@
         const sfxChk = document.getElementById('chkTabletSoundFxDefault');
         const hangulChk = document.getElementById('chkTabletHangulGuideEnabled');
         const albumChk = document.getElementById('chkTabletKidAlbumShareEnabled');
+        const pokeColorChk = document.getElementById('chkTabletPokemonColoringEnabled');
         const saveBtn = document.getElementById('btnSaveStudyTabletConfig');
         if (!wakeChk || !penChk) return;
 
@@ -166,7 +169,8 @@
                     penOnlyDefault: penChk.checked,
                     soundFxDefault: sfxChk ? sfxChk.checked : true,
                     hangulGuideEnabled: hangulChk ? hangulChk.checked : true,
-                    kidAlbumShareEnabled: albumChk ? albumChk.checked : true
+                    kidAlbumShareEnabled: albumChk ? albumChk.checked : true,
+                    pokemonColoringEnabled: pokeColorChk ? pokeColorChk.checked : true
                 })
             });
             const data = await res.json();

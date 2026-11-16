@@ -12,6 +12,7 @@ const { portalDb } = require('../db');
 const {
     getActiveStampBoard,
     awardStamp,
+    markWorksheetCompletedOnly,
     deleteStampById,
     removeLastStamp,
     setStampBoardCount,
@@ -408,7 +409,7 @@ module.exports = {
     getSystemConfig, setSystemConfig,
     getProfiles, resolveChildProfileId, createStudyProfile, deleteStudyProfile,
     getChildLevels, setChildLevel, adjustChildLevel,
-    getActiveStampBoard, awardStamp, deleteStampById, removeLastStamp,
+    getActiveStampBoard, awardStamp, markWorksheetCompletedOnly, deleteStampById, removeLastStamp,
     setStampBoardCount, resetCurrentStampBoard, updateStampEntry, listRecentStamps,
     getWeeklyBalanceRecommendation,
     saveWorksheet, getWorksheetById, updateWorksheetContent, listRecentWorksheets,
