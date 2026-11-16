@@ -128,7 +128,7 @@
 
         const badge = document.getElementById('pokemonDexCountBadge');
         if (badge) {
-            badge.textContent = `도감 ${pokemonData.collectedCount || 0}/${pokemonData.totalCatalogCount || 40}`;
+            badge.textContent = `도감 ${pokemonData.collectedCount || 0}/${pokemonData.totalCatalogCount || 150}`;
         }
 
         const eggBtn = document.getElementById('btnPokemonEggStage');
@@ -167,8 +167,8 @@
                     <span class="pokemon-stage__tag">⭐ 내 단짝 · ${esc(partner.typeEmoji)} ${esc(partner.typeLabel)}</span>
                     <div class="pokemon-actor-wrap">
                         <img class="pokemon-sprite-img"
-                             src="${esc(partner.animatedUrl)}"
-                             data-fallback="${esc(partner.artworkUrl)}"
+                             src="${esc(partner.artworkUrl || partner.animatedUrl)}"
+                             data-fallback="${esc(partner.animatedUrl || '')}"
                              alt="${esc(partner.nameKo)}">
                     </div>
                     <div>
@@ -278,7 +278,7 @@
         if (!body || !currentPokemon) return;
 
         if (subtitle) {
-            subtitle.textContent = `${currentPokemon.collectedCount || 0}/${currentPokemon.totalCatalogCount || 40}마리 수집`;
+            subtitle.textContent = `${currentPokemon.collectedCount || 0}/${currentPokemon.totalCatalogCount || 150}마리 수집`;
         }
         const catalog = Array.isArray(currentPokemon.catalog) ? currentPokemon.catalog : [];
         const filtered = catalog.filter((item) => {
@@ -305,7 +305,7 @@
                     }
                     return `
                     <div class="pokemon-dex-card is-unlocked ${item.isPartner ? 'is-partner' : ''}">
-                        <img src="${esc(item.animatedUrl || item.artworkUrl)}" alt="${esc(item.nameKo)}">
+                        <img src="${esc(item.artworkUrl || item.animatedUrl)}" alt="${esc(item.nameKo)}">
                         <strong style="font-size:0.88rem; color:#0f172a;">${esc(item.nameKo)} ${item.count > 1 ? `<small style="color:#6366f1;">x${item.count}</small>` : ''}</strong>
                         <span style="font-size:0.74rem; color:${esc(item.color || '#475569')}; font-weight:700;">${esc(item.typeEmoji)} ${esc(item.typeLabel)}</span>
                         <button type="button" class="pokemon-dex-partner-btn" data-select-partner="${esc(item.id)}" ${item.isPartner ? 'disabled' : ''}>

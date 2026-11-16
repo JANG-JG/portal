@@ -221,29 +221,12 @@
     }
 
     function selectSubjectChip(subject, byUser = true) {
+        if (!['korean', 'math', 'english'].includes(subject)) return;
         state.selectedSubject = subject;
         if (byUser) state._userPickedSubject = true;
         document.querySelectorAll('.subject-chip').forEach((btn) => {
             btn.classList.toggle('active', btn.dataset.subject === subject);
         });
-        const isColoring = subject === 'coloring';
-        const coloringBox = document.getElementById('coloringPickerBox');
-        const playRow = document.getElementById('playMissionRow');
-        const genBtn = document.getElementById('btnGenerateSheet');
-        if (coloringBox) coloringBox.hidden = !isColoring;
-        if (playRow) playRow.hidden = isColoring;
-        if (isColoring && window.StudyPokemonColoring) {
-            window.StudyPokemonColoring.initDashboardPicker({
-                getSelectedMode: () => state.selectedColoringMode,
-                onSelectMode: (mode) => {
-                    state.selectedColoringMode = mode;
-                    document.querySelectorAll('.coloring-tpl-pill').forEach((p) => p.classList.toggle('active', p.dataset.coloringMode === mode));
-                }
-            });
-        }
-        if (genBtn && !genBtn.disabled) {
-            genBtn.textContent = isColoring ? '🖍️ 색칠놀이 바로 만들기!' : '🎨 학습지 바로 만들기!';
-        }
     }
 
     function bindEvents() {
@@ -258,16 +241,31 @@
             });
         }
 
+        const modeTablist = document.querySelector('.gen-mode-tabs[role="tablist"]');
+        const panelWorksheet = document.getElementById('panelGenWorksheet');
+        const panelColoring = document.getElementById('panelGenColoring');
+        if (modeTablist && window.StudyPokemonColoring?.bindAccessibleTablist) {
+            window.StudyPokemonColoring.bindAccessibleTablist(modeTablist, (tab) => {
+                const isColoring = tab.dataset.genMode === 'coloring';
+                if (panelWorksheet) panelWorksheet.hidden = isColoring;
+                if (panelColoring) panelColoring.hidden = !isColoring;
+                if (isColoring) {
+                    window.StudyPokemonColoring.syncDashboardSelection();
+                }
+            });
+        }
+
+        if (window.StudyPokemonColoring?.initColoringCategoryTabs) {
+            window.StudyPokemonColoring.initColoringCategoryTabs({
+                getSelectedMode: () => state.selectedColoringMode,
+                onSelectMode: (mode) => {
+                    state.selectedColoringMode = mode || 'auto_3';
+                }
+            });
+        }
+
         document.querySelectorAll('.subject-chip').forEach((btn) => {
             btn.addEventListener('click', () => selectSubjectChip(btn.dataset.subject, true));
-        });
-
-        document.querySelectorAll('.coloring-tpl-pill').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                state.selectedColoringMode = btn.dataset.coloringMode || 'auto_3';
-                document.querySelectorAll('.coloring-tpl-pill').forEach((p) => p.classList.toggle('active', p === btn));
-                if (window.StudyPokemonColoring) window.StudyPokemonColoring.syncDashboardSelection();
-            });
         });
 
         document.querySelectorAll('.theme-pill').forEach((btn) => {
@@ -432,46 +430,53 @@
             });
         }
 
-        // 맞춤 학습지 생성
+        async function submitSheetGeneration(subject, triggerBtn) {
+            if (!triggerBtn) return;
+            const customVal = (document.getElementById('customThemeInput')?.value || '').trim();
+            const theme = customVal || state.selectedTheme || '동물 친구';
+            const playChk = document.getElementById('chkIncludePlayBlock');
+            const includePlayBlock = subject === 'coloring' ? false : (playChk ? Boolean(playChk.checked) : true);
+            triggerBtn.disabled = true;
+            const origText = triggerBtn.textContent;
+            triggerBtn.textContent = subject === 'coloring'
+                ? '🖍️ 색칠 도안을 준비하고 있어요...'
+                : '✨ 재미있는 학습지를 만들고 있어요...';
+            try {
+                const res = await fetch('/api/study/sheets/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        childId: state.childId,
+                        subject,
+                        theme,
+                        includePlayBlock,
+                        coloringMode: state.selectedColoringMode
+                    })
+                });
+                const data = await res.json();
+                if (data.success && data.sheet) {
+                    window.location.href = `/study/sheet/${data.sheet.id}`;
+                } else {
+                    showToast(data.message || '학습지 생성에 실패했어요.');
+                    triggerBtn.disabled = false;
+                    triggerBtn.textContent = origText;
+                }
+            } catch (err) {
+                showToast('학습지를 만드는 중 문제가 생겼어요.');
+                triggerBtn.disabled = false;
+                triggerBtn.textContent = origText;
+            }
+        }
+
         const btnGen = document.getElementById('btnGenerateSheet');
         if (btnGen) {
-            btnGen.addEventListener('click', async () => {
-                const customVal = (document.getElementById('customThemeInput')?.value || '').trim();
-                const theme = customVal || state.selectedTheme || '동물 친구';
-                const playChk = document.getElementById('chkIncludePlayBlock');
-                const includePlayBlock = playChk ? Boolean(playChk.checked) : true;
-                btnGen.disabled = true;
-                const origText = btnGen.textContent;
-                btnGen.textContent = state.selectedSubject === 'coloring'
-                    ? '🖍️ 색칠 도안을 준비하고 있어요...'
-                    : '✨ 재미있는 학습지를 만들고 있어요...';
-                try {
-                    const res = await fetch('/api/study/sheets/generate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            childId: state.childId,
-                            subject: state.selectedSubject,
-                            theme,
-                            includePlayBlock,
-                            coloringMode: state.selectedColoringMode
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.success && data.sheet) {
-                        window.location.href = `/study/sheet/${data.sheet.id}`;
-                    } else {
-                        showToast(data.message || '학습지 생성에 실패했어요.');
-                        btnGen.disabled = false;
-                        btnGen.textContent = origText;
-                    }
-                } catch (err) {
-                    showToast('학습지를 만드는 중 문제가 생겼어요.');
-                    btnGen.disabled = false;
-                    btnGen.textContent = origText;
-                }
-            });
+            btnGen.addEventListener('click', () => submitSheetGeneration(state.selectedSubject, btnGen));
+        }
+
+        const btnGenColor = document.getElementById('btnGenerateColoring');
+        if (btnGenColor) {
+            btnGenColor.addEventListener('click', () => submitSheetGeneration('coloring', btnGenColor));
         }
     }
 

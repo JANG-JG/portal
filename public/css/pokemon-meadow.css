@@ -180,27 +180,27 @@
     border-radius: 50%;
     background: rgba(21, 128, 61, 0.24);
     pointer-events: none;
+    transition: transform 0.22s ease, opacity 0.22s ease;
 }
 
 .pokemon-meadow__sprite-flip {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    width: 56px;
-    height: 54px;
+    width: 58px;
+    height: 56px;
     transform-origin: center bottom;
     transition: transform 0.22s ease;
 }
 
 .pokemon-meadow__sprite-img {
-    max-width: 54px;
-    max-height: 52px;
+    max-width: 56px;
+    max-height: 54px;
     width: auto;
     height: auto;
     object-fit: contain;
-    image-rendering: pixelated;
     transform-origin: center bottom;
-    filter: drop-shadow(0 2px 3px rgba(15, 23, 42, 0.16));
+    filter: drop-shadow(0 3px 4px rgba(15, 23, 42, 0.16));
 }
 
 .pokemon-meadow__tag {
@@ -333,7 +333,11 @@
     }
 
     .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__walker.is-walking .pokemon-meadow__sprite-img {
-        animation: meadowWalkStep 0.44s ease-in-out infinite alternate;
+        animation: meadowWalkStep 0.56s ease-in-out infinite;
+    }
+
+    .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__walker.is-walking .pokemon-meadow__shadow {
+        animation: meadowShadowStep 0.56s ease-in-out infinite;
     }
 
     .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__walker.is-resting .pokemon-meadow__sprite-img {
@@ -341,7 +345,7 @@
     }
 
     .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__walker.is-tapped .pokemon-meadow__sprite-img {
-        animation: meadowTapJump 0.5s ease-out 1;
+        animation: meadowTapJump 0.52s ease-out 1;
     }
 
     .pokemon-meadow:not(.is-motion-paused) .pokemon-meadow__empty-nest {
@@ -359,19 +363,26 @@
 }
 
 @keyframes meadowWalkStep {
-    0% { transform: translateY(0) rotate(-2deg); }
-    100% { transform: translateY(-4px) rotate(2deg); }
+    0%, 100% { transform: translateY(0) scale(1.04, 0.95) rotate(-3deg); }
+    25% { transform: translateY(-6px) scale(0.97, 1.04) rotate(0deg); }
+    50% { transform: translateY(0) scale(1.04, 0.95) rotate(3deg); }
+    75% { transform: translateY(-6px) scale(0.97, 1.04) rotate(0deg); }
+}
+
+@keyframes meadowShadowStep {
+    0%, 50%, 100% { transform: translateX(0) scaleX(1.06); opacity: 0.9; }
+    25%, 75% { transform: translateX(0) scaleX(0.76); opacity: 0.5; }
 }
 
 @keyframes meadowIdleBreathe {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-2.5px) scale(1.03); }
+    0%, 100% { transform: translateY(0) scale(1, 1); }
+    50% { transform: translateY(-3px) scale(1.03, 0.98); }
 }
 
 @keyframes meadowTapJump {
     0% { transform: translateY(0) scale(1); }
-    40% { transform: translateY(-16px) scale(1.09); }
-    75% { transform: translateY(1px) scale(1.04, 0.94); }
+    40% { transform: translateY(-18px) scale(1.06, 1.08); }
+    75% { transform: translateY(2px) scale(1.07, 0.92); }
     100% { transform: translateY(0) scale(1); }
 }
 

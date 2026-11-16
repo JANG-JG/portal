@@ -59,13 +59,17 @@
         }
         const enabled = pokemon.enabled !== false;
         const nextVal = enabled ? 'false' : 'true';
+        const stats = pokemon.cacheStats;
+        const cacheLine = stats
+            ? ` · DB 캐시 ${esc(stats.total)}건 (일러스트 ${esc(stats.artworkCount)} · 도안 ${esc(stats.coloringSvgCount)} · 도감 ${esc(stats.speciesCount)})`
+            : '';
         bar.innerHTML = `
             <div style="min-width:0; flex:1 1 220px;">
                 <strong style="font-size:0.84rem; color:${enabled ? '#0369a1' : '#475569'};">
                     🥚 포켓몬 알 부화 · 도감 ${enabled ? '사용 중 (ON)' : '일시 중지 (OFF)'}
                 </strong>
                 <div style="font-size:0.75rem; color:#64748b; margin-top:0.15rem;">
-                    도장 10칸 완성 시 알이 부화해 도감(총 ${esc(pokemon.totalCatalogCount || 40)}종)에 등록됩니다.
+                    도장 10칸 완성 시 알이 부화해 도감(총 ${esc(pokemon.totalCatalogCount || 150)}종)에 등록됩니다.${cacheLine}
                 </div>
             </div>
             <button type="button" class="btn-admin ${enabled ? 'btn-admin-outline' : 'btn-admin-primary'} btn-admin-sm"
@@ -83,7 +87,7 @@
             return;
         }
         const pokeMap = new Map((pokemon?.children || []).map((p) => [p.childId, p]));
-        const totalDex = Number(pokemon?.totalCatalogCount || 40);
+        const totalDex = Number(pokemon?.totalCatalogCount || 150);
 
         grid.innerHTML = children.map((c) => {
             const b = c.stampBoard || { cycleNo: 1, earnedCount: 0, totalEarned: 0, stamps: [] };

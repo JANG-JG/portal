@@ -19,6 +19,11 @@ const {
     listEnrichedCatalog,
     pickEggPokemonId
 } = require('./pokemonCatalog.data');
+const {
+    getPokemonCacheEntry,
+    setPokemonCacheEntry,
+    getPokemonCacheStats
+} = require('./studyPokemonCache.service');
 
 const SPRITE_CACHE_DIR = path.join(__dirname, '..', '..', 'public', 'img', 'pokemon');
 const ipv4Agent = new https.Agent({ family: 4 });
@@ -387,8 +392,22 @@ async function getOrCachePokemonSprite(pokemonId, kind = 'animated') {
     if (wantAnimated && fs.existsSync(gifPath)) {
         return { contentType: 'image/gif', buffer: fs.readFileSync(gifPath) };
     }
-    if (fs.existsSync(pngPath)) {
+    if (!wantAnimated && fs.existsSync(pngPath)) {
         return { contentType: 'image/png', buffer: fs.readFileSync(pngPath) };
+    }
+
+    if (wantAnimated) {
+        const dbAnim = await getPokemonCacheEntry(`sprite:animated:${idNum}`);
+        if (dbAnim?.buffer?.length > 200) {
+            try { fs.writeFileSync(gifPath, dbAnim.buffer); } catch (_) {}
+            return { contentType: 'image/gif', buffer: dbAnim.buffer };
+        }
+    }
+
+    const dbArt = await getPokemonCacheEntry(`sprite:artwork:${idNum}`);
+    if (dbArt?.buffer?.length > 200) {
+        try { fs.writeFileSync(pngPath, dbArt.buffer); } catch (_) {}
+        return { contentType: 'image/png', buffer: dbArt.buffer };
     }
 
     if (wantAnimated) {
@@ -396,17 +415,23 @@ async function getOrCachePokemonSprite(pokemonId, kind = 'animated') {
             const gifUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${idNum}.gif`;
             const buf = await downloadBinary(gifUrl, 4500);
             if (buf && buf.length > 200) {
-                fs.writeFileSync(gifPath, buf);
+                try { fs.writeFileSync(gifPath, buf); } catch (_) {}
+                await setPokemonCacheEntry(`sprite:animated:${idNum}`, 'image/gif', buf, gifUrl);
                 return { contentType: 'image/gif', buffer: buf };
             }
         } catch (_) {}
+    }
+
+    if (fs.existsSync(pngPath)) {
+        return { contentType: 'image/png', buffer: fs.readFileSync(pngPath) };
     }
 
     try {
         const pngUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${idNum}.png`;
         const buf = await downloadBinary(pngUrl, 4500);
         if (buf && buf.length > 200) {
-            fs.writeFileSync(pngPath, buf);
+            try { fs.writeFileSync(pngPath, buf); } catch (_) {}
+            await setPokemonCacheEntry(`sprite:artwork:${idNum}`, 'image/png', buf, pngUrl);
             return { contentType: 'image/png', buffer: buf };
         }
     } catch (_) {}
@@ -439,9 +464,11 @@ async function getAdminPokemonOverview(profiles = [], stampBoardsMap = {}) {
             partnerNameKo: state.partnerPokemon?.nameKo || '없음'
         });
     }
+    const cacheStats = await getPokemonCacheStats();
     return {
         enabled,
         totalCatalogCount: POKEMON_CATALOG.length,
+        cacheStats,
         children
     };
 }

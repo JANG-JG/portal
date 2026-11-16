@@ -108,28 +108,110 @@
     padding: 8px 12px;
 }
 
-/* 색칠놀이 전용 과목 칩 & 도안 선택 피커 */
-.subject-chip[data-subject="coloring"].active {
-    background: linear-gradient(135deg, #ec4899 0%, #f97316 100%);
-    color: #ffffff;
-    border-color: #db2777;
+/* 학습지/색칠놀이 분리 탭 & 색칠 카테고리 서브 탭 */
+.gen-mode-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    margin-bottom: 14px;
+    border-radius: 16px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+
+.gen-mode-tab {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    min-block-size: 46px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: #475569;
+    font-family: inherit;
+    font-size: 0.94rem;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.gen-mode-tab[aria-selected="true"] {
+    background: #ffffff;
+    color: #1d4ed8;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.gen-mode-tab[data-gen-mode="coloring"][aria-selected="true"] {
+    color: #c2410c;
+}
+
+.gen-mode-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 16px 3px;
+    border-block-end: 3px solid currentColor;
+    border-radius: 999px;
+}
+
+.gen-tab-panel[hidden],
+.coloring-cat-panel[hidden] {
+    display: none;
+}
+
+.coloring-cat-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.coloring-cat-tab {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    min-block-size: 44px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 2px solid #fed7aa;
+    background: #ffffff;
+    color: #7c2d12;
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.coloring-cat-tab[aria-selected="true"] {
+    background: #fff7ed;
+    border-color: #ea580c;
+    color: #9a3412;
+}
+
+.coloring-cat-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 14px 3px;
+    border-block-end: 3px solid #ea580c;
+    border-radius: 999px;
 }
 
 .coloring-picker-box {
-    margin-top: 12px;
-    padding: 14px;
+    padding: 12px;
     background: #fff7ed;
     border: 2px dashed #fdba74;
     border-radius: 16px;
 }
 
-.coloring-picker-box[hidden] {
-    display: none;
-}
-
 .coloring-picker-label {
     margin: 0 0 10px;
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     font-weight: 800;
     color: #9a3412;
 }
@@ -160,6 +242,25 @@
     border-color: #c2410c;
 }
 
+.coloring-action-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.coloring-selected-summary {
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-align: center;
+    word-break: keep-all;
+}
+
 .coloring-sheet-solo .coloring-canvas-wrap {
     max-width: 560px;
 }
@@ -169,16 +270,14 @@
 }
 
 .pokemon-coloring-mount {
-    margin-top: 12px;
+    padding: 12px;
+    background: #fffbeb;
+    border: 2px dashed #fcd34d;
+    border-radius: 16px;
 }
 
 .pokemon-coloring-mount[hidden] {
     display: none;
-}
-
-.pokemon-color-divider {
-    border-top: 1.5px dashed #fdba74;
-    margin: 12px 0;
 }
 
 .pokemon-color-head {

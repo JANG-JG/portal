@@ -77,7 +77,6 @@
             ];
 
             mount.innerHTML = `
-                <div class="pokemon-color-divider"></div>
                 <div class="pokemon-color-head">
                     <strong>🎮 포켓몬 도감 색칠하기 (초창기 #1~150)</strong>
                     <small>PokéAPI 1세대 150마리 중 원하는 포켓몬을 골라 색칠할 수 있어요!</small>
@@ -133,7 +132,7 @@
             mount.addEventListener('click', (e) => {
                 const presetBtn = e.target.closest('.pokemon-preset-pill');
                 if (presetBtn && typeof onSelectMode === 'function') {
-                    onSelectMode(presetBtn.dataset.coloringMode);
+                    onSelectMode(presetBtn.dataset.coloringMode, presetBtn.textContent.trim());
                     syncSelectionUi();
                     return;
                 }
@@ -150,7 +149,9 @@
                 }
                 const pokeBtn = e.target.closest('.pokemon-color-card');
                 if (pokeBtn && typeof onSelectMode === 'function') {
-                    onSelectMode(pokeBtn.dataset.coloringMode);
+                    const name = pokeBtn.querySelector('.pokemon-color-card__name')?.textContent?.trim() || '';
+                    const num = pokeBtn.querySelector('.pokemon-color-card__num')?.textContent?.trim() || '';
+                    onSelectMode(pokeBtn.dataset.coloringMode, `${num} ${name}`.trim());
                     syncSelectionUi();
                 }
             });
@@ -241,7 +242,93 @@
         }
     }
 
+    function bindAccessibleTablist(tablistEl, onSelectTab) {
+        if (!tablistEl || tablistEl._tabsBound) return;
+        tablistEl._tabsBound = true;
+        const tabs = Array.from(tablistEl.querySelectorAll('[role="tab"]'));
+        const activate = (tab, moveFocus = false) => {
+            if (!tab) return;
+            tabs.forEach((t) => {
+                const selected = t === tab;
+                t.setAttribute('aria-selected', selected ? 'true' : 'false');
+                t.tabIndex = selected ? 0 : -1;
+            });
+            if (moveFocus) tab.focus();
+            if (typeof onSelectTab === 'function') onSelectTab(tab);
+        };
+        tablistEl.addEventListener('click', (e) => {
+            const tab = e.target.closest('[role="tab"]');
+            if (tab) activate(tab, false);
+        });
+        tablistEl.addEventListener('keydown', (e) => {
+            const current = e.target.closest('[role="tab"]');
+            if (!current) return;
+            const idx = tabs.indexOf(current);
+            if (idx < 0) return;
+            let nextIdx = -1;
+            if (e.key === 'ArrowRight') nextIdx = (idx + 1) % tabs.length;
+            else if (e.key === 'ArrowLeft') nextIdx = (idx - 1 + tabs.length) % tabs.length;
+            else if (e.key === 'Home') nextIdx = 0;
+            else if (e.key === 'End') nextIdx = tabs.length - 1;
+            if (nextIdx >= 0) {
+                e.preventDefault();
+                activate(tabs[nextIdx], true);
+            }
+        });
+    }
+
+    function initColoringCategoryTabs({ getSelectedMode, onSelectMode }) {
+        const catTablist = document.querySelector('.coloring-cat-tabs[role="tablist"]');
+        const themePanel = document.getElementById('panelColorCatTheme');
+        const pokemonPanel = document.getElementById('panelColorCatPokemon');
+        const summaryEl = document.getElementById('coloringSelectedSummary');
+
+        const remembered = {
+            theme: { mode: 'auto_3', label: '🎲 테마 맞춤 3장 모음' },
+            pokemon: { mode: 'pokemon_random_3', label: '⚡ 랜덤 포켓몬 3마리 (1~150)' }
+        };
+        let activeCat = 'theme';
+
+        const updateSummary = (labelText) => {
+            if (!summaryEl) return;
+            summaryEl.innerHTML = `선택한 도안: <strong>${esc(labelText || '테마 맞춤 3장 모음')}</strong>`;
+        };
+
+        const applySelection = (cat, mode, label) => {
+            remembered[cat] = { mode, label };
+            if (typeof onSelectMode === 'function') onSelectMode(mode);
+            updateSummary(label);
+        };
+
+        document.querySelectorAll('#panelColorCatTheme .coloring-tpl-pill').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const mode = btn.dataset.coloringMode || 'auto_3';
+                document.querySelectorAll('#panelColorCatTheme .coloring-tpl-pill').forEach((p) => p.classList.toggle('active', p === btn));
+                applySelection('theme', mode, btn.textContent.trim());
+            });
+        });
+
+        bindAccessibleTablist(catTablist, (tab) => {
+            activeCat = tab.dataset.colorCat === 'pokemon' ? 'pokemon' : 'theme';
+            if (themePanel) themePanel.hidden = activeCat !== 'theme';
+            if (pokemonPanel) pokemonPanel.hidden = activeCat !== 'pokemon';
+
+            const saved = remembered[activeCat];
+            if (typeof onSelectMode === 'function') onSelectMode(saved.mode);
+            updateSummary(saved.label);
+
+            if (activeCat === 'pokemon') {
+                initDashboardPicker({
+                    getSelectedMode,
+                    onSelectMode: (mode, label) => applySelection('pokemon', mode, label || mode)
+                }).then(() => syncDashboardSelection());
+            }
+        });
+    }
+
     window.StudyPokemonColoring = {
+        bindAccessibleTablist,
+        initColoringCategoryTabs,
         initDashboardPicker,
         syncDashboardSelection,
         mountPokemonColoringSvg

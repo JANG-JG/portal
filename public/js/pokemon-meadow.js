@@ -131,8 +131,8 @@
                     <div class="pokemon-meadow__shadow" aria-hidden="true"></div>
                     <div class="pokemon-meadow__sprite-flip">
                         <img class="pokemon-meadow__sprite-img"
-                             src="${esc(buddy.animatedUrl || buddy.artworkUrl)}"
-                             data-fallback="${esc(buddy.artworkUrl || '')}"
+                             src="${esc(buddy.artworkUrl || buddy.animatedUrl)}"
+                             data-fallback="${esc(buddy.animatedUrl || '')}"
                              alt="${esc(spriteAlt)}">
                     </div>
                 </button>

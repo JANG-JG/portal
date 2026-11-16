@@ -86,7 +86,7 @@
                 <div class="pokemon-head">
                     <div class="pokemon-head__title">
                         <h2>🥚 알 부화 &amp; 내 단짝</h2>
-                        <span id="pokemonDexCountBadge" class="pokemon-dex-badge">도감 0/40</span>
+                        <span id="pokemonDexCountBadge" class="pokemon-dex-badge">도감 0/150</span>
                     </div>
                     <div class="pokemon-head__actions">
                         <button type="button" id="btnPokemonMotionToggle" class="pokemon-btn-ctrl">⏸️ 멈춤</button>
@@ -172,53 +172,89 @@
                     <span id="quotaBadge" class="level-badge">오늘 AI 남은 횟수: -</span>
                 </div>
 
-                <div class="subject-chips" role="group" aria-label="영역 선택">
-                    <button type="button" class="subject-chip active" data-subject="korean">🇰🇷 한글</button>
-                    <button type="button" class="subject-chip" data-subject="math">🔢 수학</button>
-                    <button type="button" class="subject-chip" data-subject="english">🔤 영어</button>
-                    <button type="button" class="subject-chip" data-subject="coloring">🎨 색칠놀이</button>
-                </div>
-
-                <div class="theme-pills" role="group" aria-label="추천 주제">
-                    <button type="button" class="theme-pill active" data-theme="동물 친구">🐾 동물 친구</button>
-                    <button type="button" class="theme-pill" data-theme="공룡 탐험">🦕 공룡 탐험</button>
-                    <button type="button" class="theme-pill" data-theme="달콤 과일">🍓 달콤 과일</button>
-                    <button type="button" class="theme-pill" data-theme="탈것 여행">🚒 탈것 여행</button>
-                    <button type="button" class="theme-pill" data-theme="우주 모험">🚀 우주 모험</button>
-                    <button type="button" class="theme-pill" data-theme="바다 친구">🐳 바다 친구</button>
-                    <button type="button" class="theme-pill" data-theme="공주·요정">👑 공주·요정</button>
-                    <button type="button" class="theme-pill" data-theme="로봇·변신">🤖 로봇·변신</button>
-                </div>
-
-                <div id="coloringPickerBox" class="coloring-picker-box" hidden>
-                    <p class="coloring-picker-label">🖍️ 색칠놀이는 별·도장·AI 횟수 차감 없이 자유롭게 즐길 수 있어요!</p>
-                    <div class="coloring-picker-grid" role="group" aria-label="색칠 도안 선택">
-                        <button type="button" class="coloring-tpl-pill active" data-coloring-mode="auto_3">🎲 테마 맞춤 3장 모음</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="bundle_5">📚 인기 도안 5장 색칠책</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="dino">🦕 아기 공룡</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="rocket">🚀 우주 로켓</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="princess_crown">👑 반짝 왕관</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="car">🚗 꼬마 자동차</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="whale">🐳 아기 고래</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="robot">🤖 멋진 로봇</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="cat">🐱 야옹 고양이</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="rabbit">🐰 깡충 토끼</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="butterfly">🦋 예쁜 나비</button>
-                        <button type="button" class="coloring-tpl-pill" data-coloring-mode="strawberry">🍓 달콤 딸기</button>
-                    </div>
-                    <div id="pokemonColoringMount" class="pokemon-coloring-mount"></div>
-                </div>
-
-                <div class="theme-custom-row">
-                    <label for="customThemeInput" class="visually-hidden">원하는 학습 주제 직접 입력</label>
-                    <input type="text" id="customThemeInput" class="study-input" placeholder="원하는 주제를 직접 적을 수 있어요 (예: 공주님, 자동차)" maxlength="24">
-                    <label id="playMissionRow" style="display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; font-weight: 700; color: #475569; cursor: pointer;">
-                        <input type="checkbox" id="chkIncludePlayBlock" checked style="width: 20px; height: 20px; accent-color: #ff7a45;">
-                        <span>🎨 놀이 미션 포함 (점잇기 · 미로 찾기 · 색칠 놀이)</span>
-                    </label>
-                    <button type="button" id="btnGenerateSheet" class="study-btn study-btn-primary" style="width: 100%;">
-                        🎨 학습지 바로 만들기!
+                <div class="gen-mode-tabs" role="tablist" aria-label="만들기 메뉴 선택">
+                    <button type="button" id="tabGenWorksheet" class="gen-mode-tab" role="tab" aria-selected="true" tabindex="0" data-gen-mode="worksheet">
+                        📝 문제 학습지
                     </button>
+                    <button type="button" id="tabGenColoring" class="gen-mode-tab" role="tab" aria-selected="false" tabindex="-1" data-gen-mode="coloring">
+                        🎨 색칠놀이
+                    </button>
+                </div>
+
+                <div id="panelGenWorksheet" class="gen-tab-panel" role="tabpanel" aria-labelledby="tabGenWorksheet">
+                    <div class="subject-chips" role="group" aria-label="영역 선택">
+                        <button type="button" class="subject-chip active" data-subject="korean">🇰🇷 한글</button>
+                        <button type="button" class="subject-chip" data-subject="math">🔢 수학</button>
+                        <button type="button" class="subject-chip" data-subject="english">🔤 영어</button>
+                    </div>
+
+                    <div class="theme-pills" role="group" aria-label="추천 주제">
+                        <button type="button" class="theme-pill active" data-theme="동물 친구">🐾 동물 친구</button>
+                        <button type="button" class="theme-pill" data-theme="공룡 탐험">🦕 공룡 탐험</button>
+                        <button type="button" class="theme-pill" data-theme="달콤 과일">🍓 달콤 과일</button>
+                        <button type="button" class="theme-pill" data-theme="탈것 여행">🚒 탈것 여행</button>
+                        <button type="button" class="theme-pill" data-theme="우주 모험">🚀 우주 모험</button>
+                        <button type="button" class="theme-pill" data-theme="바다 친구">🐳 바다 친구</button>
+                        <button type="button" class="theme-pill" data-theme="공주·요정">👑 공주·요정</button>
+                        <button type="button" class="theme-pill" data-theme="로봇·변신">🤖 로봇·변신</button>
+                    </div>
+
+                    <div class="theme-custom-row">
+                        <label for="customThemeInput" class="visually-hidden">원하는 학습 주제 직접 입력</label>
+                        <input type="text" id="customThemeInput" class="study-input" placeholder="원하는 주제를 직접 적을 수 있어요 (예: 공주님, 자동차)" maxlength="24">
+                        <label id="playMissionRow" style="display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; font-weight: 700; color: #475569; cursor: pointer;">
+                            <input type="checkbox" id="chkIncludePlayBlock" checked style="width: 20px; height: 20px; accent-color: #ff7a45;">
+                            <span>🎨 놀이 미션 포함 (점잇기 · 미로 찾기 · 색칠 놀이)</span>
+                        </label>
+                        <button type="button" id="btnGenerateSheet" class="study-btn study-btn-primary" style="width: 100%;">
+                            🎨 학습지 바로 만들기!
+                        </button>
+                    </div>
+                </div>
+
+                <div id="panelGenColoring" class="gen-tab-panel" role="tabpanel" aria-labelledby="tabGenColoring" hidden>
+                    <p class="coloring-picker-label">🖍️ 색칠놀이는 별·도장·AI 횟수 차감 없이 자유롭게 즐길 수 있어요!</p>
+
+                    <div class="coloring-cat-tabs" role="tablist" aria-label="색칠놀이 종류 선택">
+                        <button type="button" id="tabColorCatTheme" class="coloring-cat-tab" role="tab" aria-selected="true" tabindex="0" data-color-cat="theme">
+                            🧸 테마·동물 도안
+                        </button>
+                        <button type="button" id="tabColorCatPokemon" class="coloring-cat-tab" role="tab" aria-selected="false" tabindex="-1" data-color-cat="pokemon">
+                            ⚡ 포켓몬 도감 (#1~150)
+                        </button>
+                    </div>
+
+                    <div id="panelColorCatTheme" class="coloring-cat-panel" role="tabpanel" aria-labelledby="tabColorCatTheme">
+                        <div class="coloring-picker-box">
+                            <div class="coloring-picker-grid" role="group" aria-label="테마 색칠 도안 선택">
+                                <button type="button" class="coloring-tpl-pill active" data-coloring-mode="auto_3">🎲 테마 맞춤 3장 모음</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="bundle_5">📚 인기 도안 5장 색칠책</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="dino">🦕 아기 공룡</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="rocket">🚀 우주 로켓</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="princess_crown">👑 반짝 왕관</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="car">🚗 꼬마 자동차</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="whale">🐳 아기 고래</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="robot">🤖 멋진 로봇</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="cat">🐱 야옹 고양이</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="rabbit">🐰 깡충 토끼</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="butterfly">🦋 예쁜 나비</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="strawberry">🍓 달콤 딸기</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panelColorCatPokemon" class="coloring-cat-panel" role="tabpanel" aria-labelledby="tabColorCatPokemon" hidden>
+                        <div id="pokemonColoringMount" class="pokemon-coloring-mount"></div>
+                    </div>
+
+                    <div class="coloring-action-bar">
+                        <div id="coloringSelectedSummary" class="coloring-selected-summary" aria-live="polite">
+                            선택한 도안: <strong>🎲 테마 맞춤 3장 모음</strong>
+                        </div>
+                        <button type="button" id="btnGenerateColoring" class="study-btn study-btn-primary" style="width: 100%;">
+                            🖍️ 색칠놀이 바로 만들기!
+                        </button>
+                    </div>
                 </div>
             </section>
 

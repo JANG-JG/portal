@@ -219,7 +219,7 @@
             ensureBuddyWidgetStyles();
             const itemsHtml = data.buddies.map((b) => {
                 const avatarHtml = b.partner
-                    ? `<img src="${esc(b.partner.animatedUrl)}" data-fallback="${esc(b.partner.artworkUrl)}" alt="${esc(b.partner.nameKo)}">`
+                    ? `<img src="${esc(b.partner.artworkUrl || b.partner.animatedUrl)}" data-fallback="${esc(b.partner.animatedUrl || '')}" alt="${esc(b.partner.nameKo)}">`
                     : `<span>${esc(b.hatched ? '🎉' : '🥚')}</span>`;
                 const subLine = b.partner
                     ? `단짝 ${esc(b.partner.nameKo)} · 도감 ${Number(b.collectedCount || 0)}마리`

@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const { getPokemonById, listEnrichedCatalog, POPULAR_GEN1_IDS } = require('./pokemonCatalog.data');
+const { getPokemonCacheEntry, setPokemonCacheEntry } = require('./studyPokemonCache.service');
 
 const SVG_CACHE_DIR = path.join(__dirname, '..', '..', 'public', 'img', 'pokemon');
 const SPECIES_CACHE_DIR = path.join(__dirname, '..', '..', 'data', 'pokemon-cache');
@@ -266,12 +267,22 @@ async function getOrBuildPokemonColoringSvg(pokemonId) {
         if (cached.includes('class="coloring-svg"')) return cached;
     }
 
+    const dbSvg = await getPokemonCacheEntry(`coloring_svg:${idNum}`);
+    if (dbSvg?.buffer?.length > 40) {
+        const cached = dbSvg.buffer.toString('utf8');
+        if (cached.includes('class="coloring-svg"')) {
+            try { fs.writeFileSync(convertedPath, cached, 'utf8'); } catch (_) {}
+            return cached;
+        }
+    }
+
     try {
         const rawUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/dream-world/${idNum}.svg`;
         const rawSvg = await fetchTextHttps(rawUrl, 5000);
         const converted = convertDreamWorldSvgToColoring(rawSvg, meta);
         if (converted) {
-            fs.writeFileSync(convertedPath, converted, 'utf8');
+            try { fs.writeFileSync(convertedPath, converted, 'utf8'); } catch (_) {}
+            await setPokemonCacheEntry(`coloring_svg:${idNum}`, 'image/svg+xml', converted, rawUrl);
             try {
                 const { getOrCachePokemonSprite } = require('./studyPokemon.service');
                 getOrCachePokemonSprite(idNum, 'artwork').catch(() => {});
@@ -288,18 +299,29 @@ async function getPokeApiSpeciesInfo(pokemonId) {
     const base = getPokemonById(idNum);
     fs.mkdirSync(SPECIES_CACHE_DIR, { recursive: true });
     const cachePath = path.join(SPECIES_CACHE_DIR, `species-${idNum}.json`);
+    const maxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
     try {
         if (fs.existsSync(cachePath)) {
             const stat = fs.statSync(cachePath);
-            if (Date.now() - stat.mtimeMs < 30 * 24 * 60 * 60 * 1000) {
+            if (Date.now() - stat.mtimeMs < maxAgeMs) {
                 return JSON.parse(fs.readFileSync(cachePath, 'utf8'));
             }
         }
     } catch (_) {}
 
     try {
-        const raw = await fetchTextHttps(`https://pokeapi.co/api/v2/pokemon-species/${idNum}`, 4500);
+        const dbSpecies = await getPokemonCacheEntry(`species:${idNum}`, maxAgeMs);
+        if (dbSpecies?.buffer?.length > 2) {
+            const parsed = JSON.parse(dbSpecies.buffer.toString('utf8'));
+            try { fs.writeFileSync(cachePath, JSON.stringify(parsed), 'utf8'); } catch (_) {}
+            return parsed;
+        }
+    } catch (_) {}
+
+    try {
+        const speciesUrl = `https://pokeapi.co/api/v2/pokemon-species/${idNum}`;
+        const raw = await fetchTextHttps(speciesUrl, 4500);
         const data = JSON.parse(raw);
         const koName = (data.names || []).find((n) => n?.language?.name === 'ko')?.name || base.nameKo;
         const koGenus = (data.genera || []).find((g) => g?.language?.name === 'ko')?.genus || '';
@@ -320,7 +342,9 @@ async function getPokeApiSpeciesInfo(pokemonId) {
             coloringSvgUrl: `/api/study/pokemon/coloring-svg/${idNum}`,
             fromPokeApi: true
         };
-        fs.writeFileSync(cachePath, JSON.stringify(merged), 'utf8');
+        const jsonText = JSON.stringify(merged);
+        try { fs.writeFileSync(cachePath, jsonText, 'utf8'); } catch (_) {}
+        await setPokemonCacheEntry(`species:${idNum}`, 'application/json', jsonText, speciesUrl);
         return merged;
     } catch (_) {
         return {

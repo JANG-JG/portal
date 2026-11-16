@@ -191,14 +191,13 @@
 }
 
 .pokemon-sprite-img {
-    max-width: 84px;
-    max-height: 84px;
+    max-width: 88px;
+    max-height: 88px;
     width: auto;
     height: auto;
     object-fit: contain;
-    image-rendering: pixelated;
     transform-origin: center bottom;
-    filter: drop-shadow(0 5px 6px rgba(15, 23, 42, 0.14));
+    filter: drop-shadow(0 6px 8px rgba(15, 23, 42, 0.15));
 }
 
 .pokemon-empty-partner {
