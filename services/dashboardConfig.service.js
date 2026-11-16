@@ -37,6 +37,17 @@ const DEFAULT_WIDGETS = [
         desc: '원터치 퀵 커맨드 및 바로가기 버튼 바'
     },
     {
+        id: 'portalStudyBuddyStrip',
+        title: '오늘의 우리 아이 학습 단짝',
+        icon: '🐣',
+        enabled: true,
+        order: 35,
+        colSpan: 2,
+        selector: '#portalStudyBuddyStrip',
+        desc: '아이별 학습 도장 진행률 및 단짝 포켓몬 현황',
+        defaultAfterId: 'cmd-strip'
+    },
+    {
         id: 'breakingBannerBar',
         title: '실시간 속보 배너',
         icon: '🚨',
@@ -139,12 +150,24 @@ function getDashboardConfig() {
     const savedMap = new Map();
     saved.forEach(w => savedMap.set(w.id, w));
 
-    // 기본 위젯 중 빠진 항목 보충 (기존 설정 순서 보존을 위해 맨 뒤로 편입)
+    // 기본 위젯 중 빠진 항목 보충 (기준 위젯이 지정된 경우 기존 레이아웃 흐름에 맞게 삽입)
     let maxOrder = saved.reduce((m, w) => Math.max(m, w.order || 0), 0);
     DEFAULT_WIDGETS.forEach(def => {
         if (!savedMap.has(def.id)) {
-            maxOrder += 10;
-            const supplemented = { ...def, order: maxOrder };
+            const { defaultAfterId, ...widgetDef } = def;
+            let insertOrder = maxOrder + 10;
+            if (defaultAfterId && savedMap.has(defaultAfterId)) {
+                const anchorOrder = Number(savedMap.get(defaultAfterId).order || 0);
+                const nextOrders = saved
+                    .map(w => Number(w.order || 0))
+                    .filter(ord => ord > anchorOrder)
+                    .sort((a, b) => a - b);
+                insertOrder = nextOrders.length > 0 ? (anchorOrder + nextOrders[0]) / 2 : anchorOrder + 5;
+            } else {
+                maxOrder += 10;
+                insertOrder = maxOrder;
+            }
+            const supplemented = { ...widgetDef, order: insertOrder };
             saved.push(supplemented);
             savedMap.set(def.id, supplemented);
         }

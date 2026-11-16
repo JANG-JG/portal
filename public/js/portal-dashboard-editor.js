@@ -207,24 +207,34 @@
         });
     }
 
+    function isWidgetVisibleInDOM(w) {
+        if (!w || w.enabled === false) return false;
+        const el = (w.selector && document.querySelector(w.selector)) || document.getElementById(w.id);
+        if (!el) return false;
+        return window.getComputedStyle(el).display !== 'none';
+    }
+
     /**
      * 위젯 순서 이동 (▲/▼)
      */
     window.moveWidgetOrder = function(widgetId, direction) {
-        const activeWidgets = workingWidgets.filter(w => w.enabled !== false);
-        const activeIdx = activeWidgets.findIndex(w => w.id === widgetId);
+        const visibleWidgets = workingWidgets.filter(isWidgetVisibleInDOM);
+        const targetPool = visibleWidgets.some(w => w.id === widgetId)
+            ? visibleWidgets
+            : workingWidgets.filter(w => w.enabled !== false);
+        const activeIdx = targetPool.findIndex(w => w.id === widgetId);
         if (activeIdx === -1) return;
 
         if (direction === 'up' && activeIdx > 0) {
-            const targetWidget = activeWidgets[activeIdx];
-            const prevWidget = activeWidgets[activeIdx - 1];
+            const targetWidget = targetPool[activeIdx];
+            const prevWidget = targetPool[activeIdx - 1];
             const origIdx = workingWidgets.indexOf(targetWidget);
             const prevOrigIdx = workingWidgets.indexOf(prevWidget);
             workingWidgets[origIdx] = prevWidget;
             workingWidgets[prevOrigIdx] = targetWidget;
-        } else if (direction === 'down' && activeIdx < activeWidgets.length - 1) {
-            const targetWidget = activeWidgets[activeIdx];
-            const nextWidget = activeWidgets[activeIdx + 1];
+        } else if (direction === 'down' && activeIdx < targetPool.length - 1) {
+            const targetWidget = targetPool[activeIdx];
+            const nextWidget = targetPool[activeIdx + 1];
             const origIdx = workingWidgets.indexOf(targetWidget);
             const nextOrigIdx = workingWidgets.indexOf(nextWidget);
             workingWidgets[origIdx] = nextWidget;

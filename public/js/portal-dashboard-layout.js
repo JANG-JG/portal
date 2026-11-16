@@ -74,6 +74,33 @@
         });
     }
 
+    const FLEX_CONTAINER_IDS = new Set(['portalStudyBuddyStrip']);
+    const supportsMoveBefore = typeof Element !== 'undefined' && Object.hasOwn(Element.prototype, 'moveBefore');
+
+    function resolveWidgetElement(w) {
+        if (!w) return null;
+        if (w.selector) {
+            try {
+                const found = document.querySelector(w.selector);
+                if (found) return found;
+            } catch (e) {}
+        }
+        return w.id ? document.getElementById(w.id) : null;
+    }
+
+    function moveNodeBefore(parent, node, refNode) {
+        if (!parent || !node || refNode === node) return;
+        const targetRef = refNode || null;
+        if (node.parentElement === parent && node.nextElementSibling === targetRef) return;
+        if (supportsMoveBefore) {
+            try {
+                parent.moveBefore(node, targetRef);
+                return;
+            } catch (e) {}
+        }
+        parent.insertBefore(node, targetRef);
+    }
+
     /**
      * DOM에 위젯 레이아웃(순서, 너비, 노출) 실제 물리적 적용
      */
@@ -91,16 +118,23 @@
         // 순서 기준 정렬
         const sortedWidgets = [...widgets].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-        // 1. 개별 위젯 상태(노출, 너비, order) 적용
+        let firstGridOrder = Infinity;
+        let lastGridOrder = -Infinity;
+
+        // 1. 개별 위젯 상태(노출, 원 소속 존 기록) 적용
         sortedWidgets.forEach(w => {
-            let el = null;
-            if (w.selector) {
-                try { el = document.querySelector(w.selector); } catch (e) {}
-            }
-            if (!el && w.id) {
-                el = document.getElementById(w.id);
-            }
+            const el = resolveWidgetElement(w);
             if (!el) return;
+
+            if (!el.dataset.originZone) {
+                if (FLEX_CONTAINER_IDS.has(w.id)) {
+                    el.dataset.originZone = 'flex';
+                } else if (homarrGrid && el.parentElement === homarrGrid) {
+                    el.dataset.originZone = 'grid';
+                } else if (bentoRoot && el.parentElement === bentoRoot && el !== homarrGrid) {
+                    el.dataset.originZone = 'top';
+                }
+            }
 
             // 권한 기반 은폐 우선 존중
             if (w.id === 'homarrHeroCard' || w.id === 'bento-blood') {
@@ -116,6 +150,7 @@
             // 노출 On/Off
             const tabKey = getTabKeyFromWidget(w);
             if (w.enabled === false) {
+                el.dataset.dashboardHidden = '1';
                 el.style.setProperty('display', 'none', 'important');
                 if (tabKey) {
                     document.querySelectorAll(`.portal-tab-btn[data-tab="${tabKey}"]`).forEach(btn => {
@@ -125,8 +160,12 @@
                 return;
             }
 
-            // 노출 복원
-            if (el.style.display === 'none' && !el.getAttribute('data-hidden-by-auth')) {
+            delete el.dataset.dashboardHidden;
+
+            // 노출 복원 (비동기 학습 위젯은 데이터가 있을 때만 노출)
+            if (el.id === 'portalStudyBuddyStrip') {
+                el.style.display = el.classList.contains('has-study-buddies') ? '' : 'none';
+            } else if (el.style.display === 'none' && !el.getAttribute('data-hidden-by-auth')) {
                 el.style.display = '';
             }
             if (tabKey) {
@@ -143,55 +182,43 @@
                 }
             }
 
-            // CSS Flex/Grid order 부여
-            if (typeof w.order === 'number') {
-                el.style.order = String(w.order);
-            }
-
-            // 그리드 너비 (colSpan)
-            if (el.parentElement && el.parentElement.id === 'portalHomarrGrid') {
-                if (w.colSpan === 2) {
-                    el.style.gridColumn = '1 / -1';
-                } else if (w.colSpan === 1) {
-                    el.style.gridColumn = 'span 1';
-                }
+            const ord = Number(w.order || 0);
+            if (el.dataset.originZone === 'grid') {
+                if (ord < firstGridOrder) firstGridOrder = ord;
+                if (ord > lastGridOrder) lastGridOrder = ord;
             }
         });
 
-        // 2. 물리적 DOM 재배치 (CSS order 미지원 또는 브라우저 엔진 불일치 원천 해결)
-        // A) portalHomarrGrid 내부 위젯 물리적 순서 재배치
-        if (homarrGrid) {
-            sortedWidgets.forEach(w => {
-                let el = null;
-                if (w.selector) {
-                    try { el = document.querySelector(w.selector); } catch (e) {}
-                }
-                if (!el && w.id) {
-                    el = document.getElementById(w.id);
-                }
-                if (el && el.parentElement === homarrGrid) {
-                    homarrGrid.appendChild(el);
-                }
-            });
+        if (lastGridOrder === -Infinity) {
+            lastGridOrder = Infinity;
         }
 
-        // B) portal-bento-root 직계 자식 위젯 물리적 순서 재배치
-        if (bentoRoot) {
-            sortedWidgets.forEach(w => {
-                let el = null;
-                if (w.selector) {
-                    try { el = document.querySelector(w.selector); } catch (e) {}
+        // 2. 물리적 DOM 재배치 (시각 순서와 DOM 순서 일치 + 유동 위젯의 그리드 안팎 자유 이동 지원)
+        sortedWidgets.forEach(w => {
+            const el = resolveWidgetElement(w);
+            if (!el) return;
+
+            const zone = el.dataset.originZone;
+            const ord = Number(w.order || 0);
+
+            if (zone === 'grid' || (zone === 'flex' && homarrGrid && ord > firstGridOrder)) {
+                if (homarrGrid) {
+                    moveNodeBefore(homarrGrid, el, null);
+                    if (w.colSpan === 2) {
+                        el.style.gridColumn = '1 / -1';
+                    } else if (w.colSpan === 1) {
+                        el.style.gridColumn = 'span 1';
+                    }
                 }
-                if (!el && w.id) {
-                    el = document.getElementById(w.id);
+            } else if ((zone === 'top' || zone === 'flex') && bentoRoot) {
+                el.style.gridColumn = '';
+                if (zone === 'top' && ord > lastGridOrder) {
+                    moveNodeBefore(bentoRoot, el, null);
+                } else {
+                    moveNodeBefore(bentoRoot, el, homarrGrid);
                 }
-                // homarrGrid 직계 자식은 제외하고 bentoRoot 직계인 경우만
-                if (el && el.parentElement === bentoRoot && el !== homarrGrid) {
-                    // homarrGrid보다 앞에 순서대로 삽입
-                    bentoRoot.insertBefore(el, homarrGrid);
-                }
-            });
-        }
+            }
+        });
 
         // 3. 상단 탭 메뉴(데스크톱 및 모바일) 순서 실시간 동기화
         syncNavTabsOrder(sortedWidgets);

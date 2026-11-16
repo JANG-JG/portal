@@ -21,6 +21,18 @@
         const style = document.createElement('style');
         style.id = 'portalStudyBuddyStyles';
         style.textContent = `
+            #portalStudyBuddyStrip {
+                display: none;
+                min-width: 0;
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+            #portalStudyBuddyStrip.has-study-buddies {
+                display: block;
+            }
+            #portalHomarrGrid > #portalStudyBuddyStrip .portal-study-buddy-card {
+                margin-bottom: 0;
+            }
             .portal-study-buddy-card {
                 background: linear-gradient(135deg, #fffbeb 0%, #ffffff 55%, #f0fdf4 100%);
                 border: 1px solid rgba(245, 158, 11, 0.28);
@@ -55,7 +67,7 @@
             }
             .portal-study-buddy-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
                 gap: 0.55rem;
             }
             .portal-study-buddy-item {
@@ -145,11 +157,13 @@
         try {
             const res = await fetch('/api/portal/study-buddies', { credentials: 'same-origin' });
             if (!res.ok) {
+                container.classList.remove('has-study-buddies');
                 container.style.display = 'none';
                 return;
             }
             const data = await res.json();
             if (!data?.success || !data.enabled || !Array.isArray(data.buddies) || data.buddies.length === 0) {
+                container.classList.remove('has-study-buddies');
                 container.style.display = 'none';
                 return;
             }
@@ -186,7 +200,10 @@
                     <div class="portal-study-buddy-grid">${itemsHtml}</div>
                 </div>
             `;
-            container.style.display = 'block';
+            container.classList.add('has-study-buddies');
+            if (container.dataset.dashboardHidden !== '1') {
+                container.style.display = '';
+            }
 
             container.querySelectorAll('img[data-fallback]').forEach((img) => {
                 img.addEventListener('error', () => {
@@ -196,6 +213,7 @@
                 });
             });
         } catch (_) {
+            container.classList.remove('has-study-buddies');
             container.style.display = 'none';
         }
     }
