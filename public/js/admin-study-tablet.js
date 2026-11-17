@@ -129,12 +129,14 @@
             const hangulChk = document.getElementById('chkTabletHangulGuideEnabled');
             const albumChk = document.getElementById('chkTabletKidAlbumShareEnabled');
             const pokeColorChk = document.getElementById('chkTabletPokemonColoringEnabled');
+            const crossShareChk = document.getElementById('chkStudyCrossShareEnabled');
             if (wakeChk) wakeChk.checked = Boolean(cfg.wakeLockDefault);
             if (penChk) penChk.checked = Boolean(cfg.penOnlyDefault);
             if (sfxChk) sfxChk.checked = cfg.soundFxDefault !== false;
             if (hangulChk) hangulChk.checked = cfg.hangulGuideEnabled !== false;
             if (albumChk) albumChk.checked = cfg.kidAlbumShareEnabled !== false;
             if (pokeColorChk) pokeColorChk.checked = cfg.pokemonColoringEnabled !== false;
+            if (crossShareChk) crossShareChk.checked = cfg.crossShareEnabled !== false;
 
             const extEl = document.getElementById('studyTabletExtLoginText');
             const lanEl = document.getElementById('studyTabletLanLoginText');
@@ -155,6 +157,7 @@
         const hangulChk = document.getElementById('chkTabletHangulGuideEnabled');
         const albumChk = document.getElementById('chkTabletKidAlbumShareEnabled');
         const pokeColorChk = document.getElementById('chkTabletPokemonColoringEnabled');
+        const crossShareChk = document.getElementById('chkStudyCrossShareEnabled');
         const saveBtn = document.getElementById('btnSaveStudyTabletConfig');
         if (!wakeChk || !penChk) return;
 
@@ -170,7 +173,8 @@
                     soundFxDefault: sfxChk ? sfxChk.checked : true,
                     hangulGuideEnabled: hangulChk ? hangulChk.checked : true,
                     kidAlbumShareEnabled: albumChk ? albumChk.checked : true,
-                    pokemonColoringEnabled: pokeColorChk ? pokeColorChk.checked : true
+                    pokemonColoringEnabled: pokeColorChk ? pokeColorChk.checked : true,
+                    crossShareEnabled: crossShareChk ? crossShareChk.checked : true
                 })
             });
             const data = await res.json();

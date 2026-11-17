@@ -24,6 +24,8 @@
     const autoPrint = new URLSearchParams(window.location.search).get('print') === '1';
 
     let currentSheet = null;
+    let blockStates = new Map();
+    let retryAllMode = false;
     const toastEl = document.getElementById('studyToast');
 
     function showToast(msg) {
@@ -57,6 +59,20 @@
         } catch (e) {}
     }
 
+    function getTraceBilingualSegments(blk, subject) {
+        if (subject !== 'english' || !blk || blk.type !== 'trace') return null;
+        const enWord = String(blk.ttsText || blk.targetWord || '').trim();
+        const koMeaning = window.StudyTTS?.buildKoreanMeaningSpeech?.(blk.hint, blk.prompt) || String(blk.hint || '').trim();
+        if (!enWord || !koMeaning) return null;
+        return [{ text: enWord, lang: blk.ttsLang || 'en-US' }, { text: koMeaning, lang: 'ko-KR' }];
+    }
+
+    const initBlockStatesFromSheet = (sheet) => {
+        blockStates = window.StudySheetResult?.initBlockStatesFromSheet?.(sheet, retryAllMode) || new Map();
+    };
+    const updateScoreBar = (sheet) => window.StudySheetResult?.updateScoreBar?.(sheet, blockStates);
+    const syncBlockChip = (card, state) => window.StudySheetResult?.syncBlockChip?.(card, state);
+
     async function loadSheet() {
         if (!sheetId) {
             document.getElementById('sheetBlocksContainer').innerHTML = '<p>학습지 번호가 올바르지 않아요.</p>';
@@ -70,6 +86,7 @@
                 return;
             }
             currentSheet = data.sheet;
+            initBlockStatesFromSheet(currentSheet);
             renderSheet(currentSheet);
             if (autoPrint) {
                 setTimeout(() => window.print(), 450);
@@ -89,10 +106,22 @@
             : `${childLabel} · ${SUBJECT_NAMES[sheet.subject] || sheet.subject} · Lv.${sheet.level}`;
         document.getElementById('sheetInfoLine').textContent =
             `어린이: ${childLabel}  |  주제: ${sheet.theme}  |  날짜: ${String(sheet.created_at || '').slice(0, 10)}`;
-        const sourceBadge = sheet.source === 'coloring_studio'
+        const baseBadge = sheet.source === 'coloring_studio'
             ? '🎨 색칠 도안 스튜디오'
             : (String(sheet.source || '').startsWith('gemini') ? '✨ AI 맞춤 학습' : '📚 안전 학습 은행');
-        document.getElementById('sheetSourceBadge').textContent = sourceBadge;
+        document.getElementById('sheetSourceBadge').textContent = sheet.shared_from_child_id
+            ? `🔁 ${baseBadge} (${sheet.shared_from_name || sheet.shared_from_child_id} 교차 출제)`
+            : baseBadge;
+
+        const retryBanner = document.getElementById('sheetRetryBanner');
+        const retryText = document.getElementById('sheetRetryText');
+        if (retryBanner) {
+            const hasPendingWrong = !isColoringSheet && !retryAllMode && !sheet.completed_at && Number(sheet.lastResult?.wrongCount || 0) > 0;
+            retryBanner.hidden = !hasPendingWrong;
+            if (hasPendingWrong && retryText) {
+                retryText.textContent = `📝 지난번에 틀린 ${sheet.lastResult.wrongCount}문제를 다시 풀어서 맞추면 별을 받을 수 있어요!`;
+            }
+        }
 
         const themeArtEl = document.getElementById('sheetThemeArt');
         if (themeArtEl && window.StudyIllustrations) {
@@ -108,12 +137,17 @@
             card.className = (isColoringSheet && blocks.length === 1)
                 ? 'worksheet-block coloring-sheet-solo'
                 : 'worksheet-block';
+            card.dataset.blockIndex = String(idx);
             const swapLabel = blk.type === 'color' ? '🔄 다른 그림으로' : '🔄 문제 바꾸기';
+            const scoredState = blockStates.get(idx) || null;
+            const chipHtml = scoredState ? '<span class="block-status-chip no-print" data-state="pending">기회 2번</span>' : '';
+
             card.innerHTML = `
                 <div class="block-head">
-                    <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <span class="block-num">${idx + 1}</span>
                         <span style="font-weight: 800; color: #475569;">${blockTypeLabel(blk.type)}</span>
+                        ${chipHtml}
                     </div>
                     <div class="block-actions no-print" style="display: flex; gap: 6px;">
                         <button type="button" class="study-btn study-btn-secondary btn-block-tts" style="min-block-size: 38px; padding: 6px 12px; font-size: 0.86rem;">🔊 듣기</button>
@@ -125,7 +159,12 @@
             `;
 
             card.querySelector('.btn-block-tts').addEventListener('click', (ev) => {
-                speakText(blk.ttsText || blk.prompt, blk.ttsLang || 'ko-KR', ev.currentTarget);
+                const seq = getTraceBilingualSegments(blk, sheet.subject);
+                if (seq && window.StudyTTS && typeof window.StudyTTS.speakSequence === 'function') {
+                    window.StudyTTS.speakSequence(seq, ev.currentTarget);
+                } else {
+                    speakText(blk.ttsText || blk.prompt, blk.ttsLang || 'ko-KR', ev.currentTarget);
+                }
             });
 
             card.querySelector('.btn-block-swap').addEventListener('click', async (ev) => {
@@ -141,6 +180,7 @@
                     const data = await res.json();
                     if (data.success && data.content) {
                         currentSheet.content = data.content;
+                        initBlockStatesFromSheet(currentSheet);
                         renderSheet(currentSheet);
                         showToast(`${idx + 1}번 문제를 새로운 문제로 바꿨어요!`);
                     }
@@ -150,33 +190,52 @@
                 }
             });
 
+            const onScoredStateChange = (info) => {
+                const cur = blockStates.get(idx);
+                if (!cur) return;
+                Object.assign(cur, info);
+                syncBlockChip(card, cur);
+                updateScoreBar(sheet);
+            };
+
+            const initialState = scoredState?.status === 'correct' ? 'correct' : null;
             const bodyEl = card.querySelector('.block-body');
             if (blk.type === 'trace') renderTraceBlock(bodyEl, blk);
-            else if (blk.type === 'count') renderCountBlock(bodyEl, blk);
-            else if (blk.type === 'match' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMatchBlock(bodyEl, blk, speakText, showToast, sheet);
+            else if (blk.type === 'count') renderCountBlock(bodyEl, blk, { initialState, onStateChange: onScoredStateChange });
+            else if (blk.type === 'match' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMatchBlock(bodyEl, blk, speakText, showToast, sheet, { initialState, onStateChange: onScoredStateChange });
             else if (blk.type === 'dot_to_dot' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderDotToDotBlock(bodyEl, blk, speakText, showToast);
             else if (blk.type === 'maze' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMazeBlock(bodyEl, blk, speakText, showToast);
             else if (blk.type === 'color' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderColorBlock(bodyEl, blk, speakText, showToast, sheet);
-            else renderQuizBlock(bodyEl, blk);
+            else renderQuizBlock(bodyEl, blk, { initialState, onStateChange: onScoredStateChange });
 
+            if (scoredState) syncBlockChip(card, scoredState);
             container.appendChild(card);
         });
+
+        updateScoreBar(sheet);
 
         const encEl = document.getElementById('sheetEncouragement');
         const compBtn = document.getElementById('btnCompleteSheet');
         if (encEl) {
             encEl.textContent = isColoringSheet
                 ? '색칠놀이는 별·도장 없이 자유롭게 즐기는 시간이에요! 다 칠했으면 저장하고 마무리해 보아요 🎨'
-                : '모든 문제를 다 풀었다면 아래 버튼을 눌러 칭찬 도장을 받아 보세요!';
+                : '모든 문제를 다 풀었다면 아래 버튼을 눌러 채점하고 별(칭찬 도장)을 받아 보세요!';
         }
         if (compBtn && isColoringSheet) {
             compBtn.textContent = sheet.completed_at ? '✅ 색칠 완료! (학습실로 가기)' : '🎨 색칠놀이 완성! (별 없이 마무리)';
         } else if (compBtn && sheet.completed_at) {
-            compBtn.textContent = '✅ 이미 완료해서 칭찬 도장을 받았어요!';
+            compBtn.textContent = '✅ 이미 완료해서 별(칭찬 도장)을 받았어요!';
+        } else if (compBtn) {
+            compBtn.textContent = '🌟 채점하고 별(칭찬 도장) 받기';
         }
         const ttsItems = [];
         blocks.forEach((b) => {
-            ttsItems.push({ text: b.ttsText || b.prompt, lang: b.ttsLang || 'ko-KR' });
+            const seq = getTraceBilingualSegments(b, sheet.subject);
+            if (seq) {
+                seq.forEach((s) => ttsItems.push(s));
+            } else {
+                ttsItems.push({ text: b.ttsText || b.prompt, lang: b.ttsLang || 'ko-KR' });
+            }
             if (b.type === 'match' && Array.isArray(b.pairs)) {
                 const isLang = sheet.subject === 'korean' || sheet.subject === 'english';
                 b.pairs.forEach((p) => { const w = p.ttsText || (isLang ? p.right : ''); if (w) ttsItems.push({ text: w, lang: p.ttsLang || (sheet.subject === 'english' ? 'en-US' : 'ko-KR') }); });
@@ -323,109 +382,102 @@
         });
     }
 
-    function renderCountBlock(container, blk) {
-        const count = Number(blk.count || 3);
-        let tappedSeq = 0;
-
-        const grid = document.createElement('div');
-        grid.className = 'count-grid';
-        for (let i = 0; i < count; i++) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'count-item-btn';
-            btn.textContent = blk.emoji || '🍎';
-            btn.addEventListener('click', () => {
-                if (btn.classList.contains('counted')) return;
-                tappedSeq += 1;
-                btn.classList.add('counted');
-                const badge = document.createElement('span');
-                badge.className = 'count-badge';
-                badge.textContent = String(tappedSeq);
-                btn.appendChild(badge);
-                if (window.StudyFx) window.StudyFx.tap();
-                speakText(String(tappedSeq), 'ko-KR');
-            });
-            grid.appendChild(btn);
-        }
-        container.appendChild(grid);
-        renderChoicesBlock(container, blk);
+    function renderCountBlock(container, blk, choiceOpts = {}) {
+        window.StudySheetResult?.renderCountBlock?.(container, blk, speakText, choiceOpts);
     }
 
-    function renderQuizBlock(container, blk) {
-        if (blk.visualLeft || blk.visualRight || blk.equationText) {
-            const box = document.createElement('div');
-            box.className = 'quiz-visual-box';
-            if (blk.visualLeft && blk.visualRight) {
-                const mk = (cls, txt) => Object.assign(document.createElement('span'), { className: cls, textContent: txt });
-                const row = document.createElement('div');
-                row.className = 'quiz-visual-equation-row';
-                row.append(
-                    mk('quiz-visual-side', blk.visualLeft),
-                    mk('quiz-visual-op', blk.operator || '+'),
-                    mk('quiz-visual-side', blk.visualRight)
-                );
-                box.appendChild(row);
-            } else if (blk.visualLeft || blk.visualRight) {
-                const text = String(blk.visualLeft || blk.visualRight).trim();
-                const vis = document.createElement('div');
-                const isLangQuiz = (currentSheet?.subject === 'korean' || currentSheet?.subject === 'english') && blk.ttsText;
-                vis.className = (!/\s/.test(text) ? 'quiz-visual-hero' : 'quiz-visual-group') + (isLangQuiz ? ' is-speakable' : '');
-                vis.textContent = text;
-                if (isLangQuiz) vis.addEventListener('click', () => speakText(blk.ttsText, blk.ttsLang || 'ko-KR'));
-                box.appendChild(vis);
-            }
-            if (blk.equationText) {
-                const eq = document.createElement('div');
-                eq.className = 'quiz-equation-text';
-                eq.textContent = blk.equationText;
-                box.appendChild(eq);
-            }
-            container.appendChild(box);
-        }
-        renderChoicesBlock(container, blk);
+    function renderQuizBlock(container, blk, choiceOpts = {}) {
+        window.StudySheetResult?.renderQuizBlock?.(container, blk, currentSheet?.subject, speakText, choiceOpts);
     }
 
-    function renderChoicesBlock(container, blk) {
-        const grid = document.createElement('div');
-        grid.className = 'choice-grid';
-        const feedback = document.createElement('p');
-        feedback.style.cssText = 'font-weight:800; margin:10px 0 0; min-height:1.4em;';
-
-        (blk.choices || []).forEach((ch) => {
-            const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'choice-btn', textContent: ch });
-            btn.addEventListener('click', () => {
-                const isOk = String(ch).trim().toUpperCase() === String(blk.answer).trim().toUpperCase();
-                grid.querySelectorAll('.choice-btn').forEach((b) => b.classList.remove('correct', 'wrong'));
-                btn.classList.add(isOk ? 'correct' : 'wrong');
-                feedback.style.color = isOk ? '#047857' : '#dc2626';
-                feedback.textContent = isOk ? '딩동댕! 정답이에요! 🌟' : '한 번 더 생각해 볼까요? 😊';
-                if (window.StudyFx) (isOk ? window.StudyFx.correct : window.StudyFx.retry)();
-                if (isOk) speakText('딩동댕! 참 잘했어요!', 'ko-KR');
-            });
-            grid.appendChild(btn);
+    function retryWrongBlocksOnly() {
+        if (!currentSheet) return;
+        const blocks = Array.isArray(currentSheet.content?.blocks) ? currentSheet.content.blocks : [];
+        let firstWrongIdx = -1;
+        blockStates.forEach((st, idx) => {
+            if (st.status !== 'correct') {
+                if (firstWrongIdx === -1) firstWrongIdx = idx;
+                const blk = blocks[idx];
+                blockStates.set(idx, {
+                    blockIndex: idx,
+                    blockId: blk?.id || `block-${idx + 1}`,
+                    blockType: blk?.type || st.blockType,
+                    status: 'pending',
+                    attempts: 0,
+                    wrongCount: 0,
+                    finalAnswer: '',
+                    matchedCount: 0,
+                    lastWrongAnswer: '',
+                    restored: false
+                });
+            }
         });
-        container.append(grid, feedback);
+        currentSheet.lastResult = {
+            totalScored: blockStates.size,
+            correctCount: Array.from(blockStates.values()).filter((s) => s.status === 'correct').length,
+            wrongCount: Array.from(blockStates.values()).filter((s) => s.status !== 'correct').length,
+            blockResults: Array.from(blockStates.values())
+        };
+        retryAllMode = false;
+        renderSheet(currentSheet);
+        if (firstWrongIdx >= 0) {
+            const targetCard = document.querySelector(`.worksheet-block[data-block-index="${firstWrongIdx}"]`);
+            targetCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('btnPrintA4')?.addEventListener('click', () => window.print());
+        document.getElementById('btnResetAllBlocks')?.addEventListener('click', () => {
+            if (!currentSheet) return;
+            retryAllMode = true;
+            initBlockStatesFromSheet(currentSheet);
+            renderSheet(currentSheet);
+            showToast('전체 문제를 처음부터 다시 풀어요!');
+        });
         document.getElementById('btnCompleteSheet')?.addEventListener('click', async (ev) => {
             const btn = ev.currentTarget;
+            if (!currentSheet) return;
+            const isColoring = currentSheet.subject === 'coloring';
+            if (!isColoring) {
+                for (const [idx, st] of blockStates.entries()) {
+                    if (st.status !== 'correct' && st.status !== 'wrong') {
+                        const targetCard = document.querySelector(`.worksheet-block[data-block-index="${idx}"]`);
+                        targetCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        showToast(`${idx + 1}번 문제를 먼저 풀어야 채점할 수 있어요 😊`);
+                        return;
+                    }
+                }
+            }
             btn.disabled = true;
             try {
-                const res = await fetch(`/api/study/sheets/${sheetId}/complete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include' });
+                const blockResults = isColoring ? [] : Array.from(blockStates.values());
+                const res = await fetch(`/api/study/sheets/${sheetId}/complete`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ blockResults })
+                });
                 const data = await res.json();
                 showToast(data.message || '완료되었어요!');
-                if (data.success) {
-                    const noStamp = Boolean(data.noStampForColoring || currentSheet?.subject === 'coloring');
-                    window.StudyFx?.[noStamp ? 'tap' : 'fanfare']?.();
-                    window.StudyFx?.celebrate?.({ big: !noStamp && Boolean(data.reachedTen) });
-                    btn.textContent = noStamp
-                        ? '✅ 색칠 완성! (학습실로 가기)'
-                        : (data.reachedTen ? '🎉 도장 10칸 완성! 알 부화 보러 가기 🥚✨' : '✅ 칭찬 도장을 받았어요! (학습실로 가기)');
+                if (!data.success) { btn.disabled = false; return; }
+                if (isColoring) {
+                    window.StudyFx?.tap?.();
+                    btn.textContent = '✅ 색칠 완성! (학습실로 가기)';
                     btn.disabled = false;
                     btn.onclick = () => { window.location.href = `/study?childId=${encodeURIComponent(currentSheet?.child_id || 'first')}`; };
+                    return;
                 }
+                if (data.stampAwarded) {
+                    window.StudyFx?.fanfare?.();
+                    window.StudyFx?.celebrate?.({ big: Boolean(data.reachedTen) });
+                    btn.textContent = data.reachedTen ? '🎉 도장 10칸 완성! 알 부화 보러 가기 🥚✨' : '✅ 별(칭찬 도장)을 받았어요! (학습실로 가기)';
+                } else {
+                    window.StudyFx?.retry?.();
+                    btn.textContent = '🔄 틀린 문제 다시 풀고 별 받기';
+                }
+                btn.disabled = false;
+                window.StudySheetResult?.openResultDialog({ sheet: currentSheet, data, onRetryWrong: retryWrongBlocksOnly });
             } catch (e) { btn.disabled = false; showToast('완료 저장 중 문제가 생겼어요.'); }
         });
         loadSheet();

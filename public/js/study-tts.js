@@ -26,13 +26,34 @@
     let speakDelayTimer = null;
     let currentTriggerBtn = null;
     let runtimeDeviceBroken = false;
+    let playbackSeqId = 0;
 
-    function normalizeClientTtsText(text) {
-        return String(text || '')
+    function normalizeClientTtsText(text, lang = 'ko-KR') {
+        const isEn = String(lang || '').toLowerCase().startsWith('en');
+        let clean = String(text || '')
             .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ' ')
             .replace(/\s+/g, ' ')
             .trim()
             .slice(0, 160);
+        if (isEn && clean) {
+            clean = clean.replace(/\b[A-Z]{2,}(?:'[A-Z]+)?\b/g, (w) => w.toLowerCase());
+        }
+        return clean;
+    }
+
+    function buildKoreanMeaningSpeech(hint, prompt = '') {
+        let raw = String(hint || '').trim();
+        if (!raw && prompt) {
+            const m = String(prompt).match(/'[^']+'\s*\(([^)]+)\)/);
+            if (m && m[1]) raw = m[1].trim();
+        }
+        if (!raw) return '';
+        const clean = raw
+            .replace(/\s+[A-Za-z][A-Za-z\s'-]*(?=의\s)/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (!clean) return '';
+        return clean.startsWith('뜻') ? clean : `뜻은, ${clean}`;
     }
 
     function getMode() {
@@ -108,6 +129,7 @@
     }
 
     function setVisualSpeaking(btn) {
+        if (btn && currentTriggerBtn === btn && btn.classList.contains('is-speaking')) return;
         clearVisualSpeaking();
         if (!btn) return;
         const preserve = btn.dataset.preserveLabel === '1';
@@ -120,10 +142,13 @@
     }
 
     function stop() {
+        playbackSeqId += 1;
         clearTimeout(watchdogTimer);
         clearTimeout(speakDelayTimer);
         if (sharedAudio) {
             try {
+                sharedAudio.onended = null;
+                sharedAudio.onerror = null;
                 sharedAudio.pause();
                 sharedAudio.currentTime = 0;
             } catch (e) {}
@@ -203,7 +228,7 @@
         items.forEach((entry) => {
             const rawText = typeof entry === 'string' ? entry : entry?.text;
             const lang = (typeof entry === 'object' && entry?.lang) ? String(entry.lang).trim() : 'ko-KR';
-            const cleanText = normalizeClientTtsText(rawText);
+            const cleanText = normalizeClientTtsText(rawText, lang);
             if (!cleanText) return;
             const key = `${lang}:${cleanText}`;
             if (seen.has(key) || prefetchedUrls.has(key) || inflightPrefetch.has(key)) return;
@@ -217,7 +242,8 @@
         }
     }
 
-    function speakDeviceFallbackOnce(cleanText, lang, triggerBtn) {
+    function speakDeviceFallbackOnce(cleanText, lang, triggerBtn, onDone = null) {
+        const done = typeof onDone === 'function' ? onDone : clearVisualSpeaking;
         if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') {
             clearVisualSpeaking();
             showToastFallback('음성을 재생할 수 없어요. 기기 음량을 확인해 주세요 🔇');
@@ -231,7 +257,7 @@
             const v = findVoiceForLang(lang);
             if (v) u.voice = v;
             u.rate = 0.92;
-            u.onend = () => { activeUtterance = null; clearVisualSpeaking(); };
+            u.onend = () => { activeUtterance = null; done(); };
             u.onerror = () => { activeUtterance = null; clearVisualSpeaking(); };
             if (synth.paused) synth.resume();
             synth.speak(u);
@@ -240,16 +266,17 @@
         }
     }
 
-    function playServerAudio(cleanText, lang, triggerBtn, allowDeviceFallback = true) {
+    function playServerAudio(cleanText, lang, triggerBtn, allowDeviceFallback = true, onDone = null) {
         const audio = ensureAudio();
         const remoteUrl = `/api/study/tts?text=${encodeURIComponent(cleanText)}&lang=${encodeURIComponent(lang)}`;
         const key = `${lang}:${cleanText}`;
         const cachedBlobUrl = prefetchedUrls.get(key);
+        const done = typeof onDone === 'function' ? onDone : clearVisualSpeaking;
         let retriedRemote = false;
 
         const handleFailure = () => {
             if (allowDeviceFallback) {
-                speakDeviceFallbackOnce(cleanText, lang, triggerBtn);
+                speakDeviceFallbackOnce(cleanText, lang, triggerBtn, done);
                 return;
             }
             clearVisualSpeaking();
@@ -257,8 +284,10 @@
         };
 
         try {
+            audio.onended = null;
+            audio.onerror = null;
             audio.pause();
-            audio.onended = () => clearVisualSpeaking();
+            audio.onended = () => done();
             audio.onerror = () => {
                 if (!retriedRemote && cachedBlobUrl && audio.src === cachedBlobUrl) {
                     retriedRemote = true;
@@ -276,7 +305,7 @@
             if (p && typeof p.catch === 'function') {
                 p.catch(() => {
                     if (allowDeviceFallback) {
-                        speakDeviceFallbackOnce(cleanText, lang, triggerBtn);
+                        speakDeviceFallbackOnce(cleanText, lang, triggerBtn, done);
                     } else {
                         clearVisualSpeaking();
                         showToastFallback('🔊 버튼을 한 번 더 누르면 음성이 나와요!');
@@ -288,19 +317,21 @@
         }
     }
 
-    function speak(text, lang = 'ko-KR', triggerBtn = null) {
-        const cleanText = normalizeClientTtsText(text);
-        if (!cleanText) return;
-
+    function playSingleSegment(cleanText, lang, triggerBtn, onDone = null) {
         clearTimeout(watchdogTimer);
         clearTimeout(speakDelayTimer);
         if (sharedAudio) {
-            try { sharedAudio.pause(); } catch (e) {}
+            try {
+                sharedAudio.onended = null;
+                sharedAudio.onerror = null;
+                sharedAudio.pause();
+            } catch (e) {}
         }
 
         const mode = getMode();
         const hasWebSpeech = 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
         const matchedVoice = hasWebSpeech ? findVoiceForLang(lang) : null;
+        const done = typeof onDone === 'function' ? onDone : clearVisualSpeaking;
 
         // 1) 기본 'server' 모드 (자연 AI 음성) 또는 기기 음성 미지원 시 -> 클릭 즉시 서버 신경망 음성 재생
         const shouldUseServerDirect = mode === 'server'
@@ -309,7 +340,7 @@
             || (voicesLoaded && !matchedVoice);
 
         if (shouldUseServerDirect) {
-            playServerAudio(cleanText, lang, triggerBtn, mode === 'server' && hasWebSpeech && !runtimeDeviceBroken);
+            playServerAudio(cleanText, lang, triggerBtn, mode === 'server' && hasWebSpeech && !runtimeDeviceBroken, done);
             return;
         }
 
@@ -336,7 +367,7 @@
                     settled = true;
                     clearTimeout(watchdogTimer);
                     activeUtterance = null;
-                    clearVisualSpeaking();
+                    done();
                 };
                 u.onerror = () => {
                     if (settled) return;
@@ -345,7 +376,7 @@
                     activeUtterance = null;
                     runtimeDeviceBroken = true;
                     if (mode !== 'device') {
-                        playServerAudio(cleanText, lang, triggerBtn);
+                        playServerAudio(cleanText, lang, triggerBtn, false, done);
                     } else {
                         clearVisualSpeaking();
                         showToastFallback('기기 음성 엔진에서 오류가 발생했어요.');
@@ -362,7 +393,7 @@
                         try { synth.cancel(); } catch (e) {}
                         runtimeDeviceBroken = true;
                         if (mode !== 'device') {
-                            playServerAudio(cleanText, lang, triggerBtn);
+                            playServerAudio(cleanText, lang, triggerBtn, false, done);
                         } else {
                             clearVisualSpeaking();
                         }
@@ -379,8 +410,43 @@
             }
         } catch (e) {
             runtimeDeviceBroken = true;
-            playServerAudio(cleanText, lang, triggerBtn, false);
+            playServerAudio(cleanText, lang, triggerBtn, false, done);
         }
+    }
+
+    function speakSequence(segments, triggerBtn = null) {
+        const list = (Array.isArray(segments) ? segments : [])
+            .map((seg) => {
+                const lang = String(seg?.lang || 'ko-KR').trim() || 'ko-KR';
+                const text = normalizeClientTtsText(seg?.text, lang);
+                return text ? { text, lang } : null;
+            })
+            .filter(Boolean);
+        if (!list.length) return;
+
+        stop();
+        const mySeqId = playbackSeqId;
+        const playAt = (idx) => {
+            if (mySeqId !== playbackSeqId || idx >= list.length) {
+                clearVisualSpeaking();
+                return;
+            }
+            const item = list[idx];
+            const hasMore = idx + 1 < list.length;
+            playSingleSegment(item.text, item.lang, triggerBtn, () => {
+                if (mySeqId !== playbackSeqId) return;
+                if (hasMore) {
+                    speakDelayTimer = setTimeout(() => playAt(idx + 1), 160);
+                } else {
+                    clearVisualSpeaking();
+                }
+            });
+        };
+        playAt(0);
+    }
+
+    function speak(text, lang = 'ko-KR', triggerBtn = null) {
+        speakSequence([{ text, lang }], triggerBtn);
     }
 
     if ('speechSynthesis' in window) {
@@ -406,10 +472,12 @@
 
     window.StudyTTS = {
         speak,
+        speakSequence,
         stop,
         prefetch,
         getMode,
         setMode,
-        toggleMode
+        toggleMode,
+        buildKoreanMeaningSpeech
     };
 })();

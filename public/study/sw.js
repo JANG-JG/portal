@@ -18,6 +18,7 @@ const PRECACHE_ASSETS = [
     '/css/study-login.css',
     '/css/study-tablet.css',
     '/css/pokemon-meadow.css',
+    '/css/study-review.css',
     '/fonts/Pretendard-Regular.subset.woff2',
     '/fonts/Pretendard-SemiBold.subset.woff2',
     '/fonts/Pretendard-Bold.subset.woff2',
@@ -33,6 +34,8 @@ const PRECACHE_ASSETS = [
     '/js/study-color-flood.js',
     '/js/study-color-block.js',
     '/js/study-play-blocks.js',
+    '/js/study-sheet-result.js',
+    '/js/study-review.js',
     '/js/study-sheet.js'
 ];
 

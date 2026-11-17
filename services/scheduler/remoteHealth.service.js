@@ -110,8 +110,8 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
         'echo "___SSD___" && ((mountpoint -q /media/external_ssd 2>/dev/null || df -k /media/external_ssd >/dev/null 2>&1) && echo "MOUNTED" || echo "UNMOUNTED")'
     ].join(' && ');
 
-    const sshCmd = `ssh -p 22 -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=accept-new ${sshUser}@${SECONDARY_HOST} '${remoteScript}'`;
-    exec(sshCmd, { timeout: 8000 }, (err, stdout) => {
+    const sshCmd = `ssh -p 22 -o ConnectTimeout=4 -o BatchMode=yes -o StrictHostKeyChecking=accept-new ${sshUser}@${SECONDARY_HOST} '${remoteScript}'`;
+    exec(sshCmd, { timeout: 9000 }, (err, stdout) => {
         if (err || !stdout) {
             handleThresholdCheck(
                 'sec:ssh',
@@ -250,7 +250,8 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
 
 function checkExtendedHealth(kstDateStr, currentTargetDateTime, sendBroadcastPush) {
     const now = Date.now();
-    if (now - lastProbeTimestamp < 60000) return;
+    // 1분 크론 실행 오차(59.9초 등)로 매 2분마다 점검이 건너뛰어지는 현상 방지
+    if (now - lastProbeTimestamp < 50000) return;
     lastProbeTimestamp = now;
 
     checkLocalHttpEndpoints(currentTargetDateTime, sendBroadcastPush).catch(() => {});

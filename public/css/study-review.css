@@ -1,0 +1,335 @@
+/**
+ * ==============================================================================
+ * 학습지 채점·결과 다이얼로그 · 오답 복습하기 전용 스타일 (study-review.css)
+ * ------------------------------------------------------------------------------
+ * [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 모바일 퍼스트 & 44px+ 터치
+ * ==============================================================================
+ */
+
+.sheet-score-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    background: #fff7ed;
+    border: 2px solid #fed7aa;
+    border-radius: 16px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.sheet-score-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border: 2px solid #fdba74;
+    color: #9a3412;
+    font-weight: 800;
+    font-size: 0.92rem;
+    padding: 5px 12px;
+    border-radius: 999px;
+}
+
+.sheet-score-hint {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #7c2d12;
+}
+
+.sheet-retry-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+    border-radius: 16px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    font-weight: 800;
+    color: #92400e;
+}
+
+.block-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    border: 1.5px solid #cbd5e1;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.block-status-chip[data-state="retrying"] {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #b45309;
+}
+
+.block-status-chip[data-state="correct"] {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
+}
+
+.block-status-chip[data-state="wrong"] {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+}
+
+.choice-btn.answer-reveal {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25);
+}
+
+.choice-btn:disabled {
+    cursor: default;
+}
+
+.choice-feedback {
+    font-weight: 800;
+    margin: 10px 0 0;
+    min-height: 1.4em;
+    font-size: 0.94rem;
+}
+
+.match-attempt-bar {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    background: #f1f5f9;
+    border: 1.5px solid #cbd5e1;
+    color: #334155;
+}
+
+.match-attempt-bar[data-tone="warn"] {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+.match-attempt-bar[data-tone="ok"] {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #065f46;
+}
+
+.match-attempt-bar[data-tone="wrong"] {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #991b1b;
+}
+
+.match-node.wrong {
+    border-color: #ef4444;
+    background: #fee2e2;
+}
+
+/* 채점 결과 다이얼로그 (modern-web-guidance: dialog scroll containment) */
+dialog.study-dialog:modal {
+    overscroll-behavior: contain;
+}
+
+dialog.study-dialog::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+dialog.sheet-result-dialog {
+    max-width: min(94vw, 460px);
+}
+
+.result-star-hero {
+    text-align: center;
+    padding: 14px 10px;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 2px solid #e2e8f0;
+    margin-bottom: 12px;
+}
+
+.result-star-hero.is-awarded {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-color: #f59e0b;
+}
+
+.result-star-hero.is-denied {
+    background: #fff1f2;
+    border-color: #fda4af;
+}
+
+.result-star-emoji {
+    font-size: 2.6rem;
+    line-height: 1.1;
+}
+
+.result-chip-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin: 10px 0 14px;
+}
+
+.result-prob-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    border: 1.5px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.result-prob-chip.is-ok {
+    border-color: #10b981;
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.result-prob-chip.is-wrong {
+    border-color: #ef4444;
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.result-dialog-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.result-dialog-actions .study-btn,
+.result-dialog-actions .study-link-btn {
+    width: 100%;
+    min-block-size: 46px;
+}
+
+/* 대시보드 오답 복습 카드 */
+.wrong-review-card {
+    border-color: #fed7aa;
+    background: linear-gradient(180deg, #ffffff 0%, #fff7ed 100%);
+}
+
+.wrong-review-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 12px;
+}
+
+.wrong-subj-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.archive-pill-share {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+/* 전용 복습 페이지 (/study/review) */
+.review-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+}
+
+.review-filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.review-filter-btn {
+    min-block-size: 40px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 2px solid #e2e8f0;
+    background: #ffffff;
+    font-family: inherit;
+    font-size: 0.86rem;
+    font-weight: 800;
+    cursor: pointer;
+    color: #475569;
+}
+
+.review-filter-btn.active {
+    background: #ff7a45;
+    border-color: #ea580c;
+    color: #ffffff;
+}
+
+.review-note-card {
+    background: #ffffff;
+    border: 2px solid #fed7aa;
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.review-note-card.is-resolved {
+    border-color: #a7f3d0;
+    background: #f0fdf4;
+}
+
+.review-note-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.review-retry-single-btn {
+    margin-top: 10px;
+    width: 100%;
+    min-block-size: 44px;
+}
+
+@media print {
+    .sheet-score-bar,
+    .sheet-retry-banner,
+    .block-status-chip,
+    .match-attempt-bar {
+        display: none !important;
+    }
+}

@@ -21,7 +21,6 @@ const {
     getChildDashboardState,
     setChildLevel,
     adjustChildLevel,
-    awardStamp,
     markWorksheetCompletedOnly,
     deleteStampById,
     removeLastStamp,
@@ -40,6 +39,8 @@ const {
     scheduleReplenish,
     warmWorksheetTts
 } = require('../services/study/studyPreGen.service');
+const { findAndAssignCrossChildWorksheet } = require('../services/study/studySheetShare.service');
+const { gradeAndSubmitWorksheet } = require('../services/study/studyWrongNote.service');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -59,7 +60,7 @@ function sendStudyHtml(res, relPath) {
 }
 
 // ------------------------------------------------------------------------------
-// 1. 전용 학습실 HTML 뷰 (/study, /study/test, /study/sheet/:id)
+// 1. 전용 학습실 HTML 뷰 (/study, /study/test, /study/sheet/:id, /study/review)
 // ------------------------------------------------------------------------------
 router.get(['/study', '/study/', '/study/index.html'], authenticateToken, (req, res) => {
     sendStudyHtml(res, 'study/index.html');
@@ -71,6 +72,10 @@ router.get('/study/test', authenticateToken, (req, res) => {
 
 router.get('/study/sheet/:id', authenticateToken, (req, res) => {
     sendStudyHtml(res, 'study/sheet.html');
+});
+
+router.get('/study/review', authenticateToken, (req, res) => {
+    sendStudyHtml(res, 'study/review.html');
 });
 
 // ------------------------------------------------------------------------------
@@ -347,13 +352,20 @@ router.post('/api/study/sheets/generate', authenticateToken, async (req, res) =>
             coloringMode: coloringMode || 'auto_3'
         };
 
-        let sheet = await consumePregeneratedWorksheet(opts);
-        if (!sheet) {
-            sheet = await generateAndSaveWorksheet(opts);
+        let sheet = await findAndAssignCrossChildWorksheet(opts);
+        if (sheet) {
             setImmediate(() => {
                 warmWorksheetTts(sheet.content).catch(() => {});
-                if (opts.subject !== 'coloring') scheduleReplenish(opts.childId, opts.subject);
             });
+        } else {
+            sheet = await consumePregeneratedWorksheet(opts);
+            if (!sheet) {
+                sheet = await generateAndSaveWorksheet(opts);
+                setImmediate(() => {
+                    warmWorksheetTts(sheet.content).catch(() => {});
+                    if (opts.subject !== 'coloring') scheduleReplenish(opts.childId, opts.subject);
+                });
+            }
         }
         res.json({ success: true, sheet });
     } catch (err) {
@@ -420,40 +432,38 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
                 message: '알록달록 멋진 색칠놀이 완성! 🎨 (색칠놀이는 별·도장 없이 자유롭게 즐겨요)'
             });
         }
-        const result = await awardStamp({
-            childId: sheet.child_id,
-            sourceType: 'online',
-            sheetId: sheet.id,
-            note: `${sheet.title} 완료 🌟`
+        const result = await gradeAndSubmitWorksheet({
+            sheet,
+            blockResults: req.body?.blockResults
         });
-        scheduleReplenish(sheet.child_id, sheet.subject);
-        setImmediate(() => {
-            const { notifyWorksheetCompletedToParents } = require('../services/study/studyTelegramNotify.service');
-            notifyWorksheetCompletedToParents({
-                childId: sheet.child_id,
-                sheetTitle: sheet.title,
-                subject: sheet.subject,
-                level: sheet.level,
-                earnedCount: result.board?.earnedCount || 0,
-                alreadyAwarded: result.alreadyAwarded
-            }).catch(() => {});
-        });
+        if (result.stampAwarded) {
+            scheduleReplenish(sheet.child_id, sheet.subject);
+            setImmediate(() => {
+                const { notifyWorksheetCompletedToParents } = require('../services/study/studyTelegramNotify.service');
+                notifyWorksheetCompletedToParents({
+                    childId: sheet.child_id,
+                    sheetTitle: sheet.title,
+                    subject: sheet.subject,
+                    level: sheet.level,
+                    earnedCount: result.board?.earnedCount || 0,
+                    alreadyAwarded: result.alreadyAwarded
+                }).catch(() => {});
+            });
+        }
         res.json({
             success: true,
-            stampAwarded: true,
-            message: result.reachedTen
-                ? '축하해요! 도장판 10칸을 모두 채웠어요! 🎉'
-                : (result.alreadyAwarded ? '이미 도장을 받은 학습지예요! 정말 잘했어요!' : '학습 완료! 칭찬 도장을 쾅! 찍었어요 🌟'),
             ...result
         });
     } catch (err) {
+        const status = err.statusCode || 500;
         console.error('학습지 완료 처리 오류:', err);
-        res.status(500).json({ success: false, message: '완료 처리 중 오류가 발생했습니다.' });
+        res.status(status).json({ success: false, message: err.message || '완료 처리 중 오류가 발생했습니다.' });
     }
 });
 
 router.use(require('./studyArtwork.routes'));
 router.use(require('./studyPokemon.routes'));
 router.use(require('./studyMedia.routes'));
+router.use(require('./studyReview.routes'));
 
 module.exports = router;

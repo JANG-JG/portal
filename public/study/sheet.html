@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/css/study-play.css">
     <link rel="stylesheet" href="/css/study-visuals.css">
     <link rel="stylesheet" href="/css/study-tablet.css">
+    <link rel="stylesheet" href="/css/study-review.css">
 </head>
 <body>
     <div class="study-shell">
@@ -50,18 +51,41 @@
                 <span id="sheetSourceBadge" class="level-badge">맞춤 학습</span>
             </section>
 
+            <div id="sheetScoreBar" class="sheet-score-bar no-print" hidden>
+                <span id="sheetScoreProgress" class="sheet-score-pill">문제 풀이: 0 / 0</span>
+                <span id="sheetScoreRuleHint" class="sheet-score-hint">💡 문제당 기회는 2번! 틀린 문제 없이 다 맞추면 별(칭찬 도장)을 받아요 ⭐</span>
+            </div>
+
+            <div id="sheetRetryBanner" class="sheet-retry-banner no-print" hidden>
+                <span id="sheetRetryText">📝 틀렸던 문제만 다시 풀어서 맞추면 별을 받을 수 있어요!</span>
+                <button type="button" id="btnResetAllBlocks" class="study-btn study-btn-outline" style="min-block-size: 40px; font-size: 0.85rem;">🔄 전체 처음부터</button>
+            </div>
+
             <div id="sheetBlocksContainer">
                 <p style="text-align: center; padding: 24px; color: #64748b;">문제를 예쁘게 준비하고 있어요...</p>
             </div>
 
             <section class="study-card sheet-footer-actions no-print" style="text-align: center;">
-                <p id="sheetEncouragement" style="font-weight: 800; font-size: 1.05rem; margin: 0 0 12px; color: #047857;">모든 문제를 다 풀었다면 아래 버튼을 눌러 칭찬 도장을 받아 보세요!</p>
+                <p id="sheetEncouragement" style="font-weight: 800; font-size: 1.05rem; margin: 0 0 12px; color: #047857;">모든 문제를 다 풀었다면 아래 버튼을 눌러 채점하고 별(칭찬 도장)을 받아 보세요!</p>
                 <button type="button" id="btnCompleteSheet" class="study-btn study-btn-primary" style="width: 100%; max-width: 380px; font-size: 1.1rem; min-block-size: 56px;">
-                    🌟 다 풀었어요! 칭찬 도장 받기
+                    🌟 채점하고 별(칭찬 도장) 받기
                 </button>
             </section>
         </main>
     </div>
+
+    <dialog id="sheetResultDialog" class="study-dialog sheet-result-dialog" closedby="any" aria-labelledby="sheetResultTitle">
+        <div id="sheetResultHero" class="result-star-hero">
+            <div id="sheetResultEmoji" class="result-star-emoji" aria-hidden="true">🌟</div>
+            <h2 id="sheetResultTitle" style="margin: 6px 0 4px; font-size: 1.22rem;">학습지 채점 결과</h2>
+            <p id="sheetResultDesc" style="margin: 0; font-size: 0.94rem; color: #475569; font-weight: 700;"></p>
+        </div>
+        <div id="sheetResultChips" class="result-chip-grid"></div>
+        <div id="sheetResultActions" class="result-dialog-actions"></div>
+        <form method="dialog" style="margin-top: 8px;">
+            <button type="submit" value="close" class="study-btn study-btn-outline" style="width: 100%; min-block-size: 44px;">닫기</button>
+        </form>
+    </dialog>
 
     <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
 
@@ -79,6 +103,7 @@
     <script src="/js/study-color-flood.js" defer></script>
     <script src="/js/study-color-block.js" defer></script>
     <script src="/js/study-play-blocks.js" defer></script>
+    <script src="/js/study-sheet-result.js" defer></script>
     <script src="/js/study-sheet.js" defer></script>
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
 </body>

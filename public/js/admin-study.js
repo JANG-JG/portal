@@ -169,18 +169,27 @@ function renderStudyRecentSheets(sheets) {
         return;
     }
 
-    tbody.innerHTML = sheets.map((s) => `
+    tbody.innerHTML = sheets.map((s) => {
+        let wrongCnt = 0;
+        try {
+            if (s.last_result_json) wrongCnt = Number(JSON.parse(s.last_result_json).wrongCount || 0);
+        } catch (_) { wrongCnt = 0; }
+        const shareTag = s.shared_from_child_id ? ` <span style="color:#1d4ed8; font-size:0.74rem; font-weight:700;">(🔁 ${escStudyAdmin(s.shared_from_name || '교차')})</span>` : '';
+        const statusTxt = s.completed_at
+            ? '✅ 완료(별)'
+            : (wrongCnt > 0 ? `😅 오답 ${wrongCnt}개(별 대기)` : '📝 진행 중');
+        return `
         <tr>
             <td>#${escStudyAdmin(s.id)}</td>
             <td>${escStudyAdmin(s.child_emoji || '🧒')} ${escStudyAdmin(s.child_name || (s.child_id === 'first' ? '첫째' : (s.child_id === 'second' ? '둘째' : s.child_id)))}</td>
             <td>${escStudyAdmin(STUDY_SUBJECT_NAMES[s.subject] || s.subject)} Lv.${escStudyAdmin(s.level)}</td>
             <td>${escStudyAdmin(s.theme)}</td>
-            <td>${escStudyAdmin(STUDY_SOURCE_NAMES[s.source] || s.source)}</td>
-            <td>${s.completed_at ? '✅ 완료' : '📝 진행 중'}</td>
+            <td>${escStudyAdmin(STUDY_SOURCE_NAMES[s.source] || s.source)}${shareTag}</td>
+            <td>${statusTxt}</td>
             <td style="font-size:0.78rem; color:#64748b;">${escStudyAdmin(s.created_at || '')}</td>
             <td><a href="/study/sheet/${escStudyAdmin(s.id)}" target="_blank" rel="noopener" class="btn-admin btn-admin-outline btn-admin-sm">열기</a></td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 }
 
 function renderStudyTelegramUsers(users) {

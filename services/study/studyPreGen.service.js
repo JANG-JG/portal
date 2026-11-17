@@ -21,7 +21,7 @@ const {
     setSystemConfig
 } = require('./studyDb.service');
 const { generateWorksheetPayload } = require('./geminiWorksheet.service');
-const { synthesizeStudySpeech, hasCachedTts, getTtsCacheStats } = require('./studyTts.service');
+const { synthesizeStudySpeech, hasCachedTts, getTtsCacheStats, buildKoreanMeaningSpeech } = require('./studyTts.service');
 
 const PREGEN_ENABLED_KEY = 'study_pregen_enabled';
 const PREGEN_LAST_RUN_KEY = 'study_pregen_last_run';
@@ -115,6 +115,10 @@ async function warmWorksheetTts(contentOrSheet) {
 
     for (const blk of blocks) {
         pushEntry(blk?.ttsText || blk?.prompt, blk?.ttsLang || 'ko-KR');
+        if (subject === 'english' && blk?.type === 'trace') {
+            const koMeaning = buildKoreanMeaningSpeech(blk.hint, blk.prompt);
+            if (koMeaning) pushEntry(koMeaning, 'ko-KR');
+        }
         if (blk?.type === 'match' && Array.isArray(blk.pairs)) {
             const fallbackLang = subject === 'english' ? 'en-US' : 'ko-KR';
             const isLangSheet = subject === 'korean' || subject === 'english';

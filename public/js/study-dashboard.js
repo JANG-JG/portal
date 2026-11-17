@@ -127,6 +127,7 @@
         if (window.StudyPokemon && typeof window.StudyPokemon.render === 'function') {
             window.StudyPokemon.render(data.pokemon, data.activeChild);
         }
+        renderWrongReviewSummary(data.wrongNoteStats);
         renderArchive(data.recentSheets || []);
     }
 
@@ -189,6 +190,24 @@
         }
     }
 
+    function renderWrongReviewSummary(stats) {
+        const s = stats || { pendingCount: 0, resolvedCount: 0, bySubject: {} };
+        const pending = Number(s.pendingCount || 0);
+        const resolved = Number(s.resolvedCount || 0);
+        const badge = document.getElementById('wrongNoteCountBadge');
+        const text = document.getElementById('wrongNoteSummaryText');
+        const pills = document.getElementById('wrongNoteSubjStats');
+        const link = document.getElementById('btnOpenWrongReview');
+        if (badge) badge.textContent = pending > 0 ? `복습 ${pending}문제` : '모두 해결! 🌟';
+        if (text) text.textContent = pending > 0 ? `아직 다시 풀어야 할 문제가 ${pending}개 있어요! 맞추면 못 받았던 별을 받을 수 있어요 ⭐` : `와! 틀린 문제가 하나도 없어요! (${resolved}문제 복습 완료 🌟)`;
+        if (pills) pills.innerHTML = ['korean', 'math', 'english'].map((k) => `<span class="wrong-subj-pill">${SUBJECT_LABELS[k]} <strong>${Number(s.bySubject?.[k] || 0)}</strong>개</span>`).join('');
+        if (link) {
+            link.href = `/study/review?childId=${encodeURIComponent(state.childId)}`;
+            link.textContent = pending > 0 ? `📝 틀린 ${pending}문제 복습하러 가기` : '📖 해결한 오답 복습 기록 보기';
+            link.className = `study-link-btn ${pending > 0 ? 'study-btn-primary' : 'study-btn-secondary'}`;
+        }
+    }
+
     function renderArchive(sheets) {
         const list = document.getElementById('archiveList');
         if (!list) return;
@@ -197,22 +216,25 @@
             return;
         }
         list.innerHTML = sheets.map((s) => {
+            const hasPendingWrong = s.subject !== 'coloring' && !s.completed_at && Number(s.lastResult?.wrongCount || 0) > 0;
             const doneText = s.subject === 'coloring'
                 ? (s.completed_at ? '🎨 색칠 완료' : '🖍️ 자유 색칠')
-                : (s.completed_at ? '✅ 완료함' : '📝 풀기 전');
+                : (s.completed_at ? '✅ 완료함' : (hasPendingWrong ? `😅 오답 ${s.lastResult.wrongCount}개` : '📝 풀기 전'));
             const subjText = SUBJECT_LABELS[s.subject] || s.subject;
             const metaText = s.subject === 'coloring' ? subjText : `${subjText} · Lv.${s.level}`;
+            const sharePill = s.shared_from_child_id ? `<span class="archive-pill-share">🔁 ${escapeHtml(s.shared_from_name || '교차출제')}</span>` : '';
+            const retryLabel = hasPendingWrong ? '🎯 다시 풀고 별 받기' : '📱 다시 풀기';
             return `
                 <article class="archive-item">
                     <div>
                         <div class="archive-meta">
-                            <span>${metaText}</span>
+                            <span>${metaText} ${sharePill}</span>
                             <span>${doneText}</span>
                         </div>
                         <h3 class="archive-title">${escapeHtml(s.title)}</h3>
                     </div>
                     <div class="archive-actions">
-                        <a href="/study/sheet/${s.id}" class="study-link-btn study-btn-secondary">📱 다시 풀기</a>
+                        <a href="/study/sheet/${s.id}" class="study-link-btn study-btn-secondary">${retryLabel}</a>
                         <a href="/study/sheet/${s.id}?print=1" class="study-link-btn study-btn-outline">🖨️ A4 인쇄</a>
                     </div>
                 </article>
@@ -394,41 +416,19 @@
             }
         }
 
-        const btnConfirmPin = document.getElementById('btnConfirmParentPin');
-        if (btnConfirmPin) {
-            btnConfirmPin.addEventListener('click', verifyAndUnlockParentPin);
-        }
-        const pinForm = document.getElementById('parentPinForm');
-        if (pinForm) {
-            pinForm.addEventListener('submit', (e) => {
-                if (e.submitter && e.submitter.value === 'cancel') return;
-                e.preventDefault();
-                verifyAndUnlockParentPin();
-            });
-        }
+        document.getElementById('btnConfirmParentPin')?.addEventListener('click', verifyAndUnlockParentPin);
+        document.getElementById('parentPinForm')?.addEventListener('submit', (e) => {
+            if (e.submitter && e.submitter.value === 'cancel') return;
+            e.preventDefault();
+            verifyAndUnlockParentPin();
+        });
 
-        // 도장판 & 부모 확인 종이 학습지 모듈 바인딩
-        if (window.StudyStamps && typeof window.StudyStamps.bindEvents === 'function') {
-            window.StudyStamps.bindEvents({
-                state,
-                showToast,
-                escapeHtml,
-                reloadDashboard: loadDashboard,
-                openParentPinDialog,
-                touchParentActivity,
-                lockParentMode: (notify) => applyParentLockState(false, notify ? '부모 잠금이 다시 잠겼어요.' : '')
-            });
-        }
-
-        // 포켓몬 알 부화 & 도감 모듈 바인딩
-        if (window.StudyPokemon && typeof window.StudyPokemon.bindEvents === 'function') {
-            window.StudyPokemon.bindEvents({
-                state,
-                showToast,
-                escapeHtml,
-                reloadDashboard: loadDashboard
-            });
-        }
+        window.StudyStamps?.bindEvents?.({
+            state, showToast, escapeHtml, reloadDashboard: loadDashboard,
+            openParentPinDialog, touchParentActivity,
+            lockParentMode: (notify) => applyParentLockState(false, notify ? '부모 잠금이 다시 잠겼어요.' : '')
+        });
+        window.StudyPokemon?.bindEvents?.({ state, showToast, escapeHtml, reloadDashboard: loadDashboard });
 
         async function submitSheetGeneration(subject, triggerBtn) {
             if (!triggerBtn) return;
@@ -438,21 +438,13 @@
             const includePlayBlock = subject === 'coloring' ? false : (playChk ? Boolean(playChk.checked) : true);
             triggerBtn.disabled = true;
             const origText = triggerBtn.textContent;
-            triggerBtn.textContent = subject === 'coloring'
-                ? '🖍️ 색칠 도안을 준비하고 있어요...'
-                : '✨ 재미있는 학습지를 만들고 있어요...';
+            triggerBtn.textContent = subject === 'coloring' ? '🖍️ 색칠 도안을 준비하고 있어요...' : '✨ 재미있는 학습지를 만들고 있어요...';
             try {
                 const res = await fetch('/api/study/sheets/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({
-                        childId: state.childId,
-                        subject,
-                        theme,
-                        includePlayBlock,
-                        coloringMode: state.selectedColoringMode
-                    })
+                    body: JSON.stringify({ childId: state.childId, subject, theme, includePlayBlock, coloringMode: state.selectedColoringMode })
                 });
                 const data = await res.json();
                 if (data.success && data.sheet) {
@@ -470,14 +462,9 @@
         }
 
         const btnGen = document.getElementById('btnGenerateSheet');
-        if (btnGen) {
-            btnGen.addEventListener('click', () => submitSheetGeneration(state.selectedSubject, btnGen));
-        }
-
+        btnGen?.addEventListener('click', () => submitSheetGeneration(state.selectedSubject, btnGen));
         const btnGenColor = document.getElementById('btnGenerateColoring');
-        if (btnGenColor) {
-            btnGenColor.addEventListener('click', () => submitSheetGeneration('coloring', btnGenColor));
-        }
+        btnGenColor?.addEventListener('click', () => submitSheetGeneration('coloring', btnGenColor));
     }
 
     document.addEventListener('DOMContentLoaded', () => {

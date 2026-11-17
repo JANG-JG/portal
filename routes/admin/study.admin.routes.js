@@ -94,11 +94,15 @@ router.get('/overview', async (req, res) => {
         const quota = await getDailyQuotaStatus();
         const geminiModel = await getSystemConfig('study_gemini_model', 'gemini-3.1-flash-lite');
         const hasParentPin = Boolean(await getSystemConfig('study_parent_pin', ''));
+        const { ensureSheetExtensions } = require('../../services/study/studySheetShare.service');
+        await ensureSheetExtensions().catch(() => {});
         const recentSheets = await dbAll(
-            `SELECT s.id, s.child_id, s.subject, s.level, s.theme, s.title, s.source, s.completed_at, s.created_by, s.created_at,
-                    p.display_name AS child_name, p.avatar_emoji AS child_emoji
+            `SELECT s.id, s.child_id, s.subject, s.level, s.theme, s.title, s.source, s.completed_at,
+                    s.origin_sheet_id, s.shared_from_child_id, s.last_result_json, s.created_by, s.created_at,
+                    p.display_name AS child_name, p.avatar_emoji AS child_emoji, sp.display_name AS shared_from_name
              FROM study_sheets s
              LEFT JOIN study_profiles p ON p.id = s.child_id
+             LEFT JOIN study_profiles sp ON sp.id = s.shared_from_child_id
              ORDER BY s.id DESC LIMIT 20`
         );
         const telegramUsers = await listAllowedTelegramUsers();
@@ -409,7 +413,8 @@ const TABLET_CONFIG_FIELDS = [
     ['soundFxDefault', 'study_tablet_sound_fx_default', '1'],
     ['hangulGuideEnabled', 'study_hangul_guide_enabled', '1'],
     ['kidAlbumShareEnabled', 'study_kid_album_share_enabled', '1'],
-    ['pokemonColoringEnabled', 'study_pokemon_coloring_enabled', '1']
+    ['pokemonColoringEnabled', 'study_pokemon_coloring_enabled', '1'],
+    ['crossShareEnabled', 'study_cross_share_enabled', '1']
 ];
 
 async function readTabletConfigObj() {
@@ -487,5 +492,6 @@ router.post('/interactive-config', async (req, res) => {
 
 router.use('/stamps', require('./studyStamps.admin.routes'));
 router.use('/artworks', require('./studyArtwork.admin.routes'));
+router.use('/wrong-notes', require('./studyWrongNotes.admin.routes'));
 
 module.exports = router;

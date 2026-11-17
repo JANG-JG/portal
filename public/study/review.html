@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>틀린 문제 복습하기 | 빨간패드공부</title>
+    <link rel="manifest" href="/study/manifest.json">
+    <link rel="icon" type="image/png" sizes="64x64" href="/study/icons/favicon-64.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/study/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/study/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#ff7a45">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="빨간패드공부">
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="stylesheet" href="/css/study.css">
+    <link rel="stylesheet" href="/css/study-play.css">
+    <link rel="stylesheet" href="/css/study-visuals.css">
+    <link rel="stylesheet" href="/css/study-tablet.css">
+    <link rel="stylesheet" href="/css/study-review.css">
+</head>
+<body>
+    <div class="study-shell">
+        <header class="study-topbar no-print">
+            <div class="study-brand">
+                <span class="study-brand-icon" aria-hidden="true">📝</span>
+                <div>
+                    <h1>틀린 문제 복습하기</h1>
+                    <small id="reviewMetaLine" style="color: #64748b; font-weight: 700;">복습 노트를 불러오는 중...</small>
+                </div>
+            </div>
+            <div class="study-topbar-actions">
+                <button type="button" id="btnWakeLockToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">💡 화면 유지 중</button>
+                <button type="button" id="btnSoundFxToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">🔔 효과음</button>
+                <button type="button" id="btnTtsModeToggle" class="study-btn study-btn-outline" title="자연스러운 AI 선생님 음성과 기기 음성을 전환해요">🎙️ AI 자연 음성</button>
+                <a id="btnBackFromReview" href="/study" class="study-link-btn study-btn-secondary">⬅️ 학습실로</a>
+            </div>
+        </header>
+
+        <main>
+            <section class="study-card" style="margin-bottom: 14px;">
+                <div class="study-card-head" style="margin-bottom: 8px;">
+                    <h2 class="study-card-title" style="margin: 0;">⭐ 다시 풀어서 맞추면 못 받았던 별을 받을 수 있어요!</h2>
+                    <span id="reviewCountBadge" class="level-badge">대기 0문제</span>
+                </div>
+                <div class="review-filter-bar">
+                    <div class="review-filter-group" id="reviewStatusTabs" role="group" aria-label="복습 상태 필터">
+                        <button type="button" class="review-filter-btn active" data-status="pending">📝 복습할 문제</button>
+                        <button type="button" class="review-filter-btn" data-status="resolved">✅ 해결한 문제</button>
+                    </div>
+                    <div class="review-filter-group" id="reviewSubjectTabs" role="group" aria-label="영역 필터">
+                        <button type="button" class="review-filter-btn active" data-subject="all">전체</button>
+                        <button type="button" class="review-filter-btn" data-subject="korean">🇰🇷 한글</button>
+                        <button type="button" class="review-filter-btn" data-subject="math">🔢 수학</button>
+                        <button type="button" class="review-filter-btn" data-subject="english">🔤 영어</button>
+                    </div>
+                </div>
+            </section>
+
+            <div id="reviewNotesContainer">
+                <p style="text-align: center; padding: 24px; color: #64748b;">틀린 문제를 모으고 있어요...</p>
+            </div>
+        </main>
+    </div>
+
+    <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
+
+    <script src="/js/study-pwa.js" defer></script>
+    <script src="/js/study-tablet.js" defer></script>
+    <script src="/vendor/study/canvas-confetti.min.js" defer></script>
+    <script src="/js/study-fx.js" defer></script>
+    <script src="/js/study-tts.js" defer></script>
+    <script src="/js/study-play-blocks.js" defer></script>
+    <script src="/js/study-sheet-result.js" defer></script>
+    <script src="/js/study-review.js" defer></script>
+    <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
+</body>
+</html>

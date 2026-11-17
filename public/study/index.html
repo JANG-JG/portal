@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="/css/study-tablet.css">
     <link rel="stylesheet" href="/css/study-pokemon.css">
     <link rel="stylesheet" href="/css/pokemon-meadow.css">
+    <link rel="stylesheet" href="/css/study-review.css">
 </head>
 <body>
     <div class="study-shell">
@@ -256,6 +257,21 @@
                         </button>
                     </div>
                 </div>
+            </section>
+
+            <!-- 틀린 문제 오답 복습 노트 -->
+            <section class="study-card wrong-review-card" id="wrongReviewCard">
+                <div class="study-card-head">
+                    <h2 class="study-card-title">📝 틀린 문제 복습하기</h2>
+                    <span id="wrongNoteCountBadge" class="level-badge">확인 중...</span>
+                </div>
+                <p id="wrongNoteSummaryText" style="margin: 0; font-size: 0.9rem; color: #475569; font-weight: 700;">
+                    틀린 문제를 다시 풀어서 맞추면 못 받았던 별(칭찬 도장)을 받을 수 있어요!
+                </p>
+                <div id="wrongNoteSubjStats" class="wrong-review-stats"></div>
+                <a id="btnOpenWrongReview" href="/study/review" class="study-link-btn study-btn-primary" style="width: 100%; min-block-size: 48px;">
+                    📝 틀린 문제 복습하러 가기
+                </a>
             </section>
 
             <!-- 생성된 학습지 보관함 -->

@@ -166,6 +166,10 @@
                                     <input id="chkTabletPokemonColoringEnabled" type="checkbox" checked>
                                     PokéAPI 1세대(#1~150) 포켓몬 색칠하기 켜기
                                 </label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
+                                    <input id="chkStudyCrossShareEnabled" type="checkbox" checked>
+                                    같은 난이도 학습지 아이들 간 교차 출제 허용
+                                </label>
                             </div>
                             <button type="button" id="btnSaveStudyTabletConfig" class="btn-admin btn-admin-primary btn-admin-sm" onclick="saveStudyTabletConfig()">💾 태블릿 앱 설정 저장</button>
                         </div>
@@ -256,6 +260,37 @@
                     </div>
                     <div id="adminStudyArtworksGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.75rem; margin-top:0.75rem;">
                         <div style="padding:0.9rem; color:#64748b; font-size:0.84rem;">그림 작품 목록을 불러오는 중입니다...</div>
+                    </div>
+                </div>
+
+                <div id="studyWrongNotesAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">📝 아이별 오답 노트 · 복습 현황</h3>
+                            <p style="margin:0.2rem 0 0; font-size:0.78rem; color:#64748b;">
+                                2회 오답으로 별이 보류된 문제와 복습 완료 내역을 확인합니다. 아이가 복습으로 맞추면 별이 자동 지급됩니다.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyWrongNotes()">🔄 오답 새로고침</button>
+                    </div>
+                    <div id="studyWrongNotesSummaryGrid" style="display:flex; flex-wrap:wrap; gap:0.55rem; margin-top:0.65rem;"></div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>아이</th>
+                                    <th>영역·레벨</th>
+                                    <th>문제</th>
+                                    <th>오답 횟수</th>
+                                    <th>상태</th>
+                                    <th>시각</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminStudyWrongNotesBody">
+                                <tr><td colspan="7" style="text-align:center; padding:1rem; color:#64748b;">오답 노트 현황을 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

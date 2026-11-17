@@ -298,30 +298,108 @@
         }
     }
 
-    function renderMatchBlock(container, blk, speakFn, toastFn, sheetMeta) {
+    function renderChoicesBlock(container, blk, speakFn, opts = {}) {
+        const { initialState = null, onStateChange = null } = opts || {};
+        const grid = document.createElement('div');
+        grid.className = 'choice-grid';
+        const feedback = document.createElement('p');
+        feedback.className = 'choice-feedback';
+        feedback.setAttribute('aria-live', 'polite');
+
+        let wrongTries = 0;
+        let locked = initialState === 'correct';
+        let lastWrongAnswer = '';
+        const norm = (v) => String(v ?? '').trim().toUpperCase();
+        const ansNorm = norm(blk.answer);
+
+        (blk.choices || []).forEach((ch) => {
+            const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'choice-btn', textContent: ch });
+            if (locked) {
+                btn.disabled = true;
+                if (norm(ch) === ansNorm) btn.classList.add('correct');
+            }
+            btn.addEventListener('click', () => {
+                if (locked || btn.disabled) return;
+                if (norm(ch) === ansNorm) {
+                    locked = true;
+                    btn.classList.add('correct');
+                    grid.querySelectorAll('.choice-btn').forEach((b) => { b.disabled = true; });
+                    feedback.style.color = '#047857';
+                    feedback.textContent = wrongTries === 0 ? '딩동댕! 한 번에 맞췄어요! ⭐' : '딩동댕! 두 번째 도전에 맞췄어요! 🌟';
+                    if (window.StudyFx) window.StudyFx.correct();
+                    if (typeof speakFn === 'function') speakFn('딩동댕! 참 잘했어요!', 'ko-KR');
+                    onStateChange?.({ status: 'correct', attempts: wrongTries + 1, wrongCount: wrongTries, finalAnswer: ch, lastWrongAnswer });
+                    return;
+                }
+                wrongTries += 1;
+                lastWrongAnswer = String(ch);
+                btn.classList.add('wrong');
+                btn.disabled = true;
+                if (window.StudyFx) window.StudyFx.retry();
+                if (wrongTries === 1) {
+                    feedback.style.color = '#d97706';
+                    feedback.textContent = '아쉬워요! 한 번만 더 선택할 수 있어요 (남은 기회 1번) 🤔';
+                    onStateChange?.({ status: 'retrying', attempts: 1, wrongCount: 1, finalAnswer: '', lastWrongAnswer });
+                } else {
+                    locked = true;
+                    grid.querySelectorAll('.choice-btn').forEach((b) => {
+                        b.disabled = true;
+                        if (norm(b.textContent) === ansNorm) b.classList.add('answer-reveal');
+                    });
+                    feedback.style.color = '#dc2626';
+                    feedback.textContent = `두 번 모두 틀렸어요! 정답은 "${blk.answer}" 예요. 다시 풀면 별을 받을 수 있어요 📝`;
+                    onStateChange?.({ status: 'wrong', attempts: wrongTries, wrongCount: wrongTries, finalAnswer: ch, lastWrongAnswer });
+                }
+            });
+            grid.appendChild(btn);
+        });
+        if (locked) {
+            feedback.style.color = '#047857';
+            feedback.textContent = '⭐ 이미 맞춘 문제예요!';
+        }
+        container.append(grid, feedback);
+    }
+
+    function renderMatchBlock(container, blk, speakFn, toastFn, sheetMeta, opts = {}) {
+        const { initialState = null, onStateChange = null } = opts || {};
+        const statusBar = document.createElement('div');
+        statusBar.className = 'match-attempt-bar';
         const board = Object.assign(document.createElement('div'), { className: 'match-board' });
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.setAttribute('class', 'match-svg');
         const leftCol = Object.assign(document.createElement('div'), { className: 'match-col' });
         const rightCol = Object.assign(document.createElement('div'), { className: 'match-col' });
-        let selectedLeft = null;
         const pairs = blk.pairs || [];
         const rights = blk.shuffledRights || pairs.map((p) => p.right);
         const subj = sheetMeta?.subject || '';
 
-        const drawLineBetween = (elA, elB, color = '#10b981') => {
+        let selectedLeft = null;
+        let wrongTries = 0;
+        let matchedCount = initialState === 'correct' ? pairs.length : 0;
+        let locked = initialState === 'correct';
+        let lastWrongAnswer = '';
+
+        const updateBar = (text, tone = 'info') => { statusBar.textContent = text; statusBar.dataset.tone = tone; };
+        updateBar(locked ? '⭐ 이미 모든 짝꿍을 맞춘 문제예요!' : '짝꿍을 이어 보세요 (남은 기회: 2번)', locked ? 'ok' : 'info');
+
+        const drawLineBetween = (elA, elB, color = '#10b981', dashed = false) => {
             const bRect = board.getBoundingClientRect();
             const aRect = elA.getBoundingClientRect();
             const cRect = elB.getBoundingClientRect();
+            if (!bRect.width || !aRect.width || !cRect.width) return;
             const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
             const attrs = {
                 x1: aRect.right - bRect.left, y1: aRect.top + aRect.height / 2 - bRect.top,
                 x2: cRect.left - bRect.left, y2: cRect.top + cRect.height / 2 - bRect.top,
-                stroke: color, 'stroke-width': 5, 'stroke-linecap': 'round'
+                stroke: color, 'stroke-width': dashed ? 3.5 : 5, 'stroke-linecap': 'round'
             };
+            if (dashed) attrs['stroke-dasharray'] = '6 5';
             Object.entries(attrs).forEach(([k, v]) => line.setAttribute(k, String(v)));
             svg.appendChild(line);
         };
+
+        const leftBtns = [];
+        const rightBtns = [];
 
         pairs.forEach((p) => {
             const btn = document.createElement('button');
@@ -333,6 +411,7 @@
             btn.className = isVisual ? 'match-node match-node--visual' : 'match-node';
             btn.textContent = p.left;
             btn.dataset.answer = p.right;
+            if (locked) btn.classList.add('matched');
             if (wordSpeech) {
                 btn.dataset.preserveLabel = '1';
                 btn.setAttribute('aria-label', `${wordSpeech} 그림 듣기`);
@@ -340,37 +419,74 @@
             }
             btn.addEventListener('click', () => {
                 if (wordSpeech && typeof speakFn === 'function') speakFn(wordSpeech, wordLang, btn);
-                if (btn.classList.contains('matched')) return;
+                if (locked || btn.classList.contains('matched')) return;
                 leftCol.querySelectorAll('.match-node').forEach((n) => n.classList.remove('selected'));
                 selectedLeft = btn;
                 btn.classList.add('selected');
             });
+            leftBtns.push(btn);
             leftCol.appendChild(btn);
         });
 
         rights.forEach((rVal) => {
             const btn = Object.assign(document.createElement('button'), { type: 'button', className: 'match-node', textContent: rVal });
+            btn.dataset.value = rVal;
+            if (locked) btn.classList.add('matched');
             btn.addEventListener('click', () => {
-                if (!selectedLeft || btn.classList.contains('matched')) return;
+                if (locked || !selectedLeft || btn.classList.contains('matched')) return;
                 if (selectedLeft.dataset.answer === rVal) {
                     selectedLeft.classList.remove('selected');
                     selectedLeft.classList.add('matched');
                     btn.classList.add('matched');
                     drawLineBetween(selectedLeft, btn, '#10b981');
                     selectedLeft = null;
+                    matchedCount += 1;
                     if (window.StudyFx) window.StudyFx.correct();
-                    if (typeof toastFn === 'function') toastFn('짝꿍 찾기 성공! 🌟');
+                    if (matchedCount >= pairs.length) {
+                        locked = true;
+                        updateBar(wrongTries === 0 ? '⭐ 한 번에 모두 연결했어요!' : '🌟 두 번째 도전에 모두 연결했어요!', 'ok');
+                        toastFn?.('짝꿍 선 잇기 완료! 🌟');
+                        onStateChange?.({ status: 'correct', attempts: wrongTries + 1, wrongCount: wrongTries, matchedCount, lastWrongAnswer });
+                    } else toastFn?.('짝꿍 찾기 성공! 🌟');
+                    return;
+                }
+                wrongTries += 1;
+                lastWrongAnswer = String(rVal);
+                selectedLeft.classList.remove('selected');
+                selectedLeft = null;
+                btn.classList.add('wrong');
+                setTimeout(() => btn.classList.remove('wrong'), 550);
+                if (window.StudyFx) window.StudyFx.retry();
+                if (wrongTries === 1) {
+                    updateBar('⚠️ 아쉬워요! 한 번만 더 선택할 수 있어요 (남은 기회 1번) 🤔', 'warn');
+                    toastFn?.('한 번 더 골라볼 수 있어요! (남은 기회 1번)');
+                    onStateChange?.({ status: 'retrying', attempts: 1, wrongCount: 1, matchedCount, lastWrongAnswer });
                 } else {
-                    selectedLeft.classList.remove('selected');
-                    selectedLeft = null;
-                    if (window.StudyFx) window.StudyFx.retry();
-                    if (typeof toastFn === 'function') toastFn('다른 짝꿍을 찾아 볼까요?');
+                    locked = true;
+                    updateBar('❌ 두 번 틀려서 오답으로 기록했어요! 정답 선을 확인해요 📝', 'wrong');
+                    leftBtns.forEach((lBtn) => {
+                        if (!lBtn.classList.contains('matched')) {
+                            const rBtn = rightBtns.find((rb) => rb.dataset.value === lBtn.dataset.answer && !rb.classList.contains('matched'));
+                            if (rBtn) drawLineBetween(lBtn, rBtn, '#f59e0b', true);
+                        }
+                    });
+                    toastFn?.('두 번 틀려서 복습 노트에 저장돼요 📝');
+                    onStateChange?.({ status: 'wrong', attempts: wrongTries, wrongCount: wrongTries, matchedCount, lastWrongAnswer });
                 }
             });
+            rightBtns.push(btn);
             rightCol.appendChild(btn);
         });
         board.append(svg, leftCol, rightCol);
-        container.appendChild(board);
+        container.append(statusBar, board);
+        if (locked) {
+            requestAnimationFrame(() => {
+                leftBtns.forEach((lBtn) => {
+                    const rBtn = rightBtns.find((rb) => rb.dataset.value === lBtn.dataset.answer);
+                    if (rBtn) drawLineBetween(lBtn, rBtn, '#10b981');
+                });
+            });
+        }
     }
 
     window.StudyPlayBlocks = {
@@ -378,6 +494,7 @@
         renderDotToDotBlock,
         renderMazeBlock,
         renderColorBlock,
+        renderChoicesBlock,
         renderMatchBlock
     };
 })();

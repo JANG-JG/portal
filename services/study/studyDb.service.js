@@ -268,17 +268,23 @@ async function saveWorksheet({ childId, subject, level, theme, title, source = '
 }
 
 async function getWorksheetById(sheetId) {
+    const { ensureSheetExtensions } = require('./studySheetShare.service');
+    await ensureSheetExtensions().catch(() => {});
     const row = await dbGet(
-        `SELECT s.*, p.display_name AS child_name, p.avatar_emoji AS child_emoji
+        `SELECT s.*, p.display_name AS child_name, p.avatar_emoji AS child_emoji,
+                sp.display_name AS shared_from_name
          FROM study_sheets s
          LEFT JOIN study_profiles p ON p.id = s.child_id
+         LEFT JOIN study_profiles sp ON sp.id = s.shared_from_child_id
          WHERE s.id = ?`,
         [Number(sheetId)]
     );
     if (!row) return null;
     let content = null;
+    let lastResult = null;
     try { content = JSON.parse(row.content_json); } catch (e) { content = null; }
-    return { ...row, content };
+    try { lastResult = row.last_result_json ? JSON.parse(row.last_result_json) : null; } catch (e) { lastResult = null; }
+    return { ...row, content, lastResult };
 }
 
 async function updateWorksheetContent(sheetId, contentObj) {
@@ -290,27 +296,49 @@ async function updateWorksheetContent(sheetId, contentObj) {
 
 async function listRecentWorksheets(childId, limit = 16) {
     const cid = normalizeChildId(childId);
-    return dbAll(
-        `SELECT id, child_id, subject, level, theme, title, source, completed_at, created_by, created_at
-         FROM study_sheets
-         WHERE child_id = ?
-         ORDER BY id DESC
+    const { ensureSheetExtensions } = require('./studySheetShare.service');
+    await ensureSheetExtensions().catch(() => {});
+    const rows = await dbAll(
+        `SELECT s.id, s.child_id, s.subject, s.level, s.theme, s.title, s.source,
+                s.completed_at, s.created_by, s.created_at,
+                s.origin_sheet_id, s.shared_from_child_id, s.last_result_json,
+                sp.display_name AS shared_from_name
+         FROM study_sheets s
+         LEFT JOIN study_profiles sp ON sp.id = s.shared_from_child_id
+         WHERE s.child_id = ?
+         ORDER BY s.id DESC
          LIMIT ?`,
         [cid, Number(limit)]
     );
+    return rows.map((r) => {
+        let lastResult = null;
+        try {
+            if (r.last_result_json) {
+                const p = JSON.parse(r.last_result_json);
+                lastResult = {
+                    totalScored: Number(p.totalScored || 0),
+                    correctCount: Number(p.correctCount || 0),
+                    wrongCount: Number(p.wrongCount || 0)
+                };
+            }
+        } catch (_) { lastResult = null; }
+        return { ...r, lastResult };
+    });
 }
 
 async function getChildDashboardState(childId, viewerUser = null) {
     const cid = await resolveChildProfileId(childId, viewerUser);
     const profiles = await getProfiles();
     const profile = profiles.find((p) => p.id === cid) || profiles[0];
-    const [levels, stampBoard, weeklyBalance, recentSheets, parentPinCfg, quota] = await Promise.all([
+    const { getWrongNoteStats } = require('./studyWrongNote.service');
+    const [levels, stampBoard, weeklyBalance, recentSheets, parentPinCfg, quota, wrongNoteStats] = await Promise.all([
         getChildLevels(cid),
         getActiveStampBoard(cid),
         getWeeklyBalanceRecommendation(cid),
         listRecentWorksheets(cid, 16),
         getSystemConfig('study_parent_pin', ''),
-        getDailyQuotaStatus()
+        getDailyQuotaStatus(),
+        getWrongNoteStats(cid).catch(() => ({ pendingCount: 0, resolvedCount: 0, bySubject: { korean: 0, math: 0, english: 0 } }))
     ]);
     const pokemon = await getPokemonStateForBoard(cid, stampBoard).catch((err) => {
         console.warn('포켓몬 알 상태 조회 무시:', err?.message || err);
@@ -325,6 +353,7 @@ async function getChildDashboardState(childId, viewerUser = null) {
         pokemon,
         weeklyBalance,
         recentSheets,
+        wrongNoteStats,
         hasParentPin: Boolean(parentPinCfg),
         quota
     };

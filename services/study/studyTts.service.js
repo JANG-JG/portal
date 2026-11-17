@@ -61,18 +61,37 @@ async function setTtsVoiceSettings({ koVoice, enVoice } = {}) {
 }
 
 function normalizeTtsInput(rawText, rawLang = 'ko-KR') {
-    const cleanText = String(rawText || '')
+    const langStr = String(rawLang || 'ko-KR').toLowerCase();
+    const isEn = langStr.startsWith('en');
+    let cleanText = String(rawText || '')
         .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ' ')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 160);
-    const langStr = String(rawLang || 'ko-KR').toLowerCase();
-    const isEn = langStr.startsWith('en');
+    // 2글자 이상 ALL-CAPS 영단어(예: EGG, CAT)는 약어 철자(E-G-G) 낭독을 막기 위해 소문자로 정규화 (단일 알파벳 E, A는 유지)
+    if (isEn && cleanText) {
+        cleanText = cleanText.replace(/\b[A-Z]{2,}(?:'[A-Z]+)?\b/g, (w) => w.toLowerCase());
+    }
     return {
         text: cleanText,
         lang: isEn ? 'en-US' : 'ko-KR',
         shortLang: isEn ? 'en' : 'ko'
     };
+}
+
+function buildKoreanMeaningSpeech(hint, prompt = '') {
+    let raw = String(hint || '').trim();
+    if (!raw && prompt) {
+        const m = String(prompt).match(/'[^']+'\s*\(([^)]+)\)/);
+        if (m && m[1]) raw = m[1].trim();
+    }
+    if (!raw) return '';
+    const clean = raw
+        .replace(/\s+[A-Za-z][A-Za-z\s'-]*(?=의\s)/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!clean) return '';
+    return clean.startsWith('뜻') ? clean : `뜻은, ${clean}`;
 }
 
 function getCachePaths(text, lang, voiceId = 'sunhi') {
@@ -333,6 +352,7 @@ function getTtsCacheStats() {
 module.exports = {
     TTS_VOICE_PRESETS,
     normalizeTtsInput,
+    buildKoreanMeaningSpeech,
     getTtsVoiceSettings,
     setTtsVoiceSettings,
     synthesizeStudySpeech,
