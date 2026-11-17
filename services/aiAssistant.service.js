@@ -16,11 +16,13 @@ const { handleActionIntent } = require('./aiActionAgent.service');
 const { buildAiChatPrompt } = require('./aiContextRouter.service');
 const { detectPromptInjection, scrubPromptPii } = require('./ai/aiGuardrails.service');
 
-const { OLLAMA_HOST, getChatModel, selectChatModel, ensureModelSlot } = require('./aiModelRouter.service');
-// 브리핑·상태 점검·위키 처리는 평상시 대화 모델 사용 (getChatModel: 관리자 설정 즉시 반영)
+const { OLLAMA_HOST, getChatModel, getBalancedModel, selectChatModel, ensureModelSlot } = require('./aiModelRouter.service');
+const { getTimeSlot } = require('./dailyBriefing.service');
+// 평상시 대화·상태 점검·위키 처리는 getChatModel, 데일리 브리핑은 문맥 정확도를 위해 getBalancedModel(4B) 우선 사용
 
-// 브리핑 캐시 (1시간 유효, 데이터 변경 시 자동 갱신)
+// 브리핑 캐시 (1시간 유효, 사용자/날씨/복약/혈압/시간대 상태 변경 시 자동 갱신)
 let cachedAiBriefing = null;
+let cachedAiBriefingKey = '';
 let cachedAiBriefingTime = 0;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1시간
 
@@ -50,6 +52,9 @@ async function sendOllamaRequest(endpoint, payload, timeoutMs = 45000) {
                         try {
                             const parsed = JSON.parse(rawData);
                             if (parsed && typeof parsed.response === 'string') parsed.response = stripThinkTags(parsed.response);
+                            if (parsed && parsed.message && typeof parsed.message.content === 'string') {
+                                parsed.message.content = stripThinkTags(parsed.message.content);
+                            }
                             resolve(parsed);
                         } catch (e) {
                             reject(new Error('응답 JSON 파싱 실패'));
@@ -140,54 +145,75 @@ function parseDDayDiff(ddayItem) {
 }
 
 /**
- * 브리핑 말투 후처리: '님아/님님' 호칭 정리 + 질문형(?) 문장 제거 (평서문만 남김, 전부 질문이면 null)
+ * 브리핑 말투 후처리: 마크다운 제거 + '님아/님님' 호칭 정리 + 질문형(?) 문장 제거 + 최대 2문장 정제
  */
 function polishBriefingTone(text) {
     let t = String(text || '')
+        .replace(/\*\*([^*]+)\*\*/g, '$1')
+        .replace(/[`#]/g, '')
+        .replace(/\r?\n+/g, ' ')
         .replace(/님\s*님/g, '님')
         .replace(/님아(?=[\s,.!~]|$)/g, '님')
         .replace(/\s{2,}/g, ' ')
         .trim();
     const sentences = t.split(/(?<=[.!?？。])\s+/);
-    const kept = sentences.map(s => s.trim()).filter(s => s && !/[?？]$/.test(s));
+    const kept = sentences.map(s => s.trim()).filter(s => s && !/[?？]$/.test(s)).slice(0, 2);
     t = kept.join(' ').trim();
     return t.length >= 10 ? t : null;
 }
 
 /**
- * 2. LG EXAONE 기반 오늘 맞춤형 데일리 건강/일정 조언 문장 생성
- * - [원칙] 먼 미래 D-Day 원천 배제, 오늘 당일(D-Day) 및 3일 이내 초임박 일정만 엄선
- * - [원칙] 자산/사진첩 등 잡음 제거, 사용자의 '오늘 하루'에 꼭 필요한 핵심 1~2가지만 간결 조언
+ * 2. 로컬 AI 기반 오늘 맞춤형 데일리 건강/일정 조언 문장 생성
+ * - [원칙] /api/chat 표준 메시지 배열을 사용하여 Gemma/EXAONE 등 모든 모델 템플릿 호환
+ * - [원칙] 날씨·미세먼지·시간대·복약 상태의 인과관계 모순을 차단하고 자연스러운 1~2문장 생성
  */
 async function generateAiDailyBriefing({ blood, medication, weather, todayEvents = [], asset = null, wiki = null, album = null, userName = '가족' }, forceRefresh = false) {
     const now = Date.now();
-    if (!forceRefresh && cachedAiBriefing && (now - cachedAiBriefingTime < CACHE_TTL_MS)) {
+    const kstHour = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getHours();
+    const timeSlot = getTimeSlot(kstHour);
+
+    const cacheKey = [
+        userName,
+        timeSlot.key,
+        weather ? `${weather.city || ''}|${weather.condition || ''}|${weather.temp || ''}|${weather.updated_at || ''}` : 'noweather',
+        medication ? (medication.is_today_taken ? 'med1' : 'med0') : 'nomed',
+        blood ? (blood.is_today_measured ? 'bp1' : 'bp0') : 'nobp',
+        Array.isArray(todayEvents) ? todayEvents.length : 0
+    ].join('::');
+
+    if (!forceRefresh && cachedAiBriefing && cachedAiBriefingKey === cacheKey && (now - cachedAiBriefingTime < CACHE_TTL_MS)) {
         return cachedAiBriefing;
     }
 
     // 1) 오늘 건강 상태 (복약 & 혈압)
     const bloodText = blood 
-        ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'}), ${blood.is_today_measured ? '오늘 측정 완료 ✅' : '오늘 아직 미측정 ⚠️'}` 
-        : '혈압 기록 없음';
-    const medText = medication && medication.is_today_taken 
-        ? '오늘 약 복용 완료 ✅' 
-        : '오늘 혈압약 아직 안 챙겨드심(복용 필요 ⚠️)';
+        ? `${blood.systolic}/${blood.diastolic} mmHg (${blood.grade ? blood.grade.name : '정상'}), ${blood.is_today_measured ? '오늘 측정 완료' : '오늘 아직 미측정'}` 
+        : '';
+    const medText = medication
+        ? (medication.is_today_taken ? '오늘 혈압약 복용 완료' : '오늘 혈압약 아직 복용 전(챙겨 드셔야 함)')
+        : '';
 
-    // 2) 오늘 날씨 & 외출 주의사항 (기상청 수집 데이터 근거 최우선 반영)
+    // 2) 오늘 날씨 & 대기질 (모순 없는 사실 위주 요약)
     let weatherText = '';
     if (weather) {
         const feelKo = describeFeelKo(weather.feels_like || weather.temp);
         const todayFc = (Array.isArray(weather.forecast) && weather.forecast[0]) ? weather.forecast[0] : null;
         const minT = weather.min_temp || (todayFc ? todayFc.min : '');
         const maxT = weather.max_temp || (todayFc ? todayFc.max : '');
+        const cond = weather.condition || '맑음';
         const isKma = (weather.data_source === 'kma' || weather.source_label === '기상청 공식');
-        const prefix = isKma ? '[기상청 공식 수집 데이터] ' : '';
-        const rainInfo = todayFc && todayFc.rain && todayFc.rain !== '-' ? `, 강수확률 ${todayFc.rain}` : '';
+        const prefix = isKma ? '[기상청 공식] ' : '';
         const tempRange = (minT && maxT) ? `, 최저 ${minT}/최고 ${maxT}` : '';
-        const airText = (weather.air_quality && weather.air_quality.pm10 && weather.air_quality.pm10 !== '-') 
-            ? `, 미세먼지 ${weather.air_quality.pm10_status || '보통'}` : '';
-        const guideText = weather.guide ? ` (가이드: ${weather.guide})` : '';
-        weatherText = `${prefix}${weather.city || '계룡'} 현재 ${weather.temp || ''}, ${weather.condition || '맑음'}${feelKo ? `, 체감 ${feelKo}` : ''}${tempRange}${rainInfo}${airText}${guideText}`;
+        const hasRainCond = /(비|눈|소나기|이슬비)/.test(cond);
+        const guideHasRain = weather.guide && /(비\/눈|우산)/.test(weather.guide);
+        const rainPop = todayFc && todayFc.rain && todayFc.rain !== '-' ? parseInt(todayFc.rain, 10) : 0;
+        const rainStatus = (hasRainCond || (!Number.isNaN(rainPop) && rainPop >= 60) || (guideHasRain && hasRainCond))
+            ? `, 비/눈 소식 있음${!Number.isNaN(rainPop) && rainPop > 0 ? `(강수확률 ${rainPop}%)` : ''}`
+            : ', 비 소식 없음';
+        const pm10Status = (weather.air_quality && weather.air_quality.pm10 && weather.air_quality.pm10 !== '-')
+            ? (weather.air_quality.pm10_status || '보통') : '';
+        const airText = pm10Status ? `, 미세먼지 ${pm10Status}` : '';
+        weatherText = `${prefix}${weather.city || '계룡'} 현재 ${weather.temp || ''}, ${cond}${feelKo ? `, 체감 ${feelKo}` : ''}${tempRange}${rainStatus}${airText}`;
     }
 
     // 3) 오늘 당일 캘린더 일정 (오늘 일정이 있는 경우만)
@@ -210,79 +236,87 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
         if (urgentDdays.length > 0) nearDdayText = urgentDdays.slice(0, 2).join(', ');
     }
 
-    // 5) 날씨 맞춤형 위키 생활 팁 (선택적)
-    let tipText = '';
-    if (wiki && wiki.proactiveTip && wiki.proactiveTip.title) {
-        tipText = `[${wiki.proactiveTip.title}] ${wiki.proactiveTip.reason || ''}`;
-    }
-
     // 상황 데이터 조합
-    const situationLines = [`- 사용자: ${userName}님`];
+    const situationLines = [
+        `- 사용자: ${userName}님`,
+        `- 현재 시각대: ${timeSlot.label} (${kstHour}시경)`
+    ];
     if (weatherText) situationLines.push(`- 오늘 날씨: ${weatherText}`);
-    situationLines.push(`- 오늘 복약: ${medText}`);
-    situationLines.push(`- 오늘 혈압: ${bloodText}`);
+    if (medText) situationLines.push(`- 오늘 복약: ${medText}`);
+    if (bloodText) situationLines.push(`- 오늘 혈압: ${bloodText}`);
     if (eventText) situationLines.push(`- 오늘 일정: ${eventText}`);
     if (nearDdayText) situationLines.push(`- 임박 디데이: ${nearDdayText}`);
-    if (tipText) situationLines.push(`- 오늘 생활 팁: ${tipText}`);
 
-    const situationText = situationLines.length > 0 ? situationLines.join('\n') : '- 특이 일정 없음, 평온한 하루';
+    const situationText = situationLines.join('\n');
 
-    const systemPrompt = `당신은 가족 구성원의 오늘 하루를 챙겨주는 다정한 알림 작성기입니다.
-주어진 [오늘 상황]을 보고, 가장 중요한 1~2가지만 골라 따뜻한 1~2문장의 조언을 만드세요.
+    const systemPrompt = `당신은 가족 구성원의 하루를 다정하고 논리적으로 챙겨주는 스마트 홈 비서입니다.
+주어진 [오늘 상황]만을 근거로 가장 중요한 1~2가지를 자연스럽게 연결해 1~2문장의 조언을 작성하세요.
 
 [작성 규칙]
-1. 반드시 "${userName}님,"으로 시작하세요.
-2. 서론이나 인사치레 없이, 오늘 챙겨야 할 행동(외출 준비, 복약, 일정 등)을 바로 말하세요.
-3. [오늘 날씨]에 기상청 공식 수집 데이터가 제공된 경우, 기상청의 실제 기온(최저/최고/체감), 날씨 상태(비/눈/맑음), 비 소식 유무를 정확한 근거로 반영하세요.
-   - 예: 비·이슬비 소식이 있으면 우산을 챙기라고 안내하고, 아침·낮 기온이 쌀쌀하면 따뜻한 외투를 권유하세요.
-4. 모든 문장은 다정한 존댓말('~세요', '~해요') 평서문으로 끝내세요.
+1. 반드시 "${userName}님,"으로 시작하고, 모든 문장은 부드러운 존댓말 평서문('~세요', '~해요')으로 끝내세요. (질문형 '?' 금지)
+2. 마크다운(**강조**, # 제목, - 목록)이나 줄바꿈 없이 자연스러운 문장으로만 이어 쓰세요.
+3. 문장 간 인과관계와 논리가 절대 모순되지 않게 작성하세요.
+   - 미세먼지가 '좋음' 또는 '보통'이고 비·눈 소식이 없으면, "미세먼지 때문에 실내에 계세요" 같은 모순된 말을 절대 쓰지 마세요.
+   - '실내 휴식'과 '외출 추천'을 같은 브리핑 안에 동시에 쓰지 마세요. 현재 날씨와 시각대에 맞는 한 가지 방향만 일관되게 권하세요.
+   - 비·눈 소식이 있거나 미세먼지가 '나쁨' 이상일 때만 우산, 마스크 또는 실내 활동을 권하세요.
+4. 현재 시각대(${timeSlot.label}, ${kstHour}시경)에 어울리는 조언을 하세요.
+   - 아침/낮에는 외출 준비·겉옷·일정·산책을, 저녁/밤에는 편안한 휴식·마무리·혈압/복약 확인을 자연스럽게 권하세요.
 
 [작성 예시]
 상황:
-- 오늘 날씨: [기상청 공식 수집 데이터] 계룡 현재 8°C, 이슬비, 체감 8°C, 최저 4°C/최고 12°C, 강수확률 80%
-- 오늘 복약: 오늘 약 복용 완료 ✅
+- 현재 시각대: 상쾌한 아침 (8시경)
+- 오늘 날씨: [기상청 공식] 계룡 현재 8°C, 이슬비, 체감 쌀쌀함, 최저 4°C/최고 12°C, 비/눈 소식 있음(강수확률 80%), 미세먼지 좋음
+- 오늘 복약: 오늘 혈압약 복용 완료
 조언:
-${userName}님, 오늘 기상청 예보에 비 소식이 있고 기온이 쌀쌀하니 외출하실 때 우산과 따뜻한 외투 꼭 챙기세요.
+${userName}님, 오늘 비 소식이 있고 날씨가 쌀쌀하니 외출하실 때 우산과 따뜻한 외투를 꼭 챙기세요.
 
 상황:
-- 오늘 날씨: [기상청 공식 수집 데이터] 계룡 현재 15°C, 맑음, 최저 5°C/최고 18°C
-- 오늘 복약: 오늘 혈압약 아직 안 챙겨드심(복용 필요 ⚠️)
+- 현재 시각대: 편안한 저녁 (18시경)
+- 오늘 날씨: [기상청 공식] 계룡 현재 15°C, 흐림, 체감 선선함, 최저 10°C/최고 14°C, 비 소식 없음, 미세먼지 좋음
+- 오늘 복약: 오늘 혈압약 복용 완료
+- 오늘 혈압: 120/80 mmHg (정상), 오늘 아직 미측정
 조언:
-${userName}님, 잊지 마시고 아침 혈압약 꼭 챙겨 드시고, 일교차가 크니 가벼운 겉옷과 함께 상쾌한 하루 보내세요.`;
+${userName}님, 오늘 하루도 수고 많으셨으니 저녁에는 편안히 쉬시면서 잊지 말고 혈압 측정도 한 번 기록해 두세요.`;
 
     const userPrompt = `[오늘 상황]\n${situationText}\n\n[조언]:`;
+    const briefingModel = getBalancedModel() || getChatModel();
 
     try {
-        const result = await sendOllamaRequest('/api/generate', {
-            model: getChatModel(),
-            prompt: `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`,
+        const result = await sendOllamaRequest('/api/chat', {
+            model: briefingModel,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
             stream: false,
             keep_alive: '24h',
             options: {
-                temperature: 0.5,
+                temperature: 0.4,
                 top_p: 0.9,
-                // EXAONE 4.0은 <think> 생각 과정이 토큰을 먼저 소모하므로 250 → 1024로 확대 (브리핑 잘림 방지)
-                num_predict: 1024
+                num_ctx: 4096,
+                num_predict: 512
             }
-        }, 90000);
+        }, 150000);
 
-        if (result && result.response) {
-            let cleanText = koreanizeWeatherWords(result.response.trim());
+        const rawContent = (result && result.message && result.message.content) || (result && result.response) || '';
+        if (rawContent) {
+            let cleanText = koreanizeWeatherWords(rawContent.trim());
             // 토큰 상한 도달로 문장 중간에서 끊긴 경우: 마지막 완결 문장까지만 사용 (없으면 기본 브리핑 폴백)
             if (result.done_reason === 'length') {
                 const lastEnd = Math.max(cleanText.lastIndexOf('.'), cleanText.lastIndexOf('!'), cleanText.lastIndexOf('?'), cleanText.lastIndexOf('요'));
                 if (lastEnd < 10) return null;
                 cleanText = cleanText.slice(0, lastEnd + 1).trim();
             }
-            // 말투 정리: '님아' 호칭 교정 + 질문형 문장 제거 (전부 질문이면 기본 브리핑 폴백)
+            // 말투 정리: 마크다운 제거 + '님아' 호칭 교정 + 질문형 문장 제거
             cleanText = polishBriefingTone(cleanText);
             if (!cleanText) return null;
             cachedAiBriefing = {
                 success: true,
                 message: cleanText,
                 generatedAt: new Date().toISOString(),
-                model: getChatModel()
+                model: briefingModel
             };
+            cachedAiBriefingKey = cacheKey;
             cachedAiBriefingTime = now;
             return cachedAiBriefing;
         }

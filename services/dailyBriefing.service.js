@@ -215,7 +215,7 @@ function generateDailyBriefing({ summary, todayEvents = [], userRole = 'admin', 
     const wikiTip = (summary && summary.wiki && summary.wiki.proactiveTip) ? summary.wiki.proactiveTip : null;
 
     // 원라이너 스마트 인사 (AI 비서 준비용)
-    const naturalSummary = `${timeSlot.greeting} ${schedule.hasEvents ? schedule.text : ''} ${weatherGuide}`.trim();
+    const naturalSummary = [timeSlot.greeting, schedule.hasEvents ? schedule.text : '', weatherGuide].filter(Boolean).join(' ');
 
     return {
         timeSlot: timeSlot.key,
