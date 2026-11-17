@@ -7,105 +7,129 @@
  */
 
 /* 뷰 전환 방향성 슬라이드 애니메이션 (modern-web-guidance: directional-navigation-transitions) */
-@keyframes studyStageSlideToLeft {
-    to {
-        transform: translateX(-18%);
-        opacity: 0;
-    }
-}
-
-@keyframes studyStageSlideFromRight {
-    from {
-        transform: translateX(18%);
-        opacity: 0;
-    }
-}
-
-@keyframes studyStageSlideToRight {
-    to {
-        transform: translateX(18%);
-        opacity: 0;
-    }
-}
-
-@keyframes studyStageSlideFromLeft {
-    from {
-        transform: translateX(-18%);
-        opacity: 0;
-    }
-}
-
+@keyframes studyStageSlideToLeft { to { transform: translateX(-18%); opacity: 0; } }
+@keyframes studyStageSlideFromRight { from { transform: translateX(18%); opacity: 0; } }
+@keyframes studyStageSlideToRight { to { transform: translateX(18%); opacity: 0; } }
+@keyframes studyStageSlideFromLeft { from { transform: translateX(-18%); opacity: 0; } }
 @keyframes studyNextCuePulse {
-    0%, 100% {
-        box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.36);
-    }
-    50% {
-        box-shadow: 0 0 0 8px rgba(234, 88, 12, 0);
-    }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.36); }
+    50% { box-shadow: 0 0 0 8px rgba(234, 88, 12, 0); }
 }
 
 @media screen {
     body.is-sheet-step-mode .study-shell--sheet {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
         max-width: 1180px;
         min-block-size: 100dvh;
-        padding: max(10px, env(safe-area-inset-top, 0px))
-            max(12px, env(safe-area-inset-right, 0px))
-            max(10px, env(safe-area-inset-bottom, 0px))
-            max(12px, env(safe-area-inset-left, 0px));
+        padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(8px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
         box-sizing: border-box;
     }
 
+    body.is-sheet-step-mode .study-shell--sheet > main {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
     @media (min-height: 600px) {
-        body.is-sheet-step-mode .study-shell--sheet {
+        body.is-sheet-step-mode:not(.is-tools-open) .study-shell--sheet {
             height: 100dvh;
             overflow: hidden;
         }
 
-        body.is-sheet-step-mode .study-shell--sheet > main {
-            flex: 1 1 auto;
+        body.is-sheet-step-mode:not(.is-tools-open) .study-shell--sheet > main {
             min-height: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
             overflow: hidden;
         }
     }
 
-    @media (max-height: 599px) {
-        body.is-sheet-step-mode .study-shell--sheet > main {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+    body.is-sheet-step-mode.is-tools-open .worksheet-block.is-step-active {
+        min-height: 360px;
     }
 
-    body.is-sheet-step-mode .study-topbar {
-        margin-bottom: 0;
-        padding: 8px 14px;
+    /* 집중 풀이 모드에서는 상단 복합 메뉴를 기본 접어 문제 영역 최대화 */
+    body.is-sheet-step-mode:not(.is-tools-open) .study-topbar,
+    body.is-sheet-step-mode:not(.is-tools-open) .sheet-header-card,
+    body.is-sheet-step-mode:not(.is-tools-open) .sheet-score-bar,
+    body.is-sheet-step-mode:not(.is-tools-open) .sheet-retry-banner {
+        display: none !important;
+    }
+
+    .sheet-focus-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px 10px;
+        background: #ffffff;
+        border: 2px solid #fed7aa;
+        border-radius: 14px;
+        padding: 6px 10px;
+        flex-shrink: 0;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .sheet-focus-left,
+    .sheet-focus-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
+
+    .sheet-focus-left {
+        flex: 1 1 180px;
+    }
+
+    .sheet-focus-right {
+        flex: 0 1 auto;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .sheet-focus-back,
+    .sheet-focus-mini,
+    .sheet-focus-toggle {
+        min-block-size: 38px;
+        padding: 6px 12px;
+        font-size: 0.86rem;
+        white-space: nowrap;
         flex-shrink: 0;
     }
 
-    body.is-sheet-step-mode .sheet-header-card {
-        margin-bottom: 0;
-        padding: 10px 14px;
-        flex-shrink: 0;
+    .sheet-focus-title {
+        font-size: 0.96rem;
+        font-weight: 800;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
     }
 
-    body.is-sheet-step-mode .sheet-theme-art svg {
-        max-height: 44px;
-        width: auto;
+    .sheet-focus-score {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #fff7ed;
+        border: 1.5px solid #fdba74;
+        color: #9a3412;
+        font-size: 0.84rem;
+        font-weight: 800;
+        white-space: nowrap;
     }
 
+    body.is-sheet-step-mode .study-topbar { margin-bottom: 0; padding: 8px 14px; flex-shrink: 0; }
+    body.is-sheet-step-mode .sheet-header-card { margin-bottom: 0; padding: 10px 14px; flex-shrink: 0; }
+    body.is-sheet-step-mode .sheet-theme-art svg { max-height: 44px; width: auto; }
     body.is-sheet-step-mode .sheet-score-bar,
-    body.is-sheet-step-mode .sheet-retry-banner {
-        margin-bottom: 0;
-        padding: 8px 12px;
-        flex-shrink: 0;
-    }
+    body.is-sheet-step-mode .sheet-retry-banner { margin-bottom: 0; padding: 8px 12px; flex-shrink: 0; }
 
     /* 상단 문제 진행 바 & 번호 도트 */
     .sheet-step-bar {
@@ -113,11 +137,11 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 8px 12px;
+        gap: 6px 10px;
         background: #ffffff;
         border: 2px solid #fed7aa;
-        border-radius: 16px;
-        padding: 8px 12px;
+        border-radius: 14px;
+        padding: 6px 10px;
         flex-shrink: 0;
         max-width: 100%;
         min-width: 0;
@@ -256,31 +280,25 @@
         box-shadow: 0 10px 28px rgba(251, 146, 60, 0.1);
     }
 
-    .worksheet-block.is-step-active .block-head {
-        flex-shrink: 0;
-        margin-bottom: 8px;
-    }
+    .worksheet-block.is-step-active .block-head { flex-shrink: 0; margin-bottom: 6px; }
 
     .worksheet-block.is-step-active .block-prompt {
         flex-shrink: 0;
-        font-size: clamp(1.12rem, 1rem + 0.8vw, 1.45rem);
-        line-height: 1.45;
-        margin-bottom: 12px;
+        font-size: clamp(1.1rem, 1rem + 0.75vw, 1.42rem);
+        line-height: 1.42;
+        margin-bottom: 10px;
         overflow-wrap: break-word;
     }
 
     .worksheet-block.is-step-active .block-body {
-        flex: 1 1 auto;
-        min-height: 0;
+        flex: 1 0 auto;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: safe center;
     }
 
     .worksheet-block.is-step-active.is-trace-block .block-body,
-    .worksheet-block.is-step-active[data-block-type="color"] .block-body {
-        justify-content: flex-start;
-    }
+    .worksheet-block.is-step-active[data-block-type="color"] .block-body { justify-content: flex-start; }
 
     /* 패드 따라쓰기(쓰는 칸) 대폭 확대 */
     .worksheet-block.is-step-active .trace-meta-bar {
@@ -389,11 +407,11 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
+        gap: 8px;
         background: #ffffff;
         border: 2px solid #fed7aa;
-        border-radius: 18px;
-        padding: 10px 14px;
+        border-radius: 16px;
+        padding: 8px 12px;
         flex-shrink: 0;
         box-shadow: 0 -4px 18px rgba(251, 146, 60, 0.08);
         max-width: 100%;
@@ -401,57 +419,37 @@
     }
 
     .sheet-step-nav-btn {
-        min-block-size: 52px;
-        min-inline-size: 112px;
-        font-size: 1.02rem;
+        min-block-size: 46px;
+        min-inline-size: 110px;
+        font-size: 1rem;
         font-weight: 800;
         flex: 1 1 130px;
         max-width: 240px;
     }
 
-    .sheet-step-nav-btn--next {
-        flex: 1.35 1 155px;
-    }
-
-    .sheet-step-nav-btn--next.is-ready-pulse {
-        animation: studyNextCuePulse 1.5s ease-in-out infinite;
-    }
+    .sheet-step-nav-btn--next { flex: 1.35 1 155px; }
+    .sheet-step-nav-btn--next.is-ready-pulse { animation: studyNextCuePulse 1.5s ease-in-out infinite; }
 
     .sheet-step-nav-hint {
         flex: 2 1 180px;
         margin: 0;
         text-align: center;
-        font-size: 0.92rem;
+        font-size: 0.9rem;
         font-weight: 800;
         color: #475569;
         overflow-wrap: break-word;
     }
 
-    body.is-sheet-step-mode .sheet-footer-actions {
-        margin-bottom: 0;
-        padding: 12px 16px;
-        flex-shrink: 0;
-    }
+    body.is-sheet-step-mode .sheet-footer-actions { margin-bottom: 0; padding: 10px 14px; flex-shrink: 0; }
 
     @media (max-width: 599px) {
         body.is-sheet-step-mode .sheet-theme-art,
-        body.is-sheet-step-mode #sheetInfoLine {
-            display: none;
-        }
-
-        body.is-sheet-step-mode .sheet-header-card {
-            padding: 8px 12px;
-        }
-
-        .sheet-step-nav-hint {
-            order: 3;
-            flex-basis: 100%;
-            font-size: 0.84rem;
-        }
-
-        .sheet-step-nav-btn {
-            max-width: none;
-        }
+        body.is-sheet-step-mode #sheetInfoLine { display: none; }
+        body.is-sheet-step-mode .sheet-header-card { padding: 8px 12px; }
+        .sheet-focus-left { flex-basis: 100%; }
+        .sheet-focus-right { width: 100%; justify-content: space-between; }
+        .sheet-step-nav-hint { order: 3; flex-basis: 100%; font-size: 0.84rem; }
+        .sheet-step-nav-btn { max-width: none; }
     }
 }
 
@@ -477,6 +475,7 @@ html:active-view-transition-type(backward)::view-transition-new(study-sheet-stag
         min-height: 0 !important;
         overflow: visible !important;
     }
+    .sheet-focus-bar,
     .sheet-step-bar,
     .sheet-step-nav { display: none !important; }
     .worksheet-block.is-step-hidden { display: block !important; }

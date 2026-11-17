@@ -23,9 +23,76 @@
             && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 
+    function syncFocusBar() {
+        const backBtn = document.getElementById('btnFocusBack');
+        const origBack = document.getElementById('btnBackToDashboard');
+        if (backBtn && origBack) {
+            backBtn.setAttribute('href', origBack.getAttribute('href') || '/study');
+        }
+        const titleEl = document.getElementById('sheetFocusTitle');
+        const origTitle = document.getElementById('sheetTitleHeading');
+        if (titleEl && origTitle) {
+            titleEl.textContent = (origTitle.textContent || '').trim() || '오늘의 맞춤 학습지';
+        }
+        const scoreEl = document.getElementById('sheetFocusScore');
+        const origScoreBar = document.getElementById('sheetScoreBar');
+        const origScore = document.getElementById('sheetScoreProgress');
+        if (scoreEl) {
+            const hideScore = !origScoreBar || origScoreBar.hidden;
+            scoreEl.hidden = hideScore;
+            if (!hideScore && origScore) {
+                scoreEl.textContent = (origScore.textContent || '')
+                    .replace(/정답\s*/g, '')
+                    .replace(/틀림\s*/g, '')
+                    .replace(/\s*·\s*/g, ' · ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+            }
+        }
+        const resetBtn = document.getElementById('btnFocusReset');
+        const retryBanner = document.getElementById('sheetRetryBanner');
+        if (resetBtn) resetBtn.hidden = !retryBanner || retryBanner.hidden;
+
+        const toggleBtn = document.getElementById('btnToggleSheetTools');
+        if (toggleBtn) {
+            const open = document.body.classList.contains('is-tools-open');
+            toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            toggleBtn.classList.toggle('is-active', open);
+            toggleBtn.textContent = open ? '🔼 메뉴 접기' : '⚙️ 메뉴·설정 ▾';
+        }
+    }
+
     function ensureStepChrome(container) {
         document.body.classList.add('is-sheet-step-mode');
-        document.querySelector('.study-shell')?.classList.add('study-shell--sheet');
+        const shell = document.querySelector('.study-shell');
+        shell?.classList.add('study-shell--sheet');
+
+        let focusBar = document.getElementById('sheetFocusBar');
+        if (!focusBar && shell) {
+            focusBar = document.createElement('div');
+            focusBar.id = 'sheetFocusBar';
+            focusBar.className = 'sheet-focus-bar no-print';
+            focusBar.innerHTML = `
+                <div class="sheet-focus-left">
+                    <a id="btnFocusBack" href="/study" class="study-link-btn study-btn-secondary sheet-focus-back">⬅️ 학습실</a>
+                    <span id="sheetFocusTitle" class="sheet-focus-title">오늘의 맞춤 학습지</span>
+                </div>
+                <div class="sheet-focus-right">
+                    <span id="sheetFocusScore" class="sheet-focus-score" hidden></span>
+                    <button type="button" id="btnFocusReset" class="study-btn study-btn-outline sheet-focus-mini" hidden>🔄 처음부터</button>
+                    <button type="button" id="btnToggleSheetTools" class="study-btn study-btn-outline sheet-focus-toggle" aria-expanded="false">⚙️ 메뉴·설정 ▾</button>
+                </div>
+            `;
+            shell.prepend(focusBar);
+            document.getElementById('btnFocusReset')?.addEventListener('click', () => {
+                document.getElementById('btnResetAllBlocks')?.click();
+            });
+            document.getElementById('btnToggleSheetTools')?.addEventListener('click', () => {
+                document.body.classList.toggle('is-tools-open');
+                syncFocusBar();
+                requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+            });
+        }
 
         let stepBar = document.getElementById('sheetStepBar');
         if (!stepBar && container?.parentElement) {
@@ -99,6 +166,7 @@
     }
 
     function updateChrome() {
+        syncFocusBar();
         const stepBar = document.getElementById('sheetStepBar');
         const stepNav = document.getElementById('sheetStepNav');
         const badgeEl = document.getElementById('sheetStepBadge');
