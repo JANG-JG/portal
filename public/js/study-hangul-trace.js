@@ -90,8 +90,8 @@
 
         function getWriterSize(boxEl) {
             const rect = boxEl.getBoundingClientRect();
-            const w = Math.max(76, Math.min(138, Math.floor((rect.width || 110) * 0.92)));
-            const h = Math.max(76, Math.min(138, Math.floor((rect.height || 110) * 0.92)));
+            const w = Math.max(82, Math.min(260, Math.floor((rect.width || 110) * 0.92)));
+            const h = Math.max(82, Math.min(260, Math.floor((rect.height || 110) * 0.92)));
             return Math.min(w, h);
         }
 
@@ -258,6 +258,10 @@
                     hintEl.textContent = '✏️ S펜이나 손가락으로 자유롭게 써 보세요!';
                 }
             });
+        });
+
+        wrap.closest('.worksheet-block')?.addEventListener('study:step-deactivated', () => {
+            if (mode !== 'free') cancelAllHw();
         });
 
         return {

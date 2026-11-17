@@ -10,15 +10,12 @@
 
 (function () {
     'use strict';
-
     const SVG_NS = 'http://www.w3.org/2000/svg';
-
     function createSvgEl(tag, attrs = {}) {
         const el = document.createElementNS(SVG_NS, tag);
         Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, String(v)));
         return el;
     }
-
     function typeLabel(type) {
         if (type === 'dot_to_dot') return '✨ 점 이어 그림 완성';
         if (type === 'maze') return '🧭 길 찾기 미로 놀이';
@@ -382,7 +379,9 @@
         const updateBar = (text, tone = 'info') => { statusBar.textContent = text; statusBar.dataset.tone = tone; };
         updateBar(locked ? '⭐ 이미 모든 짝꿍을 맞춘 문제예요!' : '짝꿍을 이어 보세요 (남은 기회: 2번)', locked ? 'ok' : 'info');
 
-        const drawLineBetween = (elA, elB, color = '#10b981', dashed = false) => {
+        const linkRecords = [];
+        const drawLineBetween = (elA, elB, color = '#10b981', dashed = false, record = true) => {
+            if (record) linkRecords.push({ elA, elB, color, dashed });
             const bRect = board.getBoundingClientRect();
             const aRect = elA.getBoundingClientRect();
             const cRect = elB.getBoundingClientRect();
@@ -396,6 +395,11 @@
             if (dashed) attrs['stroke-dasharray'] = '6 5';
             Object.entries(attrs).forEach(([k, v]) => line.setAttribute(k, String(v)));
             svg.appendChild(line);
+        };
+        const redrawMatchLines = () => {
+            if (!linkRecords.length || !board.getBoundingClientRect().width) return;
+            svg.innerHTML = '';
+            linkRecords.forEach(({ elA, elB, color, dashed }) => drawLineBetween(elA, elB, color, dashed, false));
         };
 
         const leftBtns = [];
@@ -479,22 +483,16 @@
         });
         board.append(svg, leftCol, rightCol);
         container.append(statusBar, board);
+        if (typeof ResizeObserver === 'function') new ResizeObserver(redrawMatchLines).observe(board);
+        board.closest('.worksheet-block')?.addEventListener('study:step-activated', redrawMatchLines);
         if (locked) {
-            requestAnimationFrame(() => {
-                leftBtns.forEach((lBtn) => {
-                    const rBtn = rightBtns.find((rb) => rb.dataset.value === lBtn.dataset.answer);
-                    if (rBtn) drawLineBetween(lBtn, rBtn, '#10b981');
-                });
+            leftBtns.forEach((lBtn) => {
+                const rBtn = rightBtns.find((rb) => rb.dataset.value === lBtn.dataset.answer);
+                if (rBtn) linkRecords.push({ elA: lBtn, elB: rBtn, color: '#10b981', dashed: false });
             });
+            requestAnimationFrame(redrawMatchLines);
         }
     }
 
-    window.StudyPlayBlocks = {
-        typeLabel,
-        renderDotToDotBlock,
-        renderMazeBlock,
-        renderColorBlock,
-        renderChoicesBlock,
-        renderMatchBlock
-    };
+    window.StudyPlayBlocks = { typeLabel, renderDotToDotBlock, renderMazeBlock, renderColorBlock, renderChoicesBlock, renderMatchBlock };
 })();

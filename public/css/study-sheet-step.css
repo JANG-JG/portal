@@ -1,0 +1,483 @@
+/**
+ * ==============================================================================
+ * 한 문제씩 전체 화면 집중 풀이 & 태블릿 쓰기 칸 확대 스타일 (study-sheet-step.css)
+ * ------------------------------------------------------------------------------
+ * [규칙 3] 500줄 이하 모듈화 | [규칙 6] 100dvh 풀스크린 · 360px 무넘침 · 44px+ 터치
+ * ==============================================================================
+ */
+
+/* 뷰 전환 방향성 슬라이드 애니메이션 (modern-web-guidance: directional-navigation-transitions) */
+@keyframes studyStageSlideToLeft {
+    to {
+        transform: translateX(-18%);
+        opacity: 0;
+    }
+}
+
+@keyframes studyStageSlideFromRight {
+    from {
+        transform: translateX(18%);
+        opacity: 0;
+    }
+}
+
+@keyframes studyStageSlideToRight {
+    to {
+        transform: translateX(18%);
+        opacity: 0;
+    }
+}
+
+@keyframes studyStageSlideFromLeft {
+    from {
+        transform: translateX(-18%);
+        opacity: 0;
+    }
+}
+
+@keyframes studyNextCuePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.36);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(234, 88, 12, 0);
+    }
+}
+
+@media screen {
+    body.is-sheet-step-mode .study-shell--sheet {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 1180px;
+        min-block-size: 100dvh;
+        padding: max(10px, env(safe-area-inset-top, 0px))
+            max(12px, env(safe-area-inset-right, 0px))
+            max(10px, env(safe-area-inset-bottom, 0px))
+            max(12px, env(safe-area-inset-left, 0px));
+        box-sizing: border-box;
+    }
+
+    @media (min-height: 600px) {
+        body.is-sheet-step-mode .study-shell--sheet {
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        body.is-sheet-step-mode .study-shell--sheet > main {
+            flex: 1 1 auto;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow: hidden;
+        }
+    }
+
+    @media (max-height: 599px) {
+        body.is-sheet-step-mode .study-shell--sheet > main {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    }
+
+    body.is-sheet-step-mode .study-topbar {
+        margin-bottom: 0;
+        padding: 8px 14px;
+        flex-shrink: 0;
+    }
+
+    body.is-sheet-step-mode .sheet-header-card {
+        margin-bottom: 0;
+        padding: 10px 14px;
+        flex-shrink: 0;
+    }
+
+    body.is-sheet-step-mode .sheet-theme-art svg {
+        max-height: 44px;
+        width: auto;
+    }
+
+    body.is-sheet-step-mode .sheet-score-bar,
+    body.is-sheet-step-mode .sheet-retry-banner {
+        margin-bottom: 0;
+        padding: 8px 12px;
+        flex-shrink: 0;
+    }
+
+    /* 상단 문제 진행 바 & 번호 도트 */
+    .sheet-step-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        background: #ffffff;
+        border: 2px solid #fed7aa;
+        border-radius: 16px;
+        padding: 8px 12px;
+        flex-shrink: 0;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    .sheet-step-bar[hidden],
+    .sheet-step-nav[hidden],
+    .sheet-footer-actions.is-step-footer-hidden {
+        display: none !important;
+    }
+
+    .sheet-step-progress-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1 1 190px;
+        min-width: 0;
+    }
+
+    .sheet-step-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: #ff7a45;
+        color: #ffffff;
+        font-size: 0.92rem;
+        font-weight: 900;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .sheet-step-track {
+        flex: 1 1 80px;
+        min-width: 48px;
+        height: 10px;
+        background: #ffedd5;
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .sheet-step-fill {
+        width: 0%;
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #ff7a45 0%, #f59e0b 100%);
+        transition: width 0.25s ease;
+    }
+
+    .sheet-step-dots {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+    }
+
+    .sheet-step-dot {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-inline-size: 36px;
+        min-block-size: 36px;
+        padding: 0 8px;
+        border-radius: 999px;
+        border: 2px solid #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+        font-family: inherit;
+        font-size: 0.88rem;
+        font-weight: 800;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition: transform 0.14s ease, border-color 0.14s ease, background-color 0.14s ease;
+    }
+
+    @media (pointer: coarse) {
+        .sheet-step-dot {
+            min-inline-size: 44px;
+            min-block-size: 44px;
+        }
+    }
+
+    .sheet-step-dot[data-step-state="retrying"] {
+        background: #fef3c7;
+        border-color: #f59e0b;
+        color: #b45309;
+    }
+
+    .sheet-step-dot[data-step-state="correct"] {
+        background: #d1fae5;
+        border-color: #10b981;
+        color: #065f46;
+    }
+
+    .sheet-step-dot[data-step-state="wrong"] {
+        background: #fee2e2;
+        border-color: #ef4444;
+        color: #991b1b;
+    }
+
+    .sheet-step-dot.is-current {
+        background: #fff7ed;
+        border-color: #ea580c;
+        color: #c2410c;
+        box-shadow: 0 0 0 3px rgba(255, 122, 69, 0.24);
+        transform: scale(1.06);
+    }
+
+    /* 단일 문제 풀스크린 스테이지 */
+    body.is-sheet-step-mode #sheetBlocksContainer {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        view-transition-name: study-sheet-stage;
+    }
+
+    .worksheet-block.is-step-hidden {
+        display: none;
+    }
+
+    .worksheet-block.is-step-active {
+        flex: 1 1 auto;
+        min-height: 0;
+        min-width: 0;
+        margin-bottom: 0;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: clamp(14px, 2.2vw, 24px);
+        border: 2.5px solid #fed7aa;
+        box-shadow: 0 10px 28px rgba(251, 146, 60, 0.1);
+    }
+
+    .worksheet-block.is-step-active .block-head {
+        flex-shrink: 0;
+        margin-bottom: 8px;
+    }
+
+    .worksheet-block.is-step-active .block-prompt {
+        flex-shrink: 0;
+        font-size: clamp(1.12rem, 1rem + 0.8vw, 1.45rem);
+        line-height: 1.45;
+        margin-bottom: 12px;
+        overflow-wrap: break-word;
+    }
+
+    .worksheet-block.is-step-active .block-body {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    .worksheet-block.is-step-active.is-trace-block .block-body,
+    .worksheet-block.is-step-active[data-block-type="color"] .block-body {
+        justify-content: flex-start;
+    }
+
+    /* 패드 따라쓰기(쓰는 칸) 대폭 확대 */
+    .worksheet-block.is-step-active .trace-meta-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        margin-bottom: 10px;
+        flex-shrink: 0;
+    }
+
+    .worksheet-block.is-step-active .trace-word-label {
+        font-size: clamp(1.2rem, 1rem + 1vw, 1.55rem);
+    }
+
+    .worksheet-block.is-step-active .trace-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .worksheet-block.is-step-active .trace-wrap.trace-wrap-roomy {
+        flex: 1 1 auto;
+        width: 100%;
+        min-height: clamp(240px, 44dvh, 480px);
+        padding: clamp(16px, 2.8vw, 32px) clamp(12px, 2.4vw, 28px);
+        border-width: 3px;
+    }
+
+    .worksheet-block.is-step-active .trace-char-box {
+        width: clamp(98px, 24vw, 190px);
+        height: clamp(118px, 29vw, 220px);
+        border-width: 2.5px;
+    }
+
+    .worksheet-block.is-step-active .trace-char-box span {
+        font-size: clamp(3.8rem, 11vw, 6.4rem);
+    }
+
+    .worksheet-block.is-step-active .trace-guide.trace-guide--spacious .trace-char-box {
+        width: clamp(112px, 28vw, 220px);
+        height: clamp(132px, 32vw, 250px);
+    }
+
+    .worksheet-block.is-step-active .trace-guide.trace-guide--spacious .trace-char-box span {
+        font-size: clamp(4.4rem, 13vw, 7.2rem);
+    }
+
+    @media (min-width: 720px) {
+        .worksheet-block.is-step-active .trace-wrap.trace-wrap-roomy {
+            min-height: clamp(320px, 49dvh, 540px);
+            border-radius: 24px;
+        }
+
+        .worksheet-block.is-step-active .trace-char-box {
+            width: clamp(134px, 16vw, 224px);
+            height: clamp(160px, 20vw, 258px);
+            border-radius: 24px;
+        }
+
+        .worksheet-block.is-step-active .trace-char-box span {
+            font-size: clamp(4.8rem, 9.5vw, 7.6rem);
+        }
+
+        .worksheet-block.is-step-active .trace-guide.trace-guide--spacious .trace-char-box {
+            width: clamp(168px, 22vw, 276px);
+            height: clamp(194px, 26vw, 310px);
+        }
+
+        .worksheet-block.is-step-active .trace-guide.trace-guide--spacious .trace-char-box span {
+            font-size: clamp(5.8rem, 11.5vw, 9rem);
+        }
+
+        .worksheet-block.is-step-active .trace-guide.trace-guide--dense .trace-char-box {
+            width: clamp(104px, 12.5vw, 172px);
+            height: clamp(124px, 15.5vw, 202px);
+        }
+
+        .worksheet-block.is-step-active .trace-guide.trace-guide--dense .trace-char-box span {
+            font-size: clamp(3.4rem, 7vw, 5.4rem);
+        }
+
+        .worksheet-block.is-step-active .choice-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 14px;
+        }
+
+        .worksheet-block.is-step-active .choice-btn {
+            min-block-size: 74px;
+            font-size: clamp(1.3rem, 1.05rem + 1vw, 1.7rem);
+        }
+
+        .worksheet-block.is-step-active .match-node {
+            min-block-size: 76px;
+        }
+
+        .worksheet-block.is-step-active .dot-svg {
+            max-width: 520px;
+        }
+    }
+
+    /* 하단 문제 이동 내비게이션 바 */
+    .sheet-step-nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: #ffffff;
+        border: 2px solid #fed7aa;
+        border-radius: 18px;
+        padding: 10px 14px;
+        flex-shrink: 0;
+        box-shadow: 0 -4px 18px rgba(251, 146, 60, 0.08);
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .sheet-step-nav-btn {
+        min-block-size: 52px;
+        min-inline-size: 112px;
+        font-size: 1.02rem;
+        font-weight: 800;
+        flex: 1 1 130px;
+        max-width: 240px;
+    }
+
+    .sheet-step-nav-btn--next {
+        flex: 1.35 1 155px;
+    }
+
+    .sheet-step-nav-btn--next.is-ready-pulse {
+        animation: studyNextCuePulse 1.5s ease-in-out infinite;
+    }
+
+    .sheet-step-nav-hint {
+        flex: 2 1 180px;
+        margin: 0;
+        text-align: center;
+        font-size: 0.92rem;
+        font-weight: 800;
+        color: #475569;
+        overflow-wrap: break-word;
+    }
+
+    body.is-sheet-step-mode .sheet-footer-actions {
+        margin-bottom: 0;
+        padding: 12px 16px;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 599px) {
+        body.is-sheet-step-mode .sheet-theme-art,
+        body.is-sheet-step-mode #sheetInfoLine {
+            display: none;
+        }
+
+        body.is-sheet-step-mode .sheet-header-card {
+            padding: 8px 12px;
+        }
+
+        .sheet-step-nav-hint {
+            order: 3;
+            flex-basis: 100%;
+            font-size: 0.84rem;
+        }
+
+        .sheet-step-nav-btn {
+            max-width: none;
+        }
+    }
+}
+
+::view-transition-group(study-sheet-stage) { animation: 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+html:active-view-transition-type(forward)::view-transition-old(study-sheet-stage) { animation-name: studyStageSlideToLeft; }
+html:active-view-transition-type(forward)::view-transition-new(study-sheet-stage) { animation-name: studyStageSlideFromRight; }
+html:active-view-transition-type(backward)::view-transition-old(study-sheet-stage) { animation-name: studyStageSlideToRight; }
+html:active-view-transition-type(backward)::view-transition-new(study-sheet-stage) { animation-name: studyStageSlideFromLeft; }
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(study-sheet-stage),
+    .sheet-step-nav-btn--next.is-ready-pulse { animation: none !important; }
+    .sheet-step-fill,
+    .sheet-step-dot { transition: none !important; }
+}
+
+/* A4 인쇄 시에는 모든 문제를 펼쳐서 세로로 한눈에 출력 */
+@media print {
+    body.is-sheet-step-mode .study-shell--sheet,
+    body.is-sheet-step-mode .study-shell--sheet > main {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+    }
+    .sheet-step-bar,
+    .sheet-step-nav { display: none !important; }
+    .worksheet-block.is-step-hidden { display: block !important; }
+}

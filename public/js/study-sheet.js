@@ -96,7 +96,7 @@
         }
     }
 
-    function renderSheet(sheet) {
+    function renderSheet(sheet, stepOpts = {}) {
         const childLabel = sheet.child_name || (sheet.child_id === 'first' ? '첫째' : (sheet.child_id === 'second' ? '둘째' : sheet.child_id));
         const isColoringSheet = sheet.subject === 'coloring';
         document.getElementById('btnBackToDashboard').href = `/study?childId=${encodeURIComponent(sheet.child_id)}`;
@@ -181,7 +181,7 @@
                     if (data.success && data.content) {
                         currentSheet.content = data.content;
                         initBlockStatesFromSheet(currentSheet);
-                        renderSheet(currentSheet);
+                        renderSheet(currentSheet, { preserveStep: true });
                         showToast(`${idx + 1}번 문제를 새로운 문제로 바꿨어요!`);
                     }
                 } catch (e) {
@@ -196,6 +196,7 @@
                 Object.assign(cur, info);
                 syncBlockChip(card, cur);
                 updateScoreBar(sheet);
+                window.StudySheetStepper?.refreshStates?.(blockStates);
             };
 
             const initialState = scoredState?.status === 'correct' ? 'correct' : null;
@@ -213,6 +214,7 @@
         });
 
         updateScoreBar(sheet);
+        window.StudySheetStepper?.mount?.({ container, blocks, blockStates, ...stepOpts });
 
         const encEl = document.getElementById('sheetEncouragement');
         const compBtn = document.getElementById('btnCompleteSheet');
@@ -300,7 +302,7 @@
             ctx.lineJoin = 'round';
             const isEraser = activeTool === 'eraser';
             ctx.globalCompositeOperation = isEraser ? 'destination-out' : 'source-over';
-            ctx.lineWidth = isEraser ? 28 : 8;
+            ctx.lineWidth = isEraser ? 32 : 10;
             ctx.strokeStyle = '#ea580c';
         };
 
@@ -329,6 +331,7 @@
             applyToolStyle();
         };
         requestAnimationFrame(resizeCanvas);
+        wrap.closest('.worksheet-block')?.addEventListener('study:step-activated', resizeCanvas);
         if (typeof ResizeObserver === 'function') {
             new ResizeObserver(resizeCanvas).observe(wrap);
         } else {
@@ -337,8 +340,8 @@
 
         const getPos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
         const applyStrokeWidth = (e) => {
-            if (activeTool === 'eraser') { ctx.lineWidth = 28; return; }
-            ctx.lineWidth = (e && e.pointerType === 'pen' && e.pressure > 0) ? (4.5 + Math.min(1, e.pressure) * 9.5) : 8;
+            if (activeTool === 'eraser') { ctx.lineWidth = 32; return; }
+            ctx.lineWidth = (e && e.pointerType === 'pen' && e.pressure > 0) ? (5.2 + Math.min(1, e.pressure) * 10.8) : 10;
         };
         const beginStroke = (p, e) => {
             drawing = true;
@@ -419,8 +422,8 @@
             blockResults: Array.from(blockStates.values())
         };
         retryAllMode = false;
-        renderSheet(currentSheet);
-        if (firstWrongIdx >= 0) {
+        renderSheet(currentSheet, { focusIndex: firstWrongIdx >= 0 ? firstWrongIdx : 0 });
+        if (firstWrongIdx >= 0 && !window.StudySheetStepper) {
             const targetCard = document.querySelector(`.worksheet-block[data-block-index="${firstWrongIdx}"]`);
             targetCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -432,7 +435,7 @@
             if (!currentSheet) return;
             retryAllMode = true;
             initBlockStatesFromSheet(currentSheet);
-            renderSheet(currentSheet);
+            renderSheet(currentSheet, { focusIndex: 0 });
             showToast('전체 문제를 처음부터 다시 풀어요!');
         });
         document.getElementById('btnCompleteSheet')?.addEventListener('click', async (ev) => {
@@ -442,6 +445,7 @@
             if (!isColoring) {
                 for (const [idx, st] of blockStates.entries()) {
                     if (st.status !== 'correct' && st.status !== 'wrong') {
+                        window.StudySheetStepper?.goToStep?.(idx);
                         const targetCard = document.querySelector(`.worksheet-block[data-block-index="${idx}"]`);
                         targetCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         showToast(`${idx + 1}번 문제를 먼저 풀어야 채점할 수 있어요 😊`);
