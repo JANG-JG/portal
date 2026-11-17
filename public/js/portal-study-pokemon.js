@@ -300,7 +300,7 @@
 
                 const meadowCtrl = window.PokemonMeadow.mount(meadowMount, {
                     buddies: meadowBuddies,
-                    compact: true,
+                    spacious: true,
                     paused: motionPaused,
                     title: '🌿 우리 집 포켓몬 초원 놀이터',
                     emptyText: '학습실에서 칭찬 도장 10칸을 모으면 첫 포켓몬이 초원에 찾아와요!',

@@ -93,12 +93,14 @@
         const opts = options || {};
         const buddies = Array.isArray(opts.buddies) ? opts.buddies.slice(0, 8) : [];
         const compact = Boolean(opts.compact);
+        const spacious = Boolean(opts.spacious) || !compact;
+        const sizeClass = compact ? 'pokemon-meadow--compact' : (spacious ? 'pokemon-meadow--spacious' : '');
         const title = opts.title || '🌿 포켓몬 초원 놀이터';
         const emptyText = opts.emptyText || '도장 10칸을 모으면 첫 포켓몬이 초원에서 뛰어놀아요!';
         const footerHint = opts.footerHint || '포켓몬을 톡 눌러 인사해 보세요!';
 
         containerEl.innerHTML = `
-            <div class="pokemon-meadow ${compact ? 'pokemon-meadow--compact' : ''} ${opts.paused ? 'is-motion-paused' : ''}" role="region" aria-label="${esc(title)}">
+            <div class="pokemon-meadow ${sizeClass} ${opts.paused ? 'is-motion-paused' : ''}" role="region" aria-label="${esc(title)}">
                 ${buildMeadowBackdropSvg()}
                 <div class="pokemon-meadow__header">${esc(title)}</div>
                 <div class="pokemon-meadow__actors"></div>
@@ -117,11 +119,36 @@
         const fxEl = containerEl.querySelector('.pokemon-meadow__fx');
         if (!stageEl || !actorsEl) return null;
 
-        const walkerWidth = window.innerWidth <= 420 ? 70 : 78;
+        let actorsWidth = 300;
+        let actorsHeight = 180;
+        let stageHeight = 256;
+        let actorsOffsetLeft = 8;
+        let actorsOffsetTop = 48;
+        let walkerWidth = 82;
+        let walkerHeight = 86;
+
+        function measureBounds() {
+            const smallScreen = window.innerWidth <= 420;
+            walkerWidth = smallScreen ? 74 : (spacious && !compact ? 92 : 82);
+            walkerHeight = smallScreen ? 82 : (spacious && !compact ? 96 : 86);
+            stageHeight = Math.max(160, stageEl.clientHeight || 256);
+            actorsWidth = Math.max(220, actorsEl.clientWidth || (stageEl.clientWidth - 16) || 300);
+            actorsHeight = Math.max(108, actorsEl.clientHeight || (stageHeight - 56) || 180);
+            actorsOffsetLeft = actorsEl.offsetLeft || 8;
+            actorsOffsetTop = actorsEl.offsetTop || 48;
+        }
+
+        function getLimits() {
+            const minX = 4;
+            const minY = 6;
+            const maxX = Math.max(minX + 8, actorsWidth - walkerWidth - 4);
+            const maxY = Math.max(minY + 8, actorsHeight - walkerHeight - 2);
+            return { minX, maxX, minY, maxY };
+        }
+
         const actors = buddies.map((buddy, index) => {
             const walker = document.createElement('div');
             walker.className = `pokemon-meadow__walker is-resting ${buddy.isPartner ? 'is-partner' : ''}`;
-            walker.dataset.lane = index % 2 === 0 ? 'front' : 'back';
             const tagText = buddy.label || buddy.nameKo || '포켓몬';
             const spriteAlt = buddy.nameKo || '포켓몬';
 
@@ -158,12 +185,16 @@
                 flipEl,
                 bubbleEl,
                 x: 12 + index * 54,
+                y: 12 + (index % 3) * 32,
                 targetX: 20 + index * 54,
+                targetY: 12 + (index % 3) * 32,
                 facing: index % 2 === 0 ? -1 : 1, // 1: 우측, -1: 좌측
-                speed: 22 + ((index * 7) % 15),
+                speed: 28 + ((index * 9) % 16),
                 mode: 'rest',
-                restTimer: 0.4 + index * 0.55,
-                bubbleTimer: 0
+                restTimer: 0.35 + index * 0.45,
+                bubbleTimer: 0,
+                lastZ: -1,
+                edgeState: ''
             };
 
             btnEl?.addEventListener('click', () => {
@@ -179,7 +210,9 @@
                     walker.classList.add('has-bubble');
                     actor.bubbleTimer = 2.4;
                 }
-                spawnSparks(fxEl, actor.x + walkerWidth * 0.5, walker.dataset.lane === 'back' ? 56 : 42);
+                const sparkX = actorsOffsetLeft + actor.x + walkerWidth * 0.5;
+                const sparkBottom = Math.max(36, stageHeight - (actorsOffsetTop + actor.y + walkerHeight * 0.5));
+                spawnSparks(fxEl, sparkX, sparkBottom);
 
                 if (window.StudyFx && typeof window.StudyFx.playTone === 'function') {
                     window.StudyFx.playTone(659.25, 0.07, 'triangle');
@@ -194,42 +227,108 @@
         });
 
         let manualPaused = Boolean(opts.paused);
-        let stageWidth = Math.max(240, stageEl.clientWidth || containerEl.clientWidth || 320);
         let rafId = 0;
         let lastTs = 0;
         let disposed = false;
 
-        function getMaxX() {
-            return Math.max(8, stageWidth - walkerWidth - 6);
+        function applyActorPose(actor, bounds) {
+            actor.walker.style.transform = `translate3d(${actor.x.toFixed(1)}px, ${actor.y.toFixed(1)}px, 0)`;
+            const nextZ = 2 + Math.round(actor.y / 6);
+            if (nextZ !== actor.lastZ) {
+                actor.lastZ = nextZ;
+                actor.walker.style.zIndex = String(nextZ);
+            }
+            const nextEdge = actor.x < bounds.minX + 36
+                ? 'left'
+                : (actor.x > bounds.maxX - 36 ? 'right' : '');
+            if (nextEdge !== actor.edgeState) {
+                actor.edgeState = nextEdge;
+                actor.walker.classList.toggle('is-near-left', nextEdge === 'left');
+                actor.walker.classList.toggle('is-near-right', nextEdge === 'right');
+            }
         }
 
         function layoutInitialPositions() {
-            const maxX = getMaxX();
+            const bounds = getLimits();
             const count = actors.length;
             if (count === 0) return;
-            const span = Math.max(1, maxX - 8);
+            const spanX = Math.max(1, bounds.maxX - bounds.minX);
+            const spanY = Math.max(1, bounds.maxY - bounds.minY);
+            const yBands = count <= 2 ? [0.22, 0.78] : [0.12, 0.85, 0.48, 0.16, 0.82, 0.5, 0.24, 0.74];
+
             actors.forEach((a, idx) => {
-                const ratio = count === 1 ? 0.5 : idx / (count - 1);
-                a.x = Math.min(maxX, Math.max(6, 6 + span * ratio));
+                const ratioX = count === 1 ? 0.5 : (idx + 0.35) / (count - 0.3);
+                const bandY = yBands[idx % yBands.length];
+                a.x = Math.min(bounds.maxX, Math.max(bounds.minX, bounds.minX + spanX * Math.min(1, Math.max(0, ratioX))));
+                a.y = Math.min(bounds.maxY, Math.max(bounds.minY, bounds.minY + spanY * bandY));
                 a.targetX = a.x;
-                a.walker.style.transform = `translate3d(${a.x.toFixed(1)}px, 0, 0)`;
+                a.targetY = a.y;
+                applyActorPose(a, bounds);
                 if (a.flipEl) {
                     a.flipEl.style.transform = `scaleX(${a.facing === 1 ? -1 : 1})`;
                 }
             });
         }
 
-        function pickNextTarget(actor) {
-            const maxX = getMaxX();
-            const minX = 6;
-            if (maxX <= minX + 12) return minX;
-            let candidate = minX + Math.random() * (maxX - minX);
-            if (Math.abs(candidate - actor.x) < 36) {
-                candidate = actor.x < (minX + maxX) * 0.5
-                    ? Math.min(maxX, actor.x + 64 + Math.random() * 60)
-                    : Math.max(minX, actor.x - 64 - Math.random() * 60);
+        function pickNextTarget(actor, bounds) {
+            const { minX, maxX, minY, maxY } = bounds;
+            const spanX = Math.max(1, maxX - minX);
+            const spanY = Math.max(1, maxY - minY);
+            const sepX = walkerWidth * 1.08;
+            const sepY = Math.max(58, walkerHeight * 0.72);
+            const roll = Math.random(); // 대각선(50%), 위아래(25%), 좌우(25%)
+
+            const candidates = [];
+            for (let i = 0; i < 16; i++) {
+                let cx;
+                let cy;
+                if (roll < 0.5) {
+                    // 대각선 이동: X와 Y 모두 뚜렷하게 변화
+                    cx = minX + Math.random() * spanX;
+                    cy = minY + Math.random() * spanY;
+                    if (Math.abs(cx - actor.x) < spanX * 0.18) {
+                        cx = actor.x < (minX + maxX) * 0.5
+                            ? Math.min(maxX, actor.x + spanX * (0.28 + Math.random() * 0.35))
+                            : Math.max(minX, actor.x - spanX * (0.28 + Math.random() * 0.35));
+                    }
+                    if (Math.abs(cy - actor.y) < spanY * 0.28) {
+                        cy = actor.y < (minY + maxY) * 0.5
+                            ? Math.min(maxY, actor.y + spanY * (0.35 + Math.random() * 0.45))
+                            : Math.max(minY, actor.y - spanY * (0.35 + Math.random() * 0.45));
+                    }
+                } else if (roll < 0.75) {
+                    // 위아래 중심 이동 (약간의 좌우 변주 포함)
+                    cx = Math.min(maxX, Math.max(minX, actor.x + (Math.random() - 0.5) * Math.min(80, spanX * 0.3)));
+                    cy = actor.y < (minY + maxY) * 0.5
+                        ? Math.min(maxY, minY + spanY * (0.55 + Math.random() * 0.45))
+                        : Math.max(minY, minY + spanY * (Math.random() * 0.45));
+                } else {
+                    // 좌우 중심 이동 (약간의 위아래 변주 포함)
+                    cx = actor.x < (minX + maxX) * 0.5
+                        ? Math.min(maxX, actor.x + spanX * (0.32 + Math.random() * 0.45))
+                        : Math.max(minX, actor.x - spanX * (0.32 + Math.random() * 0.45));
+                    cy = Math.min(maxY, Math.max(minY, actor.y + (Math.random() - 0.5) * Math.min(60, spanY * 0.35)));
+                }
+
+                const travel = Math.hypot(cx - actor.x, cy - actor.y);
+                let minSep = 99;
+                for (const other of actors) {
+                    if (other === actor) continue;
+                    const curSep = Math.hypot((cx - other.x) / sepX, (cy - other.y) / sepY);
+                    const tgtSep = Math.hypot((cx - other.targetX) / sepX, (cy - other.targetY) / sepY);
+                    minSep = Math.min(minSep, curSep, tgtSep * 1.05);
+                }
+                const score = Math.min(minSep, 1.45) * 100 + Math.min(travel, 160) * 0.15;
+                candidates.push({ x: cx, y: cy, score });
             }
-            return Math.min(maxX, Math.max(minX, candidate));
+
+            candidates.sort((a, b) => b.score - a.score);
+            const pickPool = candidates.slice(0, Math.min(3, candidates.length));
+            const chosen = pickPool[Math.floor(Math.random() * pickPool.length)] || { x: actor.x, y: actor.y };
+            return {
+                x: Math.min(maxX, Math.max(minX, chosen.x)),
+                y: Math.min(maxY, Math.max(minY, chosen.y))
+            };
         }
 
         function isMotionActive() {
@@ -247,7 +346,10 @@
                 return;
             }
 
-            const maxX = getMaxX();
+            const bounds = getLimits();
+            const avoidX = walkerWidth * 0.92;
+            const avoidY = Math.max(52, walkerHeight * 0.64);
+
             for (const a of actors) {
                 if (a.bubbleTimer > 0) {
                     a.bubbleTimer -= dt;
@@ -259,36 +361,71 @@
                 if (a.mode === 'rest') {
                     a.restTimer -= dt;
                     if (a.restTimer <= 0) {
-                        a.targetX = pickNextTarget(a);
+                        const next = pickNextTarget(a, bounds);
+                        a.targetX = next.x;
+                        a.targetY = next.y;
+                        a.walkTimer = 0;
                         a.mode = 'walk';
                         a.walker.classList.remove('is-resting');
                         a.walker.classList.add('is-walking');
                     }
                 } else {
+                    a.walkTimer = (a.walkTimer || 0) + dt;
                     const dx = a.targetX - a.x;
-                    if (Math.abs(dx) <= 2.5) {
-                        a.x = Math.min(maxX, Math.max(6, a.targetX));
+                    const dy = a.targetY - a.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist <= 4.0 || a.walkTimer >= 7.5) {
+                        if (dist <= 4.0) {
+                            a.x = Math.min(bounds.maxX, Math.max(bounds.minX, a.targetX));
+                            a.y = Math.min(bounds.maxY, Math.max(bounds.minY, a.targetY));
+                        }
                         a.mode = 'rest';
-                        a.restTimer = 1.1 + Math.random() * 2.2;
+                        a.restTimer = 0.8 + Math.random() * 1.8;
                         a.walker.classList.remove('is-walking');
                         a.walker.classList.add('is-resting');
                     } else {
-                        const dir = dx > 0 ? 1 : -1;
-                        if (a.facing !== dir) {
-                            a.facing = dir;
-                            if (a.flipEl) {
-                                // Showdown 정면 스프라이트는 기본 좌향이므로 우측 이동 시 좌우 반전
-                                a.flipEl.style.transform = `scaleX(${dir === 1 ? -1 : 1})`;
+                        let vx = (dx / dist) * a.speed;
+                        let vy = (dy / dist) * a.speed;
+                        for (const other of actors) {
+                            if (other === a) continue;
+                            const ox = (a.x - other.x) / avoidX;
+                            const oy = (a.y - other.y) / avoidY;
+                            const oDist = Math.hypot(ox, oy);
+                            if (oDist > 0.01 && oDist < 1.0) {
+                                const push = (1.0 - oDist) * a.speed * 0.85;
+                                vx += (ox / oDist) * push;
+                                vy += (oy / oDist) * push;
                             }
                         }
-                        a.x += dir * a.speed * dt;
-                        a.x = Math.min(maxX, Math.max(6, a.x));
+                        if (Math.abs(vx) > 4.5) {
+                            const dir = vx > 0 ? 1 : -1;
+                            if (a.facing !== dir) {
+                                a.facing = dir;
+                                if (a.flipEl) a.flipEl.style.transform = `scaleX(${dir === 1 ? -1 : 1})`;
+                            }
+                        }
+                        a.x = Math.min(bounds.maxX, Math.max(bounds.minX, a.x + vx * dt));
+                        a.y = Math.min(bounds.maxY, Math.max(bounds.minY, a.y + vy * dt));
                     }
                 }
-                a.walker.style.transform = `translate3d(${a.x.toFixed(1)}px, 0, 0)`;
+                applyActorPose(a, bounds);
             }
 
             rafId = window.requestAnimationFrame(step);
+        }
+
+        function clampActorsToBounds(includeTarget) {
+            const bounds = getLimits();
+            actors.forEach((a) => {
+                a.x = Math.min(bounds.maxX, Math.max(bounds.minX, a.x));
+                a.y = Math.min(bounds.maxY, Math.max(bounds.minY, a.y));
+                if (includeTarget) {
+                    a.targetX = Math.min(bounds.maxX, Math.max(bounds.minX, a.targetX));
+                    a.targetY = Math.min(bounds.maxY, Math.max(bounds.minY, a.targetY));
+                }
+                applyActorPose(a, bounds);
+            });
         }
 
         function syncLoopState() {
@@ -312,15 +449,9 @@
         if (typeof ResizeObserver === 'function') {
             resizeObserver = new ResizeObserver((entries) => {
                 for (const entry of entries) {
-                    const w = entry.contentRect?.width;
-                    if (w && w > 80) {
-                        stageWidth = w;
-                        const maxX = getMaxX();
-                        actors.forEach((a) => {
-                            a.x = Math.min(maxX, Math.max(6, a.x));
-                            a.targetX = Math.min(maxX, Math.max(6, a.targetX));
-                            a.walker.style.transform = `translate3d(${a.x.toFixed(1)}px, 0, 0)`;
-                        });
+                    if (entry.contentRect?.width > 80) {
+                        measureBounds();
+                        clampActorsToBounds(true);
                     }
                 }
                 syncLoopState();
@@ -331,28 +462,17 @@
         const onVisibility = () => syncLoopState();
         document.addEventListener('visibilitychange', onVisibility);
 
+        measureBounds();
         layoutInitialPositions();
         syncLoopState();
 
         const controller = {
-            setPaused(paused) {
-                manualPaused = Boolean(paused);
-                syncLoopState();
-            },
-            refresh() {
-                stageWidth = Math.max(240, stageEl.clientWidth || containerEl.clientWidth || 320);
-                syncLoopState();
-            },
+            setPaused(paused) { manualPaused = Boolean(paused); syncLoopState(); },
+            refresh() { measureBounds(); clampActorsToBounds(false); syncLoopState(); },
             destroy() {
                 disposed = true;
-                if (rafId) {
-                    window.cancelAnimationFrame(rafId);
-                    rafId = 0;
-                }
-                if (resizeObserver) {
-                    resizeObserver.disconnect();
-                    resizeObserver = null;
-                }
+                if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
+                if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
                 document.removeEventListener('visibilitychange', onVisibility);
             }
         };

@@ -226,6 +226,7 @@
                         '칭찬 도장 모아서 친구를 더 초대하자! ❤️'
                     ]
                 })),
+                spacious: true,
                 paused: isMotionPaused(),
                 title: `🌿 ${childName}의 포켓몬 초원 놀이터`,
                 emptyText: '칭찬 도장 10칸을 모으면 첫 포켓몬이 초원에서 뛰어놀아요!',
