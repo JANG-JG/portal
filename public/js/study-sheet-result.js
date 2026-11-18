@@ -62,7 +62,8 @@
                 ? ` (+ 포켓몬 간식 ${snacks.map((sn) => `${sn.emoji} ${sn.name} ${sn.qty}개`).join(', ')} 획득!)`
                 : '';
             const bonusTxt = data.missionProgress?.bonusMessage ? ` ${data.missionProgress.bonusMessage}` : '';
-            descEl.textContent = `${data.message || ''}${snackTxt}${bonusTxt}`.trim();
+            const ptsTxt = data.earnedPoints?.totalAwarded > 0 ? ` [⭐ +${data.earnedPoints.totalAwarded}P 적립!]` : '';
+            descEl.textContent = `${data.message || ''}${snackTxt}${bonusTxt}${ptsTxt}`.trim();
         }
 
         if (chipsEl) {

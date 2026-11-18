@@ -433,14 +433,11 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
             const done = await markWorksheetCompletedOnly(sheet.id);
             const { markMissionProgressForSheet } = require('../services/study/studyMissions.service');
             const missionProgress = await markMissionProgressForSheet(sheet).catch(() => null);
+            const { recordWorksheetCompletionPoints } = require('../services/study/studyPlazaRewards.service');
+            const earnedPoints = await recordWorksheetCompletionPoints(sheet, { stampAwarded: false }, missionProgress).catch(() => null);
             return res.json({
-                success: true,
-                noStampForColoring: true,
-                stampAwarded: false,
-                alreadyAwarded: false,
-                reachedTen: false,
-                alreadyCompleted: done.alreadyCompleted,
-                missionProgress,
+                success: true, noStampForColoring: true, stampAwarded: false, alreadyAwarded: false,
+                reachedTen: false, alreadyCompleted: done.alreadyCompleted, missionProgress, earnedPoints,
                 message: '알록달록 멋진 색칠놀이 완성! 🎨 (색칠놀이는 별·도장 없이 자유롭게 즐겨요)'
             });
         }
@@ -470,12 +467,9 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
                 }).catch(() => {});
             });
         }
-        res.json({
-            success: true,
-            earnedSnacks,
-            missionProgress,
-            ...result
-        });
+        const { recordWorksheetCompletionPoints } = require('../services/study/studyPlazaRewards.service');
+        const earnedPoints = await recordWorksheetCompletionPoints(sheet, result, missionProgress).catch(() => null);
+        res.json({ success: true, earnedSnacks, missionProgress, earnedPoints, ...result });
     } catch (err) {
         const status = err.statusCode || 500;
         console.error('학습지 완료 처리 오류:', err);
@@ -489,5 +483,6 @@ router.use(require('./studyPokemonSocial.routes'));
 router.use(require('./studyMedia.routes'));
 router.use(require('./studyReview.routes'));
 router.use(require('./studyMissions.routes'));
+router.use(require('./studyPlazaRewards.routes'));
 
 module.exports = router;

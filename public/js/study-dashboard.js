@@ -325,9 +325,8 @@
             document.querySelectorAll('.level-stepper').forEach((el) => {
                 el.hidden = !state.parentUnlocked;
             });
-            if (window.StudyStamps && typeof window.StudyStamps.syncLockUi === 'function') {
-                window.StudyStamps.syncLockUi(state.parentUnlocked);
-            }
+            if (window.StudyStamps?.syncLockUi) window.StudyStamps.syncLockUi(state.parentUnlocked);
+            window.StudyPlazaShop?.syncLockUi?.(state.parentUnlocked, state.parentPinValue);
             if (notifyMsg) showToast(notifyMsg);
         }
 

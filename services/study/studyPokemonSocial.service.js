@@ -456,5 +456,7 @@ module.exports = {
     endPokemonVisit,
     claimCoopReward,
     getSocialState,
+    getSnackInventory,
+    getAffectionMap,
     addSnackDelta
 };

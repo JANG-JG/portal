@@ -201,7 +201,8 @@
         }
 
         const meadowMount = document.getElementById('pokemonMeadowStage');
-        if (meadowMount && window.PokemonMeadow) {
+        const mountPersonalMeadow = () => {
+            if (!meadowMount || !window.PokemonMeadow) return null;
             const collected = Array.isArray(pokemonData.collected) ? pokemonData.collected : [];
             const guests = Array.isArray(pokemonData.visitingGuests) ? pokemonData.visitingGuests : [];
             const sorted = [];
@@ -214,12 +215,9 @@
             }
             const childName = childProfile?.display_name || '친구';
             const localActors = sorted.map((p) => ({
-                id: p.id,
-                nameKo: p.nameKo,
-                label: p.nameKo,
+                id: p.id, nameKo: p.nameKo, label: p.nameKo,
                 isPartner: Boolean(partner && Number(p.id) === Number(partner.id)),
-                animatedUrl: p.animatedUrl,
-                artworkUrl: p.artworkUrl,
+                animatedUrl: p.animatedUrl, artworkUrl: p.artworkUrl,
                 cheers: [`${childName}야, 오늘도 멋져요! ✨`, `${p.nameKo}와(과) 초원 산책 중! 🌿`, '칭찬 도장 모아서 간식도 챙기자! 🍎']
             }));
             const guestActors = guests.map((g) => ({
@@ -228,23 +226,32 @@
                 cheers: [`${g.guestOwnerName}네 ${g.nameKo} 놀러왔어요! 🏠`, g.greetingMsg || '같이 놀자! ✨']
             }));
             const allActors = [...localActors, ...guestActors].slice(0, 8);
-            currentMeadow = window.PokemonMeadow.mount(meadowMount, {
-                buddies: allActors,
-                spacious: true,
-                paused: isMotionPaused(),
+            const ctrl = window.PokemonMeadow.mount(meadowMount, {
+                buddies: allActors, spacious: true, paused: isMotionPaused(),
                 title: `🌿 ${childName}의 포켓몬 초원 놀이터`,
                 emptyText: '칭찬 도장 10칸을 모으면 첫 포켓몬이 초원에서 뛰어놀아요!',
                 footerHint: allActors.length > 0 ? '초원이나 포켓몬을 톡 누르고 공놀이·방울톡·간식 던지기로 놀아보세요!' : ''
             });
-            window.StudyPokemonSocial?.attachMeadowPlay?.(currentMeadow);
-        } else {
-            currentMeadow = null;
-        }
+            window.StudyPokemonSocial?.attachMeadowPlay?.(ctrl);
+            return ctrl;
+        };
+        const remountMeadow = () => {
+            currentMeadow = window.StudyPlazaShop?.mountCurrentMeadow
+                ? window.StudyPlazaShop.mountCurrentMeadow(mountPersonalMeadow)
+                : mountPersonalMeadow();
+        };
+        remountMeadow();
         window.StudyPokemonSocial?.renderForChild?.({
             childProfile,
             partnerPokemon: partner,
             showToast: boundCtx?.showToast,
             onRefreshAll: boundCtx?.reloadDashboard
+        });
+        window.StudyPlazaShop?.renderForChild?.({
+            childProfile, pokemonData, isMotionPaused,
+            showToast: boundCtx?.showToast,
+            onRefreshAll: boundCtx?.reloadDashboard,
+            onRemountMeadow: remountMeadow
         });
 
         if (egg && egg.hatched && egg.revealedPokemon && !egg.hatchAcknowledged) {

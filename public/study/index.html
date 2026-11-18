@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="/css/study-draw-studio.css">
     <link rel="stylesheet" href="/css/study-pokemon-social.css">
     <link rel="stylesheet" href="/css/study-phase3.css">
+    <link rel="stylesheet" href="/css/study-plaza-shop.css">
 </head>
 <body>
     <div class="study-shell">
@@ -101,8 +102,11 @@
                         <button type="button" id="btnPokemonOpenDex" class="pokemon-btn-ctrl pokemon-btn-dex">📖 도감 보기</button>
                     </div>
                 </div>
+                <div id="plazaModeMount" hidden></div>
                 <div id="pokemonMeadowStage" class="pokemon-meadow-mount"></div>
+                <div id="plazaReactionMount" hidden></div>
                 <div id="pokemonMeadowPlayMount" class="pokemon-meadow-play-mount" hidden></div>
+                <div id="plazaRewardsBarMount" hidden></div>
                 <div class="pokemon-habitats">
                     <button type="button" id="btnPokemonEggStage" class="pokemon-stage pokemon-stage--egg" data-stage="0"></button>
                     <button type="button" id="btnPokemonPartnerStage" class="pokemon-stage pokemon-stage--partner"></button>
@@ -460,6 +464,16 @@
         </div>
     </dialog>
 
+    <dialog id="plazaShopDialog" class="study-dialog plaza-dialog" closedby="any" aria-labelledby="plazaShopTitle">
+        <div class="pokemon-dialog__head"><h2 id="plazaShopTitle" style="margin:0; font-size:1.05rem;">🎁 포인트 · 쿠폰 상점</h2><form method="dialog"><button type="submit" value="close" class="study-btn study-btn-outline" style="min-height:38px; padding:0.3rem 0.75rem;">닫기</button></form></div>
+        <div id="plazaShopBody" class="plaza-dialog__body"></div>
+    </dialog>
+
+    <dialog id="parentPokemonDialog" class="study-dialog plaza-dialog" closedby="any" aria-labelledby="parentPokemonTitle">
+        <div class="pokemon-dialog__head"><h2 id="parentPokemonTitle" style="margin:0; font-size:1.05rem;">👩‍👦 엄마·아빠 포켓몬 놀이터</h2><form method="dialog"><button type="submit" value="close" class="study-btn study-btn-outline" style="min-height:38px; padding:0.3rem 0.75rem;">닫기</button></form></div>
+        <div id="parentPokemonBody" class="plaza-dialog__body"></div>
+    </dialog>
+
     <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
 
     <script src="/js/study-pwa.js" defer></script>
@@ -471,6 +485,7 @@
     <script src="/js/pokemon-meadow-toys.js" defer></script>
     <script src="/js/pokemon-meadow-play.js" defer></script>
     <script src="/js/study-pokemon-social.js" defer></script>
+    <script src="/js/study-plaza-shop.js" defer></script>
     <script src="/js/study-pokemon.js" defer></script>
     <script src="/js/study-pokemon-coloring.js" defer></script>
     <script src="/js/study-missions.js" defer></script>
