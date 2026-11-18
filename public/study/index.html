@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="/css/study-tablet.css">
     <link rel="stylesheet" href="/css/study-pokemon.css">
     <link rel="stylesheet" href="/css/pokemon-meadow.css">
+    <link rel="stylesheet" href="/css/pokemon-meadow-play.css">
     <link rel="stylesheet" href="/css/study-review.css">
     <link rel="stylesheet" href="/css/study-draw-studio.css">
     <link rel="stylesheet" href="/css/study-pokemon-social.css">
@@ -98,6 +99,7 @@
                     </div>
                 </div>
                 <div id="pokemonMeadowStage" class="pokemon-meadow-mount"></div>
+                <div id="pokemonMeadowPlayMount" class="pokemon-meadow-play-mount" hidden></div>
                 <div class="pokemon-habitats">
                     <button type="button" id="btnPokemonEggStage" class="pokemon-stage pokemon-stage--egg" data-stage="0"></button>
                     <button type="button" id="btnPokemonPartnerStage" class="pokemon-stage pokemon-stage--partner"></button>
@@ -438,6 +440,19 @@
         </div>
     </dialog>
 
+    <!-- 유치원 친화 그림 친구 초원 놀이터 모달 (Native dialog) -->
+    <dialog id="pokemonFriendPlayDialog" class="study-dialog pokemon-dialog" closedby="any" aria-labelledby="friendPlayTitle">
+        <div class="pokemon-dialog__inner">
+            <div class="pokemon-dialog__head">
+                <h2 id="friendPlayTitle" style="margin:0; font-size:1.05rem;">🤝 친구 초원 놀이터</h2>
+                <form method="dialog">
+                    <button type="submit" value="close" class="study-btn study-btn-outline" style="min-height:38px; padding:0.3rem 0.75rem;">닫기</button>
+                </form>
+            </div>
+            <div id="friendPlayBody" class="pokemon-dialog__body"></div>
+        </div>
+    </dialog>
+
     <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
 
     <script src="/js/study-pwa.js" defer></script>
@@ -446,6 +461,8 @@
     <script src="/js/study-fx.js" defer></script>
     <script src="/js/study-stamps.js" defer></script>
     <script src="/js/pokemon-meadow.js" defer></script>
+    <script src="/js/pokemon-meadow-toys.js" defer></script>
+    <script src="/js/pokemon-meadow-play.js" defer></script>
     <script src="/js/study-pokemon-social.js" defer></script>
     <script src="/js/study-pokemon.js" defer></script>
     <script src="/js/study-pokemon-coloring.js" defer></script>

@@ -119,6 +119,27 @@
                     gain: 0.16
                 });
             });
+        },
+        bounce() {
+            playTone(260, { delay: 0, duration: 0.11, type: 'sine', gain: 0.14, endFreq: 510 });
+        },
+        bubblePop(step = 0) {
+            const scale = [523.25, 587.33, 659.25, 783.99, 880, 1046.5];
+            const f = scale[Math.abs(Number(step) || 0) % scale.length];
+            playTone(f, { delay: 0, duration: 0.085, type: 'sine', gain: 0.13, endFreq: f * 1.35 });
+        },
+        munch() {
+            playTone(360, { delay: 0, duration: 0.075, type: 'triangle', gain: 0.13, endFreq: 540 });
+            playTone(430, { delay: 0.09, duration: 0.085, type: 'triangle', gain: 0.14, endFreq: 640 });
+        },
+        whistle() {
+            playTone(720, { delay: 0, duration: 0.075, type: 'sine', gain: 0.1, endFreq: 960 });
+            playTone(860, { delay: 0.085, duration: 0.11, type: 'sine', gain: 0.11, endFreq: 1140 });
+        },
+        giftOpen() {
+            [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, idx) => {
+                playTone(f, { delay: idx * 0.065, duration: 0.16, type: 'triangle', gain: 0.14 });
+            });
         }
     };
 

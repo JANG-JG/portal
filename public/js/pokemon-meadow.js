@@ -35,36 +35,22 @@
     }
 
     function buildMeadowBackdropSvg() {
-        return `
-        <div class="pokemon-meadow__sky" aria-hidden="true">
-            <div class="pokemon-meadow__sun"></div>
-            <svg class="pokemon-meadow__cloud pokemon-meadow__cloud--1" viewBox="0 0 80 30">
-                <path d="M16 25 H65 C72 25 76 20 75 15 C74 10 68 8 63 10 C60 4 51 2 44 6 C38 2 27 4 24 11 C17 10 10 14 10 19 C10 23 13 25 16 25 Z" fill="#ffffff" fill-opacity="0.92"/>
-            </svg>
-            <svg class="pokemon-meadow__cloud pokemon-meadow__cloud--2" viewBox="0 0 80 30">
-                <path d="M15 24 H64 C70 24 73 20 72 15 C71 11 66 9 61 11 C58 5 49 4 42 8 C36 4 26 6 23 12 C16 11 11 15 11 19 C11 22 13 24 15 24 Z" fill="#ffffff" fill-opacity="0.86"/>
-            </svg>
-        </div>
+        return `<div class="pokemon-meadow__sky" aria-hidden="true"><div class="pokemon-meadow__sun"></div>
+            <svg class="pokemon-meadow__cloud pokemon-meadow__cloud--1" viewBox="0 0 80 30"><path d="M16 25 H65 C72 25 76 20 75 15 C74 10 68 8 63 10 C60 4 51 2 44 6 C38 2 27 4 24 11 C17 10 10 14 10 19 C10 23 13 25 16 25 Z" fill="#ffffff" fill-opacity="0.92"/></svg>
+            <svg class="pokemon-meadow__cloud pokemon-meadow__cloud--2" viewBox="0 0 80 30"><path d="M15 24 H64 C70 24 73 20 72 15 C71 11 66 9 61 11 C58 5 49 4 42 8 C36 4 26 6 23 12 C16 11 11 15 11 19 C11 22 13 24 15 24 Z" fill="#ffffff" fill-opacity="0.86"/></svg></div>
         <svg class="pokemon-meadow__hills" viewBox="0 0 600 110" preserveAspectRatio="none" aria-hidden="true">
             <path d="M0 44 Q130 12 270 38 T540 28 L600 32 L600 110 L0 110 Z" fill="#86efac" fill-opacity="0.55"/>
             <path d="M0 62 Q160 36 330 60 T600 50 L600 110 L0 110 Z" fill="#4ade80" fill-opacity="0.48"/>
             <path d="M0 84 Q180 72 340 86 T600 80 L600 110 L0 110 Z" fill="#bef264" fill-opacity="0.45"/>
-            <!-- 들판 풀잎 & 작은 꽃들 -->
             <g stroke="#16a34a" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.58">
-                <path d="M46 98 L42 88 M46 98 L48 86 M46 98 L52 90"/>
-                <path d="M188 94 L184 85 M188 94 L190 83 M188 94 L194 87"/>
-                <path d="M362 96 L358 86 M362 96 L364 84 M362 96 L369 89"/>
-                <path d="M518 92 L514 83 M518 92 L520 81 M518 92 L524 85"/>
+                <path d="M46 98 L42 88 M46 98 L48 86 M46 98 L52 90"/><path d="M188 94 L184 85 M188 94 L190 83 M188 94 L194 87"/>
+                <path d="M362 96 L358 86 M362 96 L364 84 M362 96 L369 89"/><path d="M518 92 L514 83 M518 92 L520 81 M518 92 L524 85"/>
             </g>
             <g>
-                <circle cx="94" cy="86" r="3.5" fill="#fef08a"/>
-                <circle cx="94" cy="86" r="1.4" fill="#f97316"/>
-                <circle cx="256" cy="92" r="3.5" fill="#fbcfe8"/>
-                <circle cx="256" cy="92" r="1.4" fill="#db2777"/>
-                <circle cx="430" cy="84" r="3.5" fill="#ffffff"/>
-                <circle cx="430" cy="84" r="1.4" fill="#facc15"/>
-                <circle cx="558" cy="96" r="3.2" fill="#fde047"/>
-                <circle cx="558" cy="96" r="1.3" fill="#ea580c"/>
+                <circle cx="94" cy="86" r="3.5" fill="#fef08a"/><circle cx="94" cy="86" r="1.4" fill="#f97316"/>
+                <circle cx="256" cy="92" r="3.5" fill="#fbcfe8"/><circle cx="256" cy="92" r="1.4" fill="#db2777"/>
+                <circle cx="430" cy="84" r="3.5" fill="#ffffff"/><circle cx="430" cy="84" r="1.4" fill="#facc15"/>
+                <circle cx="558" cy="96" r="3.2" fill="#fde047"/><circle cx="558" cy="96" r="1.3" fill="#ea580c"/>
             </g>
         </svg>`;
     }
@@ -177,11 +163,12 @@
             const actor = {
                 buddy, walker, flipEl: walker.querySelector('.pokemon-meadow__sprite-flip'), bubbleEl: walker.querySelector('.pokemon-meadow__bubble'),
                 x: 12 + index * 54, y: 12 + (index % 3) * 32, targetX: 20 + index * 54, targetY: 12 + (index % 3) * 32,
-                facing: index % 2 === 0 ? -1 : 1, speed: 28 + ((index * 9) % 16), mode: 'rest', restTimer: 0.35 + index * 0.45,
-                bubbleTimer: 0, greetCooldown: 0, lastZ: -1, edgeState: ''
+                facing: index % 2 === 0 ? -1 : 1, speed: 28 + ((index * 9) % 16), speedBoost: 1, lockedPos: false,
+                mode: 'rest', restTimer: 0.35 + index * 0.45, bubbleTimer: 0, greetCooldown: 0, lastZ: -1, edgeState: '', _suppressClickUntil: 0
             };
 
             walker.querySelector('.pokemon-meadow__btn')?.addEventListener('click', () => {
+                if (actor._suppressClickUntil && performance.now() < actor._suppressClickUntil) return;
                 walker.classList.remove('is-tapped');
                 void walker.offsetWidth;
                 walker.classList.add('is-tapped');
@@ -192,7 +179,7 @@
                 showActorBubble(actor, msg, 2.4);
                 spawnSparks(fxEl, actorsOffsetLeft + actor.x + walkerWidth * 0.5, Math.max(36, stageHeight - (actorsOffsetTop + actor.y + walkerHeight * 0.5)));
                 window.StudyFx?.playTone?.(659.25, 0.07, 'triangle');
-                if (typeof opts.onTap === 'function') opts.onTap(buddy, msg);
+                if (typeof opts.onTap === 'function') opts.onTap(buddy, msg, actor);
             });
 
             actorsEl.appendChild(walker);
@@ -200,6 +187,8 @@
         });
 
         let manualPaused = Boolean(opts.paused);
+        let contentSkipped = false;
+        let frameHook = typeof opts.onFrame === 'function' ? opts.onFrame : null;
         let rafId = 0;
         let lastTs = 0;
         let disposed = false;
@@ -305,7 +294,11 @@
         }
 
         function isMotionActive() {
-            return !disposed && !manualPaused && !prefersReducedMotion() && !document.hidden && stageEl.offsetParent !== null;
+            return !disposed && !manualPaused && !contentSkipped && !prefersReducedMotion() && !document.hidden && stageEl.offsetParent !== null;
+        }
+
+        function getMetrics() {
+            return { stageHeight, actorsWidth, actorsHeight, actorsOffsetLeft, actorsOffsetTop, walkerWidth, walkerHeight };
         }
 
         function step(ts) {
@@ -314,23 +307,20 @@
             if (!lastTs) lastTs = ts;
             const dt = Math.min(0.08, Math.max(0.008, (ts - lastTs) / 1000));
             lastTs = ts;
-
-            if (!isMotionActive()) {
-                return;
-            }
+            if (!isMotionActive()) return;
 
             const bounds = getLimits();
             const avoidX = walkerWidth * 0.92;
             const avoidY = Math.max(52, walkerHeight * 0.64);
+            if (typeof frameHook === 'function') frameHook(dt, bounds, actors, getMetrics());
 
             for (const a of actors) {
                 if (a.greetCooldown > 0) a.greetCooldown -= dt;
                 if (a.bubbleTimer > 0) {
                     a.bubbleTimer -= dt;
-                    if (a.bubbleTimer <= 0) {
-                        a.walker.classList.remove('has-bubble');
-                    }
+                    if (a.bubbleTimer <= 0) a.walker.classList.remove('has-bubble');
                 }
+                if (a.lockedPos) { applyActorPose(a, bounds); continue; }
 
                 if (a.mode === 'rest') {
                     a.restTimer -= dt;
@@ -338,6 +328,7 @@
                         const next = pickNextTarget(a, bounds);
                         a.targetX = next.x;
                         a.targetY = next.y;
+                        a.speedBoost = 1;
                         a.walkTimer = 0;
                         a.mode = 'walk';
                         a.walker.classList.remove('is-resting');
@@ -354,20 +345,22 @@
                             a.x = Math.min(bounds.maxX, Math.max(bounds.minX, a.targetX));
                             a.y = Math.min(bounds.maxY, Math.max(bounds.minY, a.targetY));
                         }
+                        a.speedBoost = 1;
                         a.mode = 'rest';
                         a.restTimer = 0.8 + Math.random() * 1.8;
                         a.walker.classList.remove('is-walking');
                         a.walker.classList.add('is-resting');
                     } else {
-                        let vx = (dx / dist) * a.speed;
-                        let vy = (dy / dist) * a.speed;
+                        const moveSpeed = a.speed * (a.speedBoost || 1);
+                        let vx = (dx / dist) * moveSpeed;
+                        let vy = (dy / dist) * moveSpeed;
                         for (const other of actors) {
                             if (other === a) continue;
                             const ox = (a.x - other.x) / avoidX;
                             const oy = (a.y - other.y) / avoidY;
                             const oDist = Math.hypot(ox, oy);
                             if (oDist > 0.01 && oDist < 1.0) {
-                                const push = (1.0 - oDist) * a.speed * 0.85;
+                                const push = (1.0 - oDist) * moveSpeed * 0.85;
                                 vx += (ox / oDist) * push;
                                 vy += (oy / oDist) * push;
                             }
@@ -450,20 +443,43 @@
         }
 
         const onVisibility = () => syncLoopState();
+        const onCvState = (e) => { contentSkipped = Boolean(e && e.skipped); syncLoopState(); };
         document.addEventListener('visibilitychange', onVisibility);
+        stageEl.addEventListener('contentvisibilityautostatechange', onCvState);
 
-        measureBounds();
-        layoutInitialPositions();
-        syncLoopState();
+        measureBounds(); layoutInitialPositions(); syncLoopState();
 
         const controller = {
+            stageEl, actorsEl, fxEl, actors, getMetrics, getLimits, syncLoopState,
             setPaused(paused) { manualPaused = Boolean(paused); syncLoopState(); },
+            setFrameHook(fn) { frameHook = typeof fn === 'function' ? fn : null; },
             refresh() { measureBounds(); clampActorsToBounds(false); syncLoopState(); },
+            showBubble(a, msg, sec = 2.4) { if (a) showActorBubble(a, msg, sec); },
+            celebrateActor(a) {
+                if (!a) return;
+                a.walker.classList.remove('is-tapped'); void a.walker.offsetWidth; a.walker.classList.add('is-tapped');
+                window.setTimeout(() => a.walker.classList.remove('is-tapped'), 540);
+                spawnSparks(fxEl, actorsOffsetLeft + a.x + walkerWidth * 0.5, Math.max(36, stageHeight - (actorsOffsetTop + a.y + walkerHeight * 0.5)));
+            },
+            steerActorTo(a, centerX, centerY, boost = 1.9) {
+                if (!a) return;
+                const b = getLimits();
+                a.targetX = Math.min(b.maxX, Math.max(b.minX, centerX - walkerWidth * 0.5));
+                a.targetY = Math.min(b.maxY, Math.max(b.minY, centerY - walkerHeight * 0.65));
+                a.speedBoost = boost; a.walkTimer = 0; a.mode = 'walk';
+                a.walker.classList.remove('is-resting'); a.walker.classList.add('is-walking');
+            },
+            setActorPos(a, x, y) {
+                const b = getLimits();
+                a.x = Math.min(b.maxX, Math.max(b.minX, x)); a.y = Math.min(b.maxY, Math.max(b.minY, y));
+                applyActorPose(a, b);
+            },
             destroy() {
-                disposed = true;
+                disposed = true; frameHook = null;
                 if (rafId) { window.cancelAnimationFrame(rafId); rafId = 0; }
                 if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
                 document.removeEventListener('visibilitychange', onVisibility);
+                stageEl.removeEventListener('contentvisibilityautostatechange', onCvState);
             }
         };
 

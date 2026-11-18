@@ -1,0 +1,387 @@
+/* ==========================================================================
+ * 포켓몬 초원 놀이터 게임 & 유치원 맞춤 도크 스타일 (pokemon-meadow-play.css)
+ * - [규칙 2] 100% 한국어 | [규칙 3] 500줄 이하 | [규칙 6] 360px·100dvh·터치 최적화
+ * ========================================================================== */
+
+.pokemon-meadow.is-play-enabled {
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: pan-y;
+}
+
+.pokemon-meadow.is-play-enabled.is-mode-ball,
+.pokemon-meadow.is-play-enabled.is-mode-bubble,
+.pokemon-meadow.is-play-enabled .pokemon-meadow__walker {
+    touch-action: none;
+}
+
+.pokemon-meadow.is-play-enabled .pokemon-meadow__walker.is-dragging {
+    z-index: 40 !important;
+    filter: drop-shadow(0 12px 14px rgba(15, 23, 42, 0.24));
+}
+
+.pokemon-meadow.is-play-enabled .pokemon-meadow__walker.is-dragging .pokemon-meadow__sprite-img {
+    transform: scale(1.16);
+}
+
+.pokemon-meadow__play-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.meadow-hud-top-right {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 8;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.meadow-score-pill,
+.meadow-expand-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-block-size: 38px;
+    padding: 0 11px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-weight: 900;
+    font-size: 0.82rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+
+.meadow-score-pill {
+    background: #fef08a;
+    border: 2px solid #f59e0b;
+    color: #92400e;
+    pointer-events: none;
+}
+
+.meadow-expand-btn {
+    border: 1.5px solid #cbd5e1;
+    background: rgba(255, 255, 255, 0.94);
+    color: #0f172a;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.meadow-gift-chest {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    z-index: 9;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-block-size: 46px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 2.5px solid #f59e0b;
+    background: linear-gradient(135deg, #fffbeb 0%, #fde68a 100%);
+    color: #92400e;
+    font-family: inherit;
+    font-weight: 900;
+    font-size: 0.86rem;
+    cursor: pointer;
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.34);
+    animation: meadowGiftBob 1.35s ease-in-out infinite;
+    touch-action: manipulation;
+}
+
+.meadow-gift-chest__box {
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+@keyframes meadowGiftBob {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-5px) scale(1.05); }
+}
+
+/* 유치원 친화 게임 도크 */
+.pokemon-meadow-play-mount {
+    margin-bottom: 0.72rem;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.meadow-game-dock {
+    display: grid;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.86);
+    border: 1.8px solid #bbf7d0;
+    border-radius: 18px;
+    padding: 10px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.meadow-toy-bar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.meadow-toy-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-block-size: 54px;
+    padding: 6px 4px;
+    border-radius: 14px;
+    border: 2px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+    font-family: inherit;
+    font-weight: 900;
+    font-size: 0.76rem;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease;
+}
+
+.meadow-toy-btn:active {
+    transform: scale(0.95);
+}
+
+.meadow-toy-btn__emoji {
+    font-size: 1.38rem;
+    line-height: 1.05;
+}
+
+.meadow-toy-btn.is-active {
+    border-color: #16a34a;
+    background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%);
+    color: #14532d;
+    box-shadow: 0 3px 10px rgba(34, 197, 94, 0.22);
+}
+
+.meadow-toy-btn__dot {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 0.68rem;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.meadow-snack-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 8px;
+    border-radius: 14px;
+    background: #fffbeb;
+    border: 1.5px solid #fde68a;
+}
+
+.meadow-snack-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1 1 210px;
+}
+
+.meadow-snack-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-block-size: 44px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 2px solid #fcd34d;
+    background: #ffffff;
+    color: #78350f;
+    font-family: inherit;
+    font-weight: 900;
+    font-size: 0.88rem;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.meadow-snack-chip.is-armed {
+    border-color: #ea580c;
+    background: #ffedd5;
+    color: #9a3412;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.24);
+}
+
+.meadow-snack-chip.is-empty {
+    opacity: 0.52;
+}
+
+.meadow-partner-heart {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 900;
+    color: #be185d;
+}
+
+.meadow-evolve-btn {
+    min-block-size: 40px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 2px solid #f59e0b;
+    background: linear-gradient(135deg, #fef08a 0%, #f59e0b 100%);
+    color: #78350f;
+    font-family: inherit;
+    font-weight: 900;
+    font-size: 0.82rem;
+    cursor: pointer;
+    animation: meadowGiftBob 1.3s ease-in-out infinite;
+}
+
+.meadow-coop-ribbon {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 12px;
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #166534;
+}
+
+/* 친구 초원 (드롭다운 없는 그림 선택창) */
+.friend-play-section {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1.8px solid #e2e8f0;
+    margin-bottom: 10px;
+}
+
+.friend-play-section h3 {
+    margin: 0;
+    font-size: 0.96rem;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.friend-tile-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    gap: 8px;
+}
+
+.friend-pic-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-block-size: 58px;
+    padding: 6px 4px;
+    border-radius: 14px;
+    border: 2px solid #cbd5e1;
+    background: #ffffff;
+    font-family: inherit;
+    font-weight: 900;
+    font-size: 0.82rem;
+    color: #1e293b;
+    cursor: pointer;
+}
+
+.friend-pic-btn.is-active {
+    border-color: #2563eb;
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.friend-pic-btn__emoji {
+    font-size: 1.45rem;
+    line-height: 1.05;
+}
+
+/* 전체화면 크게 놀기 (모바일/태블릿 100dvh) */
+html.has-meadow-fullscreen {
+    overflow: hidden;
+}
+
+.pokemon-card.is-meadow-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0 !important;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    touch-action: none;
+}
+
+.pokemon-card.is-meadow-fullscreen .pokemon-habitats {
+    display: none;
+}
+
+.pokemon-card.is-meadow-fullscreen .pokemon-meadow-mount {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.pokemon-card.is-meadow-fullscreen .pokemon-meadow {
+    flex: 1 1 auto;
+    height: 100%;
+    min-height: 220px;
+}
+
+.pokemon-card.is-meadow-fullscreen .pokemon-meadow-play-mount {
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+@media (pointer: coarse) {
+    .meadow-expand-btn,
+    .meadow-toy-btn,
+    .meadow-snack-chip,
+    .friend-pic-btn {
+        min-block-size: 46px;
+    }
+}
+
+@media (max-width: 400px) {
+    .meadow-toy-btn {
+        font-size: 0.72rem;
+    }
+    .meadow-snack-chip {
+        font-size: 0.82rem;
+        padding: 4px 8px;
+    }
+}
