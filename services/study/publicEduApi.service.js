@@ -120,7 +120,10 @@ async function logPublicApiCall({ provider, queryText, status, hitCache = 0, res
     ).catch(() => {});
 }
 
+const JARGON_CAT_REGEX = /불교|유학|책명|미술|인명|지명|법률|군사|한방|서비스업|역사|철학|고유/;
+
 function parseKoreanDictItems(rawBody, wordQuery, providerName) {
+    if (!rawBody || !rawBody.trim()) return null;
     const parsed = JSON.parse(rawBody);
     const items = parsed?.channel?.item;
     const list = Array.isArray(items) ? items : (items ? [items] : []);
@@ -129,6 +132,7 @@ function parseKoreanDictItems(rawBody, wordQuery, providerName) {
         const cleanWord = stripDictMarkup(item?.word || '').replace(/[\-\^0-9\s]/g, '');
         const senses = Array.isArray(item?.sense) ? item.sense : (item?.sense ? [item.sense] : []);
         const firstSense = senses[0] || item;
+        const cat = stripDictMarkup(firstSense?.cat || '');
         const pos = stripDictMarkup(item?.pos || firstSense?.pos || '명사') || '명사';
         const definition = stripDictMarkup(firstSense?.definition || '');
         const example = stripDictMarkup(firstSense?.example || '');
@@ -138,11 +142,16 @@ function parseKoreanDictItems(rawBody, wordQuery, providerName) {
             provider: providerName,
             pos: pos.slice(0, 16),
             definition: definition.slice(0, 110),
-            example: example.slice(0, 90)
+            example: example.slice(0, 90),
+            isGeneral: !cat || !JARGON_CAT_REGEX.test(cat)
         });
     }
-    const exact = candidates.find((c) => c.word === wordQuery);
-    return exact || candidates[0] || null;
+    const exactGeneral = candidates.find((c) => c.word === wordQuery && c.isGeneral);
+    const exactAny = candidates.find((c) => c.word === wordQuery);
+    const chosen = exactGeneral || exactAny || candidates.find((c) => c.isGeneral) || candidates[0] || null;
+    if (!chosen) return null;
+    const { isGeneral: _ignored, ...entry } = chosen;
+    return entry;
 }
 
 async function queryUrimalsaem(wordQuery) {
@@ -152,9 +161,8 @@ async function queryUrimalsaem(wordQuery) {
         key,
         q: wordQuery,
         req_type: 'json',
-        part: 'word',
-        sort: 'popular',
-        num: '8'
+        method: 'exact',
+        num: '10'
     });
     const url = `https://opendict.korean.go.kr/api/search?${qs.toString()}`;
     const res = await getJsonIPv4(url, 7000);
@@ -176,12 +184,16 @@ async function queryStdKoreanDict(wordQuery) {
         key,
         q: wordQuery,
         req_type: 'json',
-        num: '8'
+        method: 'exact',
+        num: '10'
     });
     const url = `https://stdict.korean.go.kr/api/search.do?${qs.toString()}`;
     const res = await getJsonIPv4(url, 7000);
     if (res.status !== 200) {
         return { ok: false, reason: `http_${res.status}` };
+    }
+    if (/error_code/i.test(res.body) && !res.body.includes('"channel"')) {
+        return { ok: false, reason: 'api_error_response' };
     }
     const entry = parseKoreanDictItems(res.body, wordQuery, 'stdtdic');
     if (!entry) return { ok: false, reason: 'no_kid_safe_match' };
