@@ -44,5 +44,6 @@ router.post('/phase3/config', async (req, res) => {
 });
 
 router.use('/', require('./studyPlazaRewards.admin.routes'));
+router.use('/', require('./studyGrowth.admin.routes'));
 
 module.exports = router;

@@ -57,6 +57,12 @@
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
 }
 
+.meadow-score-pill[hidden],
+.meadow-score-pill:empty,
+.meadow-gift-chest[hidden] {
+    display: none !important;
+}
+
 .meadow-score-pill {
     background: #fef08a;
     border: 2px solid #f59e0b;
@@ -323,48 +329,98 @@
     line-height: 1.05;
 }
 
-/* 전체화면 크게 놀기 (모바일/태블릿 100dvh) */
+/* 전체화면 크게 놀기 (모바일/태블릿 100dvh 무잘림) */
 html.has-meadow-fullscreen {
     overflow: hidden;
 }
 
-.pokemon-card.is-meadow-fullscreen {
+.pokemon-card.is-meadow-fullscreen,
+.parents-plaza-card.is-meadow-fullscreen {
     position: fixed;
     inset: 0;
-    z-index: 70;
+    z-index: 90;
     width: 100%;
     height: 100dvh;
     max-height: 100dvh;
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
     margin: 0 !important;
     border-radius: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-    touch-action: none;
+    gap: 6px;
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    touch-action: manipulation;
 }
 
-.pokemon-card.is-meadow-fullscreen .pokemon-habitats {
-    display: none;
+.is-meadow-fullscreen .pokemon-habitats,
+.is-meadow-fullscreen #plazaModeMount,
+.is-meadow-fullscreen #plazaRewardsBarMount,
+.is-meadow-fullscreen .pokemon-meadow__hint-footer,
+.is-meadow-fullscreen .meadow-coop-ribbon,
+.is-meadow-fullscreen .plaza-theme-pills,
+.is-meadow-fullscreen .plaza-recent-feed,
+.is-meadow-fullscreen .plaza-reaction-head {
+    display: none !important;
 }
 
-.pokemon-card.is-meadow-fullscreen .pokemon-meadow-mount {
-    flex: 1 1 auto;
-    min-height: 0;
+.is-meadow-fullscreen .pokemon-head,
+.is-meadow-fullscreen .study-card-head {
+    margin-bottom: 2px;
+    flex-shrink: 0;
+}
+
+.is-meadow-fullscreen .pokemon-meadow-mount {
+    flex: 1 1 0;
+    min-height: 170px;
     margin: 0;
     display: flex;
     flex-direction: column;
 }
 
-.pokemon-card.is-meadow-fullscreen .pokemon-meadow {
+.is-meadow-fullscreen .pokemon-meadow {
     flex: 1 1 auto;
     height: 100%;
-    min-height: 220px;
+    min-height: 170px;
 }
 
-.pokemon-card.is-meadow-fullscreen .pokemon-meadow-play-mount {
+.is-meadow-fullscreen #plazaReactionMount,
+.is-meadow-fullscreen .pokemon-meadow-play-mount,
+.is-meadow-fullscreen .parents-toy-strip {
     margin: 0;
     flex: 0 0 auto;
+}
+
+.is-meadow-fullscreen .plaza-reaction-bar {
+    margin: 0;
+    padding: 6px 8px;
+    gap: 4px;
+}
+
+.is-meadow-fullscreen .plaza-reaction-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.is-meadow-fullscreen .meadow-game-dock {
+    padding: 6px 8px;
+    gap: 6px;
+}
+
+.is-meadow-fullscreen .meadow-toy-btn {
+    min-block-size: 44px;
+    padding: 4px;
+}
+
+.is-meadow-fullscreen .meadow-snack-strip {
+    padding: 4px 8px;
+}
+
+.is-meadow-fullscreen .meadow-snack-chip {
+    min-block-size: 38px;
+    padding: 3px 9px;
 }
 
 @media (pointer: coarse) {

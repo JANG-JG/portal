@@ -22,7 +22,7 @@ router.get('/api/study/plaza/state', authenticateToken, async (req, res) => {
             plazaSvc.getChildPointsAndCoupons(cid),
             plazaSvc.getParentTrainersState()
         ]);
-        res.json({ success: true, childId: cid, config, familyPlaza, shopState, parentTrainers });
+        res.json({ success: true, viewerRole: req.user?.role || 'family', childId: cid, config, familyPlaza, shopState, parentTrainers });
     } catch (err) {
         console.error('가족 광장 상태 조회 오류:', err);
         res.status(500).json({ success: false, message: '가족 광장 정보를 불러오지 못했어요.' });
@@ -47,6 +47,9 @@ router.post('/api/study/plaza/reaction', authenticateToken, async (req, res) => 
 
 router.post('/api/study/plaza/theme', authenticateToken, async (req, res) => {
     try {
+        if (req.user?.role === 'kid') {
+            return res.status(403).json({ success: false, message: '배경 설정은 엄마·아빠 트레이너 하우스에서만 바꿀 수 있어요!' });
+        }
         const out = await plazaSvc.setPlazaTheme(req.body?.theme);
         res.json({ success: true, ...out });
     } catch (err) {
@@ -56,6 +59,9 @@ router.post('/api/study/plaza/theme', authenticateToken, async (req, res) => {
 
 router.get('/api/study/parents/overview', authenticateToken, async (req, res) => {
     try {
+        if (req.user?.role === 'kid') {
+            return res.status(403).json({ success: false, message: '엄마·아빠 트레이너 하우스는 부모님 전용 공간이에요!' });
+        }
         const overview = await plazaSvc.getAdminPlazaOverview();
         const familyPlaza = await plazaSvc.getFamilyPlazaState('first');
         res.json({ success: true, viewerRole: req.user?.role || 'family', familyPlaza, ...overview });
@@ -68,10 +74,7 @@ router.get('/api/study/parents/overview', authenticateToken, async (req, res) =>
 router.post('/api/study/parents/grant-points', authenticateToken, async (req, res) => {
     try {
         if (req.user?.role === 'kid') {
-            const check = await verifyParentLockPin(req.body?.parentPin || '');
-            if (check.configured && !check.valid) {
-                return res.status(403).json({ success: false, message: '부모님 PIN을 먼저 확인해 주세요! 🔒' });
-            }
+            return res.status(403).json({ success: false, message: '엄마·아빠 전용 기능이에요!' });
         }
         const cid = await resolveChildProfileId(req.body?.childId, req.user);
         const delta = Math.min(200, Math.max(5, Math.round(Number(req.body?.delta || 20))));
@@ -148,6 +151,7 @@ router.post('/api/study/shop/resolve', authenticateToken, async (req, res) => {
 
 router.post('/api/study/parent-trainer/partner', authenticateToken, async (req, res) => {
     try {
+        if (req.user?.role === 'kid') return res.status(403).json({ success: false, message: '엄마·아빠 전용 공간이에요!' });
         const out = await plazaSvc.pickParentPartner({
             trainerId: req.body?.trainerId,
             pokemonId: req.body?.pokemonId
@@ -160,6 +164,7 @@ router.post('/api/study/parent-trainer/partner', authenticateToken, async (req, 
 
 router.post('/api/study/parent-trainer/feed', authenticateToken, async (req, res) => {
     try {
+        if (req.user?.role === 'kid') return res.status(403).json({ success: false, message: '엄마·아빠 전용 공간이에요!' });
         const out = await plazaSvc.feedParentPokemon({
             trainerId: req.body?.trainerId,
             pokemonId: req.body?.pokemonId,
@@ -173,6 +178,7 @@ router.post('/api/study/parent-trainer/feed', authenticateToken, async (req, res
 
 router.post('/api/study/parent-trainer/evolve', authenticateToken, async (req, res) => {
     try {
+        if (req.user?.role === 'kid') return res.status(403).json({ success: false, message: '엄마·아빠 전용 공간이에요!' });
         const out = await plazaSvc.evolveParentPokemon({
             trainerId: req.body?.trainerId,
             pokemonId: req.body?.pokemonId
@@ -185,6 +191,7 @@ router.post('/api/study/parent-trainer/evolve', authenticateToken, async (req, r
 
 router.post('/api/study/parent-trainer/adopt', authenticateToken, async (req, res) => {
     try {
+        if (req.user?.role === 'kid') return res.status(403).json({ success: false, message: '엄마·아빠 전용 공간이에요!' });
         const out = await plazaSvc.adoptParentEggPokemon({ trainerId: req.body?.trainerId });
         res.json({ success: true, ...out });
     } catch (err) {

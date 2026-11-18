@@ -70,6 +70,7 @@
             footerHint: '엄마·아빠·아이 포켓몬이 모두 함께 뛰어노는 공간이에요!'
         });
         playApi = window.PokemonMeadowPlay?.attach?.(ctrl, {
+            showGiftChest: false,
             onModeChange: (next) => {
                 toyMode = next;
                 document.querySelectorAll('[data-parent-toy]').forEach((b) => b.classList.toggle('is-active', b.dataset.parentToy === toyMode));
@@ -205,8 +206,13 @@
     }
 
     async function loadOverview() {
-        const { ok, data } = await apiJson('/api/study/parents/overview');
-        if (!ok) { showToast(data.message || '정보를 불러오지 못했어요.'); return; }
+        const res = await fetch('/api/study/parents/overview', { credentials: 'include' });
+        if (res.status === 403) {
+            window.location.replace('/study');
+            return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) { showToast(data.message || '정보를 불러오지 못했어요.'); return; }
         overview = data;
         const backPortal = document.getElementById('parentsPortalBackLink');
         if (backPortal) backPortal.hidden = data.viewerRole === 'kid';

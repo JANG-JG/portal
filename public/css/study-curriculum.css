@@ -1,0 +1,236 @@
+/**
+ * ==============================================================================
+ * 내 실력 자람 나무(공교육 진도표) & 우리말 낱말 사전 스타일 (study-curriculum.css)
+ * ------------------------------------------------------------------------------
+ * [규칙 2] 100% 한국어 | [규칙 3] 500줄 이하 | [규칙 6] 360px 모바일~태블릿 안전
+ * ==============================================================================
+ */
+
+.curriculum-card {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.curriculum-progress-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    box-sizing: border-box;
+}
+
+.curriculum-progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #166534;
+}
+
+/* modern-web-guidance: progress (appearance: none + 별도 pseudo-element 규칙) */
+.curriculum-progress-bar {
+    appearance: none;
+    border: 0 solid;
+    inline-size: 100%;
+    block-size: 14px;
+    border-radius: 999px;
+    overflow: clip;
+    background: #dcfce7;
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.08);
+    accent-color: #16a34a;
+}
+
+.curriculum-progress-bar::-webkit-progress-bar {
+    background: transparent;
+}
+
+.curriculum-progress-bar::-webkit-progress-value {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    border-radius: 999px;
+    transition: inline-size 0.3s ease;
+}
+
+.curriculum-progress-bar::-moz-progress-bar {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    border-radius: 999px;
+    transition: inline-size 0.3s ease;
+}
+
+.curriculum-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.curriculum-subj-details {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 14px;
+    background: #ffffff;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+.curriculum-subj-details[open] {
+    border-color: #93c5fd;
+    background: #f8fafc;
+}
+
+.curriculum-subj-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 11px 13px;
+    cursor: pointer;
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: #1e293b;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+
+.curriculum-subj-meta {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #2563eb;
+    white-space: nowrap;
+}
+
+.curriculum-unit-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.curriculum-unit-item {
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
+.curriculum-unit-item--completed {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
+.curriculum-unit-item--active {
+    border-color: #fdba74;
+    background: #fff7ed;
+    box-shadow: 0 2px 6px rgb(249 115 22 / 0.12);
+}
+
+.curriculum-unit-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.curriculum-unit-title {
+    font-size: 0.88rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.curriculum-unit-badge {
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #334155;
+}
+
+.curriculum-unit-item--completed .curriculum-unit-badge {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.curriculum-unit-item--active .curriculum-unit-badge {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.curriculum-unit-goal {
+    margin: 5px 0 8px;
+    font-size: 0.8rem;
+    color: #475569;
+    line-height: 1.45;
+}
+
+.curriculum-dict-box {
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    box-sizing: border-box;
+}
+
+.curriculum-dict-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.curriculum-dict-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.curriculum-dict-chip {
+    border: 1px solid #93c5fd;
+    background: #ffffff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    min-height: 34px;
+}
+
+.curriculum-dict-result {
+    margin-top: 10px;
+    padding: 11px 12px;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+}
+
+.curriculum-syllables {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 6px 0;
+}
+
+.curriculum-syllable-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+    font-weight: 900;
+    font-size: 0.96rem;
+}

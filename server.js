@@ -435,6 +435,7 @@ app.use('/api/kindergarten', kindergartenRoutes);
 // 🎒 어린이 적응형 학습실 (/study, /study/*, /api/study/*)
 const studyRoutes = require('./routes/study.routes');
 app.use('/', studyRoutes);
+app.use('/', require('./routes/studyPhase4.routes'));
 
 // 헬스 체크
 app.get('/health', (req, res) => {

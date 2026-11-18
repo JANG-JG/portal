@@ -34,12 +34,13 @@
         const scorePill = hudTopRight.querySelector('.meadow-score-pill');
         const expandBtn = hudTopRight.querySelector('.meadow-expand-btn');
 
+        const showGiftChest = opts.showGiftChest !== false;
         const giftFloatBtn = document.createElement('button');
         giftFloatBtn.type = 'button';
         giftFloatBtn.className = 'meadow-gift-chest';
         giftFloatBtn.hidden = true;
         giftFloatBtn.setAttribute('aria-label', '친구가 보낸 선물 상자 열기');
-        stageEl.appendChild(giftFloatBtn);
+        if (showGiftChest) stageEl.appendChild(giftFloatBtn);
 
         let mode = 'pet';
         let armedSnack = { id: 'apple', emoji: '🍎', name: '사과열매' };
@@ -57,7 +58,7 @@
             const sc = scores || world?.getScores?.() || { rallyScore: 0, bubbleCombo: 0 };
             if (mode === 'ball') { scorePill.hidden = false; scorePill.textContent = `⚽ ${sc.rallyScore}`; }
             else if (mode === 'bubble') { scorePill.hidden = false; scorePill.textContent = `🫧 ${sc.bubbleCombo}`; }
-            else { scorePill.hidden = true; }
+            else { scorePill.hidden = true; scorePill.textContent = ''; }
         }
 
         const world = window.PokemonMeadowToys?.createWorld?.({
@@ -215,7 +216,7 @@
         };
 
         const toggleFullscreen = (forceVal) => {
-            const card = document.getElementById('pokemonCompanionCard');
+            const card = document.getElementById('pokemonCompanionCard') || stageEl.closest('.study-card');
             if (!card) return;
             isFullscreen = typeof forceVal === 'boolean' ? forceVal : !isFullscreen;
             card.classList.toggle('is-meadow-fullscreen', isFullscreen);

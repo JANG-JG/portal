@@ -29,6 +29,8 @@ const {
     isExtendedColoringMode,
     buildExtendedColoringWorksheet
 } = require('./aiColoringSvg.service');
+const { getCurriculumPromptHint } = require('./curriculumKorea.data');
+const { pickCuratedKoreanWords } = require('./publicEduApi.service');
 
 const ipv4HttpsAgent = new https.Agent({ family: 4 });
 
@@ -89,7 +91,7 @@ function postJsonIPv4(urlStr, headers, bodyObj, timeoutMs = 15000) {
     });
 }
 
-function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birthYear, subject, level, theme }) {
+function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birthYear, subject, level, theme, curriculumHint = '', curatedWords = [] }) {
     if (subject === 'reading' || subject === 'science') {
         const isSci = subject === 'science';
         const prompt = isSci
@@ -130,8 +132,9 @@ function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birt
     }
 
     if (subject === 'math') {
+        const currLine = curriculumHint ? `\n공교육 연계 단원: ${curriculumHint}` : '';
         const prompt =
-            `유아 학습지 디자이너 역할입니다. 대상: ${birthYear}년생(${childName}), 테마: "${theme}", 난이도: Lv.${level}/5.\n` +
+            `유아 학습지 디자이너 역할입니다. 대상: ${birthYear}년생(${childName}), 테마: "${theme}", 난이도: Lv.${level}/5.${currLine}\n` +
             `수학 계산과 숫자 문제는 서버가 직접 생성하므로, "${theme}" 테마에 어울리는 친근한 학습지 제목 1개와 유아 친화적인 표준 단일 유니코드 이모지 6개만 JSON으로 주세요.\n` +
             `금지어(폭력/어려운 한자어/부정적 단어)는 절대 쓰지 마세요.`;
 
@@ -157,10 +160,14 @@ function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birt
             : level <= 3 ? '2~3글자 친숙한 순수 한글 단어 6개'
                 : level === 4 ? '3~4글자 받침 포함 순수 한글 단어 6개'
                     : '짧은 2어절 순수 한글 표현 6개(예: 반짝이는 별)');
+    const currGuide = curriculumHint ? `\n공교육 진도 기준: ${curriculumHint}` : '';
+    const dictGuide = (subject === 'korean' && curatedWords.length)
+        ? `\n참고 추천 어휘(자연스럽게 일부 반영 가능): ${curatedWords.map((w) => w.word).join(', ')}`
+        : '';
 
     const prompt =
         `유아 학습지 교사 역할입니다. 대상: ${birthYear}년생 유아(${childName}), 과목: ${subject === 'english' ? '영어' : '한글'}, ` +
-        `테마: "${theme}", 수준: Lv.${level}/5.\n` +
+        `테마: "${theme}", 수준: Lv.${level}/5.${currGuide}${dictGuide}\n` +
         `규칙:\n` +
         `1) ${levelGuide}를 생성하세요.\n` +
         `2) ${subject === 'english' ? 'word와 distractors는 반드시 순수 영문(A-Z)만 쓰고, hint에 짧은 한국어 뜻을 적으세요.' : 'word와 distractors는 반드시 순수 한글만 쓰세요(영어/숫자/특수문자 혼합 금지).'}\n` +
@@ -344,6 +351,10 @@ async function generateWorksheetPayload({
 
     const canUseGemini = hasKey && lastFailureReason !== 'quota_reserved' ? await tryConsumeGeminiQuota() : false;
     if (canUseGemini) {
+        const curriculumHint = getCurriculumPromptHint(subj, level);
+        const curatedWords = subj === 'korean'
+            ? await pickCuratedKoreanWords({ level, limit: 4 }).catch(() => [])
+            : [];
         // ③ 자동 재시도 (최대 2회 시도 후 검증 통과 시 채택)
         for (let attempt = 1; attempt <= 2; attempt++) {
             const aiRes = await callGeminiStructuredJson({
@@ -352,7 +363,9 @@ async function generateWorksheetPayload({
                 birthYear,
                 subject: subj,
                 level,
-                theme: cleanTheme
+                theme: cleanTheme,
+                curriculumHint,
+                curatedWords
             });
             if (!aiRes.ok) {
                 lastFailureReason = aiRes.reason;

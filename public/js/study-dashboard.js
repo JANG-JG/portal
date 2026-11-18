@@ -129,6 +129,7 @@
         const phase3Enabled = data.missions?.phase3SubjectsEnabled !== false;
         document.querySelectorAll('[data-phase3-subj]').forEach((el) => { el.hidden = !phase3Enabled; });
         window.StudyMissions?.renderMissionsCard?.(data.missions, state.childId, showToast);
+        window.StudyCurriculum?.render?.(state.childId, data, showToast);
         renderWrongReviewSummary(data.wrongNoteStats);
         renderArchive(data.recentSheets || []);
     }

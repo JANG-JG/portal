@@ -79,6 +79,9 @@ router.get('/study/review', authenticateToken, (req, res) => {
 });
 
 router.get('/study/parents', authenticateToken, (req, res) => {
+    if (req.user?.role === 'kid') {
+        return res.redirect('/study');
+    }
     sendStudyHtml(res, 'study/parents.html');
 });
 

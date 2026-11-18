@@ -226,9 +226,11 @@
                 cheers: [`${g.guestOwnerName}네 ${g.nameKo} 놀러왔어요! 🏠`, g.greetingMsg || '같이 놀자! ✨']
             }));
             const allActors = [...localActors, ...guestActors].slice(0, 8);
+            const randomTheme = window.StudyPlazaShop?.getSessionTheme?.() || 'meadow';
+            const themeMeta = (window.PokemonMeadowThemes?.THEME_CATALOG || []).find((t) => t.id === randomTheme);
             const ctrl = window.PokemonMeadow.mount(meadowMount, {
-                buddies: allActors, spacious: true, paused: isMotionPaused(),
-                title: `🌿 ${childName}의 포켓몬 초원 놀이터`,
+                buddies: allActors, spacious: true, theme: randomTheme, paused: isMotionPaused(),
+                title: `${themeMeta ? themeMeta.emoji : '🌿'} ${childName}의 포켓몬 놀이터`,
                 emptyText: '칭찬 도장 10칸을 모으면 첫 포켓몬이 초원에서 뛰어놀아요!',
                 footerHint: allActors.length > 0 ? '초원이나 포켓몬을 톡 누르고 공놀이·방울톡·간식 던지기로 놀아보세요!' : ''
             });
