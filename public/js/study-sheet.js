@@ -16,6 +16,10 @@
         korean: '한글 놀이',
         math: '숫자·수학 놀이',
         english: '영어 놀이',
+        logic: '두뇌·사고력 퍼즐',
+        reading: 'AI 그림 동화·말하기',
+        science: '자연·과학 탐험',
+        music: '리듬 피아노',
         coloring: '색칠놀이'
     };
 
@@ -155,6 +159,7 @@
                         <button type="button" class="study-btn study-btn-outline btn-block-swap" style="min-block-size: 38px; padding: 6px 12px; font-size: 0.86rem;">${swapLabel}</button>
                     </div>
                 </div>
+                ${blk.isWrongReview ? `<div class="block-review-badge">🔁 ${escapeHtml(blk.reviewBadge || '지난번 헷갈렸던 문제 복습!')}</div>` : ''}
                 <p class="block-prompt">${escapeHtml(blk.prompt)}</p>
                 <div class="block-body"></div>
             `;
@@ -202,13 +207,14 @@
 
             const initialState = scoredState?.status === 'correct' ? 'correct' : null;
             const bodyEl = card.querySelector('.block-body');
-            if (blk.type === 'trace') renderTraceBlock(bodyEl, blk);
-            else if (blk.type === 'count') renderCountBlock(bodyEl, blk, { initialState, onStateChange: onScoredStateChange });
-            else if (blk.type === 'match' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMatchBlock(bodyEl, blk, speakText, showToast, sheet, { initialState, onStateChange: onScoredStateChange });
-            else if (blk.type === 'dot_to_dot' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderDotToDotBlock(bodyEl, blk, speakText, showToast);
-            else if (blk.type === 'maze' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderMazeBlock(bodyEl, blk, speakText, showToast);
-            else if (blk.type === 'color' && window.StudyPlayBlocks) window.StudyPlayBlocks.renderColorBlock(bodyEl, blk, speakText, showToast, sheet);
-            else renderQuizBlock(bodyEl, blk, { initialState, onStateChange: onScoredStateChange });
+            const opts = { initialState, onStateChange: onScoredStateChange };
+            if (window.StudySheetResult?.renderBlockContent) {
+                window.StudySheetResult.renderBlockContent({ bodyEl, blk, sheet, opts, speakText, showToast, renderTraceBlock });
+            } else if (blk.type === 'trace') {
+                renderTraceBlock(bodyEl, blk);
+            } else {
+                renderQuizBlock(bodyEl, blk, opts);
+            }
 
             if (scoredState) syncBlockChip(card, scoredState);
             container.appendChild(card);
@@ -248,14 +254,7 @@
     }
 
     function blockTypeLabel(type) {
-        if (type === 'trace') return '✍️ 손가락 따라쓰기';
-        if (type === 'count') return '👆 하나씩 콕! 숫자 세기';
-        if (type === 'match') return '🔗 두 번 탭 선 잇기';
-        if (window.StudyPlayBlocks) {
-            const playLbl = window.StudyPlayBlocks.typeLabel(type);
-            if (playLbl) return playLbl;
-        }
-        return '🎯 골라보기 퀴즈';
+        return window.StudySheetResult?.getBlockTypeLabel?.(type) || '🎯 골라보기 퀴즈';
     }
 
     function renderTraceBlock(container, blk) {

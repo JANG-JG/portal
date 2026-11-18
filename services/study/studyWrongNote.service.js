@@ -21,7 +21,12 @@ const {
 const { awardStamp } = require('./studyStamps.service');
 const { ensureSheetExtensions } = require('./studySheetShare.service');
 
-const SCORED_BLOCK_TYPES = new Set(['quiz', 'count', 'match']);
+const {
+    PHASE3_SCORED_TYPES,
+    evaluatePhase3SubmittedBlock
+} = require('./fallbackPhase3Bank.data');
+
+const SCORED_BLOCK_TYPES = new Set(['quiz', 'count', 'match', ...PHASE3_SCORED_TYPES]);
 
 let wrongTableReadyPromise = null;
 
@@ -75,6 +80,8 @@ function evaluateSubmittedBlock(blk, blockIndex, submitted) {
         const pairCount = Array.isArray(blk?.pairs) ? blk.pairs.length : 0;
         const matchedCount = Number(submitted?.matchedCount || 0);
         isRight = submitted?.status === 'correct' && matchedCount >= pairCount && wrongTries < 2;
+    } else if (PHASE3_SCORED_TYPES.has(type)) {
+        isRight = evaluatePhase3SubmittedBlock(blk, submitted);
     }
 
     return {

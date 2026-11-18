@@ -61,7 +61,8 @@
             const snackTxt = snacks.length
                 ? ` (+ 포켓몬 간식 ${snacks.map((sn) => `${sn.emoji} ${sn.name} ${sn.qty}개`).join(', ')} 획득!)`
                 : '';
-            descEl.textContent = `${data.message || ''}${snackTxt}`.trim();
+            const bonusTxt = data.missionProgress?.bonusMessage ? ` ${data.missionProgress.bonusMessage}` : '';
+            descEl.textContent = `${data.message || ''}${snackTxt}${bonusTxt}`.trim();
         }
 
         if (chipsEl) {
@@ -159,7 +160,7 @@
         window.StudyPlayBlocks?.renderChoicesBlock?.(container, blk, speakFn, choiceOpts);
     }
 
-    const SCORED_TYPES = new Set(['quiz', 'count', 'match']);
+    const SCORED_TYPES = new Set(['quiz', 'count', 'match', 'clock', 'coins', 'hangul_tiles', 'pattern', 'picture_sudoku', 'tangram_grid']);
 
     function initBlockStatesFromSheet(sheet, retryAllMode = false) {
         const map = new Map();
@@ -225,12 +226,47 @@
         }
     }
 
+    const TYPE_LABELS = {
+        trace: '✍️ 손가락 따라쓰기', count: '👆 하나씩 콕! 숫자 세기', match: '🔗 두 번 탭 선 잇기',
+        clock: '⏰ 시계 바늘 맞추기', coins: '🪙 동전·수모형 모으기', hangul_tiles: '🧩 글자 자석 조립',
+        pattern: '🔍 규칙 찾기', picture_sudoku: '🔢 4x4 그림 스도쿠', tangram_grid: '🪞 거울 대칭 채우기',
+        storybook: '📖 그림 동화책', voice_repeat: '🎤 따라 말해 봐요', piano: '🎹 무지개 피아노'
+    };
+
+    function getBlockTypeLabel(type) {
+        return TYPE_LABELS[type] || window.StudyPlayBlocks?.typeLabel?.(type) || '🎯 골라보기 퀴즈';
+    }
+
+    function renderBlockContent({ bodyEl, blk, sheet, opts, speakText, showToast, renderTraceBlock }) {
+        const mApi = window.StudyPlayManipulatives, pApi = window.StudyPlayPuzzles, sApi = window.StudyPlayStorybook, pb = window.StudyPlayBlocks;
+        const handlers = {
+            trace: () => renderTraceBlock(bodyEl, blk),
+            count: () => renderCountBlock(bodyEl, blk, speakText, opts),
+            match: () => pb?.renderMatchBlock(bodyEl, blk, speakText, showToast, sheet, opts),
+            dot_to_dot: () => pb?.renderDotToDotBlock(bodyEl, blk, speakText, showToast),
+            maze: () => pb?.renderMazeBlock(bodyEl, blk, speakText, showToast),
+            color: () => pb?.renderColorBlock(bodyEl, blk, speakText, showToast, sheet),
+            clock: () => mApi?.renderClockBlock(bodyEl, blk, speakText, showToast, opts),
+            coins: () => mApi?.renderCoinsBlock(bodyEl, blk, speakText, showToast, opts),
+            hangul_tiles: () => mApi?.renderHangulTilesBlock(bodyEl, blk, speakText, showToast, opts),
+            pattern: () => pApi?.renderPatternBlock(bodyEl, blk, speakText, showToast, opts),
+            picture_sudoku: () => pApi?.renderSudokuBlock(bodyEl, blk, speakText, showToast, opts),
+            tangram_grid: () => pApi?.renderTangramBlock(bodyEl, blk, speakText, showToast, opts),
+            storybook: () => sApi?.renderStorybookBlock(bodyEl, blk, speakText),
+            voice_repeat: () => sApi?.renderVoiceRepeatBlock(bodyEl, blk, speakText, showToast),
+            piano: () => window.StudyPlayPiano?.renderPianoBlock(bodyEl, blk, speakText, showToast)
+        };
+        (handlers[blk.type] || (() => renderQuizBlock(bodyEl, blk, sheet?.subject, speakText, opts)))();
+    }
+
     window.StudySheetResult = {
         initBlockStatesFromSheet,
         updateScoreBar,
         syncBlockChip,
         openResultDialog,
         renderCountBlock,
-        renderQuizBlock
+        renderQuizBlock,
+        getBlockTypeLabel,
+        renderBlockContent
     };
 })();

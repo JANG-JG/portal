@@ -23,6 +23,11 @@ const {
     buildLanguageBlocksFromItems,
     buildFallbackLanguageSheet
 } = require('./worksheetBuilders.service');
+const {
+    PHASE3_SUBJECTS,
+    mixManipulativeIntoSheet,
+    buildPhase3Worksheet
+} = require('./fallbackPhase3Bank.data');
 
 const HANGUL_ONLY_RE = /^[가-힣\s]+$/;
 const ENGLISH_ONLY_RE = /^[A-Za-z\s'-]+$/;
@@ -36,10 +41,17 @@ function containsBannedWord(text) {
 /**
  * 4단계 전체 검증 + 정제 + 폴백 결합 엔트리포인트
  */
-function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, includePlayBlock = true }) {
+function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, includePlayBlock = true, childName = '친구', partnerName = '피카츄' }) {
     const lv = clampLevel(level);
     const cleanTheme = containsBannedWord(theme) ? '동물 친구' : String(theme || '동물 친구').trim().slice(0, 20);
     const emojiPool = pickThemeEmojis(cleanTheme);
+
+    if (PHASE3_SUBJECTS.has(subject)) {
+        const phase3Sheet = buildPhase3Worksheet({ subject, level: lv, theme: cleanTheme, childName, partnerName, rawAiJson });
+        if (phase3Sheet) {
+            return { ok: true, usedFallback: false, sheet: phase3Sheet };
+        }
+    }
 
     if (subject === 'math') {
         const aiEmojis = Array.isArray(rawAiJson?.themeEmojis) ? rawAiJson.themeEmojis : [];
@@ -48,14 +60,15 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
             ? rawTitle
             : `${cleanTheme} 숫자·수학 놀이 (Lv.${lv})`;
         const baseBlocks = buildDeterministicMathBlocks(lv, cleanTheme, aiEmojis);
+        const mathSheet = mixManipulativeIntoSheet({
+            title: safeTitle,
+            encouragement: '숫자 박사님처럼 6문제를 정말 똑똑하게 풀었어요! 🌟',
+            blocks: appendOptionalPlayBlock(baseBlocks, { subject, level: lv, theme: cleanTheme, includePlayBlock })
+        }, { subject, level: lv, theme: cleanTheme });
         return {
             ok: true,
             usedFallback: false,
-            sheet: {
-                title: safeTitle,
-                encouragement: '숫자 박사님처럼 6문제를 정말 똑똑하게 풀었어요! 🌟',
-                blocks: appendOptionalPlayBlock(baseBlocks, { subject, level: lv, theme: cleanTheme, includePlayBlock })
-            }
+            sheet: mathSheet
         };
     }
 
@@ -138,34 +151,40 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
         ? rawTitle
         : `${cleanTheme} ${subject === 'english' ? '영어' : '한글'} 놀이 (Lv.${lv})`;
 
+    const langSheet = mixManipulativeIntoSheet({
+        title: safeTitle,
+        encouragement: '6문제를 끝까지 스스로 해내다니 정말 멋져요! 🎉',
+        blocks: appendOptionalPlayBlock(buildLanguageBlocksFromItems(validItems, subject), {
+            subject,
+            level: lv,
+            theme: cleanTheme,
+            includePlayBlock
+        })
+    }, { subject, level: lv, theme: cleanTheme });
+
     return {
         ok: true,
         usedFallback: false,
-        sheet: {
-            title: safeTitle,
-            encouragement: '6문제를 끝까지 스스로 해내다니 정말 멋져요! 🎉',
-            blocks: appendOptionalPlayBlock(buildLanguageBlocksFromItems(validItems, subject), {
-                subject,
-                level: lv,
-                theme: cleanTheme,
-                includePlayBlock
-            })
-        }
+        sheet: langSheet
     };
 }
 
-function buildFallbackWorksheet({ subject, level, theme, includePlayBlock = true }) {
+function buildFallbackWorksheet({ subject, level, theme, includePlayBlock = true, childName = '친구', partnerName = '피카츄' }) {
     const lv = clampLevel(level);
     const cleanTheme = containsBannedWord(theme) ? '동물 친구' : String(theme || '동물 친구').trim().slice(0, 20);
-    const sheet = subject === 'math'
+    if (PHASE3_SUBJECTS.has(subject)) {
+        const p3 = buildPhase3Worksheet({ subject, level: lv, theme: cleanTheme, childName, partnerName });
+        if (p3) return p3;
+    }
+    const baseSheet = subject === 'math'
         ? {
             title: `${cleanTheme} 숫자·수학 놀이 (Lv.${lv})`,
             encouragement: '차근차근 6문제를 끝까지 해냈어요! 멋져요! ⭐',
             blocks: buildDeterministicMathBlocks(lv, cleanTheme, [])
         }
         : buildFallbackLanguageSheet(subject, lv, cleanTheme);
-    sheet.blocks = appendOptionalPlayBlock(sheet.blocks, { subject, level: lv, theme: cleanTheme, includePlayBlock });
-    return sheet;
+    baseSheet.blocks = appendOptionalPlayBlock(baseSheet.blocks, { subject, level: lv, theme: cleanTheme, includePlayBlock });
+    return mixManipulativeIntoSheet(baseSheet, { subject, level: lv, theme: cleanTheme });
 }
 
 /**

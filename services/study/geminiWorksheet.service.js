@@ -89,7 +89,46 @@ function postJsonIPv4(urlStr, headers, bodyObj, timeoutMs = 15000) {
     });
 }
 
-function buildGeminiPromptAndSchema({ childName, birthYear, subject, level, theme }) {
+function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birthYear, subject, level, theme }) {
+    if (subject === 'reading' || subject === 'science') {
+        const isSci = subject === 'science';
+        const prompt = isSci
+            ? `유아 자연·과학 동화 작가 역할입니다. 대상: ${birthYear}년생 유아("${childName}"), 동반 친구: "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.\n` +
+              `자연/과학 현상을 호기심 있게 알려주는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 말할 핵심 문장 1개(voiceWord), 이해 퀴즈 2개(quizzes)를 순수 유아 친화 한국어로 작성하세요.`
+            : `유아 그림 동화 작가 역할입니다. 주인공: "${childName}"과 단짝 포켓몬 "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.\n` +
+              `따뜻하고 재미있는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 읽을 핵심 문장 1개(voiceWord), 독해 퀴즈 2개(quizzes)를 순수 한국어로 작성하세요.`;
+        const schema = {
+            type: 'OBJECT',
+            properties: {
+                title: { type: 'STRING' },
+                voiceWord: { type: 'STRING' },
+                pages: {
+                    type: 'ARRAY',
+                    items: {
+                        type: 'OBJECT',
+                        properties: { text: { type: 'STRING' }, emoji: { type: 'STRING' } },
+                        required: ['text', 'emoji']
+                    }
+                },
+                quizzes: {
+                    type: 'ARRAY',
+                    items: {
+                        type: 'OBJECT',
+                        properties: {
+                            prompt: { type: 'STRING' },
+                            emoji: { type: 'STRING' },
+                            answer: { type: 'STRING' },
+                            choices: { type: 'ARRAY', items: { type: 'STRING' } }
+                        },
+                        required: ['prompt', 'emoji', 'answer', 'choices']
+                    }
+                }
+            },
+            required: ['title', 'voiceWord', 'pages', 'quizzes']
+        };
+        return { prompt, schema };
+    }
+
     if (subject === 'math') {
         const prompt =
             `유아 학습지 디자이너 역할입니다. 대상: ${birthYear}년생(${childName}), 테마: "${theme}", 난이도: Lv.${level}/5.\n` +
@@ -276,21 +315,26 @@ async function generateWorksheetPayload({
         };
     }
 
+    const { dbGet } = require('./studyDb.service');
     const levels = await getChildLevels(cid);
-    const level = levels[subj] || 1;
-    const childName = cid === 'first' ? '첫째' : '둘째';
-    const birthYear = cid === 'first' ? 2021 : 2022;
+    const level = subj === 'logic' ? (levels.math || 1) : (levels[subj] || levels.korean || 1);
+    const profileRow = await dbGet('SELECT display_name, birth_year FROM study_profiles WHERE id = ?', [cid]).catch(() => null);
+    const partnerRow = await dbGet('SELECT pokemon_name FROM study_pokemon_pokedex WHERE child_id = ? ORDER BY is_partner DESC, id ASC LIMIT 1', [cid]).catch(() => null);
+    const childName = profileRow?.display_name || (cid === 'first' ? '첫째' : '둘째');
+    const birthYear = Number(profileRow?.birth_year) || (cid === 'first' ? 2021 : 2022);
+    const partnerName = partnerRow?.pokemon_name || '피카츄';
 
     let finalSheet = null;
     let sourceLabel = 'fallback';
     let lastFailureReason = '';
 
-    const hasKey = Boolean(resolveGeminiApiKey());
-    if (!hasKey && !allowFallback) {
+    const skipGemini = subj === 'logic' || subj === 'music';
+    const hasKey = !skipGemini && Boolean(resolveGeminiApiKey());
+    if (!skipGemini && !hasKey && !allowFallback) {
         return { ok: false, reason: 'api_key_missing' };
     }
 
-    if (reserveQuota > 0) {
+    if (!skipGemini && reserveQuota > 0) {
         const quota = await getDailyQuotaStatus();
         if (quota.remaining <= reserveQuota) {
             if (!allowFallback) return { ok: false, reason: 'quota_reserved' };
@@ -304,6 +348,7 @@ async function generateWorksheetPayload({
         for (let attempt = 1; attempt <= 2; attempt++) {
             const aiRes = await callGeminiStructuredJson({
                 childName,
+                partnerName,
                 birthYear,
                 subject: subj,
                 level,
@@ -317,7 +362,9 @@ async function generateWorksheetPayload({
                 subject: subj,
                 level,
                 theme: cleanTheme,
-                includePlayBlock
+                includePlayBlock,
+                childName,
+                partnerName
             });
             if (validated.ok) {
                 finalSheet = validated.sheet;
@@ -327,7 +374,7 @@ async function generateWorksheetPayload({
             lastFailureReason = validated.reason || 'validation_failed';
         }
     } else if (!lastFailureReason) {
-        lastFailureReason = hasKey ? 'daily_quota_exceeded' : 'api_key_missing';
+        lastFailureReason = skipGemini ? 'interactive_engine' : (hasKey ? 'daily_quota_exceeded' : 'api_key_missing');
     }
 
     if (!finalSheet && !allowFallback) {
@@ -336,15 +383,20 @@ async function generateWorksheetPayload({
 
     // ③ 실패/할당량 초과/API키 미설정 시 즉시 안전 오프라인 은행 폴백
     if (!finalSheet) {
-        await recordFallbackUsage();
+        if (!skipGemini) await recordFallbackUsage();
         finalSheet = buildFallbackWorksheet({
             subject: subj,
             level,
             theme: cleanTheme,
-            includePlayBlock
+            includePlayBlock,
+            childName,
+            partnerName
         });
-        sourceLabel = `fallback:${lastFailureReason || 'safe_bank'}`;
+        sourceLabel = skipGemini ? 'interactive_engine' : `fallback:${lastFailureReason || 'safe_bank'}`;
     }
+
+    const { injectRecentWrongReviews } = require('./studyMissions.service');
+    finalSheet = await injectRecentWrongReviews(cid, subj, finalSheet);
 
     return {
         ok: true,

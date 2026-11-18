@@ -1,0 +1,289 @@
+/* ==============================================================================
+ * Phase 3 스타일시트: 오늘의 3종 미션 · 조작형 교구 · 사고력 퍼즐 · 동화 · 피아노
+ * [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 뷰포트 무넘침 · 44px+ 터치
+ * ============================================================================== */
+
+.study-missions-mount { margin-bottom: 14px; }
+.study-missions-card {
+    background: linear-gradient(135deg, #fffaf0 0%, #fff 55%, #f0f9ff 100%);
+    border: 2px solid #fed7aa;
+}
+.missions-sub-desc {
+    margin: 4px 0 0;
+    font-size: 0.88rem;
+    color: #475569;
+    font-weight: 700;
+    overflow-wrap: break-word;
+}
+.level-badge.is-all-done { background: #dcfce7; color: #166534; }
+
+.missions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+.mission-slot-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 12px;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    box-sizing: border-box;
+}
+.mission-slot-card.is-done {
+    background: #f0fdf4;
+    border-color: #86efac;
+}
+.mission-slot-head { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mission-slot-num { font-size: 0.82rem; font-weight: 900; color: #ea580c; background: #ffedd5; padding: 3px 9px; border-radius: 999px; }
+.mission-slot-card.is-done .mission-slot-num { background: #bbf7d0; color: #166534; }
+.mission-slot-pick { font-size: 0.84rem; font-weight: 800; color: #334155; }
+.mission-slot-title { margin: 0; font-size: 1rem; font-weight: 900; color: #0f172a; }
+.mission-slot-desc { margin: 0; font-size: 0.82rem; color: #64748b; font-weight: 600; }
+
+.mission-alt-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+.mission-mini-subj {
+    min-block-size: 36px;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1.5px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.78rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+.mission-mini-subj.is-default { border-color: #ff7a45; background: #fff7ed; color: #c2410c; }
+.mission-start-btn { width: 100%; min-block-size: 44px; font-size: 0.92rem; }
+.missions-hero-cta { width: 100%; min-block-size: 50px; margin-top: 12px; font-size: 1rem; }
+
+/* 오답 자동 복습 배지 */
+.block-review-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 8px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #fef3c7;
+    border: 1.5px solid #f59e0b;
+    color: #92400e;
+    font-size: 0.84rem;
+    font-weight: 900;
+}
+
+/* 공통 상태바 & 확인 버튼 */
+.manip-status-bar { display: block; width: 100%; box-sizing: border-box; text-align: center; margin-bottom: 10px; }
+.manip-status-bar[data-tone="ok"] { background: #dcfce7; color: #166534; }
+.manip-status-bar[data-tone="warn"] { background: #fef3c7; color: #92400e; }
+.manip-status-bar[data-tone="wrong"] { background: #fee2e2; color: #991b1b; }
+.manip-btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.manip-btn-row .study-btn { min-block-size: 44px; min-inline-size: 44px; font-size: 0.88rem; }
+.manip-check-btn { width: 100%; max-width: 340px; min-block-size: 48px; margin: 12px auto 0; display: block; }
+
+/* 1. 시계 바늘 돌리기 */
+.clock-stage { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.clock-svg {
+    width: min(250px, 74vw);
+    height: auto;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: grab;
+}
+.clock-drag-handle.dragging { fill: rgba(37, 99, 235, 0.35); cursor: grabbing; }
+.clock-readout {
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 900;
+    font-size: 1rem;
+}
+
+/* 2. 동전·수모형 모으기 */
+.coins-tray {
+    min-block-size: 86px;
+    padding: 10px;
+    border-radius: 16px;
+    border: 2.5px dashed #f59e0b;
+    background: #fffbeb;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.coins-tray-empty { font-size: 0.88rem; color: #b45309; font-weight: 700; text-align: center; }
+.coin-placed-chip, .coin-add-btn {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.coin-placed-chip { border: 2px solid #f59e0b; background: #fef3c7; color: #78350f; }
+.coins-count-info { text-align: center; font-weight: 800; color: #334155; font-size: 0.92rem; margin: 8px 0; }
+.coin-palette { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.coin-add-btn { border: 2px solid #cbd5e1; background: #fff; color: #0f172a; }
+.coin-add-btn:active { transform: scale(0.96); }
+
+/* 3. 자모·알파벳 자석판 */
+.tiles-hero-row { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.tiles-hero-emoji { font-size: 2.8rem; line-height: 1; }
+.tile-slots, .tile-pool { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 10px; }
+.tile-slot, .magnet-tile {
+    min-block-size: 50px;
+    min-inline-size: 50px;
+    padding: 6px 12px;
+    border-radius: 14px;
+    font-size: 1.35rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+.tile-slot { border: 2.5px dashed #94a3b8; background: #f8fafc; color: #64748b; }
+.tile-slot.is-filled { border: 2.5px solid #ff7a45; background: #fff7ed; color: #c2410c; }
+.magnet-tile { border: 2px solid #38bdf8; background: #e0f2fe; color: #0369a1; box-shadow: 0 3px 0 #7dd3fc; }
+.magnet-tile.is-used { opacity: 0.35; box-shadow: none; }
+
+/* 4. 규칙 찾기 · 4x4 그림 스도쿠 · 거울 대칭 */
+.pattern-strip { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 12px; }
+.pattern-cell {
+    width: 52px; height: 52px;
+    display: grid; place-items: center;
+    border-radius: 14px; background: #f8fafc; border: 2px solid #cbd5e1; font-size: 1.7rem;
+}
+.pattern-cell.is-blank { border: 2.5px dashed #ff7a45; background: #fff7ed; color: #ea580c; font-weight: 900; }
+.pattern-cell.is-solved { border-style: solid; border-color: #10b981; background: #ecfdf5; }
+
+.sudoku-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(48px, 66px));
+    justify-content: center;
+    gap: 5px;
+    margin: 0 auto 12px;
+}
+.sudoku-cell {
+    min-block-size: 52px;
+    border-radius: 12px;
+    border: 2px solid #cbd5e1;
+    background: #fff;
+    font-size: 1.5rem;
+    font-weight: 900;
+    cursor: pointer;
+}
+.sudoku-cell.is-given { background: #f1f5f9; color: #334155; cursor: default; }
+.sudoku-cell.is-selected { border-color: #2563eb; background: #eff6ff; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2); }
+.sudoku-cell.box-right-sep { margin-right: 4px; }
+.sudoku-cell.box-bottom-sep { margin-bottom: 4px; }
+.sudoku-palette { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+.sudoku-stamp-btn {
+    min-block-size: 50px; min-inline-size: 54px;
+    border-radius: 14px; border: 2px solid #cbd5e1; background: #fff; font-size: 1.6rem; cursor: pointer;
+}
+.sudoku-stamp-btn.active { border-color: #ff7a45; background: #fff7ed; transform: scale(1.06); }
+
+.tangram-split-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(46px, 64px));
+    justify-content: center;
+    gap: 6px;
+    margin: 0 auto 12px;
+}
+.tangram-cell {
+    min-block-size: 50px;
+    border-radius: 10px;
+    border: 2px solid #cbd5e1;
+    background: #f8fafc;
+    font-size: 1.45rem;
+    cursor: pointer;
+}
+.tangram-cell.is-left { background: #f1f5f9; cursor: default; }
+.tangram-cell.is-active { background: #dcfce7; border-color: #22c55e; }
+.tangram-cell.is-mirror-axis { border-right: 4px dashed #f97316; }
+
+/* 5. 동화책 & 음성 말하기 */
+.storybook-stage { display: flex; flex-direction: column; gap: 10px; }
+.storybook-top-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.storybook-badge { padding: 4px 10px; border-radius: 999px; background: #ede9fe; color: #5b21b6; font-weight: 800; font-size: 0.84rem; }
+.storybook-counter { font-weight: 800; color: #475569; font-size: 0.9rem; }
+.storybook-page-card {
+    padding: 14px;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+    border: 2px solid #fde68a;
+}
+.storybook-art-box { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.storybook-banner-slot { width: 120px; max-width: 100%; }
+.storybook-scene-emoji { font-size: 3.1rem; line-height: 1; }
+.storybook-page-text { margin: 0; font-size: clamp(1.05rem, 2.5vw, 1.24rem); font-weight: 800; line-height: 1.6; color: #1e293b; text-align: center; overflow-wrap: break-word; }
+.storybook-dots { display: flex; justify-content: center; gap: 8px; }
+.storybook-dot { width: 12px; height: 12px; min-block-size: 24px; min-inline-size: 24px; padding: 6px; border-radius: 999px; border: 0; background: transparent; cursor: pointer; position: relative; }
+.storybook-dot::after { content: ""; display: block; width: 10px; height: 10px; border-radius: 999px; background: #cbd5e1; }
+.storybook-dot.active::after { background: #ff7a45; transform: scale(1.25); }
+.storybook-controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+
+.voice-repeat-card { padding: 14px; border-radius: 18px; background: #f8fafc; border: 2px solid #cbd5e1; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.voice-target-box { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.voice-target-emoji { font-size: 2rem; }
+.voice-target-text { font-size: 1.15rem; color: #0f172a; }
+.voice-meter-bars { display: flex; align-items: flex-end; gap: 5px; height: 22px; }
+.voice-meter-bars span { width: 6px; height: 6px; border-radius: 999px; background: #cbd5e1; transition: height 0.15s; }
+.voice-meter-bars.is-recording span { background: #ef4444; animation: voiceBounce 0.55s infinite alternate ease-in-out; }
+.voice-meter-bars.is-recording span:nth-child(2) { animation-delay: 0.12s; }
+.voice-meter-bars.is-recording span:nth-child(3) { animation-delay: 0.24s; }
+.voice-meter-bars.is-recording span:nth-child(4) { animation-delay: 0.08s; }
+.voice-meter-bars.is-recording span:nth-child(5) { animation-delay: 0.18s; }
+@keyframes voiceBounce { from { height: 6px; } to { height: 22px; } }
+.voice-status-line { margin: 0; font-size: 0.86rem; font-weight: 700; color: #475569; text-align: center; }
+.voice-btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+/* 6. 무지개 미니 피아노 */
+.piano-stage { display: flex; flex-direction: column; gap: 10px; }
+.piano-song-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.piano-song-pill { min-block-size: 44px; padding: 6px 12px; border-radius: 999px; border: 2px solid #cbd5e1; background: #fff; font-weight: 800; cursor: pointer; }
+.piano-song-pill.active { border-color: #8b5cf6; background: #ede9fe; color: #5b21b6; }
+.piano-guide-pill { text-align: center; padding: 7px 12px; border-radius: 999px; background: #fef3c7; color: #92400e; font-weight: 900; font-size: 0.92rem; }
+.piano-sheet-notes { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; }
+.piano-score-chip { padding: 3px 8px; border-radius: 8px; background: #f1f5f9; font-weight: 800; font-size: 0.82rem; color: #475569; }
+.piano-score-chip.is-played { background: #dcfce7; color: #166534; }
+.piano-score-chip.is-current { background: #ff7a45; color: #fff; transform: scale(1.1); }
+.piano-keys-row {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(36px, 1fr));
+    gap: 5px;
+    padding: 8px;
+    border-radius: 18px;
+    background: #1e293b;
+}
+.piano-key {
+    min-block-size: 112px;
+    min-inline-size: 36px;
+    border: 0;
+    border-radius: 10px 10px 14px 14px;
+    background: linear-gradient(180deg, #ffffff 0%, var(--key-color, #e2e8f0) 100%);
+    box-shadow: 0 5px 0 rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 10px;
+    font-weight: 900;
+    color: #0f172a;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.piano-key.is-pressed { transform: translateY(4px); box-shadow: 0 1px 0 rgba(15, 23, 42, 0.45); }
+.piano-key.is-guide-next { outline: 3.5px solid #facc15; animation: pianoPulse 0.8s infinite alternate; }
+@keyframes pianoPulse { from { filter: brightness(1); } to { filter: brightness(1.15); } }
+.piano-key-name { font-size: 0.84rem; background: rgba(255, 255, 255, 0.82); padding: 2px 5px; border-radius: 6px; }
+
+@media (max-width: 480px) {
+    .piano-keys-row { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+    .piano-key { min-block-size: 74px; }
+}

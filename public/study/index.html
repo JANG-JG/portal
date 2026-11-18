@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="/css/study-review.css">
     <link rel="stylesheet" href="/css/study-draw-studio.css">
     <link rel="stylesheet" href="/css/study-pokemon-social.css">
+    <link rel="stylesheet" href="/css/study-phase3.css">
 </head>
 <body>
     <div class="study-shell">
@@ -84,6 +85,8 @@
                     🧭 5분 수준 테스트
                 </a>
             </section>
+
+            <section id="dailyMissionsMount" class="study-missions-mount" aria-label="오늘의 3종 미션" hidden></section>
 
             <div class="study-dash-col study-dash-col--left">
             <!-- 포켓몬 알 부화 & 내 단짝 놀이터 -->
@@ -193,6 +196,10 @@
                         <button type="button" class="subject-chip active" data-subject="korean">🇰🇷 한글</button>
                         <button type="button" class="subject-chip" data-subject="math">🔢 수학</button>
                         <button type="button" class="subject-chip" data-subject="english">🔤 영어</button>
+                        <button type="button" class="subject-chip" data-subject="logic" data-phase3-subj="1">🧩 두뇌퍼즐</button>
+                        <button type="button" class="subject-chip" data-subject="reading" data-phase3-subj="1">📖 그림동화</button>
+                        <button type="button" class="subject-chip" data-subject="science" data-phase3-subj="1">🌱 자연과학</button>
+                        <button type="button" class="subject-chip" data-subject="music" data-phase3-subj="1">🎹 피아노</button>
                     </div>
 
                     <div class="theme-pills" role="group" aria-label="추천 주제">
@@ -466,6 +473,7 @@
     <script src="/js/study-pokemon-social.js" defer></script>
     <script src="/js/study-pokemon.js" defer></script>
     <script src="/js/study-pokemon-coloring.js" defer></script>
+    <script src="/js/study-missions.js" defer></script>
     <script src="/js/study-dashboard.js" defer></script>
     <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
 </body>

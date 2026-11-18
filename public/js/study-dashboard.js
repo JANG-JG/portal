@@ -11,10 +11,9 @@
     'use strict';
 
     const SUBJECT_LABELS = {
-        korean: '🇰🇷 한글 놀이',
-        math: '🔢 숫자·수학',
-        english: '🔤 영어 놀이',
-        coloring: '🎨 색칠놀이'
+        korean: '🇰🇷 한글 놀이', math: '🔢 숫자·수학', english: '🔤 영어 놀이',
+        logic: '🧩 두뇌 퍼즐', reading: '📖 동화·말하기', science: '🌱 자연·과학',
+        music: '🎹 리듬 피아노', coloring: '🎨 색칠놀이'
     };
 
     const state = {
@@ -127,6 +126,9 @@
         if (window.StudyPokemon && typeof window.StudyPokemon.render === 'function') {
             window.StudyPokemon.render(data.pokemon, data.activeChild);
         }
+        const phase3Enabled = data.missions?.phase3SubjectsEnabled !== false;
+        document.querySelectorAll('[data-phase3-subj]').forEach((el) => { el.hidden = !phase3Enabled; });
+        window.StudyMissions?.renderMissionsCard?.(data.missions, state.childId, showToast);
         renderWrongReviewSummary(data.wrongNoteStats);
         renderArchive(data.recentSheets || []);
     }
@@ -243,12 +245,14 @@
     }
 
     function selectSubjectChip(subject, byUser = true) {
-        if (!['korean', 'math', 'english'].includes(subject)) return;
+        if (!['korean', 'math', 'english', 'logic', 'reading', 'science', 'music'].includes(subject)) return;
         state.selectedSubject = subject;
         if (byUser) state._userPickedSubject = true;
         document.querySelectorAll('.subject-chip').forEach((btn) => {
             btn.classList.toggle('active', btn.dataset.subject === subject);
         });
+        const playRow = document.getElementById('playMissionRow');
+        if (playRow) playRow.hidden = ['logic', 'reading', 'science', 'music'].includes(subject);
     }
 
     function bindEvents() {

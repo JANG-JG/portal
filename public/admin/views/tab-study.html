@@ -263,6 +263,32 @@
                     </div>
                 </div>
 
+                <div id="studyPhase3AdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">🚀 오늘의 3종 미션 · 신규 영역 · 오답 자동 복습 관제</h3>
+                            <p style="margin:0.2rem 0 0; font-size:0.78rem; color:#64748b;">
+                                아이별 오늘의 3종 미션 달성 현황을 확인하고, 신규 학습 영역(퍼즐·동화·과학·피아노) 및 오답 자동 섞기 기능을 On/Off 제어합니다.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyPhase3()">🔄 미션 새로고침</button>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.7rem; padding:0.75rem; margin-top:0.65rem;">
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
+                            <input type="checkbox" id="chkAdminDailyMissions" checked onchange="saveAdminPhase3Config()"> 🚀 오늘의 3종 미션 사용
+                        </label>
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
+                            <input type="checkbox" id="chkAdminPhase3Subjects" checked onchange="saveAdminPhase3Config()"> 🧩 신규 영역(퍼즐·동화·과학·피아노) 노출
+                        </label>
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
+                            <input type="checkbox" id="chkAdminWrongReviewMix" checked onchange="saveAdminPhase3Config()"> 🔁 오답 자동 복습 섞기
+                        </label>
+                    </div>
+                    <div id="adminPhase3ChildrenGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem; margin-top:0.75rem;">
+                        <div style="padding:0.8rem; color:#64748b; font-size:0.84rem;">오늘의 3종 미션 현황을 불러오는 중입니다...</div>
+                    </div>
+                </div>
+
                 <div id="studyWrongNotesAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
                         <div>

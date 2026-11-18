@@ -493,5 +493,6 @@ router.post('/interactive-config', async (req, res) => {
 router.use('/stamps', require('./studyStamps.admin.routes'));
 router.use('/artworks', require('./studyArtwork.admin.routes'));
 router.use('/wrong-notes', require('./studyWrongNotes.admin.routes'));
+router.use('/', require('./studyPhase3.admin.routes'));
 
 module.exports = router;

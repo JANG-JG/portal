@@ -29,6 +29,10 @@ const SUBJECT_NAMES = {
     korean: '한글 놀이',
     math: '숫자·수학 놀이',
     english: '영어 놀이',
+    logic: '두뇌·사고력 퍼즐',
+    reading: 'AI 그림 동화·말하기',
+    science: '자연·과학 탐험',
+    music: '리듬 피아노',
     coloring: '색칠놀이'
 };
 
@@ -77,6 +81,10 @@ function normalizeSubject(input) {
     if (val === 'korean' || val === '한글') return 'korean';
     if (val === 'math' || val === '수학') return 'math';
     if (val === 'english' || val === '영어') return 'english';
+    if (val === 'logic' || val === '퍼즐' || val === '사고력' || val === '두뇌퍼즐') return 'logic';
+    if (val === 'reading' || val === '동화' || val === '독서' || val === '말하기') return 'reading';
+    if (val === 'science' || val === '과학' || val === '자연') return 'science';
+    if (val === 'music' || val === '피아노' || val === '음악') return 'music';
     if (val === 'coloring' || val === 'color' || val === '색칠놀이' || val === '색칠') return 'coloring';
     return 'korean';
 }

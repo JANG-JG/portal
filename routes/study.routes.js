@@ -89,6 +89,10 @@ router.get('/api/study/dashboard', authenticateToken, async (req, res) => {
             const { getActiveVisitingGuestsForMeadow } = require('../services/study/studyPokemonSocial.service');
             state.pokemon.visitingGuests = await getActiveVisitingGuestsForMeadow(state.childId).catch(() => []);
         }
+        if (state?.childId) {
+            const { getDailyMissionsState } = require('../services/study/studyMissions.service');
+            state.missions = await getDailyMissionsState(state.childId).catch(() => null);
+        }
         res.json({
             success: true,
             viewer: {
@@ -427,6 +431,8 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
         }
         if (sheet.subject === 'coloring') {
             const done = await markWorksheetCompletedOnly(sheet.id);
+            const { markMissionProgressForSheet } = require('../services/study/studyMissions.service');
+            const missionProgress = await markMissionProgressForSheet(sheet).catch(() => null);
             return res.json({
                 success: true,
                 noStampForColoring: true,
@@ -434,6 +440,7 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
                 alreadyAwarded: false,
                 reachedTen: false,
                 alreadyCompleted: done.alreadyCompleted,
+                missionProgress,
                 message: '알록달록 멋진 색칠놀이 완성! 🎨 (색칠놀이는 별·도장 없이 자유롭게 즐겨요)'
             });
         }
@@ -442,11 +449,14 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
             blockResults: req.body?.blockResults
         });
         let earnedSnacks = [];
+        let missionProgress = null;
         if (result.stampAwarded) {
             if (!result.alreadyAwarded) {
                 const { grantStudySnacks } = require('../services/study/studyPokemonSocial.service');
                 earnedSnacks = await grantStudySnacks(sheet.child_id, 2).catch(() => []);
             }
+            const { markMissionProgressForSheet } = require('../services/study/studyMissions.service');
+            missionProgress = await markMissionProgressForSheet(sheet).catch(() => null);
             scheduleReplenish(sheet.child_id, sheet.subject);
             setImmediate(() => {
                 const { notifyWorksheetCompletedToParents } = require('../services/study/studyTelegramNotify.service');
@@ -463,6 +473,7 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
         res.json({
             success: true,
             earnedSnacks,
+            missionProgress,
             ...result
         });
     } catch (err) {
@@ -477,5 +488,6 @@ router.use(require('./studyPokemon.routes'));
 router.use(require('./studyPokemonSocial.routes'));
 router.use(require('./studyMedia.routes'));
 router.use(require('./studyReview.routes'));
+router.use(require('./studyMissions.routes'));
 
 module.exports = router;
