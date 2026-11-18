@@ -61,7 +61,7 @@
 
         const modeBar = document.createElement('div');
         modeBar.className = 'color-toolbar no-print';
-        modeBar.setAttribute('role', 'group');
+        modeBar.setAttribute('role', 'toolbar');
         modeBar.setAttribute('aria-label', '색칠 도구 선택');
 
         const modes = [
@@ -481,15 +481,13 @@
 
         syncBrushUi();
         syncUndoBtn();
-        const nodes = [modeBar];
-        if (drawSubbar?.el) nodes.push(drawSubbar.el);
-        if (stickerTray?.el) nodes.push(stickerTray.el);
-        if (cbnCtrl?.legendBar) nodes.push(cbnCtrl.legendBar);
-        if (guideCtrl?.bar) nodes.push(guideCtrl.bar);
-        nodes.push(recPaletteBar, palette, stage, banner);
-        if (isPokemonSheet) nodes.push(hintHost);
-        if (artworkBar.children.length > 0) nodes.push(artworkBar);
-        container.append(...nodes);
+        cbnCtrl?.syncActiveHex?.(activeHex);
+        const dockNodes = [modeBar, drawSubbar?.el, stickerTray?.el, cbnCtrl?.legendBar, guideCtrl?.bar, recPaletteBar, palette];
+        if (window.StudyDrawModes?.assembleStudioLayout) {
+            window.StudyDrawModes.assembleStudioLayout({ container, dockNodes, stage, banner, hintHost, isPokemonSheet, artworkBar });
+        } else {
+            container.append(...dockNodes.filter(Boolean), stage, banner, ...(isPokemonSheet ? [hintHost] : []), ...(artworkBar.children.length ? [artworkBar] : []));
+        }
     }
 
     window.StudyColorBlock = { renderColorBlock };

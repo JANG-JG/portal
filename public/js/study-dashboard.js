@@ -468,6 +468,23 @@
         btnGen?.addEventListener('click', () => submitSheetGeneration(state.selectedSubject, btnGen));
         const btnGenColor = document.getElementById('btnGenerateColoring');
         btnGenColor?.addEventListener('click', () => submitSheetGeneration('coloring', btnGenColor));
+
+        const btnRefresh = document.getElementById('btnRefreshDashboard');
+        btnRefresh?.addEventListener('click', async () => {
+            if (btnRefresh.disabled) return;
+            btnRefresh.disabled = true;
+            const prevText = btnRefresh.textContent;
+            btnRefresh.textContent = '🔄 불러오는 중...';
+            window.StudyFx?.tap?.();
+            try {
+                await loadDashboard();
+                await window.StudyPokemonSocial?.loadState?.();
+                showToast('🔄 학습실 정보를 최신 상태로 새로 불러왔어요!');
+            } finally {
+                btnRefresh.disabled = false;
+                btnRefresh.textContent = prevText;
+            }
+        });
     }
 
     document.addEventListener('DOMContentLoaded', () => {

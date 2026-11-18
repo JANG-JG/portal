@@ -130,7 +130,7 @@ function buildSafeSvgFromShapes(shapes, ariaTitle = '나만의 색칠 도안') {
     }
 
     if (parts.length < 3) return '';
-    return `<svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="${escAttr(ariaTitle)}">${parts.join('')}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="${escAttr(ariaTitle)}">${parts.join('')}</svg>`;
 }
 
 /**

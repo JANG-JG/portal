@@ -26,12 +26,16 @@ const {
     getPokeApiSpeciesInfo,
     listGen1ColoringCatalog
 } = require('../services/study/pokemonColoring.service');
+const { getActiveVisitingGuestsForMeadow } = require('../services/study/studyPokemonSocial.service');
 
 router.get('/api/study/pokemon/state', authenticateToken, async (req, res) => {
     try {
         const cid = await resolveChildProfileId(req.query.childId, req.user);
         const board = await getActiveStampBoard(cid);
         const pokemon = await getPokemonStateForBoard(cid, board);
+        if (pokemon && pokemon.enabled) {
+            pokemon.visitingGuests = await getActiveVisitingGuestsForMeadow(cid).catch(() => []);
+        }
         res.json({ success: true, childId: cid, pokemon });
     } catch (err) {
         console.error('포켓몬 상태 조회 오류:', err);

@@ -146,58 +146,42 @@
             return { minX, maxX, minY, maxY };
         }
 
+        const showActorBubble = (actor, msg, sec = 2.4) => {
+            if (!actor.bubbleEl) return;
+            actor.bubbleEl.textContent = msg;
+            actor.walker.classList.add('has-bubble');
+            actor.bubbleTimer = sec;
+        };
+
         const actors = buddies.map((buddy, index) => {
             const walker = document.createElement('div');
-            walker.className = `pokemon-meadow__walker is-resting ${buddy.isPartner ? 'is-partner' : ''}`;
+            walker.className = `pokemon-meadow__walker is-resting ${buddy.isPartner ? 'is-partner' : ''} ${buddy.isGuest ? 'is-guest' : ''}`;
             const tagText = buddy.label || buddy.nameKo || '포켓몬';
-            const spriteAlt = buddy.nameKo || '포켓몬';
-
+            const tagIcon = buddy.isGuest ? '🏠 ' : (buddy.isPartner ? '⭐ ' : '');
             walker.innerHTML = `
                 <div class="pokemon-meadow__bubble" aria-hidden="true"></div>
                 <button type="button" class="pokemon-meadow__btn" aria-label="${esc(tagText)} — 눌러서 인사하기">
                     <div class="pokemon-meadow__shadow" aria-hidden="true"></div>
                     <div class="pokemon-meadow__sprite-flip">
-                        <img class="pokemon-meadow__sprite-img"
-                             src="${esc(buddy.artworkUrl || buddy.animatedUrl)}"
-                             data-fallback="${esc(buddy.animatedUrl || '')}"
-                             alt="${esc(spriteAlt)}">
+                        <img class="pokemon-meadow__sprite-img" src="${esc(buddy.artworkUrl || buddy.animatedUrl)}" data-fallback="${esc(buddy.animatedUrl || '')}" alt="${esc(buddy.nameKo || '포켓몬')}">
                     </div>
                 </button>
-                <span class="pokemon-meadow__tag">${buddy.isPartner ? '⭐ ' : ''}${esc(tagText)}</span>
+                <span class="pokemon-meadow__tag ${buddy.isGuest ? 'pokemon-meadow__tag--guest' : ''}">${tagIcon}${esc(tagText)}</span>
             `;
 
             const img = walker.querySelector('img');
-            if (img) {
-                img.addEventListener('error', () => {
-                    if (img.dataset.triedFallback === '1') return;
-                    img.dataset.triedFallback = '1';
-                    if (img.dataset.fallback) img.src = img.dataset.fallback;
-                });
-            }
-
-            const flipEl = walker.querySelector('.pokemon-meadow__sprite-flip');
-            const bubbleEl = walker.querySelector('.pokemon-meadow__bubble');
-            const btnEl = walker.querySelector('.pokemon-meadow__btn');
+            img?.addEventListener('error', () => {
+                if (img.dataset.triedFallback !== '1' && img.dataset.fallback) { img.dataset.triedFallback = '1'; img.src = img.dataset.fallback; }
+            });
 
             const actor = {
-                buddy,
-                walker,
-                flipEl,
-                bubbleEl,
-                x: 12 + index * 54,
-                y: 12 + (index % 3) * 32,
-                targetX: 20 + index * 54,
-                targetY: 12 + (index % 3) * 32,
-                facing: index % 2 === 0 ? -1 : 1, // 1: 우측, -1: 좌측
-                speed: 28 + ((index * 9) % 16),
-                mode: 'rest',
-                restTimer: 0.35 + index * 0.45,
-                bubbleTimer: 0,
-                lastZ: -1,
-                edgeState: ''
+                buddy, walker, flipEl: walker.querySelector('.pokemon-meadow__sprite-flip'), bubbleEl: walker.querySelector('.pokemon-meadow__bubble'),
+                x: 12 + index * 54, y: 12 + (index % 3) * 32, targetX: 20 + index * 54, targetY: 12 + (index % 3) * 32,
+                facing: index % 2 === 0 ? -1 : 1, speed: 28 + ((index * 9) % 16), mode: 'rest', restTimer: 0.35 + index * 0.45,
+                bubbleTimer: 0, greetCooldown: 0, lastZ: -1, edgeState: ''
             };
 
-            btnEl?.addEventListener('click', () => {
+            walker.querySelector('.pokemon-meadow__btn')?.addEventListener('click', () => {
                 walker.classList.remove('is-tapped');
                 void walker.offsetWidth;
                 walker.classList.add('is-tapped');
@@ -205,21 +189,10 @@
 
                 const cheers = Array.isArray(buddy.cheers) && buddy.cheers.length > 0 ? buddy.cheers : DEFAULT_CHEERS;
                 const msg = cheers[Math.floor(Math.random() * cheers.length)];
-                if (bubbleEl) {
-                    bubbleEl.textContent = msg;
-                    walker.classList.add('has-bubble');
-                    actor.bubbleTimer = 2.4;
-                }
-                const sparkX = actorsOffsetLeft + actor.x + walkerWidth * 0.5;
-                const sparkBottom = Math.max(36, stageHeight - (actorsOffsetTop + actor.y + walkerHeight * 0.5));
-                spawnSparks(fxEl, sparkX, sparkBottom);
-
-                if (window.StudyFx && typeof window.StudyFx.playTone === 'function') {
-                    window.StudyFx.playTone(659.25, 0.07, 'triangle');
-                }
-                if (typeof opts.onTap === 'function') {
-                    opts.onTap(buddy, msg);
-                }
+                showActorBubble(actor, msg, 2.4);
+                spawnSparks(fxEl, actorsOffsetLeft + actor.x + walkerWidth * 0.5, Math.max(36, stageHeight - (actorsOffsetTop + actor.y + walkerHeight * 0.5)));
+                window.StudyFx?.playTone?.(659.25, 0.07, 'triangle');
+                if (typeof opts.onTap === 'function') opts.onTap(buddy, msg);
             });
 
             actorsEl.appendChild(walker);
@@ -351,6 +324,7 @@
             const avoidY = Math.max(52, walkerHeight * 0.64);
 
             for (const a of actors) {
+                if (a.greetCooldown > 0) a.greetCooldown -= dt;
                 if (a.bubbleTimer > 0) {
                     a.bubbleTimer -= dt;
                     if (a.bubbleTimer <= 0) {
@@ -410,6 +384,22 @@
                     }
                 }
                 applyActorPose(a, bounds);
+            }
+
+            for (let i = 0; i < actors.length; i++) {
+                const a = actors[i];
+                if (a.greetCooldown > 0 || a.bubbleTimer > 0) continue;
+                for (let j = i + 1; j < actors.length; j++) {
+                    const b = actors[j];
+                    if (b.greetCooldown > 0 || b.bubbleTimer > 0) continue;
+                    if (Math.hypot(a.x - b.x, a.y - b.y) <= walkerWidth * 0.96 && (a.buddy.isGuest || b.buddy.isGuest || Math.random() < 0.35)) {
+                        a.greetCooldown = 9.0;
+                        b.greetCooldown = 9.0;
+                        showActorBubble(a, a.buddy.isGuest ? (a.buddy.greetingMsg || '놀러왔어! 반가워! 🏠') : '안녕! 같이 놀자! ✨', 2.6);
+                        showActorBubble(b, b.buddy.isGuest ? (b.buddy.greetingMsg || '우리 같이 뛰어놀자! ✨') : '간식 나눠 먹자! 🍪', 2.6);
+                        break;
+                    }
+                }
             }
 
             rafId = window.requestAnimationFrame(step);

@@ -85,6 +85,10 @@ router.get('/api/study/dashboard', authenticateToken, async (req, res) => {
     try {
         const requestedChild = req.query.childId ? String(req.query.childId).trim() : '';
         const state = await getChildDashboardState(requestedChild, req.user);
+        if (state?.pokemon?.enabled && state?.childId) {
+            const { getActiveVisitingGuestsForMeadow } = require('../services/study/studyPokemonSocial.service');
+            state.pokemon.visitingGuests = await getActiveVisitingGuestsForMeadow(state.childId).catch(() => []);
+        }
         res.json({
             success: true,
             viewer: {
@@ -437,7 +441,12 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
             sheet,
             blockResults: req.body?.blockResults
         });
+        let earnedSnacks = [];
         if (result.stampAwarded) {
+            if (!result.alreadyAwarded) {
+                const { grantStudySnacks } = require('../services/study/studyPokemonSocial.service');
+                earnedSnacks = await grantStudySnacks(sheet.child_id, 2).catch(() => []);
+            }
             scheduleReplenish(sheet.child_id, sheet.subject);
             setImmediate(() => {
                 const { notifyWorksheetCompletedToParents } = require('../services/study/studyTelegramNotify.service');
@@ -453,6 +462,7 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
         }
         res.json({
             success: true,
+            earnedSnacks,
             ...result
         });
     } catch (err) {
@@ -464,6 +474,7 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
 
 router.use(require('./studyArtwork.routes'));
 router.use(require('./studyPokemon.routes'));
+router.use(require('./studyPokemonSocial.routes'));
 router.use(require('./studyMedia.routes'));
 router.use(require('./studyReview.routes'));
 

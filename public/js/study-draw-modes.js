@@ -23,13 +23,17 @@
      * 외부/AI SVG 문자열을 화이트리스트 요소·속성만 남겨 안전하게 DOM SVG 노드로 변환한다.
      */
     function sanitizeAndImportSvg(svgText) {
-        const parsed = new DOMParser().parseFromString(String(svgText || ''), 'image/svg+xml');
+        let raw = String(svgText || '').trim();
+        if (raw && !/<svg\b[^>]*\bxmlns\s*=/i.test(raw)) {
+            raw = raw.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+        }
+        const parsed = new DOMParser().parseFromString(raw, 'image/svg+xml');
         const root = parsed && parsed.documentElement;
-        if (!root || root.nodeName.toLowerCase() !== 'svg') return null;
+        if (!root || root.nodeName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) return null;
 
         const ALLOWED_TAGS = new Set(['svg', 'g', 'path', 'circle', 'ellipse', 'rect', 'polygon', 'polyline', 'line', 'text']);
         const ALLOWED_ATTRS = new Set([
-            'viewbox', 'class', 'role', 'aria-label', 'd', 'cx', 'cy', 'r', 'rx', 'ry',
+            'xmlns', 'viewbox', 'class', 'role', 'aria-label', 'd', 'cx', 'cy', 'r', 'rx', 'ry',
             'x', 'y', 'width', 'height', 'points', 'x1', 'y1', 'x2', 'y2',
             'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin',
             'stroke-dasharray', 'opacity', 'transform', 'data-color-part', 'data-cbn-slot',
@@ -69,16 +73,16 @@
             const lines = [];
             for (let x = 20; x < 320; x += 20) lines.push(`<line x1="${x}" y1="0" x2="${x}" y2="220" stroke="#cbd5e1" stroke-width="0.9"/>`);
             for (let y = 20; y < 220; y += 20) lines.push(`<line x1="0" y1="${y}" x2="320" y2="${y}" stroke="#cbd5e1" stroke-width="0.9"/>`);
-            return `<svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="모눈종이 도화지"><rect x="0" y="0" width="320" height="220" fill="#ffffff"/>${lines.join('')}</svg>`;
+            return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="모눈종이 도화지"><rect x="0" y="0" width="320" height="220" fill="#ffffff"/>${lines.join('')}</svg>`;
         }
         if (paperKind === 'lined') {
             const rows = [];
             for (let y = 32; y < 210; y += 28) rows.push(`<line x1="16" y1="${y}" x2="304" y2="${y}" stroke="#93c5fd" stroke-width="1.2" stroke-dasharray="4 3"/>`);
-            return `<svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="줄공책 도화지"><rect x="0" y="0" width="320" height="220" fill="#fffbeb"/>${rows.join('')}</svg>`;
+            return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="줄공책 도화지"><rect x="0" y="0" width="320" height="220" fill="#fffbeb"/>${rows.join('')}</svg>`;
         }
         if (paperKind === 'night') {
             return `
-                <svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="밤하늘 도화지">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="밤하늘 도화지">
                     <rect x="0" y="0" width="320" height="220" fill="#0f172a"/>
                     <circle cx="42" cy="34" r="2.2" fill="#fde047" opacity="0.85"/>
                     <circle cx="96" cy="24" r="1.6" fill="#fef08a" opacity="0.75"/>
@@ -93,7 +97,7 @@
         }
         if (paperKind === 'comic4') {
             return `
-                <svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="4컷 만화 도화지">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="4컷 만화 도화지">
                     <rect x="0" y="0" width="320" height="220" fill="#ffffff"/>
                     <rect x="14" y="14" width="140" height="90" rx="10" fill="none" stroke="#334155" stroke-width="2.6"/>
                     <rect x="166" y="14" width="140" height="90" rx="10" fill="none" stroke="#334155" stroke-width="2.6"/>
@@ -102,7 +106,7 @@
                 </svg>
             `;
         }
-        return `<svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="하얀 도화지"><rect x="0" y="0" width="320" height="220" fill="#ffffff"/></svg>`;
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="하얀 도화지"><rect x="0" y="0" width="320" height="220" fill="#ffffff"/></svg>`;
     }
 
     const GUIDE_TEMPLATES = {
@@ -157,7 +161,7 @@
                 const op = idx === currentStep - 1 ? 0.92 : 0.42;
                 return `<g opacity="${op}">${s.shapes}</g>`;
             }).join('');
-            const svg = sanitizeAndImportSvg(`<svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="단계별 따라 그리기"><rect x="0" y="0" width="320" height="220" fill="#ffffff"/>${layers}</svg>`);
+            const svg = sanitizeAndImportSvg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="단계별 따라 그리기"><rect x="0" y="0" width="320" height="220" fill="#ffffff"/>${layers}</svg>`);
             if (svg) wrap.prepend(svg);
             label.textContent = steps[currentStep - 1].desc;
             prevBtn.disabled = currentStep <= 1;
@@ -223,7 +227,7 @@
 
         // 5개 슬롯을 7개 영역으로 매핑한 우주·별 도안
         const svgMarkup = `
-            <svg viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="색깔 약속 따라 색칠하기">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" class="coloring-svg" role="img" aria-label="색깔 약속 따라 색칠하기">
                 <rect x="0" y="0" width="320" height="220" fill="#ffffff"/>
                 <path data-color-part="0" data-cbn-slot="0" d="M160 18 C186 44 196 74 196 78 H124 C124 74 134 44 160 18 Z" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>
                 <rect data-color-part="1" data-cbn-slot="2" x="124" y="78" width="72" height="76" fill="#ffffff" stroke="#1e293b" stroke-width="4"/>
@@ -245,8 +249,8 @@
         `;
 
         const svgEl = sanitizeAndImportSvg(svgMarkup);
-        wrap.innerHTML = '';
-        if (svgEl) wrap.appendChild(svgEl);
+        wrap.querySelector('.coloring-svg')?.remove();
+        if (svgEl) wrap.prepend(svgEl);
 
         const legendBar = document.createElement('div');
         legendBar.className = 'cbn-legend-bar no-print';
@@ -348,11 +352,34 @@
         return { baseSvg, outlineSvg, cbnCtrl, guideCtrl };
     }
 
+    /**
+     * 그리기 창을 중앙에 고정하고 도구 모음은 상단 도크에, 저장·힌트 바는 하단에 배치한다.
+     */
+    function assembleStudioLayout({ container, dockNodes = [], stage, banner, hintHost, isPokemonSheet, artworkBar }) {
+        if (!container || !stage) return;
+        container.classList.add('coloring-studio-root');
+
+        const toolsDock = document.createElement('div');
+        toolsDock.className = 'coloring-tools-dock no-print';
+        toolsDock.setAttribute('role', 'region');
+        toolsDock.setAttribute('aria-label', '그림 그리기 도구 모음');
+        dockNodes.filter(Boolean).forEach((n) => toolsDock.appendChild(n));
+
+        const bottomBar = document.createElement('div');
+        bottomBar.className = 'coloring-bottom-bar no-print';
+        if (banner) bottomBar.appendChild(banner);
+        if (isPokemonSheet && hintHost) bottomBar.appendChild(hintHost);
+        if (artworkBar && artworkBar.children.length > 0) bottomBar.appendChild(artworkBar);
+
+        container.append(toolsDock, stage, bottomBar);
+    }
+
     window.StudyDrawModes = {
         sanitizeAndImportSvg,
         buildFreePaperSvg,
         mountStepGuide,
         mountColorByCode,
-        mountStudioSvg
+        mountStudioSvg,
+        assembleStudioLayout
     };
 })();

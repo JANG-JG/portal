@@ -56,7 +56,13 @@
                 ? (data.reachedTen ? '도장판 10칸 완성! 알이 부화해요!' : '별(칭찬 도장)을 받았어요!')
                 : `틀린 문제가 ${Number(data.wrongCount || 0)}개 있어요`;
         }
-        if (descEl) descEl.textContent = data.message || '';
+        if (descEl) {
+            const snacks = Array.isArray(data.earnedSnacks) ? data.earnedSnacks : [];
+            const snackTxt = snacks.length
+                ? ` (+ 포켓몬 간식 ${snacks.map((sn) => `${sn.emoji} ${sn.name} ${sn.qty}개`).join(', ')} 획득!)`
+                : '';
+            descEl.textContent = `${data.message || ''}${snackTxt}`.trim();
+        }
 
         if (chipsEl) {
             const list = Array.isArray(data.blockResults) ? data.blockResults : [];

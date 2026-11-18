@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="/css/pokemon-meadow.css">
     <link rel="stylesheet" href="/css/study-review.css">
     <link rel="stylesheet" href="/css/study-draw-studio.css">
+    <link rel="stylesheet" href="/css/study-pokemon-social.css">
 </head>
 <body>
     <div class="study-shell">
@@ -32,6 +33,7 @@
                 </div>
             </div>
             <div class="study-topbar-actions">
+                <button type="button" id="btnRefreshDashboard" class="study-btn study-btn-outline" title="학습실 정보를 최신 상태로 새로고침해요">🔄 새로고침</button>
                 <button type="button" id="btnWakeLockToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">💡 화면 유지 중</button>
                 <button type="button" id="btnSoundFxToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">🔔 효과음</button>
                 <a id="portalBackLink" href="/" class="study-link-btn study-btn-outline" hidden>🏠 포털 홈</a>
@@ -164,6 +166,7 @@
                     </div>
                 </div>
             </section>
+            <section id="pokemonSocialMount" class="study-card pokemon-social-card" hidden></section>
             </div>
 
             <div class="study-dash-col study-dash-col--right">
@@ -422,6 +425,19 @@
         </div>
     </dialog>
 
+    <!-- 간식 교환·선물 수학 확인 퀴즈 모달 (Native dialog) -->
+    <dialog id="pokemonTradeQuizDialog" class="study-dialog pokemon-dialog" closedby="any" aria-labelledby="tradeQuizTitle">
+        <div class="pokemon-dialog__inner">
+            <div class="pokemon-dialog__head">
+                <h2 id="tradeQuizTitle" style="margin:0; font-size:1.05rem;">🧮 간식 교환 확인 퀴즈</h2>
+                <form method="dialog">
+                    <button type="submit" value="close" class="study-btn study-btn-outline" style="min-height:38px; padding:0.3rem 0.75rem;">닫기</button>
+                </form>
+            </div>
+            <div id="tradeQuizBody" class="pokemon-dialog__body"></div>
+        </div>
+    </dialog>
+
     <div id="studyToast" class="toast-banner" aria-live="polite" hidden></div>
 
     <script src="/js/study-pwa.js" defer></script>
@@ -430,6 +446,7 @@
     <script src="/js/study-fx.js" defer></script>
     <script src="/js/study-stamps.js" defer></script>
     <script src="/js/pokemon-meadow.js" defer></script>
+    <script src="/js/study-pokemon-social.js" defer></script>
     <script src="/js/study-pokemon.js" defer></script>
     <script src="/js/study-pokemon-coloring.js" defer></script>
     <script src="/js/study-dashboard.js" defer></script>

@@ -79,11 +79,15 @@
                 </div>
                 <div class="sheet-focus-right">
                     <span id="sheetFocusScore" class="sheet-focus-score" hidden></span>
+                    <button type="button" id="btnFocusFinishColor" class="study-btn study-btn-primary sheet-focus-mini sheet-focus-finish" hidden>🎨 색칠 완성!</button>
                     <button type="button" id="btnFocusReset" class="study-btn study-btn-outline sheet-focus-mini" hidden>🔄 처음부터</button>
                     <button type="button" id="btnToggleSheetTools" class="study-btn study-btn-outline sheet-focus-toggle" aria-expanded="false">⚙️ 메뉴·설정 ▾</button>
                 </div>
             `;
             shell.prepend(focusBar);
+            document.getElementById('btnFocusFinishColor')?.addEventListener('click', () => {
+                document.getElementById('btnCompleteSheet')?.click();
+            });
             document.getElementById('btnFocusReset')?.addEventListener('click', () => {
                 document.getElementById('btnResetAllBlocks')?.click();
             });
@@ -201,6 +205,14 @@
         }
 
         const isLast = currentIndex >= totalCount - 1;
+        const activeCard = cards[currentIndex];
+        const isColorStep = activeCard?.dataset?.blockType === 'color';
+        document.body.classList.toggle('is-step-color', Boolean(isColorStep));
+        const finishColorBtn = document.getElementById('btnFocusFinishColor');
+        if (finishColorBtn) {
+            const isColoringSheet = document.body.classList.contains('is-coloring-sheet');
+            finishColorBtn.hidden = !(isColoringSheet && isColorStep && (isSingle || isLast));
+        }
         if (footerEl) {
             footerEl.classList.toggle('is-step-footer-hidden', !isSingle && !isLast);
         }

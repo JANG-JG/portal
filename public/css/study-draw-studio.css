@@ -279,3 +279,91 @@
         padding: 5px 8px;
     }
 }
+
+/* ============================================================================
+ * 태블릿 가로모드 중심 그림 스튜디오: 상단 도구 고정 + 중앙 캔버스 고정
+ * ============================================================================ */
+@media screen {
+    .sheet-focus-finish { background: #10b981; border-color: #059669; color: #ffffff; }
+    .coloring-studio-root { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .coloring-tools-dock {
+        flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px;
+        padding: 6px 8px; border-radius: 14px; background: #fffbf5;
+        border: 1.5px solid #fed7aa; max-width: 100%; min-width: 0; box-sizing: border-box;
+    }
+    .coloring-tools-dock .color-toolbar,
+    .coloring-tools-dock .draw-subbar,
+    .coloring-tools-dock .color-palette,
+    .coloring-tools-dock .cbn-legend-bar,
+    .coloring-tools-dock .pokemon-rec-palette {
+        margin-bottom: 0; padding-block: 4px; flex-wrap: nowrap;
+        overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+    }
+    .coloring-tools-dock .color-toolbar::-webkit-scrollbar,
+    .coloring-tools-dock .draw-subbar::-webkit-scrollbar,
+    .coloring-tools-dock .color-palette::-webkit-scrollbar,
+    .coloring-tools-dock .cbn-legend-bar::-webkit-scrollbar,
+    .coloring-tools-dock .draw-sticker-tray::-webkit-scrollbar { display: none; }
+    .coloring-tools-dock .color-toolbar > *,
+    .coloring-tools-dock .draw-subbar > *,
+    .coloring-tools-dock .color-palette > *,
+    .coloring-tools-dock .cbn-legend-bar > * { flex-shrink: 0; scroll-snap-align: start; }
+    .coloring-tools-dock .color-palette { padding: 2px 4px; gap: 7px; }
+    .coloring-tools-dock .color-swatch { inline-size: 38px; block-size: 38px; min-inline-size: 38px; min-block-size: 38px; }
+    .coloring-tools-dock .color-tool-btn,
+    .coloring-tools-dock .color-undo-btn,
+    .coloring-tools-dock .play-reset-btn { min-block-size: 40px; padding: 6px 10px; font-size: 0.84rem; }
+    .coloring-tools-dock .guide-step-bar { margin-bottom: 0; padding: 5px 10px; gap: 6px; }
+    .coloring-tools-dock .cbn-legend-chip { min-block-size: 38px; padding: 4px 10px; font-size: 0.88rem; }
+    .draw-sticker-tray[hidden] { display: none; }
+    .coloring-tools-dock .draw-sticker-tray:not([hidden]) {
+        display: flex; flex-direction: row; align-items: center; gap: 8px;
+        padding: 5px 8px; margin-bottom: 0; overflow-x: auto; scrollbar-width: none;
+    }
+    .coloring-tools-dock .sticker-tray-head,
+    .coloring-tools-dock .sticker-bubble-row { flex-wrap: nowrap; flex-shrink: 0; gap: 6px; }
+    .coloring-tools-dock .sticker-items-grid { display: inline-flex; flex-wrap: nowrap; gap: 6px; flex-shrink: 0; }
+
+    .coloring-bottom-bar {
+        flex: 0 0 auto; position: relative; display: flex; flex-wrap: wrap;
+        align-items: center; justify-content: space-between; gap: 6px 10px; min-width: 0;
+    }
+    .coloring-bottom-bar .play-feedback { margin: 0; min-height: 0; flex: 1 1 200px; font-size: 0.86rem; text-align: left; }
+    .coloring-bottom-bar .color-artwork-actions,
+    .coloring-bottom-bar .pokemon-hint-box { margin: 0; gap: 6px; }
+    .coloring-bottom-bar .color-artwork-actions .study-btn,
+    .coloring-bottom-bar .pokemon-hint-toggle { min-block-size: 40px; padding: 6px 12px; font-size: 0.84rem; }
+    .coloring-bottom-bar .pokemon-hint-panel:not([hidden]) {
+        position: absolute; inset-block-end: calc(100% + 8px); inset-inline-end: 0;
+        z-index: 30; width: min(340px, 90vw); box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+    }
+
+    @media (min-height: 500px) {
+        body.is-coloring-sheet.is-sheet-step-mode.is-step-color:not(.is-tools-open) .sheet-footer-actions { display: none; }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] {
+            overflow: hidden; padding: 8px 12px; gap: 4px;
+        }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .block-head {
+            margin-bottom: 0; min-block-size: 34px;
+        }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .block-prompt {
+            font-size: clamp(0.86rem, 0.82rem + 0.35vw, 1.02rem); line-height: 1.28; margin-bottom: 2px;
+        }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .coloring-studio-root {
+            flex: 1 1 0; min-height: 0;
+        }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .coloring-stage {
+            flex: 1 1 0; min-height: 0; display: grid; place-items: center;
+            padding: 6px; overflow: hidden; background: #f8fafc; container-type: size;
+        }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .coloring-canvas-wrap {
+            width: min(100%, 580px); aspect-ratio: 320 / 220;
+            width: min(98cqw, calc(96cqh * 320 / 220));
+            max-width: none; margin: 0 auto; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+        }
+    }
+
+    @media (max-height: 499px) {
+        .coloring-tools-dock { position: sticky; top: 0; z-index: 15; }
+    }
+}

@@ -203,38 +203,48 @@
         const meadowMount = document.getElementById('pokemonMeadowStage');
         if (meadowMount && window.PokemonMeadow) {
             const collected = Array.isArray(pokemonData.collected) ? pokemonData.collected : [];
+            const guests = Array.isArray(pokemonData.visitingGuests) ? pokemonData.visitingGuests : [];
             const sorted = [];
             if (partner) sorted.push(partner);
             for (const c of collected) {
-                if (sorted.length >= 8) break;
+                if (sorted.length >= 6) break;
                 if (!sorted.some((s) => Number(s.id) === Number(c.id))) {
                     sorted.push(c);
                 }
             }
             const childName = childProfile?.display_name || '친구';
+            const localActors = sorted.map((p) => ({
+                id: p.id,
+                nameKo: p.nameKo,
+                label: p.nameKo,
+                isPartner: Boolean(partner && Number(p.id) === Number(partner.id)),
+                animatedUrl: p.animatedUrl,
+                artworkUrl: p.artworkUrl,
+                cheers: [`${childName}야, 오늘도 멋져요! ✨`, `${p.nameKo}와(과) 초원 산책 중! 🌿`, '칭찬 도장 모아서 간식도 챙기자! 🍎']
+            }));
+            const guestActors = guests.map((g) => ({
+                id: g.id, nameKo: g.nameKo, label: g.label, isGuest: true, greetingMsg: g.greetingMsg,
+                animatedUrl: g.animatedUrl, artworkUrl: g.artworkUrl,
+                cheers: [`${g.guestOwnerName}네 ${g.nameKo} 놀러왔어요! 🏠`, g.greetingMsg || '같이 놀자! ✨']
+            }));
+            const allActors = [...localActors, ...guestActors].slice(0, 8);
             currentMeadow = window.PokemonMeadow.mount(meadowMount, {
-                buddies: sorted.map((p) => ({
-                    id: p.id,
-                    nameKo: p.nameKo,
-                    label: p.nameKo,
-                    isPartner: Boolean(partner && Number(p.id) === Number(partner.id)),
-                    animatedUrl: p.animatedUrl,
-                    artworkUrl: p.artworkUrl,
-                    cheers: [
-                        `${childName}야, 오늘도 멋져요! ✨`,
-                        `${p.nameKo}와(과) 초원 산책 중! 🌿`,
-                        '칭찬 도장 모아서 친구를 더 초대하자! ❤️'
-                    ]
-                })),
+                buddies: allActors,
                 spacious: true,
                 paused: isMotionPaused(),
                 title: `🌿 ${childName}의 포켓몬 초원 놀이터`,
                 emptyText: '칭찬 도장 10칸을 모으면 첫 포켓몬이 초원에서 뛰어놀아요!',
-                footerHint: sorted.length > 0 ? '초원에서 산책하는 포켓몬을 톡 눌러 응원 소리를 들어보세요!' : ''
+                footerHint: allActors.length > 0 ? '초원에서 산책하는 포켓몬을 톡 눌러 응원 소리를 들어보세요!' : ''
             });
         } else {
             currentMeadow = null;
         }
+        window.StudyPokemonSocial?.renderForChild?.({
+            childProfile,
+            partnerPokemon: partner,
+            showToast: boundCtx?.showToast,
+            onRefreshAll: boundCtx?.reloadDashboard
+        });
 
         if (egg && egg.hatched && egg.revealedPokemon && !egg.hatchAcknowledged) {
             const key = `${childProfile?.id || 'first'}:${egg.cycleNo}`;

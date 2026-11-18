@@ -40,7 +40,7 @@
         clone.setAttribute('aria-hidden', 'true');
         clone.querySelectorAll('[data-color-part]').forEach((el) => el.removeAttribute('data-color-part'));
 
-        const useMultiply = svgEl.dataset.coloringV === '2' || svgEl.dataset.fillMode === 'flood';
+        const useMultiply = svgEl.dataset?.coloringV === '2' || svgEl.dataset?.fillMode === 'flood';
         if (useMultiply) {
             clone.classList.add('is-multiply-outline');
         } else {
