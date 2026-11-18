@@ -353,10 +353,15 @@
     }
 
     /**
-     * 그리기 창을 중앙에 고정하고 도구 모음은 상단 도크에, 저장·힌트 바는 하단에 배치한다.
+     * 그리기 창을 화면 80%+로 최대화하도록 상단 슬림 바 + 플로팅 드로어 + 좌측 색상 레일을 조립한다.
      */
-    function assembleStudioLayout({ container, dockNodes = [], stage, banner, hintHost, isPokemonSheet, artworkBar }) {
-        if (!container || !stage) return;
+    function assembleStudioLayout(opts) {
+        if (!opts || !opts.container || !opts.stage) return;
+        if (window.StudyDrawChrome && typeof window.StudyDrawChrome.assemble === 'function') {
+            window.StudyDrawChrome.assemble(opts);
+            return;
+        }
+        const { container, dockNodes = [], stage, banner, hintHost, isPokemonSheet, artworkBar } = opts;
         container.classList.add('coloring-studio-root');
 
         const toolsDock = document.createElement('div');

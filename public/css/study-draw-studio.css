@@ -281,89 +281,128 @@
 }
 
 /* ============================================================================
- * 태블릿 가로모드 중심 그림 스튜디오: 상단 도구 고정 + 중앙 캔버스 고정
+ * 캔버스 80%+ 집중 스튜디오: 상단 1줄 바 + 플로팅 드로어 + 좌측 색상 레일
  * ============================================================================ */
 @media screen {
     .sheet-focus-finish { background: #10b981; border-color: #059669; color: #ffffff; }
-    .coloring-studio-root { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-    .coloring-tools-dock {
-        flex: 0 0 auto; display: flex; flex-direction: column; gap: 5px;
-        padding: 6px 8px; border-radius: 14px; background: #fffbf5;
-        border: 1.5px solid #fed7aa; max-width: 100%; min-width: 0; box-sizing: border-box;
+    .coloring-studio-root { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .coloring-top-strip {
+        flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+        padding: 4px 6px; border-radius: 12px; background: #fffbf5; border: 1.5px solid #fed7aa;
+        max-width: 100%; min-width: 0; box-sizing: border-box;
     }
-    .coloring-tools-dock .color-toolbar,
-    .coloring-tools-dock .draw-subbar,
-    .coloring-tools-dock .color-palette,
-    .coloring-tools-dock .cbn-legend-bar,
-    .coloring-tools-dock .pokemon-rec-palette {
-        margin-bottom: 0; padding-block: 4px; flex-wrap: nowrap;
-        overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+    .coloring-top-strip .color-toolbar {
+        flex: 1 1 auto; min-width: 0; margin: 0; padding: 0; border: 0; background: transparent;
+        display: flex; flex-wrap: nowrap; align-items: center; gap: 4px;
+        overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
     }
-    .coloring-tools-dock .color-toolbar::-webkit-scrollbar,
-    .coloring-tools-dock .draw-subbar::-webkit-scrollbar,
-    .coloring-tools-dock .color-palette::-webkit-scrollbar,
-    .coloring-tools-dock .cbn-legend-bar::-webkit-scrollbar,
-    .coloring-tools-dock .draw-sticker-tray::-webkit-scrollbar { display: none; }
-    .coloring-tools-dock .color-toolbar > *,
-    .coloring-tools-dock .draw-subbar > *,
-    .coloring-tools-dock .color-palette > *,
-    .coloring-tools-dock .cbn-legend-bar > * { flex-shrink: 0; scroll-snap-align: start; }
-    .coloring-tools-dock .color-palette { padding: 2px 4px; gap: 7px; }
-    .coloring-tools-dock .color-swatch { inline-size: 38px; block-size: 38px; min-inline-size: 38px; min-block-size: 38px; }
-    .coloring-tools-dock .color-tool-btn,
-    .coloring-tools-dock .color-undo-btn,
-    .coloring-tools-dock .play-reset-btn { min-block-size: 40px; padding: 6px 10px; font-size: 0.84rem; }
-    .coloring-tools-dock .guide-step-bar { margin-bottom: 0; padding: 5px 10px; gap: 6px; }
-    .coloring-tools-dock .cbn-legend-chip { min-block-size: 38px; padding: 4px 10px; font-size: 0.88rem; }
-    .draw-sticker-tray[hidden] { display: none; }
-    .coloring-tools-dock .draw-sticker-tray:not([hidden]) {
-        display: flex; flex-direction: row; align-items: center; gap: 8px;
-        padding: 5px 8px; margin-bottom: 0; overflow-x: auto; scrollbar-width: none;
+    .coloring-top-strip .color-toolbar::-webkit-scrollbar,
+    .coloring-side-rail::-webkit-scrollbar,
+    .coloring-side-rail .color-palette::-webkit-scrollbar,
+    .coloring-side-rail .cbn-legend-bar::-webkit-scrollbar { display: none; }
+    .coloring-top-strip .color-toolbar > *,
+    .coloring-strip-pop-btns > * { flex-shrink: 0; }
+    .coloring-top-strip .color-tool-btn,
+    .coloring-top-strip .color-undo-btn,
+    .coloring-top-strip .play-reset-btn,
+    .coloring-pop-trigger { min-block-size: 36px; padding: 4px 9px; font-size: 0.8rem; white-space: nowrap; }
+    .coloring-strip-pop-btns { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .coloring-pop-trigger.is-open { background: #fff7ed; border-color: #fb923c; color: #c2410c; }
+    .coloring-pop-drawer[hidden], .draw-sticker-tray[hidden] { display: none; }
+    .coloring-pop-drawer:not([hidden]) {
+        position: absolute; inset-block-start: 46px; inset-inline-end: 4px; z-index: 28;
+        width: min(520px, calc(100% - 8px)); max-height: 70dvh; overflow-y: auto;
+        background: #ffffff; border: 2px solid #fdba74; border-radius: 14px;
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.22); padding: 8px 10px; box-sizing: border-box;
     }
-    .coloring-tools-dock .sticker-tray-head,
-    .coloring-tools-dock .sticker-bubble-row { flex-wrap: nowrap; flex-shrink: 0; gap: 6px; }
-    .coloring-tools-dock .sticker-items-grid { display: inline-flex; flex-wrap: nowrap; gap: 6px; flex-shrink: 0; }
+    .coloring-pop-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+    .coloring-pop-title { font-size: 0.86rem; font-weight: 800; color: #9a3412; }
+    .coloring-pop-close {
+        min-inline-size: 36px; min-block-size: 36px; border: 1px solid #fed7aa; border-radius: 10px;
+        background: #fff7ed; color: #9a3412; font-weight: 800; cursor: pointer;
+    }
+    .coloring-pop-body .draw-subbar,
+    .coloring-pop-body .draw-sticker-tray { margin: 0; padding: 2px 0; border: 0; background: transparent; }
+    .coloring-pop-body .color-artwork-actions { margin: 4px 0 0; justify-content: flex-start; }
+    .coloring-drawer-prompt {
+        margin: 0 0 6px; padding: 6px 8px; border-radius: 8px;
+        background: #f8fafc; font-size: 0.84rem; color: #334155; font-weight: 600;
+    }
 
-    .coloring-bottom-bar {
-        flex: 0 0 auto; position: relative; display: flex; flex-wrap: wrap;
-        align-items: center; justify-content: space-between; gap: 6px 10px; min-width: 0;
+    .coloring-workspace-row { flex: 1 1 0; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 4px; position: relative; }
+    .coloring-side-rail {
+        flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 4px 6px;
+        border-radius: 12px; background: #fffbf5; border: 1.5px solid #fed7aa;
+        overflow-x: auto; scrollbar-width: none; max-width: 100%; box-sizing: border-box;
     }
-    .coloring-bottom-bar .play-feedback { margin: 0; min-height: 0; flex: 1 1 200px; font-size: 0.86rem; text-align: left; }
-    .coloring-bottom-bar .color-artwork-actions,
-    .coloring-bottom-bar .pokemon-hint-box { margin: 0; gap: 6px; }
-    .coloring-bottom-bar .color-artwork-actions .study-btn,
-    .coloring-bottom-bar .pokemon-hint-toggle { min-block-size: 40px; padding: 6px 12px; font-size: 0.84rem; }
-    .coloring-bottom-bar .pokemon-hint-panel:not([hidden]) {
-        position: absolute; inset-block-end: calc(100% + 8px); inset-inline-end: 0;
-        z-index: 30; width: min(340px, 90vw); box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+    .coloring-side-rail .color-palette,
+    .coloring-side-rail .cbn-legend-bar,
+    .coloring-side-rail .pokemon-rec-palette { margin: 0; padding: 0; flex-wrap: nowrap; gap: 6px; flex-shrink: 0; }
+    .coloring-side-rail .color-swatch { inline-size: 34px; block-size: 34px; min-inline-size: 34px; min-block-size: 34px; flex-shrink: 0; }
+    .coloring-side-rail .cbn-legend-chip { min-block-size: 34px; padding: 4px 8px; font-size: 0.82rem; flex-shrink: 0; }
+
+    @media (min-width: 720px) and (orientation: landscape) {
+        .coloring-workspace-row { flex-direction: row; align-items: stretch; gap: 6px; }
+        .coloring-side-rail {
+            flex: 0 0 54px; width: 54px; flex-direction: column; align-items: center;
+            overflow-x: hidden; overflow-y: auto; padding: 6px 4px; gap: 8px;
+        }
+        .coloring-side-rail[data-has-cbn="1"] { flex-basis: 92px; width: 92px; }
+        .coloring-side-rail .color-palette,
+        .coloring-side-rail .pokemon-rec-palette,
+        .coloring-side-rail .cbn-legend-bar { flex-direction: column; align-items: center; width: 100%; gap: 6px; }
+        .coloring-side-rail .cbn-legend-bar { align-items: stretch; }
+        .coloring-side-rail .cbn-legend-chip { width: 100%; justify-content: flex-start; padding: 5px 6px; font-size: 0.76rem; }
     }
+
+    .guide-step-bar.is-floating-guide {
+        position: absolute; top: 6px; left: 50%; transform: translateX(-50%); z-index: 12;
+        max-width: calc(100% - 12px); margin: 0; padding: 3px 8px; gap: 6px; border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92); box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
+    }
+    .guide-step-bar.is-floating-guide .guide-step-label {
+        font-size: 0.78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(320px, 42vw);
+    }
+    .guide-step-bar.is-floating-guide .study-btn { min-block-size: 32px; padding: 3px 8px; font-size: 0.76rem; }
+    .coloring-stage-toast {
+        position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 14; margin: 0;
+        padding: 4px 12px; border-radius: 999px; background: rgba(15, 23, 42, 0.84); color: #ffffff !important;
+        font-size: 0.78rem; font-weight: 700; pointer-events: none; opacity: 0; transition: opacity 0.25s ease;
+        max-width: calc(100% - 20px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 0;
+    }
+    .coloring-stage-toast.is-toast-visible { opacity: 1; }
 
     @media (min-height: 500px) {
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .study-shell--sheet {
+            height: 100dvh; overflow: hidden; max-width: 100%; padding: 4px 8px; gap: 4px;
+        }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .study-shell--sheet > main { min-height: 0; overflow: hidden; gap: 4px; }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .sheet-focus-bar { padding: 3px 8px; min-block-size: 36px; border-radius: 10px; gap: 4px 8px; }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .sheet-focus-bar :is(a, button) {
+            min-block-size: 32px; padding: 3px 8px; font-size: 0.78rem;
+        }
         body.is-coloring-sheet.is-sheet-step-mode.is-step-color:not(.is-tools-open) .sheet-footer-actions { display: none; }
         body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] {
-            overflow: hidden; padding: 8px 12px; gap: 4px;
+            overflow: hidden; padding: 4px 6px; gap: 0; border-width: 1.5px; display: flex; flex-direction: column;
         }
-        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .block-head {
-            margin-bottom: 0; min-block-size: 34px;
-        }
-        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .block-prompt {
-            font-size: clamp(0.86rem, 0.82rem + 0.35vw, 1.02rem); line-height: 1.28; margin-bottom: 2px;
-        }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .block-head,
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .block-prompt { display: none; }
+        body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .block-body,
         body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .worksheet-block.is-step-active[data-block-type="color"] .coloring-studio-root {
-            flex: 1 1 0; min-height: 0;
+            flex: 1 1 0; min-height: 0; display: flex; flex-direction: column;
         }
         body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .coloring-stage {
-            flex: 1 1 0; min-height: 0; display: grid; place-items: center;
-            padding: 6px; overflow: hidden; background: #f8fafc; container-type: size;
+            flex: 1 1 0; min-height: 0; min-width: 0; display: grid; place-items: center;
+            padding: 4px; overflow: hidden; background: #f8fafc; border-radius: 12px; container-type: size; position: relative;
         }
         body.is-sheet-step-mode.is-step-color:not(.is-tools-open) .coloring-canvas-wrap {
             width: min(100%, 580px); aspect-ratio: 320 / 220;
-            width: min(98cqw, calc(96cqh * 320 / 220));
-            max-width: none; margin: 0 auto; box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+            width: min(99cqw, calc(99cqh * 320 / 220)); max-width: none; margin: 0 auto;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
         }
     }
 
     @media (max-height: 499px) {
-        .coloring-tools-dock { position: sticky; top: 0; z-index: 15; }
+        .coloring-top-strip { position: sticky; top: 0; z-index: 15; }
     }
 }

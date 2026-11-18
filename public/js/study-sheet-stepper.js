@@ -79,12 +79,20 @@
                 </div>
                 <div class="sheet-focus-right">
                     <span id="sheetFocusScore" class="sheet-focus-score" hidden></span>
+                    <button type="button" id="btnFocusTts" class="study-btn study-btn-outline sheet-focus-mini sheet-focus-color-only" hidden aria-label="문제 읽어주기">🔊 듣기</button>
+                    <button type="button" id="btnFocusSwap" class="study-btn study-btn-outline sheet-focus-mini sheet-focus-color-only" hidden aria-label="다른 그림으로 바꾸기">🔄 다른 그림</button>
                     <button type="button" id="btnFocusFinishColor" class="study-btn study-btn-primary sheet-focus-mini sheet-focus-finish" hidden>🎨 색칠 완성!</button>
                     <button type="button" id="btnFocusReset" class="study-btn study-btn-outline sheet-focus-mini" hidden>🔄 처음부터</button>
                     <button type="button" id="btnToggleSheetTools" class="study-btn study-btn-outline sheet-focus-toggle" aria-expanded="false">⚙️ 메뉴·설정 ▾</button>
                 </div>
             `;
             shell.prepend(focusBar);
+            document.getElementById('btnFocusTts')?.addEventListener('click', () => {
+                cards[currentIndex]?.querySelector('.btn-block-tts')?.click();
+            });
+            document.getElementById('btnFocusSwap')?.addEventListener('click', () => {
+                cards[currentIndex]?.querySelector('.btn-block-swap')?.click();
+            });
             document.getElementById('btnFocusFinishColor')?.addEventListener('click', () => {
                 document.getElementById('btnCompleteSheet')?.click();
             });
@@ -208,6 +216,10 @@
         const activeCard = cards[currentIndex];
         const isColorStep = activeCard?.dataset?.blockType === 'color';
         document.body.classList.toggle('is-step-color', Boolean(isColorStep));
+        const focusTtsBtn = document.getElementById('btnFocusTts');
+        if (focusTtsBtn) focusTtsBtn.hidden = !(isColorStep && activeCard?.querySelector('.btn-block-tts'));
+        const focusSwapBtn = document.getElementById('btnFocusSwap');
+        if (focusSwapBtn) focusSwapBtn.hidden = !(isColorStep && activeCard?.querySelector('.btn-block-swap'));
         const finishColorBtn = document.getElementById('btnFocusFinishColor');
         if (finishColorBtn) {
             const isColoringSheet = document.body.classList.contains('is-coloring-sheet');

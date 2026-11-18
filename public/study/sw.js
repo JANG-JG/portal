@@ -38,6 +38,7 @@ const PRECACHE_ASSETS = [
     '/js/study-color-flood.js',
     '/js/study-draw-brushes.js',
     '/js/study-draw-stickers.js',
+    '/js/study-draw-chrome.js',
     '/js/study-draw-modes.js',
     '/js/study-color-block.js',
     '/js/study-play-blocks.js',

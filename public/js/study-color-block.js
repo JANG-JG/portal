@@ -484,7 +484,10 @@
         cbnCtrl?.syncActiveHex?.(activeHex);
         const dockNodes = [modeBar, drawSubbar?.el, stickerTray?.el, cbnCtrl?.legendBar, guideCtrl?.bar, recPaletteBar, palette];
         if (window.StudyDrawModes?.assembleStudioLayout) {
-            window.StudyDrawModes.assembleStudioLayout({ container, dockNodes, stage, banner, hintHost, isPokemonSheet, artworkBar });
+            window.StudyDrawModes.assembleStudioLayout({
+                container, dockNodes, stage, banner, hintHost, isPokemonSheet, artworkBar,
+                promptText: blk?.prompt || ''
+            });
         } else {
             container.append(...dockNodes.filter(Boolean), stage, banner, ...(isPokemonSheet ? [hintHost] : []), ...(artworkBar.children.length ? [artworkBar] : []));
         }
