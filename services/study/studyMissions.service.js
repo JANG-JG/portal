@@ -89,17 +89,22 @@ function ensureMissionTables() {
 }
 
 async function pickDefaultSubjectsForToday(childId, todayKst) {
-    const weekRows = await dbAll(
-        `SELECT subject, COUNT(*) AS cnt FROM study_sheets
-         WHERE child_id = ? AND DATE(created_at) >= DATE(?, '-7 days')
-         GROUP BY subject`,
-        [childId, todayKst]
-    );
+    const [weekRows, pianoVoiceRaw] = await Promise.all([
+        dbAll(
+            `SELECT subject, COUNT(*) AS cnt FROM study_sheets
+             WHERE child_id = ? AND DATE(created_at) >= DATE(?, '-7 days')
+             GROUP BY subject`,
+            [childId, todayKst]
+        ),
+        getSystemConfig('study_piano_voice_enabled', '1')
+    ]);
     const countMap = new Map(weekRows.map((r) => [r.subject, Number(r.cnt || 0)]));
     const dayNum = Number(todayKst.slice(-2)) || 1;
     const slot1Subj = (countMap.get('english') || 0) < (countMap.get('korean') || 0) ? 'english' : 'korean';
     const slot2Subj = dayNum % 2 === 0 ? 'logic' : 'math';
-    const explorePool = ['reading', 'science', 'music', 'coloring'];
+    const explorePool = pianoVoiceRaw === '0'
+        ? ['reading', 'science', 'coloring']
+        : ['reading', 'science', 'music', 'coloring'];
     const slot3Subj = explorePool[dayNum % explorePool.length];
     return [slot1Subj, slot2Subj, slot3Subj];
 }
@@ -196,11 +201,15 @@ async function startDailyMission(childId, slotIndex, preferredSubject = '', crea
     }
 
     const { generateAndSaveWorksheet } = require('./geminiWorksheet.service');
+    const { getTodayMissionThemeConfig } = require('./studyOpsAdmin.service');
+    const pianoVoiceRaw = await getSystemConfig('study_piano_voice_enabled', '1');
+    const safeSubject = (targetSubject === 'music' && pianoVoiceRaw === '0') ? 'reading' : targetSubject;
+    const missionThemeCfg = await getTodayMissionThemeConfig().catch(() => ({ theme: '' }));
     const themes = ['동물 친구', '공룡 탐험', '우주 모험', '바다 친구', '달콤 과일'];
-    const theme = themes[Math.floor(Math.random() * themes.length)];
+    const theme = missionThemeCfg.theme || themes[Math.floor(Math.random() * themes.length)];
     const sheet = await generateAndSaveWorksheet({
         childId: cid,
-        subject: targetSubject,
+        subject: safeSubject,
         theme,
         createdBy,
         includePlayBlock: true,
@@ -210,11 +219,11 @@ async function startDailyMission(childId, slotIndex, preferredSubject = '', crea
     if (row && row.status === 'pending') {
         await dbRun(
             'UPDATE study_daily_missions SET subject = ?, sheet_id = ? WHERE id = ?',
-            [targetSubject, Number(sheet.id), row.id]
+            [safeSubject, Number(sheet.id), row.id]
         );
     }
 
-    return { sheetId: Number(sheet.id), subject: targetSubject, reused: false, url: `/study/sheet/${sheet.id}` };
+    return { sheetId: Number(sheet.id), subject: safeSubject, reused: false, url: `/study/sheet/${sheet.id}` };
 }
 
 async function markMissionProgressForSheet(sheet) {
@@ -369,6 +378,7 @@ async function getAdminMissionsOverview() {
 
 module.exports = {
     ensureMissionTables,
+    ensureTodayMissionsForChild,
     getDailyMissionsState,
     startDailyMission,
     markMissionProgressForSheet,

@@ -73,11 +73,17 @@ function populateStudyProfileSelectors(children, kidAccounts) {
 }
 
 function renderStudyStatusCards(data) {
-    const quota = data.quota || { usedCount: 0, dailyLimit: 30 };
+    const quota = data.quota || { geminiCalls: 0, fallbackCalls: 0, dailyLimit: 30 };
     const cfg = data.config || {};
+    const usedCount = Number(quota.usedCount ?? quota.geminiCalls ?? 0);
+    const dailyLimit = Number(quota.dailyLimit || 30);
+    const fallbackCalls = Number(quota.fallbackCalls || 0);
 
     const quotaEl = document.getElementById('studyAdminQuotaStat');
-    if (quotaEl) quotaEl.textContent = `${quota.usedCount} / ${quota.dailyLimit}장`;
+    if (quotaEl) {
+        quotaEl.textContent = `${usedCount} / ${dailyLimit}장`;
+        quotaEl.title = `AI 생성 ${usedCount}건 · 문제은행/폴백 ${fallbackCalls}건`;
+    }
 
     const geminiEl = document.getElementById('studyAdminGeminiStat');
     if (geminiEl) {

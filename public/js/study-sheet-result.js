@@ -240,6 +240,10 @@
 
     function renderBlockContent({ bodyEl, blk, sheet, opts, speakText, showToast, renderTraceBlock }) {
         const mApi = window.StudyPlayManipulatives, pApi = window.StudyPlayPuzzles, sApi = window.StudyPlayStorybook, pb = window.StudyPlayBlocks;
+        const pianoVoiceAllowed = window.StudyTabletConfig?.pianoVoiceEnabled !== false;
+        const disabledNotice = () => {
+            bodyEl.innerHTML = '<p style="margin:0; padding:14px; border-radius:12px; background:#f8fafc; color:#475569; font-weight:700; text-align:center;">🔇 부모님이 미니 피아노·음성 말하기 기능을 잠시 쉬는 중으로 설정했어요.</p>';
+        };
         const handlers = {
             trace: () => renderTraceBlock(bodyEl, blk),
             count: () => renderCountBlock(bodyEl, blk, speakText, opts),
@@ -254,8 +258,8 @@
             picture_sudoku: () => pApi?.renderSudokuBlock(bodyEl, blk, speakText, showToast, opts),
             tangram_grid: () => pApi?.renderTangramBlock(bodyEl, blk, speakText, showToast, opts),
             storybook: () => sApi?.renderStorybookBlock(bodyEl, blk, speakText),
-            voice_repeat: () => sApi?.renderVoiceRepeatBlock(bodyEl, blk, speakText, showToast),
-            piano: () => window.StudyPlayPiano?.renderPianoBlock(bodyEl, blk, speakText, showToast)
+            voice_repeat: () => (pianoVoiceAllowed ? sApi?.renderVoiceRepeatBlock(bodyEl, blk, speakText, showToast) : disabledNotice()),
+            piano: () => (pianoVoiceAllowed ? window.StudyPlayPiano?.renderPianoBlock(bodyEl, blk, speakText, showToast) : disabledNotice())
         };
         (handlers[blk.type] || (() => renderQuizBlock(bodyEl, blk, sheet?.subject, speakText, opts)))();
     }

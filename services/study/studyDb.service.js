@@ -380,6 +380,7 @@ async function getDailyQuotaStatus(dateStr = getKstDateString()) {
     const fallbackCalls = row ? Number(row.fallback_calls || 0) : 0;
     return {
         date: dateStr,
+        usedCount: geminiCalls,
         geminiCalls,
         fallbackCalls,
         dailyLimit,

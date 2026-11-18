@@ -230,6 +230,7 @@ async function buildExtendedColoringWorksheet({
     theme = '동물 친구',
     mathLevel = 1,
     customPrompt = '',
+    childId = 'first',
     callGeminiJson = null
 }) {
     const m = String(mode || '').trim();
@@ -317,7 +318,8 @@ async function buildExtendedColoringWorksheet({
 
     // ai_custom
     const rawIdea = String(customPrompt || theme || '귀여운 고양이').trim().slice(0, 40);
-    const safeIdea = (!rawIdea || containsBanned(rawIdea)) ? '무지개 아래 아기 공룡' : rawIdea;
+    const isBanned = Boolean(rawIdea && containsBanned(rawIdea));
+    const safeIdea = (!rawIdea || isBanned) ? '무지개 아래 아기 공룡' : rawIdea;
     let customSvg = '';
     let finalTitle = `🪄 ${safeIdea}`;
     let usedAi = false;
@@ -342,10 +344,23 @@ async function buildExtendedColoringWorksheet({
         customSvg = buildKeywordFallbackCustomSvg(safeIdea);
     }
 
+    const sourceLabel = usedAi ? 'gemini:custom_svg' : 'coloring_studio:custom_fallback';
+    const { logCustomColoringAttempt } = require('./studyOpsAdmin.service');
+    setImmediate(() => {
+        logCustomColoringAttempt({
+            childId,
+            rawPrompt: rawIdea || '(기본)',
+            safePrompt: safeIdea,
+            blocked: isBanned,
+            blockReason: isBanned ? '금칙어 포함 자동 순화' : '',
+            sourceLabel
+        }).catch(() => {});
+    });
+
     return {
         title: `${finalTitle} 색칠 도안`,
         encouragement: '상상한 그림이 도안으로 변신! 예쁜 색으로 가득 채웠어요! 🎨',
-        sourceLabel: usedAi ? 'gemini:custom_svg' : 'coloring_studio:custom_fallback',
+        sourceLabel,
         blocks: [{
             id: 'block-1',
             type: 'color',

@@ -127,7 +127,24 @@
             window.StudyPokemon.render(data.pokemon, data.activeChild);
         }
         const phase3Enabled = data.missions?.phase3SubjectsEnabled !== false;
-        document.querySelectorAll('[data-phase3-subj]').forEach((el) => { el.hidden = !phase3Enabled; });
+        const pianoVoiceEnabled = data.featureFlags?.pianoVoiceEnabled !== false;
+        const aiCustomColoringEnabled = data.featureFlags?.aiCustomColoringEnabled !== false;
+        document.querySelectorAll('[data-phase3-subj]').forEach((el) => {
+            const isMusic = el.dataset.subject === 'music';
+            el.hidden = !phase3Enabled || (isMusic && !pianoVoiceEnabled);
+        });
+        if (!pianoVoiceEnabled && state.selectedSubject === 'music') {
+            document.querySelector('.subject-chip[data-subject="korean"]')?.click();
+        }
+        const tabColorAi = document.getElementById('tabColorCatAi');
+        const panelColorAi = document.getElementById('panelColorCatAi');
+        if (tabColorAi) tabColorAi.hidden = !aiCustomColoringEnabled;
+        if (!aiCustomColoringEnabled) {
+            if (panelColorAi) panelColorAi.hidden = true;
+            if (state.selectedColoringMode === 'ai_custom') {
+                document.getElementById('tabColorCatTheme')?.click();
+            }
+        }
         window.StudyMissions?.renderMissionsCard?.(data.missions, state.childId, showToast);
         window.StudyCurriculum?.render?.(state.childId, data, showToast);
         renderWrongReviewSummary(data.wrongNoteStats);

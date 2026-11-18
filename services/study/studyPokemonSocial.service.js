@@ -168,6 +168,7 @@ async function addPokemonAffection(childId, pokemonId, expDelta) {
 }
 
 async function feedPokemonSnack(childId, pokemonId, snackType) {
+    if (!(await isSocialFeatureEnabled())) throw new Error('현재 포켓몬 간식·놀러가기 기능이 잠시 꺼져 있어요.');
     await ensureSocialTables();
     const pid = Number(pokemonId);
     const meta = getSnackMeta(snackType);
@@ -188,6 +189,7 @@ async function feedPokemonSnack(childId, pokemonId, snackType) {
 }
 
 async function evolvePokemon(childId, pokemonId) {
+    if (!(await isSocialFeatureEnabled())) throw new Error('현재 포켓몬 간식·놀러가기 기능이 잠시 꺼져 있어요.');
     await ensureSocialTables();
     const pid = Number(pokemonId);
     const evo = GEN1_EVOLUTIONS[pid];
@@ -256,6 +258,7 @@ async function getActiveVisitingGuestsForMeadow(hostChildId) {
 }
 
 async function createTradeOffer({ fromChildId, toChildId, offerSnack, offerQty = 1, requestSnack = '', requestQty = 0, greetingMsg = '' }) {
+    if (!(await isSocialFeatureEnabled())) throw new Error('현재 포켓몬 간식 교환·놀러가기 기능이 잠시 꺼져 있어요.');
     await ensureSocialTables();
     if (fromChildId === toChildId) throw new Error('내 자신에게는 교환을 보낼 수 없어요.');
     const oMeta = getSnackMeta(offerSnack);
@@ -277,6 +280,7 @@ async function createTradeOffer({ fromChildId, toChildId, offerSnack, offerQty =
 }
 
 async function prepareTradeQuiz(tradeId, receiverChildId) {
+    if (!(await isSocialFeatureEnabled())) throw new Error('현재 포켓몬 간식 교환·놀러가기 기능이 잠시 꺼져 있어요.');
     await ensureSocialTables();
     const trade = await dbGet('SELECT * FROM study_pokemon_trades WHERE id = ? AND to_child_id = ?', [tradeId, receiverChildId]);
     if (!trade || trade.status !== 'pending') throw new Error('대기 중인 교환 요청을 찾을 수 없어요.');
@@ -295,6 +299,7 @@ async function prepareTradeQuiz(tradeId, receiverChildId) {
 }
 
 async function respondToTrade({ tradeId, receiverChildId, action, answer, replyMsg = '' }) {
+    if (!(await isSocialFeatureEnabled())) throw new Error('현재 포켓몬 간식 교환·놀러가기 기능이 잠시 꺼져 있어요.');
     await ensureSocialTables();
     const trade = await dbGet('SELECT * FROM study_pokemon_trades WHERE id = ?', [tradeId]);
     if (!trade || trade.status !== 'pending') throw new Error('이미 처리되었거나 없는 교환 요청이에요.');
@@ -342,6 +347,7 @@ async function respondToTrade({ tradeId, receiverChildId, action, answer, replyM
 }
 
 async function sendPokemonVisit({ guestChildId, hostChildId, pokemonId = 0, greetingMsg = '' }) {
+    if (!(await isSocialFeatureEnabled())) throw new Error('현재 포켓몬 간식 교환·놀러가기 기능이 잠시 꺼져 있어요.');
     await ensureSocialTables();
     await expireOldVisits();
     if (guestChildId === hostChildId) throw new Error('다른 친구의 초원으로만 놀러갈 수 있어요!');
@@ -370,6 +376,7 @@ async function sendPokemonVisit({ guestChildId, hostChildId, pokemonId = 0, gree
 }
 
 async function endPokemonVisit(visitId, childId) {
+    if (!(await isSocialFeatureEnabled())) throw new Error('현재 포켓몬 간식 교환·놀러가기 기능이 잠시 꺼져 있어요.');
     await ensureSocialTables();
     const visit = await dbGet('SELECT * FROM study_pokemon_visits WHERE id = ?', [visitId]);
     if (!visit || visit.status !== 'active') throw new Error('종료할 놀러가기 기록을 찾지 못했어요.');
@@ -400,6 +407,7 @@ async function getCoopStatus(childId) {
 }
 
 async function claimCoopReward(childId) {
+    if (!(await isSocialFeatureEnabled())) throw new Error('현재 포켓몬 간식 교환·놀러가기 기능이 잠시 꺼져 있어요.');
     const coop = await getCoopStatus(childId);
     if (!coop.reached) throw new Error(`모두 합쳐 도장 ${coop.goalStars}개를 모아야 받을 수 있어요!`);
     if (coop.claimed) throw new Error('오늘의 협동 보상은 이미 받았어요!');

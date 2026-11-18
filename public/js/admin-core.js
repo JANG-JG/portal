@@ -73,7 +73,11 @@ const SUBTABS_CONFIG = {
         { id: 'subpane-ai-audit', label: '대화·라우팅 감사 이력', icon: '🛡️' }
     ],
     'tab-study': [
-        { id: 'subpane-study-overview', label: '학습실 설정 · 프로필', icon: '🎨' },
+        { id: 'subpane-study-overview', label: '기본 설정 · 태블릿', icon: '⚙️' },
+        { id: 'subpane-study-profiles', label: '아이 프로필 · 도장 · 오답', icon: '🧒' },
+        { id: 'subpane-study-missions', label: '미션 · 커리큘럼 · 사전', icon: '🧭' },
+        { id: 'subpane-study-plaza', label: '포켓몬 · 광장 · 상점', icon: '🐾' },
+        { id: 'subpane-study-creative', label: '색칠 작품 · AI 도안', icon: '🎨' },
         { id: 'subpane-study-telegram', label: '암호화 텔레그램 ID', icon: '✈️' },
         { id: 'subpane-study-kids', label: '아이 전용 계정 발급', icon: '📱' }
     ]
@@ -274,6 +278,10 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
         'subpane-ai-audit': 'loadAdminAiAuditLogs',
         'subpane-wiki-governance': 'loadWikiGovernance',
         'subpane-study-overview': 'loadAdminStudyOverview',
+        'subpane-study-profiles': 'loadAdminStudyOverview',
+        'subpane-study-missions': 'loadAdminStudyMissionsTab',
+        'subpane-study-plaza': 'loadAdminStudyPlazaTab',
+        'subpane-study-creative': 'loadAdminStudyCreativeTab',
         'subpane-study-telegram': 'loadAdminStudyOverview',
         'subpane-study-kids': 'loadAdminStudyOverview'
     };

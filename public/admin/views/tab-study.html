@@ -2,14 +2,14 @@
              탭 12: 아이 학습실 · 텔레그램 봇 관리
              ========================================== -->
         <div id="tab-study" class="admin-tab-pane">
-            <!-- 서브 1: 학습실 운영 · Gemini 할당량 · 아이별 프로필 -->
+            <!-- 서브 1: 기본 설정 · AI 할당량 · 사전 생성 · 태블릿 PWA -->
             <div id="subpane-study-overview" class="admin-sub-pane active">
                 <div class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
                         <div style="min-width:0;">
                             <h3>🎨 아이 학습실 · AI 학습지 생성 관리</h3>
                             <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
-                                Gemini 학습지 일일 생성 상한, 부모 잠금 PIN, 아이별 레벨·도장 목표 보상 및 생성 이력을 관리합니다.
+                                Gemini 학습지 일일 생성 상한, 부모 잠금 PIN 및 태블릿 전용 앱(PWA) 설정을 관리합니다.
                             </p>
                         </div>
                         <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
@@ -57,8 +57,7 @@
                         </div>
                         <div style="display:flex; flex-direction:column; justify-content:flex-end; gap:0.4rem;">
                             <label style="font-size:0.76rem; color:#64748b; display:flex; align-items:center; gap:0.35rem; cursor:pointer;">
-                                <input id="studyClearParentPinChk" type="checkbox">
-                                기본 길게 누르기 모드로 초기화 (PIN 제거)
+                                <input id="studyClearParentPinChk" type="checkbox"> 기본 길게 누르기 모드로 초기화 (PIN 제거)
                             </label>
                             <button type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:40px;">💾 운영 설정 저장</button>
                         </div>
@@ -134,79 +133,40 @@
                                 <a href="/study" target="_blank" rel="noopener" class="btn-admin btn-admin-primary btn-admin-sm">🚀 학습실 열기</a>
                             </div>
                         </div>
-
                         <div style="display:flex; flex-wrap:wrap; gap:0.85rem; margin-top:0.65rem; font-size:0.75rem; color:#7c2d12;">
                             <span>외부: <strong id="studyTabletExtLoginText">https://j-jg.cc/study/login</strong></span>
                             <span>내부: <strong id="studyTabletLanLoginText">확인 중...</strong></span>
                         </div>
-
                         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.75rem; margin-top:0.7rem; padding-top:0.65rem; border-top:1px dashed #fdba74;">
                             <div style="display:flex; flex-wrap:wrap; gap:0.9rem; font-size:0.8rem; font-weight:700; color:#334155;">
-                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
-                                    <input id="chkTabletWakeLockDefault" type="checkbox" checked>
-                                    공부 중 화면 꺼짐 방지 기본 켜기
-                                </label>
-                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
-                                    <input id="chkTabletPenOnlyDefault" type="checkbox">
-                                    S펜 전용 모드 기본 켜기 (손바닥 터치 차단)
-                                </label>
-                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
-                                    <input id="chkTabletSoundFxDefault" type="checkbox" checked>
-                                    효과음·폭죽 팩 기본 켜기
-                                </label>
-                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
-                                    <input id="chkTabletHangulGuideEnabled" type="checkbox" checked>
-                                    한글 획순 애니메이션·퀴즈 켜기
-                                </label>
-                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
-                                    <input id="chkTabletKidAlbumShareEnabled" type="checkbox" checked>
-                                    내가 칠한 그림 가족앨범 자랑 허용
-                                </label>
-                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
-                                    <input id="chkTabletPokemonColoringEnabled" type="checkbox" checked>
-                                    PokéAPI 1세대(#1~150) 포켓몬 색칠하기 켜기
-                                </label>
-                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;">
-                                    <input id="chkStudyCrossShareEnabled" type="checkbox" checked>
-                                    같은 난이도 학습지 아이들 간 교차 출제 허용
-                                </label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;"><input id="chkTabletWakeLockDefault" type="checkbox" checked> 공부 중 화면 꺼짐 방지 기본 켜기</label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;"><input id="chkTabletPenOnlyDefault" type="checkbox"> S펜 전용 모드 기본 켜기 (손바닥 터치 차단)</label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;"><input id="chkTabletSoundFxDefault" type="checkbox" checked> 효과음·폭죽 팩 기본 켜기</label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;"><input id="chkTabletHangulGuideEnabled" type="checkbox" checked> 한글 획순 애니메이션·퀴즈 켜기</label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;"><input id="chkTabletKidAlbumShareEnabled" type="checkbox" checked> 내가 칠한 그림 가족앨범 자랑 허용</label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;"><input id="chkTabletPokemonColoringEnabled" type="checkbox" checked> PokéAPI 1세대(#1~150) 포켓몬 색칠하기 켜기</label>
+                                <label style="display:inline-flex; align-items:center; gap:0.4rem; cursor:pointer;"><input id="chkStudyCrossShareEnabled" type="checkbox" checked> 같은 난이도 학습지 아이들 간 교차 출제 허용</label>
                             </div>
                             <button type="button" id="btnSaveStudyTabletConfig" class="btn-admin btn-admin-primary btn-admin-sm" onclick="saveStudyTabletConfig()">💾 태블릿 앱 설정 저장</button>
                         </div>
                     </div>
                 </div>
+            </div>
 
+            <!-- 서브 2: 아이별 학습 프로필 · 도장판 · 오답 노트 · 최근 학습지 -->
+            <div id="subpane-study-profiles" class="admin-sub-pane hidden-pane">
                 <div class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
                         <h3>🦖 아이별 학습 프로필 &amp; 도장판 목표 보상</h3>
                         <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="toggleAddStudyProfileForm()">➕ 새 학습 프로필 추가</button>
                     </div>
                     <form id="adminStudyAddProfileForm" onsubmit="createAdminStudyProfile(event)" style="display:none; grid-template-columns:repeat(auto-fit, minmax(145px, 1fr)); gap:0.6rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:0.75rem; padding:0.85rem; margin-top:0.75rem; box-sizing:border-box;">
-                        <div style="min-width:0;">
-                            <label for="newStudyEmojiInput" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">이모지</label>
-                            <input id="newStudyEmojiInput" type="text" maxlength="8" value="🐣" style="width:100%; box-sizing:border-box; padding:0.45rem; border:1px solid #cbd5e1; border-radius:0.45rem; text-align:center;">
-                        </div>
-                        <div style="min-width:0;">
-                            <label for="newStudyNameInput" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">아이 이름 *</label>
-                            <input id="newStudyNameInput" type="text" maxlength="20" required placeholder="예: 막내" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem;">
-                        </div>
-                        <div style="min-width:0;">
-                            <label for="newStudyBirthYearInput" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">출생연도</label>
-                            <input id="newStudyBirthYearInput" type="number" min="2010" max="2030" value="2023" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem;">
-                        </div>
-                        <div style="min-width:0;">
-                            <label for="newStudyLinkKidSelect" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">연결 태블릿 계정</label>
-                            <select id="newStudyLinkKidSelect" style="width:100%; box-sizing:border-box; padding:0.45rem 0.5rem; border:1px solid #cbd5e1; border-radius:0.45rem; background:#fff;">
-                                <option value="">연결 안 함</option>
-                            </select>
-                        </div>
-                        <div style="grid-column:1 / -1; min-width:0;">
-                            <label for="newStudyRewardInput" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">10칸 도장 목표 보상</label>
-                            <input id="newStudyRewardInput" type="text" maxlength="60" value="스티커 판 10칸 완성 선물 🎁" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem;">
-                        </div>
-                        <div style="grid-column:1 / -1; display:flex; gap:0.5rem;">
-                            <button type="submit" class="btn-admin btn-admin-primary" style="flex:1; min-height:40px;">✨ 학습 프로필 만들기</button>
-                        </div>
+                        <div style="min-width:0;"><label for="newStudyEmojiInput" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">이모지</label><input id="newStudyEmojiInput" type="text" maxlength="8" value="🐣" style="width:100%; box-sizing:border-box; padding:0.45rem; border:1px solid #cbd5e1; border-radius:0.45rem; text-align:center;"></div>
+                        <div style="min-width:0;"><label for="newStudyNameInput" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">아이 이름 *</label><input id="newStudyNameInput" type="text" maxlength="20" required placeholder="예: 막내" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem;"></div>
+                        <div style="min-width:0;"><label for="newStudyBirthYearInput" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">출생연도</label><input id="newStudyBirthYearInput" type="number" min="2010" max="2030" value="2023" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem;"></div>
+                        <div style="min-width:0;"><label for="newStudyLinkKidSelect" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">연결 태블릿 계정</label><select id="newStudyLinkKidSelect" style="width:100%; box-sizing:border-box; padding:0.45rem 0.5rem; border:1px solid #cbd5e1; border-radius:0.45rem; background:#fff;"><option value="">연결 안 함</option></select></div>
+                        <div style="grid-column:1 / -1; min-width:0;"><label for="newStudyRewardInput" style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">10칸 도장 목표 보상</label><input id="newStudyRewardInput" type="text" maxlength="60" value="스티커 판 10칸 완성 선물 🎁" style="width:100%; box-sizing:border-box; padding:0.45rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.45rem;"></div>
+                        <div style="grid-column:1 / -1; display:flex; gap:0.5rem;"><button type="submit" class="btn-admin btn-admin-primary" style="flex:1; min-height:40px;">✨ 학습 프로필 만들기</button></div>
                     </form>
                     <div id="adminStudyChildrenGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:0.85rem; margin-top:0.75rem;">
                         <div style="padding:1rem; color:#64748b; font-size:0.85rem;">아이 프로필을 불러오는 중입니다...</div>
@@ -226,43 +186,52 @@
                     <div id="adminPokemonStatusBar" style="margin-top:0.65rem; padding:0.65rem 0.85rem; border-radius:0.65rem; background:#f0f9ff; border:1px solid #bae6fd; display:flex; align-items:center; justify-content:space-between; gap:0.6rem; flex-wrap:wrap;">
                         <span style="font-size:0.82rem; color:#0369a1; font-weight:700;">🥚 알 부화 &amp; 포켓몬 도감 상태를 불러오는 중...</span>
                     </div>
-                    <div id="adminStampBoardsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(270px, 1fr)); gap:0.85rem; margin-top:0.75rem;">
+                    <div id="adminStampBoardsGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:0.85rem; margin-top:0.75rem;">
                         <div style="padding:1rem; color:#64748b; font-size:0.85rem;">도장판 현황을 불러오는 중입니다...</div>
                     </div>
                     <div class="admin-table-container admin-table-scroll" style="margin-top:0.9rem;">
                         <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>아이</th>
-                                    <th>유형</th>
-                                    <th>판</th>
-                                    <th>메모</th>
-                                    <th>획득 시각</th>
-                                    <th>관리</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminStudyStampLogsBody">
-                                <tr><td colspan="6" style="text-align:center; padding:1rem; color:#64748b;">도장 이력을 불러오는 중...</td></tr>
-                            </tbody>
+                            <thead><tr><th>아이</th><th>유형</th><th>판</th><th>메모</th><th>획득 시각</th><th>관리</th></tr></thead>
+                            <tbody id="adminStudyStampLogsBody"><tr><td colspan="6" style="text-align:center; padding:1rem; color:#64748b;">도장 이력을 불러오는 중...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
 
-                <div id="studyArtworkAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
+                <div id="studyWrongNotesAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
                         <div>
-                            <h3 style="margin:0;">🎨 아이들 색칠 작품 &amp; 가족앨범 공유 관리</h3>
+                            <h3 style="margin:0;">📝 아이별 오답 노트 · 복습 현황</h3>
                             <p style="margin:0.2rem 0 0; font-size:0.78rem; color:#64748b;">
-                                아이들이 색칠 놀이를 마치고 저장·자랑한 그림을 확인하고 가족앨범 재등록 또는 삭제할 수 있습니다.
+                                2회 오답으로 별이 보류된 문제와 복습 완료 내역을 확인합니다. 아이가 복습으로 맞추면 별이 자동 지급됩니다.
                             </p>
                         </div>
-                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyArtworks()">🔄 작품 새로고침</button>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyWrongNotes()">🔄 오답 새로고침</button>
                     </div>
-                    <div id="adminStudyArtworksGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.75rem; margin-top:0.75rem;">
-                        <div style="padding:0.9rem; color:#64748b; font-size:0.84rem;">그림 작품 목록을 불러오는 중입니다...</div>
+                    <div id="studyWrongNotesSummaryGrid" style="display:flex; flex-wrap:wrap; gap:0.55rem; margin-top:0.65rem;"></div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
+                        <table class="admin-table">
+                            <thead><tr><th>아이</th><th>영역·레벨</th><th>문제</th><th>오답 횟수</th><th>상태</th><th>시각</th><th>관리</th></tr></thead>
+                            <tbody id="adminStudyWrongNotesBody"><tr><td colspan="7" style="text-align:center; padding:1rem; color:#64748b;">오답 노트 현황을 불러오는 중...</td></tr></tbody>
+                        </table>
                     </div>
                 </div>
 
+                <div class="admin-card" style="box-sizing:border-box; max-width:100%;">
+                    <div class="admin-card-header">
+                        <h3>📄 최근 생성된 학습지 (최대 20건)</h3>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
+                        <table class="admin-table">
+                            <thead><tr><th>번호</th><th>아이</th><th>영역·레벨</th><th>테마</th><th>생성 경로</th><th>완료 여부</th><th>생성 시각</th><th>열기</th></tr></thead>
+                            <tbody id="adminStudyRecentSheetsBody"><tr><td colspan="8" style="text-align:center; padding:1.2rem; color:#64748b;">학습지 이력을 불러오는 중...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 서브 3: 오늘의 3종 미션 · 커리큘럼 · 공공 API 사전 · 세부 기능 On/Off -->
+            <div id="subpane-study-missions" class="admin-sub-pane hidden-pane">
+                <div id="studyOpsTogglesMount"></div>
                 <div id="studyPhase3AdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
                         <div>
@@ -274,21 +243,19 @@
                         <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyPhase3()">🔄 미션 새로고침</button>
                     </div>
                     <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.7rem; padding:0.75rem; margin-top:0.65rem;">
-                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
-                            <input type="checkbox" id="chkAdminDailyMissions" checked onchange="saveAdminPhase3Config()"> 🚀 오늘의 3종 미션 사용
-                        </label>
-                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
-                            <input type="checkbox" id="chkAdminPhase3Subjects" checked onchange="saveAdminPhase3Config()"> 🧩 신규 영역(퍼즐·동화·과학·피아노) 노출
-                        </label>
-                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
-                            <input type="checkbox" id="chkAdminWrongReviewMix" checked onchange="saveAdminPhase3Config()"> 🔁 오답 자동 복습 섞기
-                        </label>
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;"><input type="checkbox" id="chkAdminDailyMissions" checked onchange="saveAdminPhase3Config()"> 🚀 오늘의 3종 미션 사용</label>
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;"><input type="checkbox" id="chkAdminPhase3Subjects" checked onchange="saveAdminPhase3Config()"> 🧩 신규 영역(퍼즐·동화·과학·피아노) 노출</label>
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;"><input type="checkbox" id="chkAdminWrongReviewMix" checked onchange="saveAdminPhase3Config()"> 🔁 오답 자동 복습 섞기</label>
                     </div>
                     <div id="adminPhase3ChildrenGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem; margin-top:0.75rem;">
                         <div style="padding:0.8rem; color:#64748b; font-size:0.84rem;">오늘의 3종 미션 현황을 불러오는 중입니다...</div>
                     </div>
                 </div>
+                <div id="studyGrowthAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;"></div>
+            </div>
 
+            <!-- 서브 4: 가족 포켓몬 광장 · 포인트 · 쿠폰 상점 · 간식·방문 로그 -->
+            <div id="subpane-study-plaza" class="admin-sub-pane hidden-pane">
                 <div id="studyPlazaAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
                         <div>
@@ -303,15 +270,9 @@
                         </div>
                     </div>
                     <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:center; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.7rem; padding:0.75rem; margin-top:0.65rem;">
-                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
-                            <input type="checkbox" id="chkAdminPlazaEnabled" checked onchange="saveAdminPlazaConfig()"> 👨‍👩‍👧‍👦 가족 포켓몬 광장
-                        </label>
-                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
-                            <input type="checkbox" id="chkAdminCouponShopEnabled" checked onchange="saveAdminPlazaConfig()"> 🎁 포인트·쿠폰 상점
-                        </label>
-                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
-                            <input type="checkbox" id="chkAdminParentPokemonEnabled" checked onchange="saveAdminPlazaConfig()"> 👩‍👦 엄마·아빠 포켓몬
-                        </label>
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;"><input type="checkbox" id="chkAdminPlazaEnabled" checked onchange="saveAdminPlazaConfig()"> 👨‍👩‍👧‍👦 가족 포켓몬 광장</label>
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;"><input type="checkbox" id="chkAdminCouponShopEnabled" checked onchange="saveAdminPlazaConfig()"> 🎁 포인트·쿠폰 상점</label>
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;"><input type="checkbox" id="chkAdminParentPokemonEnabled" checked onchange="saveAdminPlazaConfig()"> 👩‍👦 엄마·아빠 포켓몬</label>
                     </div>
                     <div id="adminPlazaChildrenGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.75rem; margin-top:0.75rem;"></div>
                     <div class="admin-table-container admin-table-scroll" style="margin-top:0.85rem;">
@@ -329,67 +290,29 @@
                     </form>
                     <div id="adminPlazaCouponsList" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.55rem; margin-top:0.65rem;"></div>
                 </div>
-
-                <div id="studyGrowthAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;"></div>
-
-                <div id="studyWrongNotesAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
-                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
-                        <div>
-                            <h3 style="margin:0;">📝 아이별 오답 노트 · 복습 현황</h3>
-                            <p style="margin:0.2rem 0 0; font-size:0.78rem; color:#64748b;">
-                                2회 오답으로 별이 보류된 문제와 복습 완료 내역을 확인합니다. 아이가 복습으로 맞추면 별이 자동 지급됩니다.
-                            </p>
-                        </div>
-                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyWrongNotes()">🔄 오답 새로고침</button>
-                    </div>
-                    <div id="studyWrongNotesSummaryGrid" style="display:flex; flex-wrap:wrap; gap:0.55rem; margin-top:0.65rem;"></div>
-                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>아이</th>
-                                    <th>영역·레벨</th>
-                                    <th>문제</th>
-                                    <th>오답 횟수</th>
-                                    <th>상태</th>
-                                    <th>시각</th>
-                                    <th>관리</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminStudyWrongNotesBody">
-                                <tr><td colspan="7" style="text-align:center; padding:1rem; color:#64748b;">오답 노트 현황을 불러오는 중...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="admin-card" style="box-sizing:border-box; max-width:100%;">
-                    <div class="admin-card-header">
-                        <h3>📄 최근 생성된 학습지 (최대 20건)</h3>
-                    </div>
-                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
-                        <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>번호</th>
-                                    <th>아이</th>
-                                    <th>영역·레벨</th>
-                                    <th>테마</th>
-                                    <th>생성 경로</th>
-                                    <th>완료 여부</th>
-                                    <th>생성 시각</th>
-                                    <th>열기</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminStudyRecentSheetsBody">
-                                <tr><td colspan="8" style="text-align:center; padding:1.2rem; color:#64748b;">학습지 이력을 불러오는 중...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <div id="studyOpsSnacksSocialMount"></div>
             </div>
 
-            <!-- 서브 2: 암호화 텔레그램 ID 화이트리스트 & 명령 로그 -->
+            <!-- 서브 5: 아이들 색칠 작품 · AI 자유 도안 로그 & 차단 내역 -->
+            <div id="subpane-study-creative" class="admin-sub-pane hidden-pane">
+                <div id="studyArtworkAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">🎨 아이들 색칠 작품 &amp; 가족앨범 공유 관리</h3>
+                            <p style="margin:0.2rem 0 0; font-size:0.78rem; color:#64748b;">
+                                아이들이 색칠 놀이를 마치고 저장·자랑한 그림을 확인하고 가족앨범 재등록 또는 삭제할 수 있습니다.
+                            </p>
+                        </div>
+                        <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyArtworks()">🔄 작품 새로고침</button>
+                    </div>
+                    <div id="adminStudyArtworksGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:0.75rem; margin-top:0.75rem;">
+                        <div style="padding:0.9rem; color:#64748b; font-size:0.84rem;">그림 작품 목록을 불러오는 중입니다...</div>
+                    </div>
+                </div>
+                <div id="studyOpsAiColorLogsMount"></div>
+            </div>
+
+            <!-- 서브 6: 암호화 텔레그램 ID 화이트리스트 & 명령 로그 -->
             <div id="subpane-study-telegram" class="admin-sub-pane hidden-pane">
                 <div class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
@@ -402,20 +325,10 @@
                         </div>
                         <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyOverview()">🔄 새로고침</button>
                     </div>
-
                     <form id="studyTelegramAddForm" onsubmit="addAdminTelegramUser(event)" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(155px, 1fr)); gap:0.7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.9rem; margin-top:0.75rem; box-sizing:border-box;">
-                        <div style="min-width:0;">
-                            <label for="tgUserIdInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">텔레그램 숫자 ID</label>
-                            <input id="tgUserIdInput" name="telegramId" type="text" inputmode="numeric" required placeholder="예: 123456789" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
-                        </div>
-                        <div style="min-width:0;">
-                            <label for="tgUserLabelInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">호칭 / 별명</label>
-                            <input id="tgUserLabelInput" name="label" type="text" required placeholder="예: 아빠, 엄마" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
-                        </div>
-                        <div style="min-width:0;">
-                            <label for="tgPortalUsernameInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">연결 포털 아이디 (선택)</label>
-                            <input id="tgPortalUsernameInput" name="portalUsername" type="text" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="예: upt0731" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
-                        </div>
+                        <div style="min-width:0;"><label for="tgUserIdInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">텔레그램 숫자 ID</label><input id="tgUserIdInput" name="telegramId" type="text" inputmode="numeric" required placeholder="예: 123456789" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;"></div>
+                        <div style="min-width:0;"><label for="tgUserLabelInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">호칭 / 별명</label><input id="tgUserLabelInput" name="label" type="text" required placeholder="예: 아빠, 엄마" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;"></div>
+                        <div style="min-width:0;"><label for="tgPortalUsernameInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">연결 포털 아이디 (선택)</label><input id="tgPortalUsernameInput" name="portalUsername" type="text" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="예: upt0731" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;"></div>
                         <div style="min-width:0;">
                             <label for="tgUserRoleSelect" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">권한</label>
                             <select id="tgUserRoleSelect" name="role" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem; background:#fff; min-height:40px;">
@@ -423,27 +336,12 @@
                                 <option value="admin">🛡️ 관리자 (약·혈압·자산·승인)</option>
                             </select>
                         </div>
-                        <div style="display:flex; align-items:flex-end;">
-                            <button type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:40px;">🔐 암호화 등록</button>
-                        </div>
+                        <div style="display:flex; align-items:flex-end;"><button type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:40px;">🔐 암호화 등록</button></div>
                     </form>
-
                     <div class="admin-table-container admin-table-scroll" style="margin-top:0.85rem;">
                         <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>호칭</th>
-                                    <th>마스킹 ID</th>
-                                    <th>포털 계정</th>
-                                    <th>권한 설정</th>
-                                    <th>상태</th>
-                                    <th>등록일</th>
-                                    <th>관리</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminStudyTelegramUsersBody">
-                                <tr><td colspan="7" style="text-align:center; padding:1.2rem; color:#64748b;">허용 목록을 불러오는 중...</td></tr>
-                            </tbody>
+                            <thead><tr><th>호칭</th><th>마스킹 ID</th><th>포털 계정</th><th>권한 설정</th><th>상태</th><th>등록일</th><th>관리</th></tr></thead>
+                            <tbody id="adminStudyTelegramUsersBody"><tr><td colspan="7" style="text-align:center; padding:1.2rem; color:#64748b;">허용 목록을 불러오는 중...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
@@ -452,59 +350,31 @@
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
                         <div>
                             <h3>🤖 알림 비서 봇 양방향 AI &amp; 가족 위젯 제어</h3>
-                            <p id="studyInteractiveStateBadge" style="font-size:0.8rem; color:#4f46e5; font-weight:700; margin:0.25rem 0 0;">
-                                설정 상태를 불러오는 중...
-                            </p>
+                            <p id="studyInteractiveStateBadge" style="font-size:0.8rem; color:#4f46e5; font-weight:700; margin:0.25rem 0 0;">설정 상태를 불러오는 중...</p>
                         </div>
                         <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadStudyInteractiveConfig()">🔄 상태 동기화</button>
                     </div>
                     <form onsubmit="saveStudyInteractiveConfig(event)" style="display:grid; gap:0.6rem; margin-top:0.75rem; box-sizing:border-box;">
-                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;">
-                            <input id="studyInteractiveAiChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;">
-                            <span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">🤖 <b>알림 비서 자연어 AI 대화</b> — <code>/</code> 없는 질문(약 복용, 일정, 장보기 등)에 AI가 바로 응답</span>
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;">
-                            <input id="studyInteractiveBloodChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;">
-                            <span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">💊 <b>약 챙겨먹기 · 혈압 텔레그램 버튼 알림</b> — 정시 알림에 [약 먹었어요 ✅] · [15분 뒤 다시 알림] 버튼 발송</span>
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;">
-                            <input id="studyInteractiveStudyChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;">
-                            <span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">🎒 <b>학습지 완료 · 포켓몬 부화 부모님 알림</b> — 아이 완료/부화 시 텔레그램 알림 및 보상 승인 버튼 발송</span>
-                        </label>
-                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;">
-                            <input id="studyInteractiveWidgetChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;">
-                            <span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">✨ <b>포털 메인 대시보드 &ldquo;오늘의 아이들 단짝 포켓몬&rdquo; 위젯</b> — 메인 화면에 부화 중인 알·단짝 포켓몬 표시</span>
-                        </label>
-                        <div>
-                            <button id="studyInteractiveSaveBtn" type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:42px;">💾 양방향 비서·위젯 설정 저장</button>
-                        </div>
+                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;"><input id="studyInteractiveAiChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;"><span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">🤖 <b>알림 비서 자연어 AI 대화</b> — <code>/</code> 없는 질문(약 복용, 일정, 장보기 등)에 AI가 바로 응답</span></label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;"><input id="studyInteractiveBloodChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;"><span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">💊 <b>약 챙겨먹기 · 혈압 텔레그램 버튼 알림</b> — 정시 알림에 [약 먹었어요 ✅] · [15분 뒤 다시 알림] 버튼 발송</span></label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;"><input id="studyInteractiveStudyChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;"><span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">🎒 <b>학습지 완료 · 포켓몬 부화 부모님 알림</b> — 아이 완료/부화 시 텔레그램 알림 및 보상 승인 버튼 발송</span></label>
+                        <label style="display:flex; align-items:center; gap:0.6rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.65rem; cursor:pointer; min-width:0;"><input id="studyInteractiveWidgetChk" type="checkbox" checked style="width:18px; height:18px; flex-shrink:0;"><span style="font-size:0.86rem; color:#1e293b; font-weight:600; min-width:0;">✨ <b>포털 메인 대시보드 &ldquo;오늘의 아이들 단짝 포켓몬&rdquo; 위젯</b> — 메인 화면에 부화 중인 알·단짝 포켓몬 표시</span></label>
+                        <div><button id="studyInteractiveSaveBtn" type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:42px;">💾 양방향 비서·위젯 설정 저장</button></div>
                     </form>
                 </div>
 
                 <div class="admin-card" style="box-sizing:border-box; max-width:100%;">
-                    <div class="admin-card-header">
-                        <h3>📋 최근 텔레그램 봇 명령 실행 이력 (최대 25건)</h3>
-                    </div>
+                    <div class="admin-card-header"><h3>📋 최근 텔레그램 봇 명령 실행 이력 (최대 25건)</h3></div>
                     <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
                         <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>실행 시각</th>
-                                    <th>명령</th>
-                                    <th>허용 사용자</th>
-                                    <th>요약</th>
-                                    <th>결과</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminStudyTelegramLogsBody">
-                                <tr><td colspan="5" style="text-align:center; padding:1.2rem; color:#64748b;">로그를 불러오는 중...</td></tr>
-                            </tbody>
+                            <thead><tr><th>실행 시각</th><th>명령</th><th>허용 사용자</th><th>요약</th><th>결과</th></tr></thead>
+                            <tbody id="adminStudyTelegramLogsBody"><tr><td colspan="5" style="text-align:center; padding:1.2rem; color:#64748b;">로그를 불러오는 중...</td></tr></tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            <!-- 서브 3: 아이 전용 태블릿 계정 원클릭 발급 -->
+            <!-- 서브 7: 아이 전용 태블릿 계정 원클릭 발급 -->
             <div id="subpane-study-kids" class="admin-sub-pane hidden-pane">
                 <div class="admin-card" style="box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
@@ -516,24 +386,11 @@
                         </div>
                         <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyOverview()">🔄 새로고침</button>
                     </div>
-
                     <form id="studyKidAccountForm" onsubmit="createAdminKidAccount(event)" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:0.7rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:0.75rem; padding:0.9rem; margin-top:0.75rem; box-sizing:border-box;">
-                        <div style="min-width:0;">
-                            <label for="kidUsernameInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">아이디 (영문·숫자)</label>
-                            <input id="kidUsernameInput" type="text" required placeholder="예: minjun" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
-                        </div>
-                        <div style="min-width:0;">
-                            <label for="kidNicknameInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">아이 이름 / 표시 이름</label>
-                            <input id="kidNicknameInput" type="text" required placeholder="예: 서유 또는 태블릿" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
-                        </div>
-                        <div style="min-width:0;">
-                            <label for="kidPinInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">초기 간편 PIN (6자리)</label>
-                            <input id="kidPinInput" type="password" inputmode="numeric" maxlength="6" required placeholder="숫자 6자리" autocomplete="new-password" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
-                        </div>
-                        <div style="min-width:0;">
-                            <label for="kidEmojiInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">프로필 이모지</label>
-                            <input id="kidEmojiInput" type="text" maxlength="8" value="🎒" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
-                        </div>
+                        <div style="min-width:0;"><label for="kidUsernameInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">아이디 (영문·숫자)</label><input id="kidUsernameInput" type="text" required placeholder="예: minjun" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;"></div>
+                        <div style="min-width:0;"><label for="kidNicknameInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">아이 이름 / 표시 이름</label><input id="kidNicknameInput" type="text" required placeholder="예: 서유 또는 태블릿" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;"></div>
+                        <div style="min-width:0;"><label for="kidPinInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">초기 간편 PIN (6자리)</label><input id="kidPinInput" type="password" inputmode="numeric" maxlength="6" required placeholder="숫자 6자리" autocomplete="new-password" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;"></div>
+                        <div style="min-width:0;"><label for="kidEmojiInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">프로필 이모지</label><input id="kidEmojiInput" type="text" maxlength="8" value="🎒" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;"></div>
                         <div style="min-width:0;">
                             <label for="kidProfileModeSelect" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">학습실 프로필 연동</label>
                             <select id="kidProfileModeSelect" onchange="onKidProfileModeChange()" style="width:100%; box-sizing:border-box; padding:0.5rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.86rem; background:#fff;">
@@ -542,36 +399,15 @@
                                 <option value="shared">📱 공용 태블릿 (프로필 생성 안 함)</option>
                             </select>
                         </div>
-                        <div id="kidBirthYearWrap" style="min-width:0;">
-                            <label for="kidBirthYearInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">출생연도</label>
-                            <input id="kidBirthYearInput" type="number" min="2010" max="2030" value="2022" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;">
-                        </div>
-                        <div id="kidLinkProfileWrap" style="display:none; min-width:0;">
-                            <label for="kidLinkProfileSelect" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">연결할 기존 프로필</label>
-                            <select id="kidLinkProfileSelect" style="width:100%; box-sizing:border-box; padding:0.5rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.86rem; background:#fff;"></select>
-                        </div>
-                        <div style="grid-column:1 / -1;">
-                            <button type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:42px;">🎒 아이 전용 계정 &amp; 초대 링크 발급</button>
-                        </div>
+                        <div id="kidBirthYearWrap" style="min-width:0;"><label for="kidBirthYearInput" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">출생연도</label><input id="kidBirthYearInput" type="number" min="2010" max="2030" value="2022" style="width:100%; box-sizing:border-box; padding:0.5rem 0.65rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.88rem;"></div>
+                        <div id="kidLinkProfileWrap" style="display:none; min-width:0;"><label for="kidLinkProfileSelect" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">연결할 기존 프로필</label><select id="kidLinkProfileSelect" style="width:100%; box-sizing:border-box; padding:0.5rem 0.6rem; border:1px solid #cbd5e1; border-radius:0.5rem; font-size:0.86rem; background:#fff;"></select></div>
+                        <div style="grid-column:1 / -1;"><button type="submit" class="btn-admin btn-admin-primary" style="width:100%; min-height:42px;">🎒 아이 전용 계정 &amp; 초대 링크 발급</button></div>
                     </form>
-
                     <div id="adminStudyInviteResult" style="display:none; margin-top:0.85rem; padding:0.85rem; border-radius:0.75rem; background:#ecfdf5; border:1px solid #6ee7b7; color:#065f46; font-size:0.85rem;"></div>
-
                     <div class="admin-table-container admin-table-scroll" style="margin-top:0.9rem;">
                         <table class="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>프로필</th>
-                                    <th>아이디</th>
-                                    <th>학습 프로필 연결</th>
-                                    <th>PIN 상태</th>
-                                    <th>최근 접속</th>
-                                    <th>초대 링크</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminStudyKidAccountsBody">
-                                <tr><td colspan="6" style="text-align:center; padding:1.2rem; color:#64748b;">발급된 아이 전용 계정을 불러오는 중...</td></tr>
-                            </tbody>
+                            <thead><tr><th>프로필</th><th>아이디</th><th>학습 프로필 연결</th><th>PIN 상태</th><th>최근 접속</th><th>초대 링크</th></tr></thead>
+                            <tbody id="adminStudyKidAccountsBody"><tr><td colspan="6" style="text-align:center; padding:1.2rem; color:#64748b;">발급된 아이 전용 계정을 불러오는 중...</td></tr></tbody>
                         </table>
                     </div>
                 </div>

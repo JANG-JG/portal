@@ -279,7 +279,24 @@ async function generateWorksheetPayload({
     const subj = normalizeSubject(subject);
     const cleanTheme = String(theme || '동물 친구').trim().slice(0, 24) || '동물 친구';
 
+    if (subj === 'music') {
+        const pianoVoiceRaw = await getSystemConfig('study_piano_voice_enabled', '1');
+        if (pianoVoiceRaw === '0') {
+            const err = new Error('현재 미니 피아노·음성 말하기 기능이 잠시 꺼져 있어요.');
+            err.statusCode = 403;
+            throw err;
+        }
+    }
+
     if (subj === 'coloring') {
+        if (String(coloringMode) === 'ai_custom') {
+            const customAiRaw = await getSystemConfig('study_ai_custom_coloring_enabled', '1');
+            if (customAiRaw === '0') {
+                const err = new Error('현재 AI 자유 도안 만들기 기능이 잠시 꺼져 있어요.');
+                err.statusCode = 403;
+                throw err;
+            }
+        }
         if (isExtendedColoringMode(coloringMode)) {
             const levels = await getChildLevels(cid);
             const mathLevel = levels.math || 1;
@@ -288,6 +305,7 @@ async function generateWorksheetPayload({
                 theme: cleanTheme,
                 mathLevel,
                 customPrompt,
+                childId: cid,
                 callGeminiJson: String(coloringMode) === 'ai_custom'
                     ? async (p, s) => {
                         if (!resolveGeminiApiKey()) return null;

@@ -41,6 +41,7 @@ const {
 } = require('../services/study/studyPreGen.service');
 const { findAndAssignCrossChildWorksheet } = require('../services/study/studySheetShare.service');
 const { gradeAndSubmitWorksheet } = require('../services/study/studyWrongNote.service');
+const { getStudyFeatureFlags } = require('../services/study/studyOpsAdmin.service');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -100,6 +101,7 @@ router.get('/api/study/dashboard', authenticateToken, async (req, res) => {
             const { getDailyMissionsState } = require('../services/study/studyMissions.service');
             state.missions = await getDailyMissionsState(state.childId).catch(() => null);
         }
+        state.featureFlags = await getStudyFeatureFlags().catch(() => ({}));
         res.json({
             success: true,
             viewer: {
@@ -123,6 +125,7 @@ router.get('/api/study/tablet-config', authenticateToken, async (req, res) => {
         const hangulRaw = await getSystemConfig('study_hangul_guide_enabled', '1');
         const albumShareRaw = await getSystemConfig('study_kid_album_share_enabled', '1');
         const pokeColorRaw = await getSystemConfig('study_pokemon_coloring_enabled', '1');
+        const featureFlags = await getStudyFeatureFlags().catch(() => ({}));
         res.json({
             success: true,
             config: {
@@ -131,7 +134,8 @@ router.get('/api/study/tablet-config', authenticateToken, async (req, res) => {
                 soundFxDefault: sfxRaw !== '0',
                 hangulGuideEnabled: hangulRaw !== '0',
                 kidAlbumShareEnabled: albumShareRaw !== '0',
-                pokemonColoringEnabled: pokeColorRaw !== '0'
+                pokemonColoringEnabled: pokeColorRaw !== '0',
+                ...featureFlags
             }
         });
     } catch (err) {
@@ -386,7 +390,8 @@ router.post('/api/study/sheets/generate', authenticateToken, async (req, res) =>
         res.json({ success: true, sheet });
     } catch (err) {
         console.error('학습지 생성 오류:', err);
-        res.status(500).json({ success: false, message: '학습지를 만드는 중 문제가 생겼어요.' });
+        const code = err?.statusCode === 403 ? 403 : 500;
+        res.status(code).json({ success: false, message: code === 403 ? err.message : '학습지를 만드는 중 문제가 생겼어요.' });
     }
 });
 
