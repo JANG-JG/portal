@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>엄마·아빠 포켓몬 트레이너 하우스 | 빨간패드공부</title>
+    <link rel="manifest" href="/study/manifest.json">
+    <link rel="icon" type="image/png" sizes="64x64" href="/study/icons/favicon-64.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/study/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="/study/icons/apple-touch-icon.png">
+    <meta name="theme-color" content="#ec4899">
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="stylesheet" href="/css/study.css">
+    <link rel="stylesheet" href="/css/study-tablet.css">
+    <link rel="stylesheet" href="/css/pokemon-meadow.css">
+    <link rel="stylesheet" href="/css/pokemon-meadow-play.css">
+    <link rel="stylesheet" href="/css/study-pokemon-social.css">
+    <link rel="stylesheet" href="/css/study-plaza-shop.css">
+    <link rel="stylesheet" href="/css/study-parents.css">
+</head>
+<body>
+    <div class="study-shell parents-shell">
+        <header class="study-topbar">
+            <div class="study-brand">
+                <span style="font-size:2rem; line-height:1;" aria-hidden="true">👩‍👦</span>
+                <div>
+                    <h1>엄마·아빠 포켓몬 트레이너 하우스</h1>
+                    <small style="color:#64748b; font-weight:700;">우리 가족 광장을 꾸미고, 엄마·아빠 포켓몬을 키워 아이들과 함께 놀아요!</small>
+                </div>
+            </div>
+            <div class="study-topbar-actions">
+                <button type="button" id="btnParentsRefresh" class="study-btn study-btn-outline">🔄 새로고침</button>
+                <a href="/study" class="study-link-btn study-btn-secondary">🎒 아이 학습실로</a>
+                <a id="parentsPortalBackLink" href="/" class="study-link-btn study-btn-outline" hidden>🏡 포털 홈</a>
+            </div>
+        </header>
+
+        <main class="parents-main">
+            <section class="study-card parents-plaza-card" aria-label="우리 가족 포켓몬 광장 무대">
+                <div class="study-card-head" style="margin-bottom:8px;">
+                    <h2 class="study-card-title" style="margin:0;">👨‍👩‍👧‍👦 우리 가족 포켓몬 광장</h2>
+                    <span id="parentsPlazaThemeLabel" class="level-badge">⛲ 햇살 분수 공원</span>
+                </div>
+                <div id="parentsThemePills" class="plaza-theme-pills" role="group" aria-label="광장 배경 테마 선택"></div>
+                <div id="parentsPlazaStage" class="pokemon-meadow-mount"></div>
+                <div class="parents-toy-strip" role="group" aria-label="광장 놀아주기 도구">
+                    <button type="button" class="meadow-toy-btn is-active" data-parent-toy="pet">🖐️ 다 같이 모이기</button>
+                    <button type="button" class="meadow-toy-btn" data-parent-toy="ball">⚽ 가족 공놀이</button>
+                    <button type="button" class="meadow-toy-btn" data-parent-toy="bubble">🫧 비눗방울 놀이</button>
+                </div>
+            </section>
+
+            <section id="parentsTrainersGrid" class="parents-trainers-grid" aria-label="엄마 아빠 포켓몬 트레이너"></section>
+
+            <section class="study-card" aria-label="아이들 포인트 선물 및 보상 쿠폰 확인함">
+                <div class="study-card-head">
+                    <h2 class="study-card-title">🎁 아이들 포인트 칭찬 &amp; 제출 쿠폰 확인함</h2>
+                </div>
+                <div id="parentsChildrenPointsGrid" class="parents-kids-grid"></div>
+                <div id="parentsCouponRequestsGrid" class="parents-coupons-grid"></div>
+            </section>
+        </main>
+    </div>
+
+    <div id="parentsToast" class="toast-banner" aria-live="polite" hidden></div>
+
+    <script src="/vendor/study/canvas-confetti.min.js" defer></script>
+    <script src="/js/study-fx.js" defer></script>
+    <script src="/js/pokemon-meadow-themes.js" defer></script>
+    <script src="/js/pokemon-meadow.js" defer></script>
+    <script src="/js/pokemon-meadow-toys.js" defer></script>
+    <script src="/js/pokemon-meadow-play.js" defer></script>
+    <script src="/js/study-parents.js" defer></script>
+    <script src="/api/jg-ui" data-nav="false" data-ticker="false" defer></script>
+</body>
+</html>

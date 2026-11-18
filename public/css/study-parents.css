@@ -1,0 +1,123 @@
+/**
+ * ==============================================================================
+ * 엄마·아빠 포켓몬 트레이너 전용 페이지 스타일 (study-parents.css)
+ * ------------------------------------------------------------------------------
+ * - [규칙 2] 100% 한국어 | [규칙 6] 360px 모바일 무넘침 · CSS Grid/Card 규격
+ * ==============================================================================
+ */
+
+.parents-shell {
+    max-width: 1120px;
+    margin: 0 auto;
+}
+
+.parents-main {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+}
+
+.parents-plaza-card {
+    background: linear-gradient(135deg, #ffffff 0%, #fdf2f8 100%);
+    border-color: #fbcfe8;
+}
+
+.parents-toy-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.parents-trainers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 16px;
+    min-width: 0;
+}
+
+.trainer-house-card {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 20px;
+    border: 2px solid #f5d0fe;
+    background: #ffffff;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.trainer-house-card--mom {
+    border-color: #f9a8d4;
+    background: linear-gradient(180deg, #fffbfe 0%, #fff1f2 100%);
+}
+
+.trainer-house-card--dad {
+    border-color: #93c5fd;
+    background: linear-gradient(180deg, #fafdff 0%, #eff6ff 100%);
+}
+
+.trainer-house-hero {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.trainer-house-hero img {
+    width: 96px;
+    height: 96px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 16px;
+    background: #ffffff;
+    padding: 8px;
+    border: 2px solid #e2e8f0;
+}
+
+.trainer-house-snacks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.trainer-house-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.parents-kids-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.parents-kid-card {
+    padding: 12px;
+    border-radius: 16px;
+    border: 2px solid #fde68a;
+    background: #fffbeb;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.parents-coupons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 10px;
+}
+
+@media (max-width: 420px) {
+    .parents-trainers-grid,
+    .parents-kids-grid,
+    .parents-coupons-grid {
+        grid-template-columns: 1fr;
+    }
+}

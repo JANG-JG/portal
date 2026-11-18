@@ -78,6 +78,10 @@ router.get('/study/review', authenticateToken, (req, res) => {
     sendStudyHtml(res, 'study/review.html');
 });
 
+router.get('/study/parents', authenticateToken, (req, res) => {
+    sendStudyHtml(res, 'study/parents.html');
+});
+
 // ------------------------------------------------------------------------------
 // 2. 학습실 대시보드 & 레벨/도장 API (/api/study/*)
 // ------------------------------------------------------------------------------

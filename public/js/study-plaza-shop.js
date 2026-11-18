@@ -84,13 +84,13 @@
 
         if (plazaState.meadowMode === 'plaza' && plazaState.data?.config?.plazaEnabled !== false) {
             const actors = getPlazaMeadowActors();
+            const plazaTheme = plazaState.data?.familyPlaza?.plazaTheme || 'park';
+            const themeMeta = (plazaState.data?.familyPlaza?.themes || []).find((t) => t.id === plazaTheme);
             const ctrl = window.PokemonMeadow.mount(stage, {
-                buddies: actors,
-                spacious: true,
-                paused: plazaState.isMotionPaused(),
-                title: '👨‍👩‍👧‍👦 우리 가족 포켓몬 광장',
+                buddies: actors, spacious: true, theme: plazaTheme, paused: plazaState.isMotionPaused(),
+                title: `👨‍👩‍👧‍👦 우리 가족 광장 · ${themeMeta ? `${themeMeta.emoji} ${themeMeta.label}` : '⛲ 햇살 분수 공원'}`,
                 emptyText: '가족 포켓몬 친구들이 모이고 있어요!',
-                footerHint: '우리 가족 포켓몬이 한곳에 모였어요! 아래 인사 버튼을 눌러 말풍선을 띄워 보세요 ✨'
+                footerHint: '우리 가족 포켓몬이 한곳에 모였어요! 배경을 바꾸거나 그림 인사 버튼을 눌러보세요 ✨'
             });
             window.StudyPokemonSocial?.attachMeadowPlay?.(ctrl);
             plazaState.meadowCtrl = ctrl;
@@ -112,14 +112,13 @@
             modeMount.hidden = !cfg.plazaEnabled;
             if (cfg.plazaEnabled) {
                 const isPlaza = plazaState.meadowMode === 'plaza';
-                modeMount.innerHTML = `
-                    <div class="plaza-mode-strip">
-                        <div class="plaza-seg-group" role="group" aria-label="초원 공간 선택">
-                            <button type="button" class="plaza-seg-btn" data-meadow-mode="personal" aria-pressed="${!isPlaza}">🏡 내 초원</button>
-                            <button type="button" class="plaza-seg-btn" data-meadow-mode="plaza" aria-pressed="${isPlaza}">👨‍👩‍👧‍👦 우리 가족 광장</button>
-                        </div>
-                        <span class="plaza-points-badge" title="공부해서 모은 내 포인트">⭐ ${esc(shop.points)}P</span>
-                    </div>`;
+                modeMount.innerHTML = `<div class="plaza-mode-strip">
+                    <div class="plaza-seg-group" role="group" aria-label="초원 공간 선택">
+                        <button type="button" class="plaza-seg-btn" data-meadow-mode="personal" aria-pressed="${!isPlaza}">🏡 내 초원</button>
+                        <button type="button" class="plaza-seg-btn" data-meadow-mode="plaza" aria-pressed="${isPlaza}">👨‍👩‍👧‍👦 우리 가족 광장</button>
+                    </div>
+                    <span class="plaza-points-badge" title="공부해서 모은 내 포인트">⭐ ${esc(shop.points)}P</span>
+                </div>`;
                 modeMount.querySelectorAll('[data-meadow-mode]').forEach((btn) => btn.addEventListener('click', () => {
                     const next = btn.dataset.meadowMode || 'personal';
                     if (plazaState.meadowMode === next) return;
@@ -135,19 +134,34 @@
             const showReact = cfg.plazaEnabled && plazaState.meadowMode === 'plaza';
             reactMount.hidden = !showReact;
             if (showReact) {
-                const presets = plazaState.data?.familyPlaza?.presets || [];
-                const feed = (plazaState.data?.familyPlaza?.reactions || []).slice(0, 4);
-                reactMount.innerHTML = `
-                    <div class="plaza-reaction-bar" role="region" aria-label="광장 인사 말풍선">
-                        <div class="plaza-reaction-head">
-                            <span>💬 그림 인사 버튼 (타자 없이 톡 눌러 말해요!)</span>
-                            <span>${esc(plazaState.childProfile?.display_name || '나')} 이름으로 인사하기</span>
-                        </div>
-                        <div class="plaza-reaction-pills">
-                            ${presets.map((p) => `<button type="button" class="plaza-react-btn" data-react-id="${esc(p.id)}"><span>${p.sticker}</span><span>${esc(p.label)}</span></button>`).join('')}
-                        </div>
-                        ${feed.length ? `<div class="plaza-recent-feed">${feed.map((r) => `<span class="plaza-recent-chip">${esc(r.sender_emoji)} <strong>${esc(r.sender_name)}</strong>: ${esc(r.sticker)} ${esc(r.speech_text.replace(r.sticker, '').trim())}</span>`).join('')}</div>` : ''}
-                    </div>`;
+                const fp = plazaState.data?.familyPlaza || {};
+                const presets = fp.presets || [];
+                const themes = fp.themes || window.PokemonMeadowThemes?.THEME_CATALOG || [];
+                const activeTheme = fp.plazaTheme || 'park';
+                const feed = (fp.reactions || []).slice(0, 4);
+                reactMount.innerHTML = `<div class="plaza-reaction-bar" role="region" aria-label="광장 배경 및 그림 인사">
+                    <div class="plaza-theme-pills" role="group" aria-label="광장 배경 고르기">
+                        ${themes.map((t) => `<button type="button" class="plaza-theme-btn" data-plaza-theme="${esc(t.id)}" aria-pressed="${t.id === activeTheme}">${t.emoji} ${esc(t.label)}</button>`).join('')}
+                    </div>
+                    <div class="plaza-reaction-head">
+                        <span>💬 그림 인사 (타자 없이 톡 눌러 말해요!)</span>
+                        <span>${esc(plazaState.childProfile?.display_name || '나')} 이름으로</span>
+                    </div>
+                    <div class="plaza-reaction-pills">
+                        ${presets.map((p) => `<button type="button" class="plaza-react-btn" data-react-id="${esc(p.id)}"><span>${p.sticker}</span><span>${esc(p.label)}</span></button>`).join('')}
+                    </div>
+                    ${feed.length ? `<div class="plaza-recent-feed">${feed.map((r) => `<span class="plaza-recent-chip">${esc(r.sender_emoji)} <strong>${esc(r.sender_name)}</strong>: ${esc(r.sticker)} ${esc(r.speech_text.replace(r.sticker, '').trim())}</span>`).join('')}</div>` : ''}
+                </div>`;
+                reactMount.querySelectorAll('[data-plaza-theme]').forEach((btn) => btn.addEventListener('click', async () => {
+                    window.StudyFx?.tap?.();
+                    const res = await apiJson('/api/study/plaza/theme', 'POST', { theme: btn.dataset.plazaTheme });
+                    if (res.ok && res.data.familyPlaza) {
+                        plazaState.data.familyPlaza = res.data.familyPlaza;
+                        toast(res.data.message || '광장 배경을 바꿨어요!');
+                        renderModeAndBar();
+                        plazaState.onRemountMeadow?.();
+                    }
+                }));
                 reactMount.querySelectorAll('[data-react-id]').forEach((btn) => btn.addEventListener('click', async () => {
                     await sendReaction(plazaState.childId, btn.dataset.reactId);
                 }));
@@ -157,16 +171,12 @@
         if (barMount) {
             barMount.hidden = !cfg.couponShopEnabled && !cfg.parentPokemonEnabled;
             const dotCnt = Number(shop.ownedCount || 0) + Number(shop.requestedCount || 0);
-            barMount.innerHTML = `
-                <div class="plaza-action-row">
-                    ${cfg.couponShopEnabled ? `<button type="button" id="btnOpenCouponShop" class="plaza-action-btn plaza-action-btn--shop">
-                        <span>🎁 포인트 · 쿠폰 상점</span>
-                        ${dotCnt > 0 ? `<span class="plaza-pill-dot">${dotCnt}</span>` : ''}
-                    </button>` : ''}
-                    ${cfg.parentPokemonEnabled ? `<button type="button" id="btnOpenParentTrainers" class="plaza-action-btn plaza-action-btn--parents">
-                        <span>👩‍👦 엄마·아빠 포켓몬 놀이터</span>
-                    </button>` : ''}
-                </div>`;
+            barMount.innerHTML = `<div class="plaza-action-row">
+                ${cfg.couponShopEnabled ? `<button type="button" id="btnOpenCouponShop" class="plaza-action-btn plaza-action-btn--shop">
+                    <span>🎁 포인트 · 쿠폰 상점</span>${dotCnt > 0 ? `<span class="plaza-pill-dot">${dotCnt}</span>` : ''}</button>` : ''}
+                ${cfg.parentPokemonEnabled ? `<button type="button" id="btnOpenParentTrainers" class="plaza-action-btn plaza-action-btn--parents"><span>👩‍👦 엄마·아빠 포켓몬</span></button>
+                    <a href="/study/parents" class="plaza-action-btn" style="text-decoration:none; border-color:#f9a8d4; color:#9d174d;"><span>🏡 엄마·아빠 전용 페이지 ↗</span></a>` : ''}
+            </div>`;
             barMount.querySelector('#btnOpenCouponShop')?.addEventListener('click', () => {
                 window.StudyFx?.tap?.();
                 openDialog('plazaShopDialog');

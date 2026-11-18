@@ -81,13 +81,16 @@
         const compact = Boolean(opts.compact);
         const spacious = Boolean(opts.spacious) || !compact;
         const sizeClass = compact ? 'pokemon-meadow--compact' : (spacious ? 'pokemon-meadow--spacious' : '');
+        const safeTheme = String(opts.theme || 'meadow').replace(/[^a-z0-9_-]/g, '');
+        const themeClass = safeTheme && safeTheme !== 'meadow' ? ` is-theme-${safeTheme}` : '';
+        const backdropHtml = (safeTheme !== 'meadow' && window.PokemonMeadowThemes?.buildBackdrop?.(safeTheme)) || buildMeadowBackdropSvg();
         const title = opts.title || '🌿 포켓몬 초원 놀이터';
         const emptyText = opts.emptyText || '도장 10칸을 모으면 첫 포켓몬이 초원에서 뛰어놀아요!';
         const footerHint = opts.footerHint || '포켓몬을 톡 눌러 인사해 보세요!';
 
         containerEl.innerHTML = `
-            <div class="pokemon-meadow ${sizeClass} ${opts.paused ? 'is-motion-paused' : ''}" role="region" aria-label="${esc(title)}">
-                ${buildMeadowBackdropSvg()}
+            <div class="pokemon-meadow ${sizeClass}${themeClass} ${opts.paused ? 'is-motion-paused' : ''}" role="region" aria-label="${esc(title)}">
+                ${backdropHtml}
                 <div class="pokemon-meadow__header">${esc(title)}</div>
                 <div class="pokemon-meadow__actors"></div>
                 ${buddies.length === 0 ? `

@@ -45,6 +45,44 @@ router.post('/api/study/plaza/reaction', authenticateToken, async (req, res) => 
     }
 });
 
+router.post('/api/study/plaza/theme', authenticateToken, async (req, res) => {
+    try {
+        const out = await plazaSvc.setPlazaTheme(req.body?.theme);
+        res.json({ success: true, ...out });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err?.message || '광장 배경을 바꾸지 못했어요.' });
+    }
+});
+
+router.get('/api/study/parents/overview', authenticateToken, async (req, res) => {
+    try {
+        const overview = await plazaSvc.getAdminPlazaOverview();
+        const familyPlaza = await plazaSvc.getFamilyPlazaState('first');
+        res.json({ success: true, viewerRole: req.user?.role || 'family', familyPlaza, ...overview });
+    } catch (err) {
+        console.error('엄마아빠 페이지 조회 오류:', err);
+        res.status(500).json({ success: false, message: '엄마·아빠 포켓몬 하우스 정보를 불러오지 못했어요.' });
+    }
+});
+
+router.post('/api/study/parents/grant-points', authenticateToken, async (req, res) => {
+    try {
+        if (req.user?.role === 'kid') {
+            const check = await verifyParentLockPin(req.body?.parentPin || '');
+            if (check.configured && !check.valid) {
+                return res.status(403).json({ success: false, message: '부모님 PIN을 먼저 확인해 주세요! 🔒' });
+            }
+        }
+        const cid = await resolveChildProfileId(req.body?.childId, req.user);
+        const delta = Math.min(200, Math.max(5, Math.round(Number(req.body?.delta || 20))));
+        await plazaSvc.awardPoints({ ownerId: cid, delta, reason: req.body?.reason || '💖 엄마·아빠 칭찬 포인트 선물' });
+        const overview = await plazaSvc.getAdminPlazaOverview();
+        res.json({ success: true, message: `⭐ +${delta}P 칭찬 포인트를 선물했어요!`, ...overview });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err?.message || '포인트 선물을 주지 못했어요.' });
+    }
+});
+
 router.get('/api/study/shop/quiz', authenticateToken, async (req, res) => {
     try {
         const cid = await resolveChildProfileId(req.query.childId, req.user);

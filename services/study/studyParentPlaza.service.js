@@ -10,13 +10,21 @@
  */
 
 const { portalDb } = require('../db');
-const { getProfiles, getSystemConfig, normalizeChildId } = require('./studyDb.service');
+const { getProfiles, getSystemConfig, setSystemConfig, normalizeChildId } = require('./studyDb.service');
 const { getPokemonById, POKEMON_CATALOG } = require('./pokemonCatalog.data');
 const { GEN1_EVOLUTIONS, getSnackMeta, pickRandomSnacks } = require('./pokemonEvolution.data');
 const { ensureSocialTables, addSnackDelta, getSnackInventory, getAffectionMap } = require('./studyPokemonSocial.service');
 const { ensurePokemonTables } = require('./studyPokemon.service');
 
 const VALID_PARENT_IDS = new Set(['mom', 'dad']);
+const PLAZA_THEMES = [
+    { id: 'park', emoji: '⛲', label: '햇살 분수 공원' },
+    { id: 'beach', emoji: '🏖️', label: '푸른 바다 해변' },
+    { id: 'starry', emoji: '🌌', label: '별빛 캠프 광장' },
+    { id: 'sakura', emoji: '🌸', label: '벚꽃 마을 광장' },
+    { id: 'meadow', emoji: '🌿', label: '푸른 초원 들판' }
+];
+const VALID_PLAZA_THEMES = new Set(PLAZA_THEMES.map((t) => t.id));
 
 const REACTION_PRESETS = [
     { id: 'hi', sticker: '👋', label: '안녕!', speech: '안녕! 우리 가족 모두 반가워! 👋' },
@@ -332,7 +340,18 @@ async function getFamilyPlazaState(viewerChildId) {
             ...formatSpriteUrls(p.id)
         });
     }
-    return { members, reactions: recentReactions, presets: REACTION_PRESETS };
+    const plazaThemeRaw = await getSystemConfig('study_plaza_theme', 'park');
+    const plazaTheme = VALID_PLAZA_THEMES.has(plazaThemeRaw) ? plazaThemeRaw : 'park';
+    return { plazaTheme, themes: PLAZA_THEMES, members, reactions: recentReactions, presets: REACTION_PRESETS };
+}
+
+async function setPlazaTheme(themeId) {
+    await ensurePlazaRewardTables();
+    const tid = String(themeId || 'park').trim();
+    if (!VALID_PLAZA_THEMES.has(tid)) throw new Error('올바른 광장 배경을 선택해 주세요.');
+    await setSystemConfig('study_plaza_theme', tid);
+    const meta = PLAZA_THEMES.find((t) => t.id === tid) || PLAZA_THEMES[0];
+    return { plazaTheme: tid, message: `${meta.emoji} 우리 가족 광장 배경을 '${meta.label}'(으)로 바꿨어요!`, familyPlaza: await getFamilyPlazaState('first') };
 }
 
 async function postPlazaReaction({ senderId, reactionId }) {
@@ -365,6 +384,7 @@ async function postPlazaReaction({ senderId, reactionId }) {
 
 module.exports = {
     REACTION_PRESETS,
+    PLAZA_THEMES,
     dbGet, dbAll, dbRun,
     ensurePlazaRewardTables,
     getPlazaConfig,
@@ -375,5 +395,6 @@ module.exports = {
     adoptParentEggPokemon,
     evolveParentPokemon,
     getFamilyPlazaState,
+    setPlazaTheme,
     postPlazaReaction
 };
