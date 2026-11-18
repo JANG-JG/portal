@@ -342,14 +342,15 @@ router.post('/api/study/sheets/generate', authenticateToken, async (req, res) =>
             });
         }
 
-        const { childId, subject, theme, includePlayBlock, coloringMode } = req.body || {};
+        const { childId, subject, theme, includePlayBlock, coloringMode, customPrompt } = req.body || {};
         const opts = {
             childId: normalizeChildId(childId),
             subject: normalizeSubject(subject),
             theme: theme || '동물 친구',
             createdBy: req.user.username || 'web',
             includePlayBlock: includePlayBlock !== false,
-            coloringMode: coloringMode || 'auto_3'
+            coloringMode: coloringMode || 'auto_3',
+            customPrompt: typeof customPrompt === 'string' ? customPrompt.trim().slice(0, 48) : ''
         };
 
         let sheet = await findAndAssignCrossChildWorksheet(opts);

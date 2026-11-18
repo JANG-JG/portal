@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="/css/study-pokemon.css">
     <link rel="stylesheet" href="/css/pokemon-meadow.css">
     <link rel="stylesheet" href="/css/study-review.css">
+    <link rel="stylesheet" href="/css/study-draw-studio.css">
 </head>
 <body>
     <div class="study-shell">
@@ -223,6 +224,18 @@
                         <button type="button" id="tabColorCatPokemon" class="coloring-cat-tab" role="tab" aria-selected="false" tabindex="-1" data-color-cat="pokemon">
                             ⚡ 포켓몬 도감 (#1~150)
                         </button>
+                        <button type="button" id="tabColorCatFree" class="coloring-cat-tab" role="tab" aria-selected="false" tabindex="-1" data-color-cat="free">
+                            🎨 자유 스케치북
+                        </button>
+                        <button type="button" id="tabColorCatGuide" class="coloring-cat-tab" role="tab" aria-selected="false" tabindex="-1" data-color-cat="guide">
+                            👣 따라 그리기
+                        </button>
+                        <button type="button" id="tabColorCatCbn" class="coloring-cat-tab" role="tab" aria-selected="false" tabindex="-1" data-color-cat="cbn">
+                            🔢 숫자·연산 색칠
+                        </button>
+                        <button type="button" id="tabColorCatAi" class="coloring-cat-tab" role="tab" aria-selected="false" tabindex="-1" data-color-cat="ai_custom">
+                            🪄 AI 도안 만들기
+                        </button>
                     </div>
 
                     <div id="panelColorCatTheme" class="coloring-cat-panel" role="tabpanel" aria-labelledby="tabColorCatTheme">
@@ -246,6 +259,51 @@
 
                     <div id="panelColorCatPokemon" class="coloring-cat-panel" role="tabpanel" aria-labelledby="tabColorCatPokemon" hidden>
                         <div id="pokemonColoringMount" class="pokemon-coloring-mount"></div>
+                    </div>
+
+                    <div id="panelColorCatFree" class="coloring-cat-panel" role="tabpanel" aria-labelledby="tabColorCatFree" hidden>
+                        <div class="coloring-picker-box">
+                            <div class="coloring-picker-grid" role="group" aria-label="자유 스케치북 도화지 선택">
+                                <button type="button" class="coloring-tpl-pill active" data-coloring-mode="free:blank">🤍 하얀 도화지</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="free:night">🌙 반짝 밤하늘 (네온 추천!)</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="free:grid">🟦 반듯 모눈종이</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="free:lined">🗒️ 줄 공책 그림장</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="free:comic4">📖 4컷 만화 도화지</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panelColorCatGuide" class="coloring-cat-panel" role="tabpanel" aria-labelledby="tabColorCatGuide" hidden>
+                        <div class="coloring-picker-box">
+                            <div class="coloring-picker-grid" role="group" aria-label="단계별 따라 그리기 선택">
+                                <button type="button" class="coloring-tpl-pill active" data-coloring-mode="guide:cat">🐱 야옹 고양이 4단계</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="guide:dino">🦕 아기 공룡 4단계</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="guide:rocket">🚀 우주 로켓 4단계</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="guide:car">🚗 꼬마 자동차 4단계</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panelColorCatCbn" class="coloring-cat-panel" role="tabpanel" aria-labelledby="tabColorCatCbn" hidden>
+                        <div class="coloring-picker-box">
+                            <div class="coloring-picker-grid" role="group" aria-label="숫자·연산·한글 색칠 선택">
+                                <button type="button" class="coloring-tpl-pill active" data-coloring-mode="cbn_number">🔢 숫자 따라 색칠 (1~5)</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="cbn_math">🧮 덧셈·뺄셈 정답 색칠</button>
+                                <button type="button" class="coloring-tpl-pill" data-coloring-mode="cbn_hangul">🇰🇷 한글 낱자 색칠 (가~마)</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="panelColorCatAi" class="coloring-cat-panel" role="tabpanel" aria-labelledby="tabColorCatAi" hidden>
+                        <div class="ai-color-box">
+                            <label for="aiColorPromptInput" style="font-weight: 800; color: #6b21a8;">✨ 그리고 싶은 그림을 적으면 나만의 색칠 도안을 그려줘요!</label>
+                            <input type="text" id="aiColorPromptInput" class="study-input" maxlength="40" placeholder="예: 케이크 먹는 공룡, 우주선 탄 고양이">
+                            <div class="ai-color-chips" role="group" aria-label="추천 AI 도안 아이디어">
+                                <button type="button" class="draw-brush-pill ai-idea-chip" data-idea="케이크 먹는 공룡">🦕 케이크 먹는 공룡</button>
+                                <button type="button" class="draw-brush-pill ai-idea-chip" data-idea="우주선 탄 고양이">🚀 우주선 탄 고양이</button>
+                                <button type="button" class="draw-brush-pill ai-idea-chip" data-idea="별이 반짝이는 왕관">👑 별 반짝 왕관</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="coloring-action-bar">

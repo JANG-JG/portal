@@ -25,6 +25,10 @@ const {
     buildFallbackWorksheet
 } = require('./worksheetValidator.service');
 const { buildColoringWorksheet } = require('./playBlocks.service');
+const {
+    isExtendedColoringMode,
+    buildExtendedColoringWorksheet
+} = require('./aiColoringSvg.service');
 
 const ipv4HttpsAgent = new https.Agent({ family: 4 });
 
@@ -150,7 +154,7 @@ function buildGeminiPromptAndSchema({ childName, birthYear, subject, level, them
     return { prompt, schema };
 }
 
-async function callGeminiStructuredJson(opts) {
+async function callGeminiWithPromptAndSchema(prompt, schema) {
     const apiKey = resolveGeminiApiKey();
     if (!apiKey) return { ok: false, reason: 'missing_api_key' };
 
@@ -164,7 +168,6 @@ async function callGeminiStructuredJson(opts) {
         'gemini-3.0-flash'
     ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
 
-    const { prompt, schema } = buildGeminiPromptAndSchema(opts);
     const payload = {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
@@ -211,12 +214,18 @@ async function callGeminiStructuredJson(opts) {
     return { ok: false, reason: 'gemini_request_failed' };
 }
 
+async function callGeminiStructuredJson(opts) {
+    const { prompt, schema } = buildGeminiPromptAndSchema(opts);
+    return callGeminiWithPromptAndSchema(prompt, schema);
+}
+
 async function generateWorksheetPayload({
     childId,
     subject,
     theme = '동물 친구',
     includePlayBlock = true,
     coloringMode = 'auto_3',
+    customPrompt = '',
     allowFallback = true,
     reserveQuota = 0
 }) {
@@ -225,6 +234,35 @@ async function generateWorksheetPayload({
     const cleanTheme = String(theme || '동물 친구').trim().slice(0, 24) || '동물 친구';
 
     if (subj === 'coloring') {
+        if (isExtendedColoringMode(coloringMode)) {
+            const levels = await getChildLevels(cid);
+            const mathLevel = levels.math || 1;
+            const extSheet = await buildExtendedColoringWorksheet({
+                mode: coloringMode,
+                theme: cleanTheme,
+                mathLevel,
+                customPrompt,
+                callGeminiJson: String(coloringMode) === 'ai_custom'
+                    ? async (p, s) => {
+                        if (!resolveGeminiApiKey()) return null;
+                        const canUse = await tryConsumeGeminiQuota();
+                        if (!canUse) return null;
+                        return callGeminiWithPromptAndSchema(p, s);
+                    }
+                    : null
+            });
+            return {
+                ok: true,
+                childId: cid,
+                subject: 'coloring',
+                level: mathLevel,
+                theme: cleanTheme,
+                title: extSheet.title,
+                source: extSheet.sourceLabel || 'coloring_studio',
+                content: extSheet
+            };
+        }
+
         const coloringSheet = buildColoringWorksheet({ theme: cleanTheme, coloringMode });
         return {
             ok: true,
@@ -320,13 +358,14 @@ async function generateWorksheetPayload({
     };
 }
 
-async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친구', createdBy = 'web', includePlayBlock = true, coloringMode = 'auto_3' }) {
+async function generateAndSaveWorksheet({ childId, subject, theme = '동물 친구', createdBy = 'web', includePlayBlock = true, coloringMode = 'auto_3', customPrompt = '' }) {
     const payload = await generateWorksheetPayload({
         childId,
         subject,
         theme,
         includePlayBlock,
         coloringMode,
+        customPrompt,
         allowFallback: true,
         reserveQuota: 0
     });

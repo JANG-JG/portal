@@ -439,12 +439,15 @@
             triggerBtn.disabled = true;
             const origText = triggerBtn.textContent;
             triggerBtn.textContent = subject === 'coloring' ? '🖍️ 색칠 도안을 준비하고 있어요...' : '✨ 재미있는 학습지를 만들고 있어요...';
+            const customPrompt = (subject === 'coloring' && state.selectedColoringMode === 'ai_custom')
+                ? (document.getElementById('aiColorPromptInput')?.value || '').trim()
+                : '';
             try {
                 const res = await fetch('/api/study/sheets/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ childId: state.childId, subject, theme, includePlayBlock, coloringMode: state.selectedColoringMode })
+                    body: JSON.stringify({ childId: state.childId, subject, theme, includePlayBlock, coloringMode: state.selectedColoringMode, customPrompt })
                 });
                 const data = await res.json();
                 if (data.success && data.sheet) {

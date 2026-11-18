@@ -253,6 +253,7 @@
                 t.setAttribute('aria-selected', selected ? 'true' : 'false');
                 t.tabIndex = selected ? 0 : -1;
             });
+            try { tab.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) {}
             if (moveFocus) tab.focus();
             if (typeof onSelectTab === 'function') onSelectTab(tab);
         };
@@ -279,13 +280,23 @@
 
     function initColoringCategoryTabs({ getSelectedMode, onSelectMode }) {
         const catTablist = document.querySelector('.coloring-cat-tabs[role="tablist"]');
-        const themePanel = document.getElementById('panelColorCatTheme');
-        const pokemonPanel = document.getElementById('panelColorCatPokemon');
         const summaryEl = document.getElementById('coloringSelectedSummary');
+        const panelMap = {
+            theme: document.getElementById('panelColorCatTheme'),
+            pokemon: document.getElementById('panelColorCatPokemon'),
+            free: document.getElementById('panelColorCatFree'),
+            guide: document.getElementById('panelColorCatGuide'),
+            cbn: document.getElementById('panelColorCatCbn'),
+            ai_custom: document.getElementById('panelColorCatAi')
+        };
 
         const remembered = {
             theme: { mode: 'auto_3', label: '🎲 테마 맞춤 3장 모음' },
-            pokemon: { mode: 'pokemon_random_3', label: '⚡ 랜덤 포켓몬 3마리 (1~150)' }
+            pokemon: { mode: 'pokemon_random_3', label: '⚡ 랜덤 포켓몬 3마리 (1~150)' },
+            free: { mode: 'free:blank', label: '🤍 하얀 도화지' },
+            guide: { mode: 'guide:cat', label: '🐱 야옹 고양이 4단계' },
+            cbn: { mode: 'cbn_number', label: '🔢 숫자 따라 색칠 (1~5)' },
+            ai_custom: { mode: 'ai_custom', label: '🪄 내가 말한 그림 AI 도안' }
         };
         let activeCat = 'theme';
 
@@ -300,18 +311,39 @@
             updateSummary(label);
         };
 
-        document.querySelectorAll('#panelColorCatTheme .coloring-tpl-pill').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const mode = btn.dataset.coloringMode || 'auto_3';
-                document.querySelectorAll('#panelColorCatTheme .coloring-tpl-pill').forEach((p) => p.classList.toggle('active', p === btn));
-                applySelection('theme', mode, btn.textContent.trim());
+        ['theme', 'free', 'guide', 'cbn'].forEach((catKey) => {
+            const panel = panelMap[catKey];
+            if (!panel) return;
+            panel.querySelectorAll('.coloring-tpl-pill').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const mode = btn.dataset.coloringMode || 'auto_3';
+                    panel.querySelectorAll('.coloring-tpl-pill').forEach((p) => p.classList.toggle('active', p === btn));
+                    applySelection(catKey, mode, btn.textContent.trim());
+                });
+            });
+        });
+
+        const aiInput = document.getElementById('aiColorPromptInput');
+        if (aiInput) {
+            aiInput.addEventListener('input', () => {
+                const txt = aiInput.value.trim();
+                applySelection('ai_custom', 'ai_custom', txt ? `🪄 ${txt}` : '🪄 내가 말한 그림 AI 도안');
+            });
+        }
+        document.querySelectorAll('.ai-idea-chip').forEach((chip) => {
+            chip.addEventListener('click', () => {
+                const idea = chip.dataset.idea || '';
+                if (aiInput) aiInput.value = idea;
+                applySelection('ai_custom', 'ai_custom', idea ? `🪄 ${idea}` : '🪄 내가 말한 그림 AI 도안');
             });
         });
 
         bindAccessibleTablist(catTablist, (tab) => {
-            activeCat = tab.dataset.colorCat === 'pokemon' ? 'pokemon' : 'theme';
-            if (themePanel) themePanel.hidden = activeCat !== 'theme';
-            if (pokemonPanel) pokemonPanel.hidden = activeCat !== 'pokemon';
+            const rawCat = tab.dataset.colorCat || 'theme';
+            activeCat = panelMap[rawCat] ? rawCat : 'theme';
+            Object.entries(panelMap).forEach(([k, panel]) => {
+                if (panel) panel.hidden = k !== activeCat;
+            });
 
             const saved = remembered[activeCat];
             if (typeof onSelectMode === 'function') onSelectMode(saved.mode);

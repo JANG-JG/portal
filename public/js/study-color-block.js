@@ -24,34 +24,40 @@
     }
 
     function snapshotCanvas(canvas) {
+        if (window.StudyDrawBrushes?.snapshotCanvas) return window.StudyDrawBrushes.snapshotCanvas(canvas);
         const copy = document.createElement('canvas');
         copy.width = canvas.width;
         copy.height = canvas.height;
-        if (copy.width > 0 && copy.height > 0) {
-            copy.getContext('2d').drawImage(canvas, 0, 0);
-        }
+        if (copy.width > 0 && copy.height > 0) copy.getContext('2d').drawImage(canvas, 0, 0);
         return copy;
     }
 
     /**
-     * 색칠 놀이 블록을 렌더링한다 (톡 채우기 + S펜 필압 색칠 + 되돌리기 + 앨범 자랑).
+     * 색칠 놀이 블록을 렌더링한다 (톡 채우기 + 특수 브러시 + 대칭 + 스티커 + 특수 모드).
      */
     function renderColorBlock(container, blk, speakFn, toastFn, sheetMeta) {
+        const studioKind = String(blk?.studioKind || '');
+        const supportsFill = studioKind !== 'free' && studioKind !== 'guide';
         let activeHex = CRAYONS[0].hex;
-        let activeMode = 'fill';
-        let lastPaintMode = 'fill';
+        let activeMode = blk?.defaultTool || (supportsFill ? 'fill' : 'brush');
+        if (!supportsFill && activeMode === 'fill') activeMode = 'brush';
+        let lastPaintMode = activeMode === 'eraser' || activeMode === 'sticker' ? 'brush' : activeMode;
         let brushWidth = 14;
+        let brushStyle = 'crayon';
+        let mirrorEnabled = false;
+        const brushRunState = { hue: 0, sparkSeq: 0 };
         let paintedCount = 0;
         let strokeCount = 0;
         let cheered = false;
         let hasCanvasInk = false;
         let drawing = false;
         let activePoints = [];
+        let lastPoint = null;
         let activeUsesPen = false;
         let preStrokeSnapshot = null;
         const MAX_UNDO = 15;
         const undoStack = [];
-        const defaultHint = blk.hint || '원하는 색연필을 고른 뒤 그림 안을 톡톡 눌러 보세요!';
+        const defaultHint = blk.hint || (supportsFill ? '원하는 색연필을 고른 뒤 그림 안을 톡톡 눌러 보세요!' : '브러시와 스티커로 자유롭게 그림을 그려 보세요!');
 
         const modeBar = document.createElement('div');
         modeBar.className = 'color-toolbar no-print';
@@ -59,8 +65,9 @@
         modeBar.setAttribute('aria-label', '색칠 도구 선택');
 
         const modes = [
-            { id: 'fill', label: '🪄 톡 채우기' },
-            { id: 'brush', label: '🖍️ 쓱쓱 색칠' },
+            ...(supportsFill ? [{ id: 'fill', label: '🪄 톡 채우기' }] : []),
+            { id: 'brush', label: '🖍️ 쓱쓱 그리기' },
+            { id: 'sticker', label: '🏷️ 스티커' },
             { id: 'eraser', label: '🧽 지우개' }
         ];
         const modeBtns = modes.map((m) => {
@@ -126,26 +133,59 @@
         canvas.setAttribute('aria-label', '자유 색칠 영역');
         const hintHost = document.createElement('div');
         hintHost.className = 'pokemon-hint-host';
+        const mirrorGuideEl = document.createElement('div');
+        mirrorGuideEl.className = 'draw-mirror-guide no-print';
+        mirrorGuideEl.hidden = true;
+        const drawSubbar = window.StudyDrawBrushes?.createDrawSubbar?.({
+            onBrushChange: (style) => {
+                brushStyle = style || 'crayon';
+                if (activeMode !== 'brush') setMode('brush');
+            },
+            onMirrorChange: (on) => {
+                mirrorEnabled = Boolean(on);
+                mirrorGuideEl.hidden = !mirrorEnabled;
+            }
+        });
+        const stickerTray = window.StudyDrawStickers?.createStickerTray?.({
+            childId: sheetMeta?.child_id || 'first',
+            onPick: () => { if (activeMode !== 'sticker') setMode('sticker'); }
+        });
 
+        let cbnCtrl = null;
+        let guideCtrl = null;
         let baseSvg = null;
         let outlineSvg = null;
         let parts = [];
         let floodSession = null;
         const isPokemonSheet = Number(blk?.pokemonId) > 0 && window.StudyPokemonColoring;
-        if (!isPokemonSheet) {
-            wrap.innerHTML = window.StudyIllustrations
-                ? window.StudyIllustrations.getColoringSvg(blk.templateId || 'dino')
-                : '<p>색칠 도안을 불러오지 못했어요.</p>';
-            baseSvg = wrap.querySelector('.coloring-svg');
-            wrap.appendChild(canvas);
-            outlineSvg = buildOutlineOverlay(baseSvg);
-            if (outlineSvg) wrap.appendChild(outlineSvg);
-        }
-        stage.appendChild(wrap);
+        if (studioKind) wrap.dataset.studioKind = studioKind;
 
         const banner = document.createElement('p');
         banner.className = 'play-feedback';
         banner.textContent = defaultHint;
+
+        if (!isPokemonSheet) {
+            if (window.StudyDrawModes?.mountStudioSvg) {
+                const mounted = window.StudyDrawModes.mountStudioSvg({
+                    wrap, canvas, blk, studioKind, buildOutlineOverlay,
+                    selectColor: (hex, sw) => selectColor(hex, sw), palette, speakFn, banner
+                });
+                baseSvg = mounted.baseSvg;
+                outlineSvg = mounted.outlineSvg;
+                cbnCtrl = mounted.cbnCtrl;
+                guideCtrl = mounted.guideCtrl;
+            } else {
+                wrap.innerHTML = window.StudyIllustrations
+                    ? window.StudyIllustrations.getColoringSvg(blk.templateId || 'dino')
+                    : '<p>색칠 도안을 불러오지 못했어요.</p>';
+                baseSvg = wrap.querySelector('.coloring-svg');
+                wrap.appendChild(canvas);
+                outlineSvg = buildOutlineOverlay(baseSvg);
+                if (outlineSvg) wrap.appendChild(outlineSvg);
+            }
+        }
+        wrap.appendChild(mirrorGuideEl);
+        stage.appendChild(wrap);
 
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const applyCanvasStyle = () => {
@@ -164,7 +204,7 @@
         };
 
         const syncBrushUi = () => {
-            sizeGroup.classList.toggle('is-muted', activeMode === 'fill');
+            sizeGroup.classList.toggle('is-muted', activeMode === 'fill' || activeMode === 'sticker');
             sizeBtns.forEach((b) => {
                 const on = Number(b.dataset.brushSize) === brushWidth;
                 b.classList.toggle('active', on);
@@ -175,6 +215,8 @@
                 b.classList.toggle('active', on);
                 b.setAttribute('aria-pressed', on ? 'true' : 'false');
             });
+            if (drawSubbar) drawSubbar.el.hidden = activeMode === 'fill' || activeMode === 'eraser';
+            if (stickerTray) stickerTray.setVisible(activeMode === 'sticker');
             wrap.dataset.colorMode = activeMode;
             applyCanvasStyle();
         };
@@ -186,7 +228,8 @@
             if (!keepHint) {
                 banner.style.color = '#475569';
                 if (nextMode === 'fill') banner.textContent = defaultHint;
-                else if (nextMode === 'brush') banner.textContent = '손가락이나 펜으로 그림 위를 쓱쓱 문질러 색칠해 보세요! 🖍️';
+                else if (nextMode === 'sticker') banner.textContent = '아래에서 스티커를 고른 뒤 그림 위를 톡톡 찍어 꾸며 보세요! 🏷️';
+                else if (nextMode === 'brush') banner.textContent = mirrorEnabled ? '🪞 대칭 모드! 가운데를 기준으로 양쪽이 똑같이 그려져요!' : '손가락이나 펜으로 그림 위를 쓱쓱 문질러 그려 보세요! 🖍️';
                 else banner.textContent = '지우고 싶은 부분을 쓱쓱 문질러 지울 수 있어요! 🧽';
             }
         };
@@ -202,52 +245,27 @@
             activeHex = hex;
             palette.querySelectorAll('.color-swatch').forEach((b) => b.classList.toggle('active', b === activeSw));
             recPaletteBar.querySelectorAll('.color-swatch').forEach((b) => b.classList.toggle('active', b === activeSw));
-            if (activeMode === 'eraser') setMode(lastPaintMode === 'fill' ? 'brush' : lastPaintMode);
+            cbnCtrl?.syncActiveHex?.(hex);
+            if (activeMode === 'eraser' || activeMode === 'sticker') setMode(lastPaintMode === 'fill' && supportsFill ? 'brush' : lastPaintMode);
             else applyCanvasStyle();
         };
 
         CRAYONS.forEach((c, idx) => {
-            const sw = document.createElement('button');
-            sw.type = 'button';
-            sw.className = `color-swatch${idx === 0 ? ' active' : ''}`;
+            const sw = Object.assign(document.createElement('button'), { type: 'button', className: `color-swatch${idx === 0 ? ' active' : ''}`, title: c.name });
+            sw.dataset.hex = c.hex;
             sw.style.backgroundColor = c.hex;
             sw.setAttribute('aria-label', `${c.name} 색연필`);
-            sw.title = c.name;
             sw.addEventListener('click', () => selectColor(c.hex, sw));
             palette.appendChild(sw);
         });
 
-        const resizeCanvas = () => {
-            if (!ctx) return;
-            const rect = wrap.getBoundingClientRect();
-            if (!rect.width || !rect.height) return;
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            const targetW = Math.max(200, Math.floor(rect.width * dpr));
-            const targetH = Math.max(140, Math.floor(rect.height * dpr));
-            if (targetW === canvas.width && targetH === canvas.height) return;
-            let snapshot = null;
-            if (canvas.width > 0 && canvas.height > 0 && hasCanvasInk) {
-                snapshot = document.createElement('canvas');
-                snapshot.width = canvas.width;
-                snapshot.height = canvas.height;
-                snapshot.getContext('2d').drawImage(canvas, 0, 0);
-            }
-            canvas.width = targetW;
-            canvas.height = targetH;
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            if (snapshot) {
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.drawImage(snapshot, 0, 0, rect.width, rect.height);
-            }
-            applyCanvasStyle();
-        };
+        const resizeCanvas = () => window.StudyDrawBrushes?.resizeCanvasToWrap?.({ canvas, wrap, ctx, hasInk: hasCanvasInk, applyStyle: applyCanvasStyle });
         requestAnimationFrame(resizeCanvas);
         if (typeof ResizeObserver === 'function') new ResizeObserver(resizeCanvas).observe(wrap);
         else window.addEventListener('resize', resizeCanvas);
 
         const syncUndoBtn = () => { undoBtn.disabled = undoStack.length === 0; };
         const pushUndo = (entry) => { undoStack.push(entry); if (undoStack.length > MAX_UNDO) undoStack.shift(); syncUndoBtn(); };
-
         const triggerPraise = () => {
             if (cheered) return;
             cheered = true;
@@ -256,66 +274,81 @@
             if (window.StudyFx) window.StudyFx.correct();
             if (speakFn) speakFn('우와! 정말 예쁘게 칠하고 있네요!', 'ko-KR');
         };
-
-        const getPos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+        const getPos = (e) => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top, w: r.width }; };
         const getPointerPressure = (e) => {
             if (!e) return { pressure: 0.5, isPen: false };
             const isPen = e.pointerType === 'pen';
             const raw = typeof e.pressure === 'number' && e.pressure > 0 ? e.pressure : 0.5;
             return { pressure: isPen ? Math.min(1, Math.max(0.08, raw)) : 0.5, isPen };
         };
-        const restoreSnapshot = (snap) => {
-            if (!ctx || !snap) return;
-            const dpr = Math.min(window.devicePixelRatio || 1, 2);
-            ctx.save();
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.drawImage(snap, 0, 0, canvas.width, canvas.height);
-            ctx.restore();
-            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-            applyCanvasStyle();
-        };
+        const restoreSnapshot = (snap) => window.StudyDrawBrushes?.restoreSnapshot?.(ctx, canvas, snap, applyCanvasStyle);
 
         let prevInkForStroke = false;
         const beginStroke = (p, e) => {
-            drawing = true;
             prevInkForStroke = hasCanvasInk;
             preStrokeSnapshot = snapshotCanvas(canvas);
+            if (activeMode === 'sticker' && window.StudyDrawStickers && stickerTray) {
+                hasCanvasInk = true;
+                strokeCount += 1;
+                if (strokeCount >= 4) triggerPraise();
+                if (window.StudyFx) window.StudyFx.crayon();
+                const snapForUndo = preStrokeSnapshot;
+                preStrokeSnapshot = null;
+                window.StudyDrawStickers.stampStickerOnCanvas({
+                    ctx, x: p.x, y: p.y, sticker: stickerTray.getCurrentSticker(),
+                    sizeMode: stickerTray.getSizeMode(), logicalW: p.w, mirror: mirrorEnabled
+                }).then(() => pushUndo({ kind: 'canvas', snapshot: snapForUndo, prevInk: prevInkForStroke }));
+                return;
+            }
+            drawing = true;
             const { pressure, isPen } = getPointerPressure(e);
             activeUsesPen = isPen;
             activePoints = [[p.x, p.y, pressure]];
-
+            lastPoint = [p.x, p.y, pressure];
             if (activeMode === 'brush') {
                 hasCanvasInk = true;
                 strokeCount += 1;
                 if (strokeCount >= 4) triggerPraise();
-            }
-            if (activeMode === 'brush' && window.PerfectFreehand) {
-                fillFreehandStroke(ctx, activePoints, activeHex, brushWidth, activeUsesPen);
-                return;
+                if (brushStyle !== 'crayon' && window.StudyDrawBrushes) {
+                    window.StudyDrawBrushes.paintSegmentWithMirror({ ctx, brushStyle, fromPt: lastPoint, toPt: [p.x + 0.01, p.y + 0.01, pressure], hex: activeHex, width: brushWidth, logicalW: p.w, mirror: mirrorEnabled, state: brushRunState, strokeCount });
+                    return;
+                }
+                if (window.PerfectFreehand) {
+                    fillFreehandStroke(ctx, activePoints, activeHex, brushWidth, activeUsesPen);
+                    if (mirrorEnabled && window.StudyDrawBrushes) fillFreehandStroke(ctx, window.StudyDrawBrushes.mirrorPoints(activePoints, p.w), activeHex, brushWidth, activeUsesPen);
+                    return;
+                }
             }
             applyCanvasStyle();
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p.x + 0.01, p.y + 0.01);
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 0.01, p.y + 0.01); ctx.stroke();
         };
         const moveStroke = (p, e) => {
             if (!drawing || !ctx) return;
-            if (activeMode === 'brush' && window.PerfectFreehand && preStrokeSnapshot) {
-                const { pressure } = getPointerPressure(e);
-                activePoints.push([p.x, p.y, pressure]);
-                restoreSnapshot(preStrokeSnapshot);
-                fillFreehandStroke(ctx, activePoints, activeHex, brushWidth, activeUsesPen);
+            const { pressure } = getPointerPressure(e);
+            const curPt = [p.x, p.y, pressure];
+            if (activeMode === 'brush' && brushStyle !== 'crayon' && window.StudyDrawBrushes) {
+                window.StudyDrawBrushes.paintSegmentWithMirror({ ctx, brushStyle, fromPt: lastPoint || curPt, toPt: curPt, hex: activeHex, width: brushWidth, logicalW: p.w, mirror: mirrorEnabled, state: brushRunState, strokeCount });
+                lastPoint = curPt;
                 return;
             }
-            ctx.lineTo(p.x, p.y);
-            ctx.stroke();
+            if (activeMode === 'brush' && window.PerfectFreehand && preStrokeSnapshot) {
+                activePoints.push(curPt);
+                restoreSnapshot(preStrokeSnapshot);
+                fillFreehandStroke(ctx, activePoints, activeHex, brushWidth, activeUsesPen);
+                if (mirrorEnabled && window.StudyDrawBrushes) fillFreehandStroke(ctx, window.StudyDrawBrushes.mirrorPoints(activePoints, p.w), activeHex, brushWidth, activeUsesPen);
+                return;
+            }
+            applyCanvasStyle();
+            ctx.beginPath(); ctx.moveTo(lastPoint ? lastPoint[0] : p.x, lastPoint ? lastPoint[1] : p.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+            if (mirrorEnabled && p.w > 0 && lastPoint) {
+                ctx.beginPath(); ctx.moveTo(p.w - lastPoint[0], lastPoint[1]); ctx.lineTo(p.w - p.x, p.y); ctx.stroke();
+            }
+            lastPoint = curPt;
         };
         const endDraw = () => {
             if (!drawing) return;
             drawing = false;
+            lastPoint = null;
             if (preStrokeSnapshot) {
                 pushUndo({ kind: 'canvas', snapshot: preStrokeSnapshot, prevInk: prevInkForStroke });
                 preStrokeSnapshot = null;
@@ -324,20 +357,9 @@
         };
 
         if (window.StudyTablet && typeof window.StudyTablet.bindDrawingCanvas === 'function') {
-            window.StudyTablet.bindDrawingCanvas(canvas, {
-                canStart: () => Boolean(ctx) && activeMode !== 'fill',
-                getPos,
-                onStart: beginStroke,
-                onMove: moveStroke,
-                onEnd: endDraw,
-                onResize: resizeCanvas
-            });
+            window.StudyTablet.bindDrawingCanvas(canvas, { canStart: () => Boolean(ctx) && activeMode !== 'fill', getPos, onStart: beginStroke, onMove: moveStroke, onEnd: endDraw, onResize: resizeCanvas });
         } else {
-            canvas.addEventListener('pointerdown', (e) => {
-                if (!ctx || activeMode === 'fill' || e.isPrimary === false) return;
-                canvas.setPointerCapture(e.pointerId);
-                beginStroke(getPos(e), e);
-            });
+            canvas.addEventListener('pointerdown', (e) => { if (ctx && activeMode !== 'fill' && e.isPrimary !== false) { canvas.setPointerCapture(e.pointerId); beginStroke(getPos(e), e); } });
             canvas.addEventListener('pointermove', (e) => moveStroke(getPos(e), e));
             canvas.addEventListener('pointerup', endDraw);
             canvas.addEventListener('pointercancel', endDraw);
@@ -347,6 +369,7 @@
             targetParts.forEach((part) => {
                 part.addEventListener('click', () => {
                     if (activeMode !== 'fill') return;
+                    if (cbnCtrl?.validateTap && !cbnCtrl.validateTap(part, activeHex)) return;
                     const prevFill = part.getAttribute('fill') || '#ffffff';
                     const prevPainted = Boolean(part.dataset.painted);
                     if (prevFill === activeHex && (activeHex === '#ffffff' || prevPainted)) return;
@@ -400,12 +423,7 @@
         };
 
         if (isPokemonSheet) {
-            window.StudyPokemonColoring.mountPokemonColoringSvg({
-                wrap,
-                blk,
-                hintHost,
-                onSvgReady: hydrateSvg
-            });
+            window.StudyPokemonColoring.mountPokemonColoringSvg({ wrap, blk, hintHost, onSvgReady: hydrateSvg });
         } else {
             parts = baseSvg ? Array.from(baseSvg.querySelectorAll('[data-color-part]')) : [];
             bindParts(parts);
@@ -419,13 +437,8 @@
             if (item.kind === 'fill' && item.part) {
                 item.part.setAttribute('fill', item.prevFill || '#ffffff');
                 const wasPainted = Boolean(item.part.dataset.painted);
-                if (item.prevPainted && !wasPainted) {
-                    item.part.dataset.painted = '1';
-                    paintedCount += 1;
-                } else if (!item.prevPainted && wasPainted) {
-                    delete item.part.dataset.painted;
-                    paintedCount = Math.max(0, paintedCount - 1);
-                }
+                if (item.prevPainted && !wasPainted) { item.part.dataset.painted = '1'; paintedCount += 1; }
+                else if (!item.prevPainted && wasPainted) { delete item.part.dataset.painted; paintedCount = Math.max(0, paintedCount - 1); }
             } else if (item.kind === 'canvas' && item.snapshot) {
                 restoreSnapshot(item.snapshot);
                 hasCanvasInk = Boolean(item.prevInk);
@@ -436,18 +449,10 @@
 
         clearBtn.addEventListener('click', () => {
             parts.forEach((p) => { p.setAttribute('fill', '#ffffff'); delete p.dataset.painted; });
-            if (ctx) {
-                ctx.save();
-                ctx.setTransform(1, 0, 0, 1, 0, 0);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.restore();
-            }
+            if (ctx) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
             undoStack.length = 0;
             syncUndoBtn();
-            paintedCount = 0;
-            strokeCount = 0;
-            cheered = false;
-            hasCanvasInk = false;
+            paintedCount = 0; strokeCount = 0; cheered = false; hasCanvasInk = false;
             applyCanvasStyle();
             if (window.StudyFx) window.StudyFx.tap();
             banner.style.color = '#64748b';
@@ -458,24 +463,17 @@
         artworkBar.className = 'color-artwork-actions no-print';
         if (window.StudyArtwork && typeof window.StudyArtwork.createShareControl === 'function') {
             window.StudyArtwork.createShareControl({
-                actionsBar: artworkBar,
-                toastFn,
-                speakFn,
+                actionsBar: artworkBar, toastFn, speakFn,
                 getContext: () => ({
-                    baseSvg,
-                    drawCanvas: canvas,
-                    outlineSvg,
-                    childId: sheetMeta?.child_id || 'first',
-                    childName: sheetMeta?.child_name || '',
-                    sheetId: sheetMeta?.id || 0,
-                    templateId: blk.templateId || '',
+                    baseSvg: studioKind === 'guide' ? (wrap.querySelector('.coloring-svg') || baseSvg) : baseSvg,
+                    drawCanvas: canvas, outlineSvg,
+                    childId: sheetMeta?.child_id || 'first', childName: sheetMeta?.child_name || '',
+                    sheetId: sheetMeta?.id || 0, templateId: blk.templateId || '',
                     title: blk.templateTitle || blk.title || sheetMeta?.title || '내가 칠한 그림',
                     hasAnyPaint: paintedCount > 0 || hasCanvasInk,
                     onSaved: (art) => {
                         banner.style.color = '#047857';
-                        banner.textContent = art?.albumStatus === 'shared'
-                            ? '🎉 멋지게 완성! 가족앨범에도 내 그림을 자랑했어요!'
-                            : '🖼️ 내 그림을 학습실에 예쁘게 보관했어요!';
+                        banner.textContent = art?.albumStatus === 'shared' ? '🎉 멋지게 완성! 가족앨범에도 내 그림을 자랑했어요!' : '🖼️ 내 그림을 학습실에 예쁘게 보관했어요!';
                     }
                 })
             });
@@ -483,9 +481,15 @@
 
         syncBrushUi();
         syncUndoBtn();
-        container.append(modeBar, recPaletteBar, palette, stage, banner);
-        if (isPokemonSheet) container.appendChild(hintHost);
-        if (artworkBar.children.length > 0) container.appendChild(artworkBar);
+        const nodes = [modeBar];
+        if (drawSubbar?.el) nodes.push(drawSubbar.el);
+        if (stickerTray?.el) nodes.push(stickerTray.el);
+        if (cbnCtrl?.legendBar) nodes.push(cbnCtrl.legendBar);
+        if (guideCtrl?.bar) nodes.push(guideCtrl.bar);
+        nodes.push(recPaletteBar, palette, stage, banner);
+        if (isPokemonSheet) nodes.push(hintHost);
+        if (artworkBar.children.length > 0) nodes.push(artworkBar);
+        container.append(...nodes);
     }
 
     window.StudyColorBlock = { renderColorBlock };

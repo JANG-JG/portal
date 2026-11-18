@@ -1,0 +1,281 @@
+/**
+ * ==============================================================================
+ * 확장 그림 스튜디오 전용 스타일 (study-draw-studio.css)
+ * ------------------------------------------------------------------------------
+ * - 특수 브러시 바, 대칭 가이드, 스티커 트레이, 숫자·연산 색칠 범례, 단계별 따라 그리기
+ * - [규칙 2] 100% 한국어 | [규칙 3] 500줄 이하 | [규칙 6] 360px·터치 최적화
+ * ==============================================================================
+ */
+
+/* 대시보드 색칠 카테고리 탭: 한 줄 스크롤 + aria-selected 밑줄 */
+.coloring-cat-tabs[role="tablist"] {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 4px;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: thin;
+}
+
+.coloring-cat-tabs .coloring-cat-tab {
+    flex: none;
+    position: relative;
+    scroll-snap-align: start;
+    white-space: nowrap;
+}
+
+.coloring-cat-tabs .coloring-cat-tab[aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 12px 3px;
+    border-block-end: 3px solid currentColor;
+    border-radius: 2px;
+}
+
+/* AI 자유 도안 입력 카드 & 미리보기 칩 */
+.ai-color-box {
+    display: grid;
+    gap: 10px;
+    background: #faf5ff;
+    border: 2px solid #e9d5ff;
+    border-radius: 16px;
+    padding: 12px;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.ai-color-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* 스티커/특수 브러시 모드일 때도 SVG 레이어가 터치를 가로채지 않도록 차단 */
+.coloring-canvas-wrap[data-color-mode="sticker"] .coloring-svg,
+.coloring-canvas-wrap[data-studio-kind="free"] .coloring-svg,
+.coloring-canvas-wrap[data-studio-kind="guide"] .coloring-svg {
+    pointer-events: none;
+}
+
+/* 밤하늘 도화지 모드 */
+.coloring-canvas-wrap[data-paper="night"] {
+    background: #0f172a;
+    border-color: #334155;
+}
+
+/* 대칭(데칼코마니) 중앙 가이드선 (저장 PNG에는 포함되지 않음) */
+.draw-mirror-guide {
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 50%;
+    width: 0;
+    border-left: 2px dashed rgba(244, 63, 94, 0.72);
+    z-index: 4;
+    pointer-events: none;
+}
+
+/* 브러시 스타일 서브바 & 대칭 토글 */
+.draw-subbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 7px 9px;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.draw-brush-pill,
+.draw-mirror-btn {
+    min-block-size: 40px;
+    padding: 6px 11px;
+    border-radius: 11px;
+    border: 1.8px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    font-size: 0.84rem;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.draw-brush-pill.active {
+    background: #fff7ed;
+    border-color: #f97316;
+    color: #c2410c;
+}
+
+.draw-mirror-btn.active {
+    background: #fdf2f8;
+    border-color: #ec4899;
+    color: #be185d;
+}
+
+.color-tool-btn[data-color-mode="sticker"].active {
+    background: #10b981;
+    border-color: #059669;
+    color: #ffffff;
+}
+
+/* 스티커 도장 트레이 */
+.draw-sticker-tray {
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    background: #ecfdf5;
+    border: 2px solid #a7f3d0;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.sticker-tray-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sticker-cat-pills,
+.sticker-bubble-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.sticker-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+    gap: 6px;
+}
+
+.sticker-item-btn {
+    min-block-size: 48px;
+    min-inline-size: 48px;
+    border-radius: 12px;
+    border: 2px solid #d1fae5;
+    background: #ffffff;
+    font-size: 1.55rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 4px;
+}
+
+.sticker-item-btn.active {
+    border-color: #059669;
+    background: #d1fae5;
+    transform: scale(1.04);
+}
+
+.sticker-item-btn img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    pointer-events: none;
+}
+
+.sticker-bubble-row {
+    align-items: center;
+}
+
+.sticker-text-input {
+    min-block-size: 40px;
+    max-width: 170px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    border: 1.8px solid #a7f3d0;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+/* 숫자/연산/한글 색칠 범례 */
+.cbn-legend-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    background: #fffbeb;
+    border: 2px solid #fde68a;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.cbn-legend-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-block-size: 44px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 2px solid #fcd34d;
+    background: #ffffff;
+    font-weight: 900;
+    font-size: 0.96rem;
+    color: #1e293b;
+    cursor: pointer;
+}
+
+.cbn-legend-chip.active {
+    border-color: #d97706;
+    background: #fef3c7;
+    transform: translateY(-1px);
+}
+
+.cbn-swatch-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid rgba(15, 23, 42, 0.25);
+    flex-shrink: 0;
+}
+
+/* 단계별 따라 그리기 내비게이션 바 */
+.guide-step-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border-radius: 14px;
+    background: #eff6ff;
+    border: 2px solid #bfdbfe;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+.guide-step-label {
+    font-weight: 900;
+    color: #1e40af;
+    font-size: 0.94rem;
+}
+
+.guide-step-controls {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 420px) {
+    .draw-subbar {
+        padding: 6px;
+    }
+    .draw-brush-pill,
+    .draw-mirror-btn {
+        font-size: 0.78rem;
+        padding: 5px 8px;
+    }
+}
