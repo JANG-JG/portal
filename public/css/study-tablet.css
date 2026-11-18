@@ -145,7 +145,8 @@ body {
     }
 
     .study-dashboard-main > .child-tabs,
-    .study-dashboard-main > .balance-banner {
+    .study-dashboard-main > .balance-banner,
+    .study-dashboard-main > .study-missions-mount {
         grid-column: 1 / -1;
     }
 

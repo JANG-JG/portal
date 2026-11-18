@@ -300,7 +300,10 @@
         if (opts.preserveStep) {
             return Math.max(0, Math.min(currentIndex, cards.length - 1));
         }
-        if (blockStatesRef && blockStatesRef.size > 0) {
+        const hasRestoredProgress = Boolean(
+            blockStatesRef && Array.from(blockStatesRef.values()).some((st) => st && (st.restored || st.status === 'correct'))
+        );
+        if (hasRestoredProgress) {
             for (let i = 0; i < cards.length; i += 1) {
                 const st = blockStatesRef.get(i);
                 if (st && st.status !== 'correct') return i;

@@ -25,7 +25,7 @@ router.get('/api/study/curriculum', authenticateToken, async (req, res) => {
         const [levels, countsRows, treeFlag, dictFlag] = await Promise.all([
             getChildLevels(cid),
             dbAll(
-                `SELECT subject, COUNT(*) AS cnt FROM study_worksheets
+                `SELECT subject, COUNT(*) AS cnt FROM study_sheets
                  WHERE child_id = ? AND completed_at IS NOT NULL GROUP BY subject`,
                 [cid]
             ).catch(() => []),

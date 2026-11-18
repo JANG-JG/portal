@@ -156,9 +156,9 @@ function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birt
         ? (level === 1 ? '알파벳 대문자 A~Z 1글자 6개와 대표 뜻'
             : level <= 3 ? '3~5글자 기초 영단어 6개(예: CAT, SUN, APPLE)'
                 : '5~9글자 어린이 친숙 영단어 6개')
-        : (level === 1 ? '음절 1~2글자 순수 한글 단어 6개(받침 없는 쉬운 단어 위주)'
-            : level <= 3 ? '2~3글자 친숙한 순수 한글 단어 6개'
-                : level === 4 ? '3~4글자 받침 포함 순수 한글 단어 6개'
+        : (level === 1 ? '1~3글자 받침 없는 쉽고 온전한 순수 한글 낱말 6개(예: 나비, 사자, 오리, 개구리, 코끼리)'
+            : level <= 3 ? '2~3글자 친숙한 순수 한글 낱말 6개'
+                : level === 4 ? '3~4글자 받침 포함 순수 한글 낱말 6개'
                     : '짧은 2어절 순수 한글 표현 6개(예: 반짝이는 별)');
     const currGuide = curriculumHint ? `\n공교육 진도 기준: ${curriculumHint}` : '';
     const dictGuide = (subject === 'korean' && curatedWords.length)
@@ -172,7 +172,8 @@ function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birt
         `1) ${levelGuide}를 생성하세요.\n` +
         `2) ${subject === 'english' ? 'word와 distractors는 반드시 순수 영문(A-Z)만 쓰고, hint에 짧은 한국어 뜻을 적으세요.' : 'word와 distractors는 반드시 순수 한글만 쓰세요(영어/숫자/특수문자 혼합 금지).'}\n` +
         `3) 각 항목의 emoji는 표준 유니코드 이모지 1개만 넣으세요.\n` +
-        `4) 서로 중복되지 않는 단어 6개와, 각 단어당 오답 보기 2개(distractors)를 만드세요.`;
+        `4) 서로 중복되지 않는 단어 6개와, 각 단어당 오답 보기 2개(distractors)를 만드세요.\n` +
+        `5) "개구리"를 "개구"로, "코끼리"를 "코끼"로 줄이는 것처럼 낱말의 끝 글자를 절대 임의로 자르지 말고 온전한 표준어 낱말만 쓰세요.`;
 
     const schema = {
         type: 'OBJECT',

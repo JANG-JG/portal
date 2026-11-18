@@ -38,6 +38,30 @@ function containsBannedWord(text) {
     return BANNED_WORDS.some((w) => lower.includes(w));
 }
 
+const TRUNCATED_KOREAN_WORD_FIXES = {
+    개구: '개구리',
+    코끼: '코끼리',
+    강아: '강아지',
+    고양: '고양이',
+    병아: '병아리',
+    다람: '다람쥐',
+    거북: '거북이',
+    송아: '송아지',
+    호랑: '호랑이',
+    코알: '코알라',
+    달팽: '달팽이',
+    바나: '바나나',
+    토마: '토마토',
+    해바라: '해바라기',
+    비행: '비행기',
+    무당벌: '무당벌레'
+};
+
+function normalizeKoreanWordCandidate(rawWord) {
+    const clean = String(rawWord || '').trim();
+    return TRUNCATED_KOREAN_WORD_FIXES[clean] || clean;
+}
+
 /**
  * 4단계 전체 검증 + 정제 + 폴백 결합 엔트리포인트
  */
@@ -81,7 +105,8 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
 
     for (let i = 0; i < rawAiJson.items.length; i++) {
         const item = rawAiJson.items[i] || {};
-        const word = String(item.word || '').trim();
+        const rawWord = String(item.word || '').trim();
+        const word = subject === 'korean' ? normalizeKoreanWordCandidate(rawWord) : rawWord;
         const hint = String(item.hint || '').trim();
         const emoji = sanitizeEmoji(item.emoji, emojiPool, i);
 
@@ -103,7 +128,8 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
         const rawDistractors = Array.isArray(item.distractors) ? item.distractors : [];
         const distractors = [];
         for (const d of rawDistractors) {
-            const ds = String(d || '').trim();
+            const rawDs = String(d || '').trim();
+            const ds = subject === 'korean' ? normalizeKoreanWordCandidate(rawDs) : rawDs;
             if (!ds || ds.toUpperCase() === normKey || containsBannedWord(ds)) continue;
             if (subject === 'korean' && !HANGUL_ONLY_RE.test(ds)) continue;
             if (subject === 'english' && !ENGLISH_ONLY_RE.test(ds)) continue;
