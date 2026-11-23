@@ -64,7 +64,7 @@ function renderFamilyMembersTable(members) {
         'album': '📸 가족 앨범',
         'wiki': '📖 가족 위키',
         'news': '📰 뉴스·날씨·증시',
-        'blood': '🩸 혈압 관리',
+        'blood': '💊 건강 관리',
         'asset': '💰 자산 관리'
     };
     if (Array.isArray(cachedModuleList)) {
