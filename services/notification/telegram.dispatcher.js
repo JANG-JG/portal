@@ -58,6 +58,13 @@ async function dispatchTelegramForUsers({
         return { sentCount: 0, skipped: true };
     }
 
+    if (serviceKey === 'system') {
+        const prefix = severity === 'critical' ? '🚨' : (iconEmoji || '🖥️');
+        const plain = `${prefix} *[${title}]*\n${body}`;
+        const srvRes = await sendServerTelegram(plain);
+        return { sentCount: (srvRes && srvRes.success) ? 1 : 0, skipped: false };
+    }
+
     const token = getAssistantBotToken();
     const recipients = await listAuthorizedTelegramRecipients();
     const matchedChatIds = new Set();
@@ -82,10 +89,6 @@ async function dispatchTelegramForUsers({
             const res = await sendTelegramReply(token, chatId, htmlText, extra);
             if (res) sentCount += 1;
         }
-    } else if (serviceKey === 'system' && severity === 'critical') {
-        const plain = `🚨 *[${title}]*\n${body}`;
-        const srvRes = await sendServerTelegram(plain);
-        if (srvRes && srvRes.success) sentCount += 1;
     }
 
     return { sentCount, skipped: false };
