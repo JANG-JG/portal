@@ -434,7 +434,7 @@
     function registerServiceWorker() {
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(err => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).catch(err => {
                     console.warn('[PWA] Service Worker registration failed on login:', err);
                 });
             });

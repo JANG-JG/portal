@@ -11,7 +11,7 @@
 
 const { getSystemConfig, getProfiles, SUBJECT_NAMES } = require('./studyDb.service');
 const { getPokemonById } = require('./pokemonCatalog.data');
-const { sendAssistantTelegramToAdmins } = require('../telegram/telegramTransport.service');
+const { publishNotificationEvent } = require('../notification/hub.service');
 
 function escapeHtml(str) {
     return String(str || '')
@@ -70,7 +70,20 @@ async function notifyWorksheetCompletedToParents({ childId, sheetTitle, subject,
         ]
     };
 
-    return sendAssistantTelegramToAdmins(text, { replyMarkup });
+    const result = await publishNotificationEvent({
+        service_key: 'study',
+        event_type: 'study.worksheet_completed',
+        recipient_id: 'role:admin',
+        title: `${childEmoji} [${childName}] 학습지를 끝까지 풀었어요!`,
+        body: `${subjectLabel}(Lv.${Number(level || 1)}) · ${sheetTitle || '맞춤 학습지'} (도장 ${Number(earnedCount || 0)}/10칸)`,
+        action_url: `${baseUrl}/study?childId=${encodeURIComponent(childId)}`,
+        severity: 'normal',
+        meta: {
+            telegram_html: text,
+            telegram_reply_markup: replyMarkup
+        }
+    });
+    return { sentCount: result.telegramSentCount || 0 };
 }
 
 async function notifyEggHatchedToParents({ childId, cycleNo, pokemonId, totalEarned }) {
@@ -101,7 +114,21 @@ async function notifyEggHatchedToParents({ childId, cycleNo, pokemonId, totalEar
         ]
     };
 
-    return sendAssistantTelegramToAdmins(text, { replyMarkup });
+    const result = await publishNotificationEvent({
+        service_key: 'study',
+        event_type: 'study.egg_hatched',
+        recipient_id: 'role:admin',
+        title: `🥚 [${childName}] '${poke.nameKo}' 알 부화!`,
+        body: `도장판 ${Number(cycleNo || 1)}번째 완성! 보상(${reward})을 확인해 주세요.`,
+        action_url: `${baseUrl}/study?childId=${encodeURIComponent(childId)}`,
+        severity: 'high',
+        dedup_key: `study:egg_hatch:${childId}:${Number(cycleNo || 1)}`,
+        meta: {
+            telegram_html: text,
+            telegram_reply_markup: replyMarkup
+        }
+    });
+    return { sentCount: result.telegramSentCount || 0 };
 }
 
 module.exports = {

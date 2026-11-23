@@ -93,12 +93,13 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
         sentHistoryCache.clear();
         console.log('[UnifiedScheduler] 자정 스케줄: 공휴일 갱신 및 중복발송 캐시 초기화 완료');
 
-        // 30일 경과 알림 내역 자동 정리
-        db.run("DELETE FROM notification_history WHERE datetime(created_at) < datetime('now', '-30 days', 'localtime')", function(cleanErr) {
+        // 30일 경과 알림 내역 및 만료 구독 자동 정리 (portalDb)
+        (portalDb || db).run("DELETE FROM notifications WHERE datetime(created_at) < datetime('now', '-30 days', 'localtime')", function(cleanErr) {
             if (!cleanErr && this && this.changes > 0) {
                 console.log(`[UnifiedScheduler] 30일 경과 알림 내역 ${this.changes}건 자동 정리 완료`);
             }
         });
+        (portalDb || db).run("DELETE FROM push_subscriptions WHERE status = 'expired' AND datetime(updated_at) < datetime('now', '-30 days', 'localtime')", () => {});
     }, {
         timezone: 'Asia/Seoul',
         missedExecutionTolerance: 300000
@@ -154,10 +155,30 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
         const isHoliday = isWeekendOrHoliday(kstNow);
 
         // ======================================================================
-        // [A] 유저별 설정 기반 알림 (날씨, 증시, 복약, 혈압, 병원)
+        // [A] 유저별 설정 기반 알림 (날씨, 증시, 복약, 혈압, 병원) — portalDb 기준
         // ======================================================================
-        db.all("SELECT * FROM notification_settings WHERE enabled = 1", [], (err, userList) => {
-            if (err || !userList || userList.length === 0) return;
+        const { getLegacySettingsObject } = require('./notification/prefs.service');
+        db.all("SELECT username, COALESCE(role, 'family') as role, rowid FROM users", [], async (err, rawUsers) => {
+            if (err || !rawUsers || rawUsers.length === 0) return;
+
+            const userList = [];
+            for (const ru of rawUsers) {
+                const isAdm = (ru.username === 'admin' || ru.role === 'admin' || ru.rowid === 1);
+                try {
+                    const st = await getLegacySettingsObject(ru.username, isAdm);
+                    if (st && st.enabled !== 0) {
+                        userList.push({
+                            ...st,
+                            user_id: ru.username,
+                            telegram_briefing_times: JSON.stringify(st.telegram_briefing_times || ['07:30']),
+                            weekday_med_times: JSON.stringify(st.weekday_med_times || ['08:00', '19:00']),
+                            weekday_bp_times: JSON.stringify(st.weekday_bp_times || ['07:30', '21:30']),
+                            weekend_med_times: JSON.stringify(st.weekend_med_times || ['09:00', '19:30']),
+                            weekend_bp_times: JSON.stringify(st.weekend_bp_times || ['08:30', '22:00'])
+                        });
+                    }
+                } catch (_) {}
+            }
 
             userList.forEach(async (u) => {
                 const userId = u.user_id;

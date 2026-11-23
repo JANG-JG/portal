@@ -1,6 +1,8 @@
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 const { BLOOD_DB_PATH, ASSET_DB_PATH, NEWS_DB_PATH, ALBUM_DB_PATH, WIKI_DB_PATH, PORTAL_DB_PATH, ADMIN_USERS } = require('../config/constants');
+const { initNotificationSchema } = require('./notification/schema.service');
+const { migrateNotificationDataFromHealthDb } = require('./notification/migration.service');
 
 
 // DB 인스턴스 비동기 error 이벤트 미처리로 인한 프로세스 종료 방지 헬퍼
@@ -540,6 +542,11 @@ const portalDb = attachDbErrorHandler(new sqlite3.Database(PORTAL_DB_PATH, (err)
 
             // 🛡️ 기존 health.db로부터 데이터 1회성 무손실 자동 마이그레이션
             migrateFromHealthDb();
+
+            // 🔔 통합 알림 허브 표준 스키마 보장 및 1회성 무손실 이관
+            initNotificationSchema(portalDb)
+                .then(() => migrateNotificationDataFromHealthDb(db, portalDb))
+                .catch((nErr) => console.error('❌ [알림 허브 DB 초기화 오류]:', nErr.message));
         });
     }
 }), 'portalDb');

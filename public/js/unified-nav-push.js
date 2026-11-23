@@ -12,7 +12,14 @@
         const portalOrigin = window.__JG_PORTAL_ORIGIN__ || 'https://j-jg.cc';
         if (window.location.origin === portalOrigin) return true;
         const h = window.location.hostname;
-        return h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1';
+        const p = String(window.location.port || '');
+        if (h === 'j-jg.cc' || h === 'lan.j-jg.cc' || h === 'jg-server.local' || h === 'localhost' || h === '127.0.0.1') {
+            return !p || p === '3443' || p === '3004' || p === '443' || p === '80';
+        }
+        if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) {
+            return p === '3443' || p === '3004';
+        }
+        return false;
     }
     window.isPortalPushOrigin = isPortalPushOrigin;
 
@@ -205,12 +212,30 @@
                 const { publicKey } = await keyRes.json();
                 if (!publicKey) return false;
 
-                let reg = await navigator.serviceWorker.getRegistration('/');
-                if (!reg) {
-                    reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+                async function getRootSwRegistration() {
+                    let reg = await navigator.serviceWorker.getRegistration('/');
+                    if (!reg) {
+                        reg = await navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' });
+                    }
+                    if (reg.active) return reg;
+                    const worker = reg.installing || reg.waiting;
+                    if (worker) {
+                        await new Promise((resolve) => {
+                            if (worker.state === 'activated') return resolve();
+                            const onState = () => {
+                                if (worker.state === 'activated' || worker.state === 'redundant') {
+                                    worker.removeEventListener('statechange', onState);
+                                    resolve();
+                                }
+                            };
+                            worker.addEventListener('statechange', onState);
+                            setTimeout(resolve, 4000);
+                        });
+                    }
+                    return (await navigator.serviceWorker.getRegistration('/')) || navigator.serviceWorker.ready;
                 }
-                reg = await navigator.serviceWorker.ready;
 
+                const reg = await getRootSwRegistration();
                 const appServerKey = urlBase64ToUint8Array(publicKey);
                 let sub = await reg.pushManager.getSubscription();
                 let previousEndpoint = '';
@@ -226,6 +251,21 @@
                     if (!sameKey) forceResubscribe = true;
                 }
 
+                // 삼성 인터넷 등 로컬 캐시 좀비 토큰 자가 치유: 서버 상태가 만료/불일치면 강제 재발급
+                if (sub && !forceResubscribe) {
+                    try {
+                        const stRes = await fetch(`/api/notification/status?endpoint=${encodeURIComponent(sub.endpoint)}`, { credentials: 'include' });
+                        if (stRes.ok) {
+                            const stData = await stRes.json();
+                            if (stData && stData.needsResubscribe) {
+                                forceResubscribe = true;
+                            } else if (stData && stData.isCurrentRegistered) {
+                                return true;
+                            }
+                        }
+                    } catch (_) {}
+                }
+
                 if (sub && forceResubscribe) {
                     previousEndpoint = sub.endpoint || '';
                     try { await sub.unsubscribe(); } catch (e) {}
@@ -239,6 +279,10 @@
                     });
                 }
 
+                const supportedEncodings = (typeof PushManager !== 'undefined' && Array.isArray(PushManager.supportedContentEncodings))
+                    ? PushManager.supportedContentEncodings
+                    : ['aes128gcm'];
+
                 const subRes = await fetch('/api/notification/subscribe', {
                     method: 'POST',
                     credentials: 'include',
@@ -246,6 +290,8 @@
                     body: JSON.stringify({
                         subscription: sub,
                         previousEndpoint,
+                        supportedEncodings,
+                        swVersion: window.__JG_UI_VERSION__ || '',
                         clientType: meta.clientType,
                         deviceType: meta.deviceType,
                         deviceId: meta.deviceId,
@@ -417,7 +463,7 @@
             return;
         }
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
                 .then((reg) => { try { reg.update(); } catch (e) {} })
                 .catch(() => {});
 

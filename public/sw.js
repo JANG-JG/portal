@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jg-portal-v20261123_121339';
+const CACHE_NAME = 'jg-portal-v20261123_133838';
 
 // 오프라인 및 고속 로딩을 위한 필수 정적 에셋 프리캐시 목록
 const PRECACHE_ASSETS = [
@@ -17,6 +17,14 @@ const PRECACHE_ASSETS = [
     '/icon-v2-192.png',
     '/icon-v2-512.png',
     '/badge-monochrome.png',
+    '/icons/notif/default-192.png',
+    '/icons/notif/health-192.png',
+    '/icons/notif/album-192.png',
+    '/icons/notif/study-192.png',
+    '/icons/notif/calendar-192.png',
+    '/icons/notif/news-192.png',
+    '/icons/notif/asset-192.png',
+    '/icons/notif/system-192.png',
     '/manifest.json'
 ];
 
@@ -158,12 +166,17 @@ self.addEventListener('push', (event) => {
     const targetUrl = payloadData.url || 'https://j-jg.cc/';
     const notifId = payloadData.notifId || null;
 
-    // 모노크롬/구버전 아이콘 배제, 검증된 정적 PNG 아이콘 표준 적용 (배지는 모노크롬 PNG 사용)
-    let iconUrl = '/icon-v2-192.png';
+    // 모노크롬/구버전 아이콘 배제, 동일 오리진 프리캐시 PNG 우선 적용 (삼성 인터넷 절전 시 0ms 렌더링)
+    let iconUrl = '/icons/notif/default-192.png';
     if (payload.icon && typeof payload.icon === 'string' && !payload.icon.includes('monochrome') && !payload.icon.includes('/icon-192.png')) {
-        iconUrl = payload.icon;
+        try {
+            const parsedIcon = new URL(payload.icon, self.location.origin);
+            iconUrl = parsedIcon.origin === self.location.origin ? parsedIcon.pathname : payload.icon;
+        } catch (e) {
+            iconUrl = payload.icon;
+        }
     }
-    const badgeUrl = (payload.badge && typeof payload.badge === 'string') ? payload.badge : '/badge-monochrome.png';
+    const badgeUrl = '/badge-monochrome.png';
 
     const options = {
         body,
@@ -185,17 +198,17 @@ self.addEventListener('push', (event) => {
             .then(() => fetch('/api/notification/sw-ack', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'shown', title, tag: safeTag })
+                body: JSON.stringify({ status: 'shown', title, tag: safeTag, notifId, swVersion: CACHE_NAME })
             }).catch(() => {}))
             .catch((err) => {
                 fetch('/api/notification/sw-ack', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: 'error', title, tag: safeTag, error: String((err && err.message) || err) })
+                    body: JSON.stringify({ status: 'error', title, tag: safeTag, notifId, swVersion: CACHE_NAME, error: String((err && err.message) || err) })
                 }).catch(() => {});
                 return self.registration.showNotification(title, {
                     body,
-                    icon: '/icon-v2-192.png',
+                    icon: '/icons/notif/default-192.png',
                     badge: '/badge-monochrome.png',
                     tag: safeTag,
                     data: { url: targetUrl, notifId }
@@ -250,13 +263,56 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(Promise.all([markReadPromise, openWindowPromise]));
 });
 
-// 브라우저/OS가 백그라운드에서 푸시 토큰을 갱신했을 때 열려 있는 탭에 동기화 요청
+function swUrlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    const out = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
+    return out;
+}
+
+// 브라우저/OS가 백그라운드에서 푸시 토큰을 갱신했을 때 탭 유무와 무관하게 SW가 직접 무중단 회전
 self.addEventListener('pushsubscriptionchange', (event) => {
-    event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-            list.forEach((client) => {
-                try { client.postMessage({ type: 'JG_PUSH_RESUBSCRIBE_NEEDED' }); } catch (e) {}
-            });
-        })
-    );
+    event.waitUntil((async () => {
+        try {
+            const oldSub = event.oldSubscription;
+            const oldJson = oldSub && typeof oldSub.toJSON === 'function' ? oldSub.toJSON() : null;
+            let subscribeOpts = (oldSub && oldSub.options && oldSub.options.applicationServerKey)
+                ? { userVisibleOnly: true, applicationServerKey: oldSub.options.applicationServerKey }
+                : null;
+
+            if (!subscribeOpts) {
+                const keyRes = await fetch('/api/notification/vapid-key');
+                if (keyRes.ok) {
+                    const keyData = await keyRes.json();
+                    if (keyData && keyData.publicKey) {
+                        subscribeOpts = {
+                            userVisibleOnly: true,
+                            applicationServerKey: swUrlBase64ToUint8Array(keyData.publicKey)
+                        };
+                    }
+                }
+            }
+
+            const newSub = event.newSubscription || (subscribeOpts ? await self.registration.pushManager.subscribe(subscribeOpts) : null);
+            if (newSub && oldJson && oldJson.endpoint && oldJson.keys && oldJson.keys.auth) {
+                await fetch('/api/notification/rotate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        oldEndpoint: oldJson.endpoint,
+                        oldAuth: oldJson.keys.auth,
+                        newSubscription: newSub.toJSON ? newSub.toJSON() : newSub,
+                        swVersion: CACHE_NAME
+                    })
+                }).catch(() => {});
+            }
+        } catch (e) {}
+
+        const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+        list.forEach((client) => {
+            try { client.postMessage({ type: 'JG_PUSH_RESUBSCRIBE_NEEDED' }); } catch (e) {}
+        });
+    })());
 });
