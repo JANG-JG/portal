@@ -36,20 +36,20 @@
   },
   {
     "id": "blood",
-    "name": "혈압·건강 관리",
-    "icon": "🩸",
-    "description": "실시간 혈압·맥박 기록 및 진료 리포트, 복약 알림",
+    "name": "건강 관리",
+    "icon": "💊",
+    "description": "우리 가족 약 챙겨먹기, 혈압·맥박 기록 및 병원 일정 관리",
     "category": "건강",
     "entryUrl": "/go/blood",
     "baseUrl": "https://blood.j-jg.cc",
     "ssoEnabled": true,
-    "adminOnly": true,
-    "defaultFamilyAllowed": false,
+    "adminOnly": false,
+    "defaultFamilyAllowed": true,
     "order": 20,
     "enabled": true,
     "nav": {
       "enabled": true,
-      "label": "혈압·건강·약",
+      "label": "건강 관리",
       "entryUrl": "/go/blood?path=/dashboard.html",
       "subLinks": [
         {

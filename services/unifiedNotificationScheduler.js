@@ -12,6 +12,7 @@ const { checkAndDispatchHospitalVisit } = require('./scheduler/hospitalVisit.sch
 const { checkAndDispatchCalendarEvents } = require('./scheduler/calendarEvent.scheduler');
 const { checkAndDispatchWikiDday } = require('./scheduler/wikiDday.scheduler');
 const { checkPm2Health, checkDiskHealth } = require('./scheduler/systemHealth.scheduler');
+const { checkFamilyMedicationsAndNotify } = require('./medicationSchedulerHelper');
 
 // ==============================================================================
 // 🌟 JG 통합 포털 단일 알림 스케줄러 (Unified Notification Scheduler)
@@ -429,6 +430,13 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
         // [C] 💾 디스크 용량(UFS) 및 확장 헬스체크 (원격 보조서버·HTTP 포함)
         // ======================================================================
         checkDiskHealth(kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush);
+
+        // ======================================================================
+        // [D] 💊 가족 다중 복약 스케줄(도래/미복용/잔여부족) 알림 허브 발행
+        // ======================================================================
+        const kstDayNum = new Date(`${kstDateStr}T12:00:00+09:00`).getDay();
+        const isMedWeekend = (kstDayNum === 0 || kstDayNum === 6);
+        checkFamilyMedicationsAndNotify(db, kstDateStr, kstTimeStr, isMedWeekend, sentHistoryCache);
     }
 
     // [트리거 1] node-cron 1분 스케줄러 (지연 허용 오차 120초 지정)
