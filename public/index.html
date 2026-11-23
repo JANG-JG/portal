@@ -50,13 +50,12 @@
                 if (role === 'admin') {
                     document.documentElement.classList.add('role-admin');
                 } else {
-                    // 🛡️ 혈압·복약은 관리자 전용 기능 (타 사용자 원천 은폐)
-                    document.documentElement.classList.add('hide-blood');
                     if (role === 'family') {
                         document.documentElement.classList.add('role-family', 'hide-ops');
-                        if (allowed.indexOf('asset') === -1) document.documentElement.classList.add('hide-asset');
+                        if (allowed.indexOf('asset') === -1 && allowed.indexOf('all') === -1) document.documentElement.classList.add('hide-asset');
+                        if (allowed.indexOf('blood') === -1 && allowed.indexOf('all') === -1) document.documentElement.classList.add('hide-blood');
                     } else {
-                        document.documentElement.classList.add('role-pending');
+                        document.documentElement.classList.add('hide-blood', 'role-pending');
                     }
                 }
             } catch (e) {}

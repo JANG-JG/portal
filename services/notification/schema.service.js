@@ -12,8 +12,8 @@
 const DEFAULT_SERVICES = [
     {
         service_key: 'health',
-        display_name: '건강 관리 (약·혈압·병원)',
-        scope_policy: 'family_opt_in',
+        display_name: '건강 관리 (약·해열제·병원)',
+        scope_policy: 'family_default_on',
         messenger_mode: 'both',
         icon_emoji: '💊',
         icon_path: '/icons/notif/health-192.png',
@@ -240,6 +240,12 @@ async function initNotificationSchema(portalDb) {
             [svc.service_key, svc.display_name, svc.scope_policy, svc.messenger_mode, svc.icon_emoji, svc.icon_path, svc.is_active, svc.sort_order]
         );
     }
+    await runSql(
+        portalDb,
+        `UPDATE notification_services
+         SET scope_policy = 'family_default_on', display_name = '건강 관리 (약·해열제·병원)'
+         WHERE service_key = 'health' AND scope_policy = 'family_opt_in'`
+    );
 
     for (const rule of DEFAULT_RULES) {
         await runSql(

@@ -53,22 +53,28 @@
       "entryUrl": "/go/blood?path=/dashboard.html",
       "subLinks": [
         {
-          "name": "혈압 측정 및 관리",
-          "url": "/go/blood?path=/dashboard.html",
-          "icon": "📋",
-          "desc": "실시간 혈압·맥박 대시보드 및 기록"
+          "name": "오늘 약 챙겨먹기",
+          "url": "/go/blood?path=/dashboard.html#meds",
+          "icon": "💊",
+          "desc": "시간대 일괄 체크 & 처방약 관리"
         },
         {
-          "name": "진료 리포트",
-          "url": "/go/blood?path=/report.html",
-          "icon": "📊",
-          "desc": "기간별 혈압 분석 및 의사 진료 리포트"
+          "name": "아이 해열·체온",
+          "url": "/go/blood?path=/dashboard.html#fever",
+          "icon": "🌡️",
+          "desc": "체중별 용량 계산 & 교차복용 타이머"
         },
         {
-          "name": "약 복용 & 병원 일정",
-          "url": "/go/blood?path=/hospital.html",
+          "name": "병원 진료 & 예약",
+          "url": "/go/blood?path=/dashboard.html#hospital",
           "icon": "🏥",
-          "desc": "진료 방문 내역 및 복약 기반 일정 관리"
+          "desc": "우리 가족 외래 일정 & 예약 관리"
+        },
+        {
+          "name": "건강 달력",
+          "url": "/go/blood?path=/dashboard.html#calendar",
+          "icon": "📅",
+          "desc": "월간 복약·체온·진료 흐름"
         }
       ]
     },

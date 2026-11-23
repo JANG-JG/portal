@@ -190,19 +190,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('jg_allowed_services', allowed.join(','));
                 } catch (e) {}
 
-                // 🛡️ 계정 권한 분리 및 혈압 관리자 전용 제어
+                // 🛡️ 계정 권한 분리: 개인 혈압 수치 위젯은 관리자 전용, 건강 관리(복약/해열/병원)는 권한별 개방
                 if (role !== 'admin') {
-                    // 🩸 혈압은 관리자 전용 기능 -> 비관리자 원천 은폐
-                    document.documentElement.classList.add('hide-blood');
-                    document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
                     const healthBox = document.querySelector('.homarr-health-summary-box');
                     if (healthBox) healthBox.style.setProperty('display', 'none', 'important');
-                    const bloodBento = document.getElementById('bento-blood');
-                    if (bloodBento) bloodBento.style.display = 'none';
-                    document.querySelectorAll('.portal-tab-btn[data-tab="blood"]').forEach(el => el.style.display = 'none');
-                    document.querySelectorAll('a[href="/go/blood"], a[href="https://blood.j-jg.cc"]').forEach(el => el.style.display = 'none');
+                    const bloodMini = document.querySelector('.homarr-blood-mini-card');
+                    if (bloodMini) bloodMini.style.setProperty('display', 'none', 'important');
                     const medBtn = document.querySelector('button[onclick="recordQuickMedication()"]');
                     if (medBtn) medBtn.style.display = 'none';
+
+                    const canUseHealth = role === 'family' && (allowed.includes('all') || allowed.includes('blood'));
+                    if (!canUseHealth) {
+                        document.documentElement.classList.add('hide-blood');
+                        document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                        const bloodBento = document.getElementById('bento-blood');
+                        if (bloodBento) bloodBento.style.display = 'none';
+                        document.querySelectorAll('.portal-tab-btn[data-tab="blood"]').forEach(el => el.style.display = 'none');
+                    } else {
+                        document.documentElement.classList.remove('hide-blood');
+                        document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.removeProperty('display'));
+                        const bloodBento = document.getElementById('bento-blood');
+                        if (bloodBento) bloodBento.style.removeProperty('display');
+                        document.querySelectorAll('.portal-tab-btn[data-tab="blood"]').forEach(el => el.style.removeProperty('display'));
+                    }
 
                     if (role === 'family') {
                         document.documentElement.classList.add('role-family', 'hide-ops');

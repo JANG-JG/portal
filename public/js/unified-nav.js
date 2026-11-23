@@ -25,7 +25,7 @@
         }
     };
 
-    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261123_151942';
+    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261123_170932';
     const CACHE_KEY_HTML = 'jg_unav_html_v2', CACHE_KEY_VER = 'jg_unav_ver_v2', CACHE_KEY_TIME = 'jg_unav_time_v2';
     const STALE_CHECK_INTERVAL = 5 * 60 * 1000;
     const PORTAL_ORIGIN = window.__JG_PORTAL_ORIGIN__ || 'https://j-jg.cc';
@@ -282,21 +282,31 @@
             else allowed = localStorage.getItem('jg_allowed_services') || '';
 
             const applyDom = (r, a) => {
+                const hasSvc = (svc) => a.indexOf('all') !== -1 || a.indexOf(svc) !== -1;
                 if (r === 'admin') {
                     document.documentElement.classList.remove('hide-blood', 'hide-asset', 'hide-ops');
                     document.documentElement.classList.add('role-admin');
+                    document.querySelectorAll('.unav-admin-only').forEach(el => el.style.removeProperty('display'));
                 } else {
-                    // 🛡️ 혈압은 관리자 전용 기능 -> 비관리자 사용자 원천 차단
-                    document.documentElement.classList.add('hide-blood');
-                    document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    document.querySelectorAll('.unav-admin-only').forEach(el => el.style.setProperty('display', 'none', 'important'));
 
                     if (r === 'family') {
                         document.documentElement.classList.add('role-family', 'hide-ops');
-                        if (a.indexOf('asset') === -1) {
+                        if (!hasSvc('blood')) {
+                            document.documentElement.classList.add('hide-blood');
+                            document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                        } else {
+                            document.documentElement.classList.remove('hide-blood');
+                            document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.removeProperty('display'));
+                        }
+                        if (!hasSvc('asset')) {
                             document.documentElement.classList.add('hide-asset');
                             document.querySelectorAll('[data-service="asset"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
                         }
                         document.querySelectorAll('[data-service="ops"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
+                    } else {
+                        document.documentElement.classList.add('hide-blood');
+                        document.querySelectorAll('[data-service="blood"]').forEach(el => el.style.setProperty('display', 'none', 'important'));
                     }
                 }
             };

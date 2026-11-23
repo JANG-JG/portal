@@ -57,6 +57,8 @@ function checkFamilyMedicationsAndNotify(healthDb, kstDateStr, kstTimeStr, isWee
                             ? `${med.target_label} `
                             : '';
 
+                        const targetRecipient = Number(med.share_with_family) === 1 ? 'role:all' : med.user_id;
+
                         for (const slot of slots) {
                             if (logMap.has(`${med.id}::${slot}`)) continue;
 
@@ -68,7 +70,7 @@ function checkFamilyMedicationsAndNotify(healthDb, kstDateStr, kstTimeStr, isWee
                                     publishNotificationEvent({
                                         service_key: 'health',
                                         event_type: 'health.med_due',
-                                        recipient_id: med.user_id,
+                                        recipient_id: targetRecipient,
                                         title: `💊 ${whoLabel}${med.med_name} 드실 시간이에요`,
                                         body: `${slot} 예정된 약을 챙겨드시고 체크해 주세요.${med.dosage_note ? ' (' + med.dosage_note + ')' : ''}`,
                                         action_url: 'https://blood.j-jg.cc/dashboard.html',
@@ -87,7 +89,7 @@ function checkFamilyMedicationsAndNotify(healthDb, kstDateStr, kstTimeStr, isWee
                                     publishNotificationEvent({
                                         service_key: 'health',
                                         event_type: 'health.med_missed',
-                                        recipient_id: med.user_id,
+                                        recipient_id: targetRecipient,
                                         title: `⏰ ${whoLabel}${med.med_name} 아직 체크되지 않았어요`,
                                         body: `${slot} 복용 체크가 아직 안 되어 있어요. 드셨다면 잊지 말고 체크해 주세요!`,
                                         action_url: 'https://blood.j-jg.cc/dashboard.html',

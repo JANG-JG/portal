@@ -220,11 +220,6 @@ router.get('/go/:service', authenticateToken, (req, res) => {
                 if (userRow && userRow.allowed_services) allowed = JSON.parse(userRow.allowed_services);
             } catch (e) {}
 
-            // 🛡️ 혈압 서비스는 관리자 전용 기능 -> 가족 계정 즉시 차단
-            if (service === 'blood') {
-                return res.redirect('/?notice=unauthorized_service');
-            }
-
             const serviceKey = (service === 'economy' ? 'news' : service);
             if (!allowed.includes('all') && !allowed.includes(serviceKey)) {
                 // 모듈 레지스트리 기반 접근 권한 검사 (신규 서비스 자동 연동)

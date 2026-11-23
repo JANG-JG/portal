@@ -601,6 +601,22 @@ function migrateFromHealthDb() {
             stmt.finalize();
         }
     });
+
+    // 기존 가족 계정에 건강 관리('blood') 권한 자동 부여 (관리자 페이지에서 수동 해제 전까지 기본 허용)
+    db.all("SELECT username, allowed_services FROM users WHERE role = 'family'", [], (err, users) => {
+        if (!err && Array.isArray(users)) {
+            users.forEach((u) => {
+                let arr = ['album', 'news'];
+                try {
+                    if (u.allowed_services) arr = JSON.parse(u.allowed_services);
+                } catch (_) {}
+                if (Array.isArray(arr) && !arr.includes('all') && !arr.includes('blood')) {
+                    arr.push('blood');
+                    db.run("UPDATE users SET allowed_services = ? WHERE username = ?", [JSON.stringify(arr), u.username]);
+                }
+            });
+        }
+    });
 }
 
 module.exports = {
