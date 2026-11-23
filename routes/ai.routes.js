@@ -82,6 +82,8 @@ router.get('/api/ai/health', authenticateToken, async (req, res) => {
 
 // 2. 실시간 AI 데일리 브리핑 문장 요청
 router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
+    let clientClosed = false;
+    req.on('close', () => { clientClosed = true; });
     try {
         const forceRefresh = (req.query.refresh === '1' || req.query.refresh === 'true');
         if (forceRefresh) {
@@ -94,6 +96,7 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
             }
         }
         const summary = await getPortalSummary(req.user);
+        if (clientClosed || res.headersSent || res.destroyed) return;
         const userName = resolveUserName(req.user);
 
         const aiResult = await generateAiDailyBriefing({
@@ -107,6 +110,7 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
             userName
         }, forceRefresh);
 
+        if (clientClosed || res.headersSent || res.destroyed) return;
         if (aiResult && aiResult.message) {
             return res.json({
                 success: true,
@@ -124,7 +128,9 @@ router.get('/api/ai/briefing', authenticateToken, async (req, res) => {
         });
     } catch (err) {
         console.error('[API /api/ai/briefing] 오류:', err);
-        res.status(500).json({ success: false, message: 'AI 브리핑 생성 오류' });
+        if (!clientClosed && !res.headersSent && !res.destroyed) {
+            res.status(500).json({ success: false, message: 'AI 브리핑 생성 오류' });
+        }
     }
 });
 

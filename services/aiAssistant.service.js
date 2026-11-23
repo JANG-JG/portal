@@ -20,11 +20,12 @@ const { OLLAMA_HOST, getChatModel, getBalancedModel, selectChatModel, ensureMode
 const { getTimeSlot } = require('./dailyBriefing.service');
 // 평상시 대화·상태 점검·위키 처리는 getChatModel, 데일리 브리핑은 문맥 정확도를 위해 getBalancedModel(4B) 우선 사용
 
-// 브리핑 캐시 (1시간 유효, 사용자/날씨/복약/혈압/시간대 상태 변경 시 자동 갱신)
-let cachedAiBriefing = null;
-let cachedAiBriefingKey = '';
-let cachedAiBriefingTime = 0;
+// 브리핑 캐시 (사용자/상태별 1시간 유효 + 동일 시간대 SWR 6시간 + 중복 추론 방지)
+const briefingCacheMap = new Map();
+const userLatestBriefingMap = new Map();
+const inFlightBriefingMap = new Map();
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1시간
+const STALE_TTL_MS = 6 * 60 * 60 * 1000; // 동일 시간대 SWR 최대 6시간
 
 /**
  * Ollama 서버에 HTTP POST 요청을 보내는 경량 헬퍼 (의존성 제로)
@@ -172,17 +173,25 @@ async function generateAiDailyBriefing({ blood, medication, weather, todayEvents
     const kstHour = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' })).getHours();
     const timeSlot = getTimeSlot(kstHour);
 
+    const userSlotKey = `${userName}::${timeSlot.key}`;
     const cacheKey = [
         userName,
         timeSlot.key,
-        weather ? `${weather.city || ''}|${weather.condition || ''}|${weather.temp || ''}|${weather.updated_at || ''}` : 'noweather',
+        weather ? `${weather.city || ''}|${weather.condition || ''}|${weather.temp || ''}` : 'noweather',
         medication ? (medication.is_today_taken ? 'med1' : 'med0') : 'nomed',
         blood ? (blood.is_today_measured ? 'bp1' : 'bp0') : 'nobp',
         Array.isArray(todayEvents) ? todayEvents.length : 0
     ].join('::');
 
-    if (!forceRefresh && cachedAiBriefing && cachedAiBriefingKey === cacheKey && (now - cachedAiBriefingTime < CACHE_TTL_MS)) {
-        return cachedAiBriefing;
+    const exactCached = briefingCacheMap.get(cacheKey);
+    if (!forceRefresh && exactCached && (now - exactCached.time < CACHE_TTL_MS)) {
+        return exactCached.data;
+    }
+    const staleCached = !forceRefresh ? userLatestBriefingMap.get(userSlotKey) : null;
+    const hasValidStale = Boolean(staleCached && (now - staleCached.time < STALE_TTL_MS));
+    if (!forceRefresh && inFlightBriefingMap.has(cacheKey)) {
+        if (hasValidStale) return staleCached.data;
+        return inFlightBriefingMap.get(cacheKey);
     }
 
     // 1) 오늘 건강 상태 (복약 & 혈압)
@@ -281,50 +290,69 @@ ${userName}님, 오늘 하루도 수고 많으셨으니 저녁에는 편안히 �
     const userPrompt = `[오늘 상황]\n${situationText}\n\n[조언]:`;
     const briefingModel = getBalancedModel() || getChatModel();
 
-    try {
-        const result = await sendOllamaRequest('/api/chat', {
-            model: briefingModel,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            stream: false,
-            keep_alive: '24h',
-            options: {
-                temperature: 0.4,
-                top_p: 0.9,
-                num_ctx: 4096,
-                num_predict: 512
-            }
-        }, 150000);
+    const runInference = (async () => {
+        try {
+            const result = await sendOllamaRequest('/api/chat', {
+                model: briefingModel,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                stream: false,
+                keep_alive: '24h',
+                options: {
+                    temperature: 0.4,
+                    top_p: 0.9,
+                    num_ctx: 4096,
+                    num_predict: 512
+                }
+            }, 90000);
 
-        const rawContent = (result && result.message && result.message.content) || (result && result.response) || '';
-        if (rawContent) {
-            let cleanText = koreanizeWeatherWords(rawContent.trim());
-            // 토큰 상한 도달로 문장 중간에서 끊긴 경우: 마지막 완결 문장까지만 사용 (없으면 기본 브리핑 폴백)
-            if (result.done_reason === 'length') {
-                const lastEnd = Math.max(cleanText.lastIndexOf('.'), cleanText.lastIndexOf('!'), cleanText.lastIndexOf('?'), cleanText.lastIndexOf('요'));
-                if (lastEnd < 10) return null;
-                cleanText = cleanText.slice(0, lastEnd + 1).trim();
+            const rawContent = (result && result.message && result.message.content) || (result && result.response) || '';
+            if (rawContent) {
+                let cleanText = koreanizeWeatherWords(rawContent.trim());
+                // 토큰 상한 도달로 문장 중간에서 끊긴 경우: 마지막 완결 문장까지만 사용 (없으면 기본 브리핑 폴백)
+                if (result.done_reason === 'length') {
+                    const lastEnd = Math.max(cleanText.lastIndexOf('.'), cleanText.lastIndexOf('!'), cleanText.lastIndexOf('?'), cleanText.lastIndexOf('요'));
+                    if (lastEnd < 10) return null;
+                    cleanText = cleanText.slice(0, lastEnd + 1).trim();
+                }
+                // 말투 정리: 마크다운 제거 + '님아' 호칭 교정 + 질문형 문장 제거
+                cleanText = polishBriefingTone(cleanText);
+                if (!cleanText) return null;
+                const entry = {
+                    success: true,
+                    message: cleanText,
+                    generatedAt: new Date().toISOString(),
+                    model: briefingModel
+                };
+                const savedAt = Date.now();
+                if (briefingCacheMap.size >= 20) {
+                    briefingCacheMap.delete(briefingCacheMap.keys().next().value);
+                }
+                briefingCacheMap.set(cacheKey, { data: entry, time: savedAt });
+                userLatestBriefingMap.set(userSlotKey, { data: entry, time: savedAt });
+                return entry;
             }
-            // 말투 정리: 마크다운 제거 + '님아' 호칭 교정 + 질문형 문장 제거
-            cleanText = polishBriefingTone(cleanText);
-            if (!cleanText) return null;
-            cachedAiBriefing = {
-                success: true,
-                message: cleanText,
-                generatedAt: new Date().toISOString(),
-                model: briefingModel
-            };
-            cachedAiBriefingKey = cacheKey;
-            cachedAiBriefingTime = now;
-            return cachedAiBriefing;
+        } catch (err) {
+            console.warn('[AiAssistant] 로컬 AI 브리핑 생성 실패 (폴백 사용):', err.message);
         }
-    } catch (err) {
-        console.warn('[AiAssistant] 로컬 AI 브리핑 생성 실패 (폴백 사용):', err.message);
-    }
 
-    return null;
+        return null;
+    })();
+
+    inFlightBriefingMap.set(cacheKey, runInference);
+    runInference.finally(() => {
+        if (inFlightBriefingMap.get(cacheKey) === runInference) {
+            inFlightBriefingMap.delete(cacheKey);
+        }
+    });
+
+    if (hasValidStale) {
+        runInference.catch(() => {});
+        return staleCached.data;
+    }
+    return runInference;
 }
 
 /**

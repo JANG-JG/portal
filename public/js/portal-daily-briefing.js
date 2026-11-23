@@ -300,19 +300,27 @@
         }
     }
 
+    let aiBriefingFetchInFlight = false;
+    let aiBriefingFetched = false;
+
     /**
      * LG EXAONE 로컬 AI 비서 데일리 조언 비동기 패치 (0ms 무기다림 SWR)
      */
     async function fetchAiBriefingAsync() {
         const naturalEl = document.getElementById('briefingNaturalSummaryText');
         const aiBadge = document.querySelector('.briefing-ai-chip');
-        if (!naturalEl) return;
+        if (!naturalEl || aiBriefingFetchInFlight || aiBriefingFetched) return;
+
+        aiBriefingFetchInFlight = true;
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 45000) : null;
 
         try {
-            const res = await fetch('/api/ai/briefing');
+            const res = await fetch('/api/ai/briefing', controller ? { signal: controller.signal } : undefined);
             if (!res.ok) return;
             const data = await res.json();
             if (data.success && data.briefing) {
+                aiBriefingFetched = true;
                 naturalEl.style.transition = 'opacity 0.3s ease';
                 naturalEl.style.opacity = '0.4';
                 setTimeout(() => {
@@ -332,7 +340,10 @@
                 }
             }
         } catch (e) {
-            // 무장애 폴백: 에러 시 기존 문구 유지
+            // 무장애 폴백: 타임아웃/이탈(AbortError) 포함 에러 시 기존 문구 유지
+        } finally {
+            if (timeoutId) clearTimeout(timeoutId);
+            aiBriefingFetchInFlight = false;
         }
     }
 
