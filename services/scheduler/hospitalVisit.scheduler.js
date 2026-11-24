@@ -31,21 +31,29 @@ function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBr
     const summaryQuery = `
         SELECT MIN(visit_date) as first_visit, SUM(prescription_days) as total_prescribed
         FROM hospital_visits
-        WHERE user_id = ?
+        WHERE user_id = ? AND (visit_type IS NULL OR visit_type = 'regular_bp')
     `;
 
     db.get(summaryQuery, [userId], (sumErr, visitSummary) => {
         if (sumErr || !visitSummary || !visitSummary.first_visit) return;
 
         const medQuery = `
-            SELECT COUNT(DISTINCT substr(measured_at, 1, 10)) as total_taken 
-            FROM records 
-            WHERE substr(measured_at, 1, 10) >= ? 
-              AND medication_time IS NOT NULL 
-              AND length(medication_time) > 5
+            SELECT COUNT(*) as total_taken FROM (
+                SELECT substr(measured_at, 1, 10) as d
+                FROM records
+                WHERE substr(measured_at, 1, 10) >= ?
+                  AND medication_time IS NOT NULL
+                  AND length(medication_time) > 5
+                UNION
+                SELECT log_date as d
+                FROM health_medication_logs
+                WHERE log_date >= ?
+                  AND status = 'taken'
+                  AND (user_id = 'admin' OR user_id = ?)
+            )
         `;
 
-        db.get(medQuery, [visitSummary.first_visit], (medErr, medResult) => {
+        db.get(medQuery, [visitSummary.first_visit, visitSummary.first_visit, userId], (medErr, medResult) => {
             const totalTaken = medResult ? medResult.total_taken : 0;
             const totalPrescribed = visitSummary.total_prescribed || 0;
             const remainingPills = Math.max(0, totalPrescribed - totalTaken);
@@ -59,7 +67,7 @@ function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBr
 
             if (dynamicOpenDate <= currentTargetDateTime) {
                 db.get(
-                    `SELECT * FROM hospital_visits WHERE user_id = ? AND send_notification = 1 AND notified = 0 ORDER BY visit_date DESC LIMIT 1`,
+                    `SELECT * FROM hospital_visits WHERE user_id = ? AND (visit_type IS NULL OR visit_type = 'regular_bp') AND send_notification = 1 AND notified = 0 ORDER BY visit_date DESC LIMIT 1`,
                     [userId],
                     (rowErr, row) => {
                         if (!row) return;
@@ -86,7 +94,7 @@ function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBr
                                         <li><strong>예측 방문일:</strong> ${predictedVisitStr}</li>
                                         <li><strong>메모:</strong> ${row.memo || '없음'}</li>
                                     </ul>
-                                    <p><a href="https://blood.j-jg.cc/hospital.html" target="_blank" style="display:inline-block; padding:10px 18px; background:#4f46e5; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold;">🏥 병원 진료 일정 관리 바로가기</a></p>
+                                    <p><a href="https://blood.j-jg.cc/dashboard.html#hospital" target="_blank" style="display:inline-block; padding:10px 18px; background:#4f46e5; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold;">🏥 병원 진료 일정 관리 바로가기</a></p>
                                 `
                             };
                             mailTransporter.sendMail(mailOptions, (error) => {
@@ -99,7 +107,7 @@ function checkAndDispatchHospitalVisit(db, userId, currentTargetDateTime, sendBr
                         sendBroadcastPush({
                             title: `🏥 ${hospitalNameDisplay}진료 예약 오픈 알림`,
                             body: `오전 11시 예약 오픈 시간입니다! 남은 약: ${remainingPills}일분 (예상 진료일: ${predictedVisitStr})`,
-                            url: 'https://blood.j-jg.cc/hospital.html',
+                            url: 'https://blood.j-jg.cc/dashboard.html#hospital',
                             type: 'hospital',
                             tag: 'jg-hospital',
                             userId

@@ -17,6 +17,7 @@ const {
 } = require('./telegramTransport.service');
 const {
     recordQuickMedicationFromTelegram,
+    recordMedicationSlotFromTelegram,
     scheduleMedSnoozeJob
 } = require('./telegramBlood.service');
 const {
@@ -42,9 +43,18 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;');
 }
 
-async function handleBloodCallback(token, cbQuery, action, arg1, authUser) {
+async function handleBloodCallback(token, cbQuery, action, arg1, arg2, authUser) {
     const chatId = String(cbQuery.message?.chat?.id || '');
     const msgId = cbQuery.message?.message_id;
+
+    if (action === 'med_slot_done') {
+        const res = await recordMedicationSlotFromTelegram(arg1, arg2, authUser?.portal_username || 'admin');
+        await answerCallbackQuery(token, cbQuery.id, res.toast || '💊 복용 체크 완료!', !res.ok);
+        if (chatId && msgId && res.messageHtml) {
+            await editTelegramMessage(token, chatId, msgId, res.messageHtml, { replyMarkup: res.replyMarkup });
+        }
+        return { status: res.ok ? 'ok' : 'error', detail: `med_slot:${arg1}:${arg2}` };
+    }
 
     if (authUser.role !== 'admin') {
         await answerCallbackQuery(token, cbQuery.id, '🔒 혈압·복약 제어는 관리자 전용 기능이에요.', true);
@@ -242,7 +252,7 @@ async function handleTelegramCallbackQuery(token, cbQuery) {
     let outcome = { status: 'ignored', detail: data };
     try {
         if (domain === 'blood') {
-            outcome = await handleBloodCallback(token, cbQuery, action, arg1, authUser);
+            outcome = await handleBloodCallback(token, cbQuery, action, arg1, arg2, authUser);
         } else if (domain === 'wiki') {
             outcome = await handleWikiCallback(token, cbQuery, action, arg1, arg2);
         } else if (domain === 'study') {

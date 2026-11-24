@@ -252,11 +252,87 @@ async function processDueTelegramSnoozeJobs(botToken) {
     return sentCount;
 }
 
+async function recordMedicationSlotFromTelegram(medId, slotRaw, actorUsername = 'admin') {
+    const id = parseInt(medId, 10);
+    const digits = String(slotRaw || '').replace(/\D/g, '');
+    const slotTime = digits.length === 4 ? `${digits.slice(0, 2)}:${digits.slice(2, 4)}` : String(slotRaw || '').trim();
+    const nowInfo = getKstNowInfo();
+
+    const med = await hGet('SELECT * FROM health_medications WHERE id = ?', [id]);
+    if (!med) {
+        return {
+            ok: false,
+            toast: '등록된 약 정보를 찾을 수 없어요.',
+            messageHtml: '⚠️ 해당 약 정보를 찾을 수 없습니다.'
+        };
+    }
+
+    const existing = await hGet(
+        'SELECT id, taken_at FROM health_medication_logs WHERE medication_id = ? AND log_date = ? AND slot_time = ?',
+        [id, nowInfo.dateStr, slotTime]
+    );
+
+    const whoLabel = med.target_label && med.target_label !== '본인' ? `[${med.target_label}] ` : '';
+
+    if (existing) {
+        return {
+            ok: true,
+            alreadyRecorded: true,
+            toast: '이미 복용 완료로 체크되어 있어요!',
+            messageHtml:
+                `✅ <b>${whoLabel}${med.med_name} (${slotTime}) 이미 복용 완료됨</b>\n` +
+                `• 오늘(${nowInfo.dateStr}) 해당 시간대 복용이 이미 기록되어 있습니다.`,
+            replyMarkup: {
+                inline_keyboard: [[{ text: '약·복용 대시보드 열기 ↗', url: 'https://blood.j-jg.cc/dashboard.html' }]]
+            }
+        };
+    }
+
+    await hRun(
+        `INSERT INTO health_medication_logs (medication_id, user_id, checked_by_user_id, log_date, slot_time, status, taken_at)
+         VALUES (?, ?, ?, ?, ?, 'taken', datetime('now', 'localtime'))`,
+        [id, med.user_id, actorUsername || 'admin', nowInfo.dateStr, slotTime]
+    );
+
+    let remainText = '';
+    if (med.remain_count !== null && med.remain_count !== undefined) {
+        const nextRemain = Math.max(0, Number(med.remain_count) - 1);
+        if (med.med_type === 'course' && nextRemain === 0) {
+            await hRun(
+                `UPDATE health_medications SET remain_count = 0, is_active = 0, completed_at = datetime('now', 'localtime'), updated_at = datetime('now', 'localtime') WHERE id = ?`,
+                [id]
+            );
+            remainText = '\n🎉 <b>처방약 복용을 모두 완료했어요!</b>';
+        } else {
+            await hRun(
+                `UPDATE health_medications SET remain_count = ?, updated_at = datetime('now', 'localtime') WHERE id = ?`,
+                [nextRemain, id]
+            );
+            remainText = `\n• 남은 횟수: <b>${nextRemain}회</b>`;
+        }
+    }
+
+    invalidateSummaryCache();
+
+    return {
+        ok: true,
+        alreadyRecorded: false,
+        toast: `💊 ${med.med_name} 복용 완료!`,
+        messageHtml:
+            `✅ <b>${whoLabel}${med.med_name} (${slotTime}) 복용 완료!</b>\n` +
+            `• 체크 시각: <b>${nowInfo.timeStr}</b>${remainText}`,
+        replyMarkup: {
+            inline_keyboard: [[{ text: '약·복용 대시보드 열기 ↗', url: 'https://blood.j-jg.cc/dashboard.html' }]]
+        }
+    };
+}
+
 module.exports = {
     getKstNowInfo,
     computeMedicationStreakDays,
     getBloodStatusPayload,
     recordQuickMedicationFromTelegram,
+    recordMedicationSlotFromTelegram,
     scheduleMedSnoozeJob,
     processDueTelegramSnoozeJobs
 };

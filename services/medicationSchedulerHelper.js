@@ -61,6 +61,13 @@ function checkFamilyMedicationsAndNotify(healthDb, kstDateStr, kstTimeStr, isWee
 
                         for (const slot of slots) {
                             if (logMap.has(`${med.id}::${slot}`)) continue;
+                            const slotCompact = String(slot).replace(':', '');
+                            const medReplyMarkup = {
+                                inline_keyboard: [[
+                                    { text: '약 먹었어요 ✅', callback_data: `cb:blood:med_slot_done:${med.id}:${slotCompact}` },
+                                    { text: '약·복용 열기 ↗', url: 'https://blood.j-jg.cc/dashboard.html' }
+                                ]]
+                            };
 
                             // 1) 정시 복용 알림
                             if (kstTimeStr === slot) {
@@ -75,7 +82,8 @@ function checkFamilyMedicationsAndNotify(healthDb, kstDateStr, kstTimeStr, isWee
                                         body: `${slot} 예정된 약을 챙겨드시고 체크해 주세요.${med.dosage_note ? ' (' + med.dosage_note + ')' : ''}`,
                                         action_url: 'https://blood.j-jg.cc/dashboard.html',
                                         severity: 'info',
-                                        dedup_key: dueKey
+                                        dedup_key: dueKey,
+                                        meta: { telegram_reply_markup: medReplyMarkup }
                                     }).catch(() => {});
                                 }
                             }
@@ -94,7 +102,8 @@ function checkFamilyMedicationsAndNotify(healthDb, kstDateStr, kstTimeStr, isWee
                                         body: `${slot} 복용 체크가 아직 안 되어 있어요. 드셨다면 잊지 말고 체크해 주세요!`,
                                         action_url: 'https://blood.j-jg.cc/dashboard.html',
                                         severity: 'warn',
-                                        dedup_key: missedKey
+                                        dedup_key: missedKey,
+                                        meta: { telegram_reply_markup: medReplyMarkup }
                                     }).catch(() => {});
                                 }
                             }

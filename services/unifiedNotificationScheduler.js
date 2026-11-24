@@ -274,49 +274,13 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                 }
 
                 // ------------------------------------------------------------------
-                // 3. 💊 정기 복약 시간 알림 (공휴일/주말 맞춤 시간표)
+                // 3. 💊 정기 복약 시간 알림 -> 하단 [D] 가족 다중 복약 스케줄러(medicationSchedulerHelper)로 일원화
                 // ------------------------------------------------------------------
-                let medTimes = [];
                 let bpTimes = [];
                 try {
-                    medTimes = JSON.parse(isHoliday ? (u.weekend_med_times || '[]') : (u.weekday_med_times || '[]'));
                     bpTimes = JSON.parse(isHoliday ? (u.weekend_bp_times || '[]') : (u.weekday_bp_times || '[]'));
                 } catch (pErr) {
-                    console.error(`[UnifiedScheduler] 유저(${userId}) 시간표 JSON 파싱 실패:`, pErr.message);
-                }
-
-                if (medTimes.includes(kstTimeStr)) {
-                    const cacheKey = `${userId}:medication:${kstDateStr}_${kstTimeStr}`;
-                    if (!sentHistoryCache.has(cacheKey)) {
-                        sentHistoryCache.add(cacheKey);
-                        sendBroadcastPush({
-                            title: '💊 약 복용 알림',
-                            body: `설정하신 ${kstTimeStr} 약 복용 시간입니다. 잊지 말고 복용해 주세요!`,
-                            url: 'https://blood.j-jg.cc/dashboard.html',
-                            type: 'medication',
-                            tag: 'jg-medication',
-                            userId
-                        });
-
-                        const tgKey = `tg_blood:med:${kstDateStr}_${kstTimeStr}`;
-                        if (!sentHistoryCache.has(tgKey)) {
-                            sentHistoryCache.add(tgKey);
-                            getSystemConfig('telegram_blood_alert_enabled', '1').then((flag) => {
-                                if (flag === '0') return;
-                                return sendAssistantTelegramToAdmins(
-                                    `💊 <b>약 챙겨드실 시간이에요! (${kstTimeStr})</b>\n물 한 잔과 함께 혈압약을 복용하신 뒤 아래 버튼을 눌러주세요.`,
-                                    {
-                                        replyMarkup: {
-                                            inline_keyboard: [[
-                                                { text: '약 먹었어요 ✅', callback_data: 'cb:blood:med_done:today' },
-                                                { text: '1시간 뒤 알림 ⏰', callback_data: 'cb:blood:med_snooze:60' }
-                                            ]]
-                                        }
-                                    }
-                                );
-                            }).catch(() => {});
-                        }
-                    }
+                    console.error(`[UnifiedScheduler] 유저(${userId}) 혈압 시간표 JSON 파싱 실패:`, pErr.message);
                 }
 
                 // ------------------------------------------------------------------
@@ -388,8 +352,7 @@ function initUnifiedNotificationScheduler(db, sendBroadcastPush, getLiveWeatherD
                                                 {
                                                     replyMarkup: {
                                                         inline_keyboard: [[
-                                                            { text: '약 먹었어요 ✅', callback_data: 'cb:blood:med_done:today' },
-                                                            { text: '혈압 기록하러 가기 ↗', url: 'https://blood.j-jg.cc/dashboard.html' }
+                                                            { text: '혈압 기록하러 가기 ↗', url: 'https://blood.j-jg.cc/dashboard.html#bp' }
                                                         ]]
                                                     }
                                                 }

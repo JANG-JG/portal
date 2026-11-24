@@ -302,9 +302,9 @@
                         </div>
                     `;
                 } else if (ev.type && ev.type.startsWith('hospital')) {
-                    actionBtn = `<a href="https://blood.j-jg.cc/hospital.html" target="_blank" style="font-size:0.75rem; color:#059669; font-weight:700; text-decoration:none; padding:2px 6px; background:#ecfdf5; border-radius:4px; flex-shrink:0;">병원예약 →</a>`;
+                    actionBtn = `<a href="https://blood.j-jg.cc/dashboard.html#hospital" target="_blank" style="font-size:0.75rem; color:#059669; font-weight:700; text-decoration:none; padding:2px 6px; background:#ecfdf5; border-radius:4px; flex-shrink:0;">병원·진료 →</a>`;
                 } else if (ev.type && ev.type.startsWith('health')) {
-                    actionBtn = `<a href="https://blood.j-jg.cc/" target="_blank" style="font-size:0.75rem; color:#e11d48; font-weight:700; text-decoration:none; padding:2px 6px; background:#fff1f2; border-radius:4px; flex-shrink:0;">혈압앱 →</a>`;
+                    actionBtn = `<a href="https://blood.j-jg.cc/dashboard.html" target="_blank" style="font-size:0.75rem; color:#e11d48; font-weight:700; text-decoration:none; padding:2px 6px; background:#fff1f2; border-radius:4px; flex-shrink:0;">건강관리 →</a>`;
                 }
 
                 // 대표 아이콘 결정

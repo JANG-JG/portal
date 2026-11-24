@@ -358,7 +358,7 @@
                 hospitals.forEach(h => {
                     const item = document.createElement('a');
                     item.className = 'qs-item';
-                    item.href = `/go/blood?path=/hospital.html`;
+                    item.href = `/go/blood?path=/dashboard.html%23hospital`;
                     const hospNameHtml = highlightMatch(h.hospital_name || '병원', query);
                     const deptHtml = highlightMatch(h.department || '', query);
                     const memoHtml = highlightMatch(h.memo || '', query);
