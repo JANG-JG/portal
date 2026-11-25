@@ -216,6 +216,27 @@
                     </div>
                 </div>
 
+                <div id="studyBlockReportsAdminPanel" class="admin-card" style="margin-bottom:1rem; box-sizing:border-box; max-width:100%;">
+                    <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                        <div>
+                            <h3 style="margin:0;">⚠️ 이상한 문제 신고 내역 (AI 품질 점검)</h3>
+                            <p style="margin:0.2rem 0 0; font-size:0.78rem; color:#64748b;">
+                                아이·부모가 태블릿에서 '⚠️ 신고' 버튼을 눌러 교체한 문제 목록입니다. 확인 후 완료 처리할 수 있습니다.
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:0.45rem; flex-wrap:wrap;">
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="sendAdminWeeklyStudyDigest(this)">📊 주간 리포트 발송</button>
+                            <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminStudyBlockReports()">🔄 신고 새로고침</button>
+                        </div>
+                    </div>
+                    <div class="admin-table-container admin-table-scroll" style="margin-top:0.75rem;">
+                        <table class="admin-table">
+                            <thead><tr><th>아이</th><th>영역·레벨</th><th>문제 내용</th><th>정답</th><th>상태</th><th>시각</th><th>관리</th></tr></thead>
+                            <tbody id="adminStudyBlockReportsBody"><tr><td colspan="7" style="text-align:center; padding:1rem; color:#64748b;">신고 내역을 불러오는 중...</td></tr></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="admin-card" style="box-sizing:border-box; max-width:100%;">
                     <div class="admin-card-header">
                         <h3>📄 최근 생성된 학습지 (최대 20건)</h3>

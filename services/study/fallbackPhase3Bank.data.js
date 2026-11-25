@@ -11,7 +11,7 @@ const { KOREAN_BANK, ENGLISH_BANK, pickThemeEmojis } = require('./fallbackBank.d
 const { clampLevel } = require('./studyDb.service');
 
 const PHASE3_SUBJECTS = new Set(['logic', 'reading', 'science', 'music']);
-const PHASE3_SCORED_TYPES = new Set(['clock', 'coins', 'hangul_tiles', 'pattern', 'picture_sudoku', 'tangram_grid']);
+const PHASE3_SCORED_TYPES = new Set(['clock', 'coins', 'hangul_tiles', 'phonics_blend', 'pattern', 'picture_sudoku', 'tangram_grid']);
 
 const CHOSEONG = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
 const JUNGSEONG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
@@ -181,6 +181,33 @@ function buildHangulTilesBlock(subject, level, theme) {
     };
 }
 
+function buildPhonicsBlendBlock(level, theme) {
+    const lv = clampLevel(level);
+    const allEn = Array.isArray(ENGLISH_BANK) ? ENGLISH_BANK : [];
+    const pool = allEn.filter((w) => {
+        const len = String(w.word || '').trim().length;
+        return lv <= 2 ? (len >= 3 && len <= 4) : (len >= 3 && len <= 6);
+    });
+    const pick = (pool.length ? pool : allEn)[randInt(0, Math.max(0, (pool.length ? pool : allEn).length - 1))] || { word: 'cat', meaning: '고양이', emoji: '🐱' };
+    const targetWord = String(pick.word || 'cat').trim().toUpperCase();
+    const answerLetters = Array.from(targetWord).filter((c) => /[A-Z]/.test(c));
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').filter((c) => !answerLetters.includes(c));
+    const distractors = shuffle(alphabet).slice(0, lv <= 2 ? 2 : 3);
+    return {
+        id: 'block-manip-phonics',
+        type: 'phonics_blend',
+        targetWord,
+        meaningKo: pick.meaning || '',
+        emoji: pick.emoji || '🔤',
+        answerLetters,
+        poolLetters: shuffle([...answerLetters, ...distractors]),
+        prompt: `${pick.emoji || '🔤'} 그림(${pick.meaning || targetWord})에 맞는 영어 알파벳을 순서대로 눌러 보세요!`,
+        ttsText: pick.word,
+        ttsLang: 'en-US',
+        hint: `첫 글자 "${answerLetters[0] || 'A'}"부터 차례대로 ${answerLetters.length}글자를 맞춰 보아요!`
+    };
+}
+
 function mixManipulativeIntoSheet(sheet, { subject, level, theme }) {
     if (!sheet || !Array.isArray(sheet.blocks) || !['math', 'korean', 'english'].includes(subject)) return sheet;
     const blocks = [...sheet.blocks];
@@ -188,7 +215,7 @@ function mixManipulativeIntoSheet(sheet, { subject, level, theme }) {
 
     const manip = subject === 'math'
         ? (Math.random() < 0.5 ? buildClockBlock(level, theme) : buildCoinsBlock(level, theme))
-        : buildHangulTilesBlock(subject, level, theme);
+        : (subject === 'english' ? buildPhonicsBlendBlock(level, theme) : buildHangulTilesBlock(subject, level, theme));
 
     const replaceIdx = blocks.length >= 6 ? 4 : -1;
     if (replaceIdx >= 0) {
@@ -438,7 +465,10 @@ function buildMusicWorksheet(level, theme) {
                 songs: [
                     { id: 'twinkle', title: '⭐ 작은 별', notes: ['도', '도', '솔', '솔', '라', '라', '솔', '파', '파', '미', '미', '레', '레', '도'] },
                     { id: 'butterfly', title: '🦋 나비야', notes: ['솔', '미', '미', '파', '레', '레', '도', '레', '미', '파', '솔', '솔', '솔'] },
-                    { id: 'bell', title: '🏫 학교종', notes: ['솔', '솔', '라', '라', '솔', '솔', '미', '솔', '솔', '미', '미', '레'] }
+                    { id: 'bell', title: '🏫 학교종', notes: ['솔', '솔', '라', '라', '솔', '솔', '미', '솔', '솔', '미', '미', '레'] },
+                    { id: 'three_bears', title: '🐻 곰 세 마리', notes: ['도', '도', '도', '도', '도', '미', '솔', '솔', '미', '도', '솔', '솔', '미', '솔', '솔', '미', '도', '도', '도'] },
+                    { id: 'baby_shark', title: '🦈 아기 상어', notes: ['도', '레', '미', '미', '미', '미', '미', '미', '미', '도', '레', '미', '미', '미', '미', '미', '미', '미', '미', '레'] },
+                    { id: 'airplane', title: '✈️ 비행기', notes: ['미', '레', '도', '레', '미', '미', '미', '레', '레', '레', '미', '솔', '솔'] }
                 ]
             },
             {
@@ -494,10 +524,11 @@ function evaluatePhase3SubmittedBlock(blk, submitted) {
     if (type === 'coins') {
         return Number(submitted?.amount) === Number(blk?.targetAmount);
     }
-    if (type === 'hangul_tiles') {
-        const expected = Array.isArray(blk?.answerTiles) ? blk.answerTiles.join('') : String(blk?.targetWord || '');
+    if (type === 'hangul_tiles' || type === 'phonics_blend') {
+        const expectedArr = type === 'phonics_blend' ? blk?.answerLetters : blk?.answerTiles;
+        const expected = Array.isArray(expectedArr) ? expectedArr.join('') : String(blk?.targetWord || '');
         const actual = Array.isArray(submitted?.tiles) ? submitted.tiles.join('') : String(submitted?.finalAnswer || '');
-        return Boolean(expected) && actual === expected;
+        return Boolean(expected) && actual.toUpperCase() === expected.toUpperCase();
     }
     if (type === 'pattern') {
         return String(submitted?.finalAnswer || '') === String(blk?.answer || '');

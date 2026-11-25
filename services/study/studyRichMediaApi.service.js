@@ -89,6 +89,30 @@ async function fetchArasaacPictogram(word, lang = 'ko') {
     }
 }
 
+async function fetchScienceRealPhoto(word) {
+    const clean = String(word || '').trim();
+    if (!clean || clean.length > 20 || /\d/.test(clean)) return null;
+    const cacheKey = `wiki_photo:ko:${clean.toLowerCase()}`;
+
+    await ensureRichMediaTable();
+    const cached = await dbGet('SELECT image_url FROM study_rich_media_cache WHERE cache_key = ?', [cacheKey]).catch(() => null);
+    if (cached) return cached.image_url || null;
+
+    try {
+        const url = `https://ko.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(clean)}`;
+        const res = await getJsonIPv4(url, 3000);
+        const data = res.status === 200 ? JSON.parse(res.body) : null;
+        const thumb = data && data.type === 'standard' && data.thumbnail?.source ? String(data.thumbnail.source) : '';
+        await dbRun(
+            'INSERT OR REPLACE INTO study_rich_media_cache (cache_key, provider, word, image_url) VALUES (?, ?, ?, ?)',
+            [cacheKey, 'wiki_photo', clean, thumb]
+        ).catch(() => {});
+        return thumb || null;
+    } catch (_) {
+        return null;
+    }
+}
+
 async function fetchFreeDictionaryAudio(word) {
     const clean = String(word || '').trim().toLowerCase();
     if (!/^[a-z]{2,20}$/.test(clean)) return null;
@@ -146,11 +170,14 @@ async function enrichWorksheetMedia(sheet, subject) {
 
     for (const blk of sheet.blocks) {
         if (!blk) continue;
-        if (blk.type === 'quiz' && blk.answer) {
-            const word = String(blk.answer).trim();
+        if ((blk.type === 'quiz' || blk.type === 'phonics_blend') && (blk.answer || blk.targetWord)) {
+            const word = String(blk.type === 'phonics_blend' ? blk.targetWord : blk.answer).trim();
             if (useArasaac && !blk.imageUrl) {
+                const fetcher = subject === 'science'
+                    ? async () => (await fetchScienceRealPhoto(word)) || (await fetchArasaacPictogram(word, lang))
+                    : () => fetchArasaacPictogram(word, lang);
                 tasks.push(
-                    fetchArasaacPictogram(word, lang).then((url) => {
+                    fetcher().then((url) => {
                         if (url) blk.imageUrl = url;
                     })
                 );

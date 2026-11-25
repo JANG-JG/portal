@@ -172,11 +172,64 @@
         renderGrowthPanel(mount, data);
     }
 
+    async function loadAdminStudyBlockReports() {
+        const tbody = document.getElementById('adminStudyBlockReportsBody');
+        if (!tbody) return;
+        const { ok, data } = await apiAdmin('/api/admin/study/block-reports');
+        if (!ok) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:1rem; color:#dc2626;">신고 내역을 불러오지 못했습니다.</td></tr>';
+            return;
+        }
+        const rows = Array.isArray(data.reports) ? data.reports : [];
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:1rem; color:#64748b;">신고된 문제가 아직 없습니다. 👍</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map((r) => {
+            const isPending = r.status === 'pending';
+            const badge = isPending
+                ? '<span style="color:#b45309; font-weight:700;">⚠️ 미확인</span>'
+                : '<span style="color:#047857; font-weight:700;">✅ 확인됨</span>';
+            const nextStatus = isPending ? 'resolved' : 'pending';
+            return `<tr>
+                <td>${esc(r.child_emoji || '🧒')} ${esc(r.child_name || r.child_id)}</td>
+                <td>${esc(r.subject)} Lv.${Number(r.level || 1)}</td>
+                <td style="max-width:240px; word-break:break-word;">${esc(r.prompt || '(내용 없음)')}</td>
+                <td>${esc(r.answer || '-')}</td>
+                <td>${badge}</td>
+                <td style="font-size:0.78rem; color:#64748b;">${esc(r.created_at || '')}</td>
+                <td><button type="button" class="btn-admin btn-admin-outline btn-admin-sm" data-resolve-report="${Number(r.id)}" data-next-status="${nextStatus}">${isPending ? '확인 완료' : '미확인으로'}</button></td>
+            </tr>`;
+        }).join('');
+
+        tbody.querySelectorAll('[data-resolve-report]').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                btn.disabled = true;
+                const { ok: resOk } = await apiAdmin(`/api/admin/study/block-reports/${btn.dataset.resolveReport}/resolve`, 'POST', { status: btn.dataset.nextStatus });
+                toast(resOk ? '신고 상태를 변경했습니다.' : '상태 변경 실패', !resOk);
+                await loadAdminStudyBlockReports();
+            });
+        });
+    }
+
+    async function sendAdminWeeklyStudyDigest(btn) {
+        if (btn) btn.disabled = true;
+        try {
+            const { ok, data } = await apiAdmin('/api/admin/study/weekly-digest', 'POST');
+            toast(data.message || (ok ? '주간 리포트를 발송했습니다.' : '발송 실패'), !ok);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
+
     window.loadAdminStudyGrowth = loadAdminStudyGrowth;
+    window.loadAdminStudyBlockReports = loadAdminStudyBlockReports;
+    window.sendAdminWeeklyStudyDigest = sendAdminWeeklyStudyDigest;
 
     document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => {
             if (document.getElementById('studyGrowthAdminPanel')) loadAdminStudyGrowth();
+            if (document.getElementById('adminStudyBlockReportsBody')) loadAdminStudyBlockReports();
         }, 650);
     });
 })();

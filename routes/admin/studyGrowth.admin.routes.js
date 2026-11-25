@@ -19,6 +19,7 @@ const {
 const { buildCurriculumStatus } = require('../../services/study/curriculumKorea.data');
 const { getPublicEduOverview, testPublicEduProvider } = require('../../services/study/publicEduApi.service');
 const { testRichMediaProvider, getRichMediaStats } = require('../../services/study/studyRichMediaApi.service');
+const { listBlockReports, resolveBlockReport } = require('../../services/study/studyBlockReport.service');
 
 router.get('/growth', async (req, res) => {
     try {
@@ -115,6 +116,43 @@ router.post('/growth/test-api', async (req, res) => {
     } catch (err) {
         console.error('공공 API 테스트 오류:', err);
         res.status(500).json({ success: false, message: '외부 API 연결 점검 중 오류가 발생했습니다.' });
+    }
+});
+
+router.get('/block-reports', async (req, res) => {
+    try {
+        const status = String(req.query.status || 'all').trim();
+        const reports = await listBlockReports({ status, limit: 40 });
+        res.json({ success: true, reports });
+    } catch (err) {
+        console.error('관리자 문제 신고 내역 조회 오류:', err);
+        res.status(500).json({ success: false, message: '문제 신고 내역을 불러오지 못했습니다.' });
+    }
+});
+
+router.post('/block-reports/:id/resolve', async (req, res) => {
+    try {
+        const nextStatus = req.body?.status === 'pending' ? 'pending' : 'resolved';
+        const out = await resolveBlockReport(req.params.id, nextStatus);
+        res.json({ success: out.updated, ...out });
+    } catch (err) {
+        console.error('관리자 문제 신고 처리 오류:', err);
+        res.status(500).json({ success: false, message: '신고 상태를 변경하지 못했습니다.' });
+    }
+});
+
+router.post('/weekly-digest', async (req, res) => {
+    try {
+        const { sendWeeklyStudyDigestToParents } = require('../../services/study/studyTelegramNotify.service');
+        const out = await sendWeeklyStudyDigestToParents({ force: true });
+        res.json({
+            success: true,
+            sentCount: out.sentCount || 0,
+            message: `주간 학습 요약 리포트를 발송했습니다. (텔레그램 ${out.sentCount || 0}건)`
+        });
+    } catch (err) {
+        console.error('주간 학습 리포트 수동 발송 오류:', err);
+        res.status(500).json({ success: false, message: '주간 리포트 발송 중 오류가 발생했습니다.' });
     }
 });
 

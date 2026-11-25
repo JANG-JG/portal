@@ -187,7 +187,7 @@
         window.StudyPlayBlocks?.renderChoicesBlock?.(container, blk, speakFn, choiceOpts);
     }
 
-    const SCORED_TYPES = new Set(['quiz', 'count', 'match', 'clock', 'coins', 'hangul_tiles', 'pattern', 'picture_sudoku', 'tangram_grid']);
+    const SCORED_TYPES = new Set(['quiz', 'count', 'match', 'clock', 'coins', 'hangul_tiles', 'phonics_blend', 'pattern', 'picture_sudoku', 'tangram_grid']);
 
     function initBlockStatesFromSheet(sheet, retryAllMode = false) {
         const map = new Map();
@@ -256,6 +256,7 @@
     const TYPE_LABELS = {
         trace: '✍️ 손가락 따라쓰기', count: '👆 하나씩 콕! 숫자 세기', match: '🔗 두 번 탭 선 잇기',
         clock: '⏰ 시계 바늘 맞추기', coins: '🪙 동전·수모형 모으기', hangul_tiles: '🧩 글자 자석 조립',
+        phonics_blend: '🔤 파닉스 조합 놀이',
         pattern: '🔍 규칙 찾기', picture_sudoku: '🔢 4x4 그림 스도쿠', tangram_grid: '🪞 거울 대칭 채우기',
         storybook: '📖 그림 동화책', voice_repeat: '🎤 따라 말해 봐요', piano: '🎹 무지개 피아노'
     };
@@ -280,6 +281,7 @@
             clock: () => mApi?.renderClockBlock(bodyEl, blk, speakText, showToast, opts),
             coins: () => mApi?.renderCoinsBlock(bodyEl, blk, speakText, showToast, opts),
             hangul_tiles: () => mApi?.renderHangulTilesBlock(bodyEl, blk, speakText, showToast, opts),
+            phonics_blend: () => window.StudyPlayPhonics?.renderPhonicsBlendBlock(bodyEl, blk, speakText, showToast, opts),
             pattern: () => pApi?.renderPatternBlock(bodyEl, blk, speakText, showToast, opts),
             picture_sudoku: () => pApi?.renderSudokuBlock(bodyEl, blk, speakText, showToast, opts),
             tangram_grid: () => pApi?.renderTangramBlock(bodyEl, blk, speakText, showToast, opts),

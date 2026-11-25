@@ -154,9 +154,10 @@
                         <span style="font-weight: 800; color: #475569;">${blockTypeLabel(blk.type)}</span>
                         ${chipHtml}
                     </div>
-                    <div class="block-actions no-print" style="display: flex; gap: 6px;">
+                    <div class="block-actions no-print" style="display: flex; gap: 6px; flex-wrap: wrap;">
                         <button type="button" class="study-btn study-btn-secondary btn-block-tts" style="min-block-size: 38px; padding: 6px 12px; font-size: 0.86rem;">🔊 듣기</button>
                         <button type="button" class="study-btn study-btn-outline btn-block-swap" style="min-block-size: 38px; padding: 6px 12px; font-size: 0.86rem;">${swapLabel}</button>
+                        <button type="button" class="study-btn study-btn-outline btn-block-report" title="이상한 문제 신고 후 새 문제로 바꾸기" style="min-block-size: 38px; padding: 6px 10px; font-size: 0.82rem; color: #b45309; border-color: #fcd34d;">⚠️ 신고</button>
                     </div>
                 </div>
                 ${blk.isWrongReview ? `<div class="block-review-badge">🔁 ${escapeHtml(blk.reviewBadge || '지난번 헷갈렸던 문제 복습!')}</div>` : ''}
@@ -182,11 +183,10 @@
                 }
             });
 
-            card.querySelector('.btn-block-swap').addEventListener('click', async (ev) => {
-                const btn = ev.currentTarget;
+            const replaceBlock = async (btn, endpoint, successMsg) => {
                 btn.disabled = true;
                 try {
-                    const res = await fetch(`/api/study/sheets/${sheetId}/regenerate-block`, {
+                    const res = await fetch(`/api/study/sheets/${sheetId}/${endpoint}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
@@ -197,12 +197,20 @@
                         currentSheet.content = data.content;
                         initBlockStatesFromSheet(currentSheet);
                         renderSheet(currentSheet, { preserveStep: true });
-                        showToast(`${idx + 1}번 문제를 새로운 문제로 바꿨어요!`);
+                        showToast(successMsg);
+                    } else {
+                        btn.disabled = false;
                     }
                 } catch (e) {
                     showToast('문제를 바꾸는 중 오류가 났어요.');
                     btn.disabled = false;
                 }
+            };
+            card.querySelector('.btn-block-swap').addEventListener('click', (ev) => {
+                replaceBlock(ev.currentTarget, 'regenerate-block', `${idx + 1}번 문제를 새로운 문제로 바꿨어요!`);
+            });
+            card.querySelector('.btn-block-report').addEventListener('click', (ev) => {
+                replaceBlock(ev.currentTarget, 'report-block', `${idx + 1}번 문제를 신고하고 새 문제로 바꿨어요! 👍`);
             });
 
             const onScoredStateChange = (info) => {
@@ -274,13 +282,14 @@
         const meta = document.createElement('div');
         meta.className = 'trace-meta-bar';
         meta.innerHTML = `
-            <span class="trace-word-label">${escapeHtml(blk.emoji || '✏️')} <strong>${escapeHtml(rawWord)}</strong></span>
+            <span class="trace-word-label">${escapeHtml(blk.emoji || '✏️')} <strong>${escapeHtml(rawWord)}</strong> <span class="trace-praise-badge" style="display:none; margin-left:6px; padding:2px 8px; border-radius:999px; background:#dcfce7; color:#15803d; font-size:0.78rem; font-weight:800;">⭐ 잘 썼어요!</span></span>
             <div class="trace-toolbar no-print" role="group" aria-label="따라쓰기 도구">
                 <button type="button" class="study-btn trace-tool-btn active" data-tool="pen" aria-pressed="true">✏️ 쓰기</button>
                 <button type="button" class="study-btn trace-tool-btn" data-tool="eraser" aria-pressed="false">🧽 지우개</button>
                 <button type="button" class="study-btn study-btn-outline trace-tool-btn btn-clear-canvas">🧹 다 지우기</button>
             </div>
         `;
+        const praiseBadge = meta.querySelector('.trace-praise-badge');
 
         const wrap = document.createElement('div');
         wrap.className = 'trace-wrap trace-wrap-roomy';
@@ -289,11 +298,8 @@
         const guide = document.createElement('div');
         guide.className = nonSpaceCount >= 6 ? 'trace-guide trace-guide--dense' : 'trace-guide';
         guide.setAttribute('aria-hidden', 'true');
-
         guide.innerHTML = chars.length
-            ? chars.map((ch) => /\s/.test(ch)
-                ? '<div class="trace-char-gap"></div>'
-                : `<div class="trace-char-box"><span>${escapeHtml(ch)}</span></div>`).join('')
+            ? chars.map((ch) => /\s/.test(ch) ? '<div class="trace-char-gap"></div>' : `<div class="trace-char-box"><span>${escapeHtml(ch)}</span></div>`).join('')
             : '<div class="trace-char-box"></div>';
 
         const canvas = document.createElement('canvas');
@@ -302,9 +308,7 @@
         container.append(meta, wrap);
 
         const ctx = canvas.getContext('2d');
-        let activeTool = 'pen';
-        let hasInk = false;
-        let drawing = false;
+        let activeTool = 'pen', hasInk = false, drawing = false, strokeDistance = 0, lastPos = null, praised = false;
 
         const applyToolStyle = () => {
             ctx.lineCap = 'round';
@@ -353,7 +357,7 @@
             ctx.lineWidth = (e && e.pointerType === 'pen' && e.pressure > 0) ? (5.2 + Math.min(1, e.pressure) * 10.8) : 10;
         };
         const beginStroke = (p, e) => {
-            drawing = true;
+            drawing = true; lastPos = p;
             if (activeTool === 'pen') hasInk = true;
             applyToolStyle(); applyStrokeWidth(e);
             ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + 0.01, p.y + 0.01); ctx.stroke();
@@ -361,9 +365,18 @@
         const moveStroke = (p, e) => {
             if (!drawing) return;
             if (activeTool === 'pen' && e && e.pointerType === 'pen' && e.pressure > 0) applyStrokeWidth(e);
+            if (activeTool === 'pen' && lastPos) {
+                strokeDistance += Math.hypot(p.x - lastPos.x, p.y - lastPos.y);
+                if (!praised && strokeDistance >= Math.max(110, nonSpaceCount * 42)) {
+                    praised = true;
+                    if (praiseBadge) praiseBadge.style.display = 'inline-block';
+                    showToast(`✍️ "${rawWord}" 정말 예쁘게 잘 따라 썼어요! ⭐`);
+                }
+            }
+            lastPos = p;
             ctx.lineTo(p.x, p.y); ctx.stroke();
         };
-        const endDraw = () => { drawing = false; };
+        const endDraw = () => { drawing = false; lastPos = null; };
         if (window.StudyTablet && window.StudyTablet.bindDrawingCanvas) {
             window.StudyTablet.bindDrawingCanvas(canvas, { getPos, onStart: beginStroke, onMove: moveStroke, onEnd: endDraw, onResize: resizeCanvas });
         } else {
@@ -389,7 +402,9 @@
             : null;
         meta.querySelector('.btn-clear-canvas').addEventListener('click', () => {
             ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.restore();
-            hasInk = false; applyToolStyle();
+            hasInk = false; strokeDistance = 0; praised = false;
+            if (praiseBadge) praiseBadge.style.display = 'none';
+            applyToolStyle();
             if (hwCtrl && typeof hwCtrl.reset === 'function') hwCtrl.reset();
         });
     }

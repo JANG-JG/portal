@@ -45,7 +45,7 @@ const MISSION_SLOT_DEFS = [
     }
 ];
 
-const MIXABLE_BLOCK_TYPES = new Set(['quiz', 'count', 'match', 'clock', 'coins', 'hangul_tiles', 'pattern', 'picture_sudoku', 'tangram_grid']);
+const MIXABLE_BLOCK_TYPES = new Set(['quiz', 'count', 'match', 'clock', 'coins', 'hangul_tiles', 'phonics_blend', 'pattern', 'picture_sudoku', 'tangram_grid']);
 
 let missionTablesPromise = null;
 

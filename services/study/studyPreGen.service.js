@@ -27,7 +27,7 @@ const PREGEN_ENABLED_KEY = 'study_pregen_enabled';
 const PREGEN_LAST_RUN_KEY = 'study_pregen_last_run';
 const PREGEN_LAST_SUMMARY_KEY = 'study_pregen_last_summary';
 const DEFAULT_PREGEN_THEME = '동물 친구';
-const PREGEN_SUBJECTS = ['korean', 'math', 'english'];
+const PREGEN_SUBJECTS = ['korean', 'math', 'english', 'reading', 'science'];
 const MAX_BUFFER_PER_SLOT = 1;
 const RESERVE_DAILY_QUOTA = 4;
 
@@ -316,6 +316,20 @@ function scheduleReplenish(childId, subject, theme = DEFAULT_PREGEN_THEME) {
     setTimeout(() => { processPendingQueue().catch(() => {}); }, 250);
 }
 
+async function getRecentPreferredTheme(childId) {
+    try {
+        const row = await dbGet(
+            `SELECT theme FROM study_worksheets
+             WHERE child_id = ? AND theme IS NOT NULL AND TRIM(theme) != '' AND TRIM(theme) != ?
+             ORDER BY id DESC LIMIT 1`,
+            [childId, DEFAULT_PREGEN_THEME]
+        );
+        return row?.theme ? String(row.theme).trim().slice(0, 24) : '';
+    } catch (_) {
+        return '';
+    }
+}
+
 async function triggerWarmupAll({ reason = 'manual' } = {}) {
     if (!(await isPreGenEnabled())) {
         return { started: false, message: '사전 생성 기능이 꺼져 있습니다.' };
@@ -332,13 +346,18 @@ async function triggerWarmupAll({ reason = 'manual' } = {}) {
     try {
         const profiles = await getProfiles();
         for (const p of profiles) {
-            for (const subj of PREGEN_SUBJECTS) {
-                const out = await replenishSlot(p.id, subj, DEFAULT_PREGEN_THEME);
-                if (out.status === 'generated') {
-                    created += 1;
-                    ttsCount += Number(out.ttsWarmed || 0);
-                } else {
-                    skipped += 1;
+            const customTheme = await getRecentPreferredTheme(p.id);
+            const themes = customTheme ? [DEFAULT_PREGEN_THEME, customTheme] : [DEFAULT_PREGEN_THEME];
+            for (const themeName of themes) {
+                const targetSubjects = themeName === DEFAULT_PREGEN_THEME ? PREGEN_SUBJECTS : ['korean', 'math', 'english'];
+                for (const subj of targetSubjects) {
+                    const out = await replenishSlot(p.id, subj, themeName);
+                    if (out.status === 'generated') {
+                        created += 1;
+                        ttsCount += Number(out.ttsWarmed || 0);
+                    } else {
+                        skipped += 1;
+                    }
                 }
             }
         }
@@ -406,6 +425,12 @@ function initStudyPreGenScheduler() {
         cronTask = cron.schedule('20 6 * * *', () => {
             triggerWarmupAll({ reason: '아침 자동 준비' }).catch((err) => {
                 console.warn('⚠️ [Study PreGen] 일일 스케줄 오류:', err.message);
+            });
+        }, { timezone: 'Asia/Seoul' });
+        cron.schedule('0 20 * * 0', () => {
+            const { sendWeeklyStudyDigestToParents } = require('./studyTelegramNotify.service');
+            sendWeeklyStudyDigestToParents().catch((err) => {
+                console.warn('⚠️ [Study Weekly Digest] 발송 오류:', err.message);
             });
         }, { timezone: 'Asia/Seoul' });
     }

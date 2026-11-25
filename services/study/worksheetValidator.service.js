@@ -239,9 +239,21 @@ function regenerateSingleBlock(currentSheet, blockIndex, { subject, level, theme
         return { ...currentSheet, blocks };
     }
 
-    const freshSheet = buildFallbackWorksheet({ subject, level, theme, includePlayBlock: false });
-    const replacement = freshSheet.blocks[idx] || freshSheet.blocks[0];
-    blocks[idx] = { ...replacement, id: existingBlock.id || `block-${idx + 1}` };
+    const usedPrompts = new Set(blocks.map((b) => String(b?.prompt || '').trim()).filter(Boolean));
+    let chosen = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+        const freshSheet = buildFallbackWorksheet({ subject, level, theme, includePlayBlock: false });
+        const pool = Array.isArray(freshSheet.blocks) ? freshSheet.blocks : [];
+        const sameType = pool.filter((b) => b.type === existingBlock.type && !usedPrompts.has(String(b?.prompt || '').trim()));
+        const diffPrompt = pool.filter((b) => !usedPrompts.has(String(b?.prompt || '').trim()));
+        const candidate = sameType[0] || diffPrompt[0] || pool[(idx + attempt) % Math.max(1, pool.length)] || pool[0];
+        if (candidate && (String(candidate.prompt || '').trim() !== String(existingBlock.prompt || '').trim() || attempt === 3)) {
+            chosen = candidate;
+            break;
+        }
+    }
+    if (!chosen) return currentSheet;
+    blocks[idx] = { ...chosen, id: existingBlock.id || `block-${idx + 1}` };
     return { ...currentSheet, blocks };
 }
 

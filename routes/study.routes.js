@@ -42,6 +42,8 @@ const {
 const { findAndAssignCrossChildWorksheet } = require('../services/study/studySheetShare.service');
 const { gradeAndSubmitWorksheet } = require('../services/study/studyWrongNote.service');
 const { getStudyFeatureFlags } = require('../services/study/studyOpsAdmin.service');
+const { enrichWorksheetMedia } = require('../services/study/studyRichMediaApi.service');
+const { reportBlock } = require('../services/study/studyBlockReport.service');
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -408,30 +410,47 @@ router.get('/api/study/sheets/:id', authenticateToken, async (req, res) => {
     }
 });
 
+async function replaceAndEnrichSheetBlock(sheet, blockIndex) {
+    const updatedContent = regenerateSingleBlock(sheet.content, blockIndex, {
+        subject: sheet.subject,
+        level: sheet.level,
+        theme: sheet.theme
+    });
+    const swappedBlk = updatedContent?.blocks?.[blockIndex];
+    if (swappedBlk) {
+        await enrichWorksheetMedia({ blocks: [swappedBlk] }, sheet.subject).catch(() => {});
+        setImmediate(() => { warmWorksheetTts({ blocks: [swappedBlk] }).catch(() => {}); });
+    }
+    await updateWorksheetContent(sheet.id, updatedContent);
+    return updatedContent;
+}
+
 router.post('/api/study/sheets/:id/regenerate-block', authenticateToken, async (req, res) => {
     try {
         const sheet = await getWorksheetById(req.params.id);
-        if (!sheet || !sheet.content) {
-            return res.status(404).json({ success: false, message: '학습지를 찾을 수 없습니다.' });
-        }
+        if (!sheet || !sheet.content) return res.status(404).json({ success: false, message: '학습지를 찾을 수 없습니다.' });
         const blockIndex = Number(req.body?.blockIndex);
-        if (!Number.isInteger(blockIndex) || blockIndex < 0) {
-            return res.status(400).json({ success: false, message: '교체할 문제 번호가 올바르지 않습니다.' });
-        }
-        const updatedContent = regenerateSingleBlock(sheet.content, blockIndex, {
-            subject: sheet.subject,
-            level: sheet.level,
-            theme: sheet.theme
-        });
-        await updateWorksheetContent(sheet.id, updatedContent);
-        const swappedBlk = updatedContent?.blocks?.[blockIndex];
-        if (swappedBlk) {
-            setImmediate(() => { warmWorksheetTts({ blocks: [swappedBlk] }).catch(() => {}); });
-        }
+        if (!Number.isInteger(blockIndex) || blockIndex < 0) return res.status(400).json({ success: false, message: '교체할 문제 번호가 올바르지 않습니다.' });
+        const updatedContent = await replaceAndEnrichSheetBlock(sheet, blockIndex);
         res.json({ success: true, content: updatedContent });
     } catch (err) {
         console.error('학습지 문제 부분 교체 오류:', err);
         res.status(500).json({ success: false, message: '문제를 바꾸는 중 오류가 발생했습니다.' });
+    }
+});
+
+router.post('/api/study/sheets/:id/report-block', authenticateToken, async (req, res) => {
+    try {
+        const sheet = await getWorksheetById(req.params.id);
+        if (!sheet || !sheet.content) return res.status(404).json({ success: false, message: '학습지를 찾을 수 없습니다.' });
+        const blockIndex = Number(req.body?.blockIndex);
+        if (!Number.isInteger(blockIndex) || blockIndex < 0) return res.status(400).json({ success: false, message: '신고할 문제 번호가 올바르지 않습니다.' });
+        await reportBlock({ sheet, blockIndex, reason: req.body?.reason });
+        const updatedContent = await replaceAndEnrichSheetBlock(sheet, blockIndex);
+        res.json({ success: true, reported: true, content: updatedContent });
+    } catch (err) {
+        console.error('학습지 문제 신고 오류:', err);
+        res.status(500).json({ success: false, message: '문제를 신고하는 중 오류가 발생했습니다.' });
     }
 });
 

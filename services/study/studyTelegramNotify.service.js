@@ -9,7 +9,7 @@
  * ==============================================================================
  */
 
-const { getSystemConfig, getProfiles, SUBJECT_NAMES } = require('./studyDb.service');
+const { getSystemConfig, getProfiles, SUBJECT_NAMES, dbAll } = require('./studyDb.service');
 const { getPokemonById } = require('./pokemonCatalog.data');
 const { publishNotificationEvent } = require('../notification/hub.service');
 
@@ -131,8 +131,62 @@ async function notifyEggHatchedToParents({ childId, cycleNo, pokemonId, totalEar
     return { sentCount: result.telegramSentCount || 0 };
 }
 
+async function sendWeeklyStudyDigestToParents({ force = false } = {}) {
+    if (!force && !(await isStudyTelegramNotifyEnabled())) return { sentCount: 0, skipped: true };
+    const [profiles, completedRows, wrongRows] = await Promise.all([
+        getProfiles(),
+        dbAll(
+            `SELECT child_id, subject, COUNT(*) AS cnt
+             FROM study_worksheets
+             WHERE completed_at IS NOT NULL AND completed_at >= datetime('now', 'localtime', '-7 days')
+             GROUP BY child_id, subject`
+        ).catch(() => []),
+        dbAll(
+            `SELECT child_id, subject, prompt, wrong_count
+             FROM study_wrong_notes
+             WHERE resolved = 0
+             ORDER BY wrong_count DESC, id DESC LIMIT 6`
+        ).catch(() => [])
+    ]);
+
+    const baseUrl = getBaseUrl();
+    const lines = ['📊 <b>[어린이 학습실] 이번 주 성장 요약 리포트</b>', ''];
+    for (const p of profiles) {
+        const myDone = completedRows.filter((r) => r.child_id === p.id);
+        const total = myDone.reduce((acc, r) => acc + Number(r.cnt || 0), 0);
+        const subjSummary = myDone.map((r) => `${SUBJECT_NAMES[r.subject] || r.subject} ${r.cnt}`).join(', ') || '아직 없음';
+        lines.push(`${p.avatar_emoji || '🎒'} <b>${escapeHtml(p.display_name)}</b>: 완료 <b>${total}장</b> (${escapeHtml(subjSummary)})`);
+        const myWrong = wrongRows.filter((w) => w.child_id === p.id).slice(0, 2);
+        if (myWrong.length) {
+            lines.push(`   ↳ 복습 추천: ${myWrong.map((w) => escapeHtml(String(w.prompt || '').slice(0, 22))).join(' / ')}`);
+        }
+    }
+    lines.push('', `👉 <a href="${baseUrl}/study">학습실 바로 열기</a>`);
+
+    const primaryChild = profiles[0]?.id || 'first';
+    const result = await publishNotificationEvent({
+        service_key: 'study',
+        event_type: 'study.weekly_digest',
+        recipient_id: 'role:admin',
+        title: '📊 이번 주 어린이 학습실 성장 요약',
+        body: '아이별 완료 학습지와 복습 추천 문제를 확인해 주세요.',
+        action_url: `${baseUrl}/study`,
+        severity: 'normal',
+        meta: {
+            telegram_html: lines.join('\n'),
+            telegram_reply_markup: {
+                inline_keyboard: [[
+                    { text: '주말 복습 학습지 만들기 📄', callback_data: `cb:study:gen:${primaryChild}:korean` }
+                ]]
+            }
+        }
+    });
+    return { sentCount: result.telegramSentCount || 0, summaryLines: lines.length };
+}
+
 module.exports = {
     isStudyTelegramNotifyEnabled,
     notifyWorksheetCompletedToParents,
-    notifyEggHatchedToParents
+    notifyEggHatchedToParents,
+    sendWeeklyStudyDigestToParents
 };
