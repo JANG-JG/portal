@@ -101,12 +101,21 @@ function isKidSafeDictEntry(word, definition) {
     return true;
 }
 
-function getJsonIPv4(urlStr, timeoutMs = 7000) {
+function getJsonIPv4(urlStr, timeoutMs = 7000, redirectsLeft = 3) {
     return new Promise((resolve, reject) => {
         const req = https.get(urlStr, { agent: ipv4Agent, timeout: timeoutMs }, (res) => {
+            const status = res.statusCode || 500;
+            if ([301, 302, 303, 307, 308].includes(status) && res.headers.location && redirectsLeft > 0) {
+                res.resume();
+                const nextUrl = new URL(res.headers.location, urlStr).toString();
+                if (!nextUrl.startsWith('https://')) {
+                    return resolve({ status, body: '' });
+                }
+                return getJsonIPv4(nextUrl, timeoutMs, redirectsLeft - 1).then(resolve).catch(reject);
+            }
             let raw = '';
             res.on('data', (chunk) => { raw += chunk; });
-            res.on('end', () => resolve({ status: res.statusCode || 500, body: raw }));
+            res.on('end', () => resolve({ status, body: raw }));
         });
         req.on('timeout', () => req.destroy(new Error('PUBLIC_EDU_API_TIMEOUT')));
         req.on('error', reject);
@@ -189,7 +198,7 @@ async function queryStdKoreanDict(wordQuery) {
         method: 'exact',
         num: '10'
     });
-    const url = `https://stdict.korean.go.kr/api/search.do?${qs.toString()}`;
+    const url = `https://kdict.korean.go.kr/standard/api/search.do?${qs.toString()}`;
     const res = await getJsonIPv4(url, 7000);
     if (res.status !== 200) {
         return { ok: false, reason: `http_${res.status}` };
