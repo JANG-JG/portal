@@ -80,6 +80,7 @@ async function buildSummaryData() {
                 LEFT JOIN health_medications m ON m.id = l.medication_id
                 WHERE l.status = 'taken'
                   AND l.taken_at IS NOT NULL
+                  AND m.is_bp_related = 1
                   AND (m.target_label IS NULL OR m.target_label = '' OR m.target_label = '본인')
             ) ORDER BY medication_time DESC LIMIT 1
         `;
@@ -90,6 +91,7 @@ async function buildSummaryData() {
                 SELECT 1 FROM health_medication_logs l
                 LEFT JOIN health_medications m ON m.id = l.medication_id
                 WHERE l.log_date = ? AND l.status = 'taken'
+                  AND m.is_bp_related = 1
                   AND (m.target_label IS NULL OR m.target_label = '' OR m.target_label = '본인')
             ) LIMIT 1
         `;
