@@ -13,7 +13,8 @@ const https = require('https');
 
 const cacheStore = {
     moon: { key: '', data: null, ts: 0 },
-    weather: { key: '', data: null, ts: 0 }
+    weather: { key: '', data: null, ts: 0 },
+    nibr: { data: null, ts: 0 }
 };
 
 function getDataGoKrKey() {
@@ -152,15 +153,48 @@ async function fetchTodayWeatherSummary() {
     }
 }
 
+async function fetchNibrBiodiversityFact() {
+    const key = getDataGoKrKey();
+    if (!key) return null;
+
+    if (Array.isArray(cacheStore.nibr.data) && cacheStore.nibr.data.length && Date.now() - cacheStore.nibr.ts < 12 * 3600 * 1000) {
+        const list = cacheStore.nibr.data;
+        return list[Math.floor(Math.random() * list.length)];
+    }
+
+    try {
+        const url = `https://api.odcloud.kr/api/15041966/v1/uddi:b67ee8e4-4f7d-4ad7-b276-da59a4279500?page=1&perPage=30&returnType=JSON&serviceKey=${encodeServiceKey(key)}`;
+        const res = await httpGetText(url);
+        if (res.status !== 200 || !res.body.trim().startsWith('{')) return null;
+
+        const parsed = JSON.parse(res.body);
+        const rows = Array.isArray(parsed?.data) ? parsed.data : [];
+        const cleanRows = rows
+            .filter((r) => r && (r['서식명'] || r['내용']))
+            .map((r) => ({
+                title: String(r['서식명'] || r['분류'] || '한반도 생물').trim().slice(0, 40),
+                category: String(r['분류'] || '').trim().slice(0, 24),
+                desc: String(r['내용'] || '').replace(/\s+/g, ' ').trim().slice(0, 80)
+            }));
+        if (!cleanRows.length) return null;
+        cacheStore.nibr = { data: cleanRows, ts: Date.now() };
+        return cleanRows[Math.floor(Math.random() * cleanRows.length)];
+    } catch (_) {
+        return null;
+    }
+}
+
 async function getTodayScienceContext() {
-    const [moon, weather] = await Promise.all([
+    const [moon, weather, nibr] = await Promise.all([
         fetchTodayMoonPhase().catch(() => null),
-        fetchTodayWeatherSummary().catch(() => null)
+        fetchTodayWeatherSummary().catch(() => null),
+        fetchNibrBiodiversityFact().catch(() => null)
     ]);
     const parts = [];
     if (moon) parts.push(`오늘의 달 모양: ${moon.emoji} ${moon.name}`);
     if (weather) parts.push(`오늘의 날씨: ${weather.text}`);
-    return { moon, weather, summaryText: parts.join(' / ') };
+    if (nibr) parts.push(`우리나라 생물 정보: ${nibr.title}${nibr.desc ? ` (${nibr.desc})` : ''}`);
+    return { moon, weather, nibr, summaryText: parts.join(' / ') };
 }
 
 async function testDataGoKrProviders() {
@@ -169,9 +203,9 @@ async function testDataGoKrProviders() {
     if (!key) {
         return { ok: false, provider: 'datagokr', elapsedMs: 0, message: 'DATA_GO_KR_API_KEY가 설정되지 않았습니다.' };
     }
-    const { moon, weather, summaryText } = await getTodayScienceContext();
+    const { moon, weather, nibr, summaryText } = await getTodayScienceContext();
     const elapsedMs = Date.now() - started;
-    if (moon || weather) {
+    if (moon || weather || nibr) {
         return {
             ok: true,
             provider: 'datagokr',
@@ -183,13 +217,14 @@ async function testDataGoKrProviders() {
         ok: false,
         provider: 'datagokr',
         elapsedMs,
-        message: '천문/기상 API 응답이 없습니다. 활용신청 승인 상태 또는 인증키(Encoding/Decoding)를 확인해 주세요.'
+        message: '천문/기상/생물다양성 API 응답이 없습니다. 활용신청 승인 상태 또는 인증키(Encoding/Decoding)를 확인해 주세요.'
     };
 }
 
 module.exports = {
     fetchTodayMoonPhase,
     fetchTodayWeatherSummary,
+    fetchNibrBiodiversityFact,
     getTodayScienceContext,
     testDataGoKrProviders
 };
