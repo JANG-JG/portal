@@ -159,6 +159,16 @@ async function syncEggProgressWithBoard(childId, board) {
             'SELECT * FROM study_pokemon_eggs WHERE child_id = ? AND cycle_no = ?',
             [cid, cycleNo]
         );
+    } else if (steps < 10 && Number(egg.hatched) === 1) {
+        await dbRun(
+            `UPDATE study_pokemon_eggs
+             SET current_steps = ?, hatched = 0, hatch_acknowledged = 0, hatched_at = NULL
+             WHERE id = ?`,
+            [steps, egg.id]
+        );
+        egg.current_steps = steps;
+        egg.hatched = 0;
+        egg.hatch_acknowledged = 0;
     } else if (Number(egg.current_steps) !== steps && Number(egg.hatched) === 0) {
         await dbRun(
             'UPDATE study_pokemon_eggs SET current_steps = ? WHERE id = ?',

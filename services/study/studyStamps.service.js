@@ -238,10 +238,12 @@ async function resetCurrentStampBoard(childId) {
         [cid, boardBefore.cycleNo]
     );
     await dbRun('DELETE FROM study_stamps WHERE child_id = ? AND cycle_no = ?', [cid, boardBefore.cycleNo]);
+    await dbRun('DELETE FROM study_pokemon_eggs WHERE child_id = ? AND cycle_no >= ?', [cid, boardBefore.cycleNo]);
     for (const row of rows) {
         await syncSheetCompletedState(row.sheet_id);
     }
     const boardAfter = await getActiveStampBoard(cid);
+    await syncEggProgressWithBoard(cid, boardAfter).catch(() => null);
     return { clearedCount: rows.length, cycleNo: boardBefore.cycleNo, board: boardAfter };
 }
 
