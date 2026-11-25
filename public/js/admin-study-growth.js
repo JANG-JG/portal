@@ -134,17 +134,18 @@
                 btn.disabled = true;
                 btn.textContent = '🧪 점검 중...';
                 const query = provider === 'freedict' ? 'apple' : '사과';
-                const { data: testRes } = await apiAdmin('/api/admin/study/growth/test-api', 'POST', { provider, query });
+                const { ok, data: testRes } = await apiAdmin('/api/admin/study/growth/test-api', 'POST', { provider, query });
+                await loadAdminStudyGrowth();
                 const resultEl = mount.querySelector('#adminGrowthTestResult');
                 if (resultEl) {
                     resultEl.style.display = 'block';
-                    const r = testRes.result || {};
-                    if (r.ok && r.entry) {
+                    const r = (testRes && testRes.result) || {};
+                    if (ok && r.ok && r.entry) {
                         resultEl.style.background = '#ecfdf5';
                         resultEl.style.border = '1px solid #6ee7b7';
                         resultEl.style.color = '#065f46';
                         resultEl.innerHTML = `✅ <strong>${esc(r.entry.providerLabel)}</strong> 연결 성공 (${r.elapsedMs}ms) — <strong>${esc(r.entry.word)}</strong>: ${esc(r.entry.definition)}`;
-                    } else if (r.ok) {
+                    } else if (ok && r.ok) {
                         resultEl.style.background = '#ecfdf5';
                         resultEl.style.border = '1px solid #6ee7b7';
                         resultEl.style.color = '#065f46';
@@ -153,10 +154,9 @@
                         resultEl.style.background = '#fff7ed';
                         resultEl.style.border = '1px solid #fdba74';
                         resultEl.style.color = '#9a3412';
-                        resultEl.textContent = `⚠️ ${r.message || 'API 확인 필요'}`;
+                        resultEl.textContent = `⚠️ ${r.message || (testRes && testRes.error) || 'API 확인 필요'}`;
                     }
                 }
-                await loadAdminStudyGrowth();
             });
         });
     }
