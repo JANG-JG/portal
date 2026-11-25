@@ -73,9 +73,17 @@
         submitting = true;
         setStatus('확인 중이에요...', true);
         try {
+            const reqHeaders = { 'Content-Type': 'application/json' };
+            try {
+                const devToken = localStorage.getItem('jg_family_device');
+                if (devToken) reqHeaders['x-family-device'] = devToken;
+            } catch (e) {}
+            const verifyInvite = params.get('verify_invite');
+            if (verifyInvite) reqHeaders['x-invite-verify'] = verifyInvite;
+
             const res = await fetch('/api/auth/family-login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: reqHeaders,
                 credentials: 'include',
                 body: JSON.stringify({
                     username: selectedMember.username,

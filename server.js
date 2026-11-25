@@ -50,7 +50,7 @@ const kindergartenRoutes = require('./routes/kindergarten.routes');
 
 const app = express();
 app.disable('x-powered-by');
-app.set('trust proxy', 1);
+app.set('trust proxy', 'loopback');
 // ⚡ SSE(text/event-stream) 스트리밍 버퍼링 방지를 위한 압축 예외 필터
 app.use(compression({
     filter: (req, res) => {
@@ -203,15 +203,19 @@ function sendHtml(res, fileName) {
     }
 }
 
+function escapeInlineJsString(val) {
+    return JSON.stringify(typeof val === 'string' ? val.slice(0, 300) : '').slice(1, -1)
+        .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+}
+
 function sendErrorPage(res, statusCode = 404, reqPath = '', customMessage = '') {
     const filePath = path.join(__dirname, 'public', 'error.html');
+    const codeNum = parseInt(statusCode, 10) || 404;
     try {
-        let html = fs.readFileSync(filePath, 'utf8');
-        html = injectAssetVersions(html);
-        const codeNum = parseInt(statusCode, 10) || 404;
-        html = html.replace('__INITIAL_CODE__', String(codeNum))
-                   .replace('__INITIAL_PATH__', (reqPath || '').replace(/"/g, '&quot;'))
-                   .replace('__INITIAL_MSG__', (customMessage || '').replace(/"/g, '&quot;'));
+        let html = injectAssetVersions(fs.readFileSync(filePath, 'utf8'));
+        html = html.replace('__INITIAL_CODE__', () => String(codeNum))
+                   .replace('__INITIAL_PATH__', () => escapeInlineJsString(reqPath))
+                   .replace('__INITIAL_MSG__', () => escapeInlineJsString(customMessage));
 
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
         res.setHeader('Pragma', 'no-cache');
@@ -219,7 +223,7 @@ function sendErrorPage(res, statusCode = 404, reqPath = '', customMessage = '') 
         res.status(codeNum).type('html').send(html);
     } catch (e) {
         console.error('에러 페이지 렌더링 실패:', e);
-        res.status(statusCode || 500).send(`오류가 발생했습니다 (${statusCode})`);
+        res.status(codeNum).type('text/plain').send(`오류가 발생했습니다 (${codeNum})`);
     }
 }
 

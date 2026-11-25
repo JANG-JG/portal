@@ -5,11 +5,7 @@ const path = require('path');
 const os = require('os');
 const { exec, execFile } = require('child_process');
 
-const {
-    resolveDbPath,
-    getDynamicDbMap,
-    getFileSizeStr
-} = require('../../services/adminDbInspector.service');
+const { resolveDbPath, getDynamicDbMap, getFileSizeStr } = require('../../services/adminDbInspector.service');
 const { getAllModules } = require('../../services/moduleRegistry.service');
 
 const { db, newsDb } = require('../../services/db');
@@ -425,8 +421,10 @@ router.get('/logs/news', (req, res) => {
 // 3. 전체 DB 일괄 압축 백업 다운로드 (모듈 레지스트리 기반 100% 동적 수집)
 router.get('/backup/all', (req, res) => {
     const timestamp = formatDateKst().replace(/[-:\s]/g, '');
-    const tmpZip = path.join('/tmp', `jg_all_databases_${timestamp}.zip`);
-
+    const tmpDir = path.resolve(__dirname, '../../data/.tmp-backups');
+    fs.mkdirSync(tmpDir, { recursive: true, mode: 0o700 });
+    try { fs.chmodSync(tmpDir, 0o700); } catch (_) {}
+    const tmpZip = path.join(tmpDir, `jg_all_databases_${timestamp}_${require('crypto').randomBytes(8).toString('hex')}.zip`);
     const dbFiles = [];
     const seen = new Set();
 
@@ -447,6 +445,7 @@ router.get('/backup/all', (req, res) => {
 
     const pyScript = [
         'import zipfile, os, json',
+        'os.umask(0o077)',
         'zpath = os.environ["BACKUP_ZIP_PATH"]',
         'files = json.loads(os.environ["BACKUP_FILES_JSON"])',
         'with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as zf:',
@@ -461,6 +460,7 @@ router.get('/backup/all', (req, res) => {
         env: { ...process.env, BACKUP_ZIP_PATH: tmpZip, BACKUP_FILES_JSON: JSON.stringify(dbFiles) }
     }, (err) => {
         if (err || !fs.existsSync(tmpZip)) {
+            try { if (fs.existsSync(tmpZip)) fs.unlinkSync(tmpZip); } catch (e) {}
             console.error('[일괄 백업 압축 오류]', err);
             return res.status(500).json({ success: false, message: '전체 DB 압축 생성 실패' });
         }

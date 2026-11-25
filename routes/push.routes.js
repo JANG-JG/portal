@@ -6,12 +6,8 @@ const { portalDb, newsDb } = require('../services/db');
 const { authenticateToken, getClientIp, revokedTokens } = require('../middleware/auth');
 const { JWT_SECRET, ADMIN_USERS } = require('../config/constants');
 const {
-    VAPID_PUBLIC_KEY,
-    getVapidKeyFingerprint,
-    detectBrowserName,
-    recordPushDiagEvent,
-    sendUnifiedPushNotification,
-    publishNotificationEvent
+    VAPID_PUBLIC_KEY, getVapidKeyFingerprint, isAllowedWebPushEndpoint,
+    detectBrowserName, recordPushDiagEvent, sendUnifiedPushNotification, publishNotificationEvent
 } = require('../services/push.service');
 const {
     getUserPrefsNormalized,
@@ -125,7 +121,7 @@ router.post('/subscribe', authenticateToken, (req, res) => {
     const subscription = req.body.subscription;
     const deviceType = isMobileUserAgent(req.body.deviceType, rawUserAgent) ? 'mobile' : 'desktop';
 
-    if (!subscription || !subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+    if (!subscription || !subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth || !isAllowedWebPushEndpoint(subscription.endpoint)) {
         return res.status(400).json({ success: false, message: '유효하지 않은 구독 정보입니다.' });
     }
 
@@ -156,6 +152,9 @@ router.post('/subscribe', authenticateToken, (req, res) => {
             last_error = '',
             last_verified_at = datetime('now', 'localtime'),
             updated_at = datetime('now', 'localtime')
+        WHERE push_subscriptions.user_id = excluded.user_id
+           OR push_subscriptions.keys_auth = excluded.keys_auth
+           OR push_subscriptions.status IN ('expired', 'revoked')
     `;
 
     portalDb.run(
@@ -200,7 +199,7 @@ router.post('/rotate', (req, res) => {
     const newSub = body.newSubscription;
     const swVersion = String(body.swVersion || '').slice(0, 40);
 
-    if (!oldEndpoint || !oldAuth || !newSub || !newSub.endpoint || !newSub.keys || !newSub.keys.p256dh || !newSub.keys.auth) {
+    if (!oldEndpoint || !oldAuth || !newSub || !newSub.endpoint || !newSub.keys || !newSub.keys.p256dh || !newSub.keys.auth || !isAllowedWebPushEndpoint(newSub.endpoint)) {
         return res.status(400).json({ success: false, message: '유효하지 않은 토큰 회전 요청입니다.' });
     }
 

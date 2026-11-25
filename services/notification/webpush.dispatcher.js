@@ -59,6 +59,29 @@ function dbRun(sql, params = []) {
     });
 }
 
+const ALLOWED_PUSH_HOST_SUFFIXES = [
+    '.googleapis.com',
+    'fcm.googleapis.com',
+    '.push.services.mozilla.com',
+    '.push.apple.com',
+    '.notify.windows.com'
+];
+
+function isAllowedWebPushEndpoint(rawEndpoint) {
+    if (!rawEndpoint || typeof rawEndpoint !== 'string' || rawEndpoint.length > 2048) return false;
+    try {
+        const u = new URL(rawEndpoint.trim());
+        if (u.protocol !== 'https:' || u.username || u.password) return false;
+        if (u.port && u.port !== '443') return false;
+        const host = u.hostname.toLowerCase();
+        if (!host || host === 'localhost' || /^(\d{1,3}\.){3}\d{1,3}$/.test(host) || host.includes(':')) return false;
+        if (host.endsWith('.google.com') && (u.pathname.startsWith('/fcm/') || u.pathname.startsWith('/gcm/'))) return true;
+        return ALLOWED_PUSH_HOST_SUFFIXES.some((sfx) => (sfx.startsWith('.') ? host.endsWith(sfx) : host === sfx));
+    } catch (_) {
+        return false;
+    }
+}
+
 async function dispatchWebPushToSubscriptions(subscriptions, payloadObj, { severity = 'normal', ttl = 86400 } = {}) {
     if (!Array.isArray(subscriptions) || subscriptions.length === 0) {
         return { targetCount: 0, successCount: 0, failCount: 0, results: [] };
@@ -73,6 +96,10 @@ async function dispatchWebPushToSubscriptions(subscriptions, payloadObj, { sever
     let failCount = 0;
 
     const tasks = subscriptions.map(async (subRow) => {
+        if (!isAllowedWebPushEndpoint(subRow.endpoint)) {
+            failCount += 1;
+            return { endpoint: subRow.endpoint, userId: subRow.user_id, ok: false, statusCode: 0, error: '차단된 푸시 엔드포인트 도메인' };
+        }
         const encoding = subRow.content_encoding === 'aesgcm' ? 'aesgcm' : 'aes128gcm';
         const pushOptions = {
             TTL: ttl,
@@ -132,6 +159,7 @@ async function dispatchWebPushToSubscriptions(subscriptions, payloadObj, { sever
 module.exports = {
     VAPID_PUBLIC_KEY,
     getVapidKeyFingerprint,
+    isAllowedWebPushEndpoint,
     recordPushDiagEvent,
     getRecentPushDiagEvents,
     dispatchWebPushToSubscriptions

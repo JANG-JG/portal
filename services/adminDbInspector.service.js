@@ -40,17 +40,64 @@ function isIgnoredDir(dirName) {
     return false;
 }
 
+const ALLOWED_DB_EXTS = new Set(['.db', '.sqlite', '.sqlite3']);
+
+function isWithinAllowedRoots(targetPath, roots) {
+    return roots.some((rootDir) => {
+        if (!rootDir) return false;
+        const normRoot = path.resolve(rootDir);
+        return targetPath === normRoot || targetPath.startsWith(normRoot + path.sep);
+    });
+}
+
 /**
- * DB 파일 상대/절대 경로 해결
+ * DB 파일 상대/절대 경로 해결 (워크스페이스 경계·심볼릭 링크·확장자 검증 강제)
  */
 function resolveDbPath(p) {
-    if (!p) return null;
-    if (path.isAbsolute(p)) return p;
-    const c1 = path.join(WORKSPACE_ROOT, p);
-    if (fs.existsSync(c1)) return c1;
-    const c2 = path.join(os.homedir(), 'workspace', p);
-    if (fs.existsSync(c2)) return c2;
-    return c1;
+    if (!p || typeof p !== 'string') return null;
+    const trimmed = p.trim();
+    if (!trimmed || trimmed.includes('\0')) return null;
+
+    const ext = path.extname(trimmed).toLowerCase();
+    if (!ALLOWED_DB_EXTS.has(ext)) return null;
+
+    const baseName = path.basename(trimmed).toLowerCase();
+    if (baseName.startsWith('.env') || baseName.startsWith('id_')) return null;
+
+    const homeWorkspace = path.join(os.homedir(), 'workspace');
+    const allowedRoots = [path.resolve(WORKSPACE_ROOT), path.resolve(homeWorkspace)];
+
+    let candidate = null;
+    if (path.isAbsolute(trimmed)) {
+        const abs = path.resolve(trimmed);
+        if (!isWithinAllowedRoots(abs, allowedRoots)) return null;
+        candidate = abs;
+    } else {
+        const c1 = path.resolve(WORKSPACE_ROOT, trimmed);
+        const c2 = path.resolve(homeWorkspace, trimmed);
+        if (isWithinAllowedRoots(c1, allowedRoots) && fs.existsSync(c1)) {
+            candidate = c1;
+        } else if (isWithinAllowedRoots(c2, allowedRoots) && fs.existsSync(c2)) {
+            candidate = c2;
+        } else if (isWithinAllowedRoots(c1, allowedRoots)) {
+            candidate = c1;
+        } else {
+            return null;
+        }
+    }
+
+    try {
+        if (fs.existsSync(candidate)) {
+            const realCandidate = fs.realpathSync(candidate);
+            const realRoots = allowedRoots.map((r) => (fs.existsSync(r) ? fs.realpathSync(r) : r));
+            if (!isWithinAllowedRoots(realCandidate, realRoots)) return null;
+            if (!ALLOWED_DB_EXTS.has(path.extname(realCandidate).toLowerCase())) return null;
+            return realCandidate;
+        }
+    } catch (_) {
+        return null;
+    }
+    return candidate;
 }
 
 /**

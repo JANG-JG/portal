@@ -89,12 +89,13 @@ function createServiceProxyHandler(spec, lanIp, portalPort) {
         delete forwardHeaders.connection;
         delete forwardHeaders['keep-alive'];
         delete forwardHeaders['transfer-encoding'];
+        delete forwardHeaders['cf-connecting-ip'];
+        delete forwardHeaders['x-real-ip'];
+        const clientSocketIp = String(req.socket?.remoteAddress || '127.0.0.1').replace(/^::ffff:/, '');
         forwardHeaders.host = `${reqHost}:${spec.port}`;
         forwardHeaders['x-forwarded-host'] = `${reqHost}:${spec.port}`;
         forwardHeaders['x-forwarded-proto'] = 'https';
-        forwardHeaders['x-forwarded-for'] = req.headers['x-forwarded-for']
-            ? `${req.headers['x-forwarded-for']}, ${req.socket?.remoteAddress || ''}`
-            : (req.socket?.remoteAddress || '127.0.0.1');
+        forwardHeaders['x-forwarded-for'] = clientSocketIp;
 
         const isHeavyStream = req.url.startsWith('/api/photos') || req.url.startsWith('/uploads') || req.url.startsWith('/api/ocr');
         const proxyReq = http.request({

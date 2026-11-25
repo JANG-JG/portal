@@ -32,29 +32,32 @@ async function loadRecentAlbumPhotos() {
             countEl.textContent = `최근 소중한 순간 (${photos.length}선)`;
         }
 
+        const escHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         track.innerHTML = photos.map(photo => {
-            const safeCaption = (photo.caption || '가족 사진').replace(/"/g, '&quot;');
-            const safeAuthor = (photo.author || '가족').replace(/</g, '&lt;');
-            const emoji = photo.emoji || '😊';
+            const safeCaption = escHtml(photo.caption || '가족 사진');
+            const safeAuthor = escHtml(photo.author || '가족');
+            const emoji = escHtml(photo.emoji || '😊');
             const batchBadge = photo.batchTotal > 1 
-                ? `<div class="album-thumb-batch-badge">📷 ${photo.batchTotal}장</div>` 
+                ? `<div class="album-thumb-batch-badge">📷 ${Number(photo.batchTotal) || 0}장</div>` 
                 : '';
 
-            const extUrl = photo.externalThumbnailUrl || photo.thumbnailUrl;
+            const thumbSrc = escHtml(photo.thumbnailUrl || '');
+            const extUrl = escHtml(photo.externalThumbnailUrl || photo.thumbnailUrl || '');
             return `
                 <a href="https://album.j-jg.cc" class="album-thumb-card" title="${safeCaption}">
                     <div class="album-thumb-img-wrap">
-                        <img src="${photo.thumbnailUrl}" 
+                        <img src="${thumbSrc}" 
                              alt="${safeCaption}" 
+                             data-ext-url="${extUrl}"
                              class="album-thumb-img" 
                              loading="lazy" 
-                             onerror="if (!this.dataset.fallback && '${extUrl}') { this.dataset.fallback='1'; this.src='${extUrl}'; } else { this.src='/favicon.svg'; this.style.objectFit='contain'; }">
+                             onerror="if (!this.dataset.fallback && this.dataset.extUrl) { this.dataset.fallback='1'; this.src=this.dataset.extUrl; } else { this.src='/favicon.svg'; this.style.objectFit='contain'; }">
                     </div>
                     <div class="album-thumb-meta">
                         <div class="album-thumb-caption">${safeCaption}</div>
                         <div class="album-thumb-author-row">
                             <span>${emoji} ${safeAuthor}</span>
-                            <span>❤️ ${photo.reactionCount}</span>
+                            <span>❤️ ${Number(photo.reactionCount) || 0}</span>
                         </div>
                     </div>
                 </a>

@@ -242,6 +242,37 @@ function createOrUpdateModule(data, isNew = false) {
 
     const existingMod = existingIdx !== -1 ? modules[existingIdx] : null;
 
+    const rawBaseUrl = data.baseUrl ? String(data.baseUrl).trim() : '';
+    if (rawBaseUrl) {
+        let parsedBase;
+        try {
+            parsedBase = new URL(rawBaseUrl);
+        } catch (_) {
+            throw new Error('유효한 기본 URL(baseUrl) 형식이 아닙니다.');
+        }
+        const host = parsedBase.hostname.toLowerCase();
+        const isTrustedDomain = parsedBase.protocol === 'https:' && (host === 'j-jg.cc' || host.endsWith('.j-jg.cc'));
+        const isTrustedLocal = (parsedBase.protocol === 'http:' || parsedBase.protocol === 'https:') &&
+            (host === 'localhost' || host === '127.0.0.1' || /^192\.168\.\d{1,3}\.\d{1,3}$/.test(host));
+        if (!isTrustedDomain && !isTrustedLocal) {
+            throw new Error('허용되지 않은 외부 도메인은 기본 URL(baseUrl)로 등록할 수 없습니다.');
+        }
+    }
+
+    const rawDbPath = (data.dbPath !== undefined) ? String(data.dbPath).trim() : (existingMod ? (existingMod.dbPath || '') : '');
+    if (rawDbPath) {
+        if (rawDbPath.includes('\0') || rawDbPath.split(/[\\/]/).includes('..') || !/\.(db|sqlite|sqlite3)$/i.test(rawDbPath)) {
+            throw new Error('데이터베이스 경로(dbPath)는 워크스페이스 내부의 .db/.sqlite/.sqlite3 파일만 지정할 수 있습니다.');
+        }
+        if (path.isAbsolute(rawDbPath)) {
+            const wsRoot = path.resolve(__dirname, '../..');
+            const normDb = path.resolve(rawDbPath);
+            if (!normDb.startsWith(wsRoot + path.sep)) {
+                throw new Error('데이터베이스 경로(dbPath)는 워크스페이스 외부 절대 경로를 지정할 수 없습니다.');
+            }
+        }
+    }
+
     const modPayload = {
         id: cleanId,
         name: String(data.name).trim(),
@@ -249,8 +280,8 @@ function createOrUpdateModule(data, isNew = false) {
         description: data.description ? String(data.description).trim() : '',
         category: data.category ? String(data.category).trim() : '라이프',
         entryUrl: String(data.entryUrl).trim(),
-        baseUrl: data.baseUrl ? String(data.baseUrl).trim() : '',
-        ssoEnabled: Boolean(data.ssoEnabled !== undefined ? data.ssoEnabled : data.baseUrl),
+        baseUrl: rawBaseUrl,
+        ssoEnabled: Boolean(data.ssoEnabled !== undefined ? data.ssoEnabled : rawBaseUrl),
         adminOnly: Boolean(data.adminOnly),
         defaultFamilyAllowed: Boolean(data.defaultFamilyAllowed),
         enabled: data.enabled !== false,
@@ -260,7 +291,7 @@ function createOrUpdateModule(data, isNew = false) {
         ],
         portalWidget: data.portalWidget || null,
         admin: data.admin || null,
-        dbPath: (data.dbPath !== undefined) ? String(data.dbPath).trim() : (existingMod ? (existingMod.dbPath || '') : '')
+        dbPath: rawDbPath
     };
 
     // 노출 순서 위치(1-based) 처리

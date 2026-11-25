@@ -52,11 +52,11 @@ async function loadAlbumAdminPhotos() {
         }
 
         container.innerHTML = data.photos.map(p => {
-            const author = p.author_name || '가족';
-            const emoji = p.avatar_emoji || '😊';
-            const dateStr = p.created_at ? (typeof formatAdminKst === 'function' ? formatAdminKst(p.created_at, 'minute') : p.created_at.slice(0, 16)) : '-';
-            const thumbUrl = `https://album.j-jg.cc/uploads/thumbnails/${p.thumbnail_filename}`;
-            const origUrl = `https://album.j-jg.cc/uploads/originals/${p.storage_filename}`;
+            const author = escapeHtml(p.author_name || '가족');
+            const emoji = escapeHtml(p.avatar_emoji || '😊');
+            const dateStr = escapeHtml(p.created_at ? (typeof formatAdminKst === 'function' ? formatAdminKst(p.created_at, 'minute') : p.created_at.slice(0, 16)) : '-');
+            const thumbUrl = `https://album.j-jg.cc/uploads/thumbnails/${encodeURIComponent(p.thumbnail_filename || '')}`;
+            const origUrl = `https://album.j-jg.cc/uploads/originals/${encodeURIComponent(p.storage_filename || '')}`;
             const caption = p.caption ? escapeHtml(p.caption) : '설명 없음';
             const sizeKb = p.file_size ? (p.file_size / 1024).toFixed(0) + ' KB' : '-';
 

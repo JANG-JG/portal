@@ -153,20 +153,22 @@ function getAuthorizedDeviceUsername(req) {
     return null;
 }
 
-// 1. 로그인 화면용 가족 구성원 목록 (🛡️ 인증된 가족 기기만 조회 가능, 외부인 일체 비노출)
-router.get('/api/auth/family-members', (req, res) => {
-    let authorizedUsername = getAuthorizedDeviceUsername(req);
-
-    // 새 기기 초대 링크로 진입한 경우(PIN 검증 대기 상태) 해당 가족 1명만 임시 노출하여 PIN 입력 유도
-    if (!authorizedUsername && (req.headers['x-invite-verify'] || req.query?.verify_invite)) {
-        const verifyToken = req.headers['x-invite-verify'] || req.query?.verify_invite;
+function resolveAuthorizedFamilyUsername(req) {
+    const devUser = getAuthorizedDeviceUsername(req);
+    if (devUser) return devUser;
+    const verifyToken = req.headers['x-invite-verify'] || req.query?.verify_invite || req.body?.verifyInvite;
+    if (verifyToken) {
         try {
-            const decoded = jwt.verify(verifyToken, JWT_SECRET, { algorithms: ['HS256'] });
-            if (decoded && decoded.username && decoded.purpose === 'invite_verify') {
-                authorizedUsername = decoded.username;
-            }
+            const decoded = jwt.verify(String(verifyToken), JWT_SECRET, { algorithms: ['HS256'] });
+            if (decoded && decoded.username && decoded.purpose === 'invite_verify') return decoded.username;
         } catch (e) {}
     }
+    return null;
+}
+
+// 1. 로그인 화면용 가족 구성원 목록 (🛡️ 인증된 가족 기기만 조회 가능, 외부인 일체 비노출)
+router.get('/api/auth/family-members', (req, res) => {
+    const authorizedUsername = resolveAuthorizedFamilyUsername(req);
 
     // 인증된 기기나 유효한 초대 검증이 아니면 가족 정보 일체 비노출 (0건 반환)
     if (!authorizedUsername) {
@@ -219,8 +221,21 @@ router.post('/api/auth/family-login', async (req, res) => {
         return res.status(400).json({ success: false, message: 'PIN 번호는 숫자 6자리여야 합니다.' });
     }
 
-    db.get('SELECT rowid, * FROM users WHERE username = ?', [username], async (err, user) => {
-        if (err || !user) {
+    const authorizedUsername = resolveAuthorizedFamilyUsername(req);
+    if (!authorizedUsername || authorizedUsername !== username) {
+        recordLoginFailure(clientIp);
+        recordLoginLog(username, clientIp, 'FAILED_UNAUTHORIZED_DEVICE');
+        return res.status(403).json({
+            success: false,
+            message: '등록된 가족 기기 또는 유효한 초대 링크에서만 간편 PIN 입장이 가능합니다. 아이디 로그인을 이용해 주세요.'
+        });
+    }
+
+    db.get(
+        `SELECT rowid, * FROM users WHERE username = ? AND (role IN ('family', 'kid') OR role IS NULL)`,
+        [username],
+        async (err, user) => {
+        if (err || !user || user.role === 'admin' || user.rowid === 1 || ADMIN_USERS.has(user.username)) {
             recordLoginFailure(clientIp);
             recordLoginLog(username, clientIp, 'FAILED_FAMILY_PIN');
             return res.status(401).json({ success: false, message: '가족 계정 정보 또는 6자리 PIN 번호가 올바르지 않습니다.' });

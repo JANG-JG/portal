@@ -12,6 +12,7 @@ const { detectBrowserName } = require('./notification/migration.service');
 const {
     VAPID_PUBLIC_KEY,
     getVapidKeyFingerprint,
+    isAllowedWebPushEndpoint,
     recordPushDiagEvent,
     getRecentPushDiagEvents
 } = require('./notification/webpush.dispatcher');
@@ -64,6 +65,7 @@ function sendUnifiedPushNotification({
 module.exports = {
     VAPID_PUBLIC_KEY,
     getVapidKeyFingerprint,
+    isAllowedWebPushEndpoint,
     detectBrowserName,
     recordPushDiagEvent,
     getRecentPushDiagEvents,
