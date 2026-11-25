@@ -118,7 +118,7 @@ function renderStudyConfigForm(cfg) {
     const pinInput = document.getElementById('studyParentPinInput');
     const clearChk = document.getElementById('studyClearParentPinChk');
     if (limitInput) limitInput.value = cfg.dailyLimit || 30;
-    if (modelInput) modelInput.value = cfg.geminiModel || 'gemini-3.1-flash-lite';
+    if (modelInput) modelInput.value = cfg.geminiModel || 'gemini-4-hydrogen';
     if (pinInput) pinInput.value = '';
     if (clearChk) clearChk.checked = false;
 }

@@ -133,7 +133,7 @@
     }
 
     function renderQuizBlock(container, blk, subject, speakFn, choiceOpts = {}) {
-        if (blk.visualLeft || blk.visualRight || blk.equationText) {
+        if (blk.visualLeft || blk.visualRight || blk.equationText || blk.imageUrl) {
             const box = document.createElement('div');
             box.className = 'quiz-visual-box';
             if (blk.visualLeft && blk.visualRight) {
@@ -142,6 +142,32 @@
                 row.className = 'quiz-visual-equation-row';
                 row.append(mk('quiz-visual-side', blk.visualLeft), mk('quiz-visual-op', blk.operator || '+'), mk('quiz-visual-side', blk.visualRight));
                 box.appendChild(row);
+            } else if (blk.imageUrl) {
+                const isLangQuiz = (subject === 'korean' || subject === 'english') && (blk.ttsText || blk.audioUrl);
+                const img = document.createElement('img');
+                img.src = blk.imageUrl;
+                img.alt = blk.answer ? `${blk.answer} 그림` : '문제 그림';
+                img.loading = 'lazy';
+                img.className = 'quiz-pictogram-img' + (isLangQuiz ? ' is-speakable' : '');
+                img.onerror = () => {
+                    const fallback = document.createElement('div');
+                    fallback.className = 'quiz-visual-hero' + (isLangQuiz ? ' is-speakable' : '');
+                    fallback.textContent = String(blk.visualLeft || '🌟').trim();
+                    if (isLangQuiz && typeof speakFn === 'function') {
+                        fallback.addEventListener('click', () => speakFn(blk.ttsText, blk.ttsLang || 'ko-KR'));
+                    }
+                    img.replaceWith(fallback);
+                };
+                if (isLangQuiz) {
+                    img.addEventListener('click', () => {
+                        if (blk.audioUrl) {
+                            new Audio(blk.audioUrl).play().catch(() => typeof speakFn === 'function' && speakFn(blk.ttsText, blk.ttsLang || 'ko-KR'));
+                        } else if (typeof speakFn === 'function') {
+                            speakFn(blk.ttsText, blk.ttsLang || 'ko-KR');
+                        }
+                    });
+                }
+                box.appendChild(img);
             } else if (blk.visualLeft || blk.visualRight) {
                 const text = String(blk.visualLeft || blk.visualRight).trim();
                 const vis = document.createElement('div');

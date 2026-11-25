@@ -34,7 +34,7 @@
             const badge = p.configured
                 ? `<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:999px; font-size:0.74rem; font-weight:800;">✅ 연결됨 (${esc(p.masked)})</span>`
                 : `<span style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:999px; font-size:0.74rem; font-weight:700;">⚪ 미설정 (로컬 폴백)</span>`;
-            const testBtn = (key === 'urimalsam' || key === 'stdtdic')
+            const testBtn = (key === 'urimalsam' || key === 'stdtdic' || key === 'arasaac' || key === 'freedict')
                 ? `<button type="button" class="btn-admin btn-admin-outline btn-admin-sm" data-test-provider="${esc(key)}">🧪 연동 테스트</button>`
                 : '';
             return `
@@ -90,6 +90,12 @@
                 <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
                     <input type="checkbox" id="chkAdminPublicDict" ${cfg.publicDictEnabled !== false ? 'checked' : ''}> 📖 우리말 낱말 사전 Open API 조회 사용
                 </label>
+                <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
+                    <input type="checkbox" id="chkAdminArasaac" ${cfg.arasaacEnabled !== false ? 'checked' : ''}> 🎨 유아 픽토그램 일러스트(ARASAAC)
+                </label>
+                <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.84rem; font-weight:700; cursor:pointer;">
+                    <input type="checkbox" id="chkAdminFreedict" ${cfg.freedictEnabled !== false ? 'checked' : ''}> 🔊 영어 원어민 발음(FreeDict)
+                </label>
             </div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(195px, 1fr)); gap:0.65rem; margin-top:0.75rem;">
                 ${providerCards}
@@ -110,20 +116,25 @@
         const onCfgChange = async () => {
             const payload = {
                 curriculumTreeEnabled: Boolean(mount.querySelector('#chkAdminCurriculumTree')?.checked),
-                publicDictEnabled: Boolean(mount.querySelector('#chkAdminPublicDict')?.checked)
+                publicDictEnabled: Boolean(mount.querySelector('#chkAdminPublicDict')?.checked),
+                arasaacEnabled: Boolean(mount.querySelector('#chkAdminArasaac')?.checked),
+                freedictEnabled: Boolean(mount.querySelector('#chkAdminFreedict')?.checked)
             };
             const { ok, data: resData } = await apiAdmin('/api/admin/study/growth/config', 'POST', payload);
             toast(resData.message || (ok ? '저장되었습니다.' : '저장 실패'), !ok);
         };
         mount.querySelector('#chkAdminCurriculumTree')?.addEventListener('change', onCfgChange);
         mount.querySelector('#chkAdminPublicDict')?.addEventListener('change', onCfgChange);
+        mount.querySelector('#chkAdminArasaac')?.addEventListener('change', onCfgChange);
+        mount.querySelector('#chkAdminFreedict')?.addEventListener('change', onCfgChange);
 
         mount.querySelectorAll('[data-test-provider]').forEach((btn) => {
             btn.addEventListener('click', async () => {
                 const provider = btn.dataset.testProvider;
                 btn.disabled = true;
                 btn.textContent = '🧪 점검 중...';
-                const { data: testRes } = await apiAdmin('/api/admin/study/growth/test-api', 'POST', { provider, query: '사과' });
+                const query = provider === 'freedict' ? 'apple' : '사과';
+                const { data: testRes } = await apiAdmin('/api/admin/study/growth/test-api', 'POST', { provider, query });
                 const resultEl = mount.querySelector('#adminGrowthTestResult');
                 if (resultEl) {
                     resultEl.style.display = 'block';
@@ -133,11 +144,16 @@
                         resultEl.style.border = '1px solid #6ee7b7';
                         resultEl.style.color = '#065f46';
                         resultEl.innerHTML = `✅ <strong>${esc(r.entry.providerLabel)}</strong> 연결 성공 (${r.elapsedMs}ms) — <strong>${esc(r.entry.word)}</strong>: ${esc(r.entry.definition)}`;
+                    } else if (r.ok) {
+                        resultEl.style.background = '#ecfdf5';
+                        resultEl.style.border = '1px solid #6ee7b7';
+                        resultEl.style.color = '#065f46';
+                        resultEl.textContent = `✅ ${r.message || '연동 성공'} (${r.elapsedMs}ms)`;
                     } else {
                         resultEl.style.background = '#fff7ed';
                         resultEl.style.border = '1px solid #fdba74';
                         resultEl.style.color = '#9a3412';
-                        resultEl.textContent = `⚠️ ${r.message || 'API 키 확인 필요'}`;
+                        resultEl.textContent = `⚠️ ${r.message || 'API 확인 필요'}`;
                     }
                 }
                 await loadAdminStudyGrowth();

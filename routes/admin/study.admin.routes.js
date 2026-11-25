@@ -92,7 +92,7 @@ router.get('/overview', async (req, res) => {
         });
 
         const quota = await getDailyQuotaStatus();
-        const geminiModel = await getSystemConfig('study_gemini_model', 'gemini-3.1-flash-lite');
+        const geminiModel = await getSystemConfig('study_gemini_model', 'gemini-4-hydrogen');
         const hasParentPin = Boolean(await getSystemConfig('study_parent_pin', ''));
         const { ensureSheetExtensions } = require('../../services/study/studySheetShare.service');
         await ensureSheetExtensions().catch(() => {});

@@ -412,14 +412,27 @@
             const isLangMatch = subj === 'korean' || subj === 'english' || Boolean(p.ttsText);
             const wordSpeech = String(p.ttsText || (isLangMatch ? p.right : '') || '').trim();
             const wordLang = String(p.ttsLang || (subj === 'english' ? 'en-US' : 'ko-KR'));
-            btn.className = isVisual ? 'match-node match-node--visual' : 'match-node';
-            btn.textContent = p.left;
+            btn.className = (isVisual || p.imageUrl) ? 'match-node match-node--visual' : 'match-node';
+            if (p.imageUrl) {
+                const img = document.createElement('img');
+                img.src = p.imageUrl;
+                img.alt = p.right ? `${p.right} 그림` : '낱말 그림';
+                img.loading = 'lazy';
+                img.className = 'match-pictogram-img';
+                img.onerror = () => {
+                    img.remove();
+                    btn.prepend(document.createTextNode(p.left || '🌟'));
+                };
+                btn.appendChild(img);
+            } else {
+                btn.textContent = p.left;
+            }
             btn.dataset.answer = p.right;
             if (locked) btn.classList.add('matched');
             if (wordSpeech) {
                 btn.dataset.preserveLabel = '1';
                 btn.setAttribute('aria-label', `${wordSpeech} 그림 듣기`);
-                if (isVisual) btn.appendChild(Object.assign(document.createElement('span'), { className: 'match-sound-badge', textContent: '🔊' })).setAttribute('aria-hidden', 'true');
+                if (isVisual || p.imageUrl) btn.appendChild(Object.assign(document.createElement('span'), { className: 'match-sound-badge', textContent: '🔊' })).setAttribute('aria-hidden', 'true');
             }
             btn.addEventListener('click', () => {
                 if (wordSpeech && typeof speakFn === 'function') speakFn(wordSpeech, wordLang, btn);

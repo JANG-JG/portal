@@ -67,8 +67,24 @@ function buildCoinsBlock(level, theme) {
     const lv = clampLevel(level);
     const useBlocks = lv <= 2 && Math.random() < 0.5;
     if (useBlocks) {
-        const tens = lv === 1 ? randInt(1, 3) : randInt(2, 5);
-        const ones = lv === 1 ? randInt(1, 4) : randInt(1, 8);
+        if (lv === 1) {
+            const ones = randInt(2, 8);
+            return {
+                id: 'block-manip-coins',
+                type: 'coins',
+                mode: 'blocks',
+                targetAmount: ones,
+                unitLabel: '개',
+                denominations: [
+                    { value: 1, label: '일(1) 블록', emoji: '🟨' }
+                ],
+                prompt: `${theme} 상자 안에 일(1) 블록 ${ones}개를 쏙쏙 담아 보세요!`,
+                ttsText: `일 블록을 담아서 ${ones}개를 만들어 보세요.`,
+                hint: `일(1) 블록을 ${ones}번 누르면 딱 맞아요!`
+            };
+        }
+        const tens = randInt(1, 3);
+        const ones = randInt(1, 5);
         const targetAmount = tens * 10 + ones;
         return {
             id: 'block-manip-coins',
@@ -85,7 +101,24 @@ function buildCoinsBlock(level, theme) {
             hint: `십(10) 막대 ${tens}개와 일(1) 블록 ${ones}개를 담으면 돼요!`
         };
     }
-    const c100 = lv <= 1 ? 0 : randInt(1, lv >= 4 ? 3 : 2);
+    if (lv <= 1) {
+        const c10 = randInt(1, 4);
+        const targetAmount = c10 * 10;
+        return {
+            id: 'block-manip-coins',
+            type: 'coins',
+            mode: 'coins',
+            targetAmount,
+            unitLabel: '원',
+            denominations: [
+                { value: 10, label: '10원', emoji: '🟠' }
+            ],
+            prompt: `${theme} 가게 간식 값 ${targetAmount}원을 저금통에 똑같이 모아 주세요!`,
+            ttsText: `10원 동전을 담아서 ${targetAmount}원을 만들어 보세요.`,
+            hint: `10원 동전을 ${c10}개 담으면 ${targetAmount}원이 돼요!`
+        };
+    }
+    const c100 = randInt(1, lv >= 4 ? 3 : 2);
     const c50 = lv >= 2 && Math.random() < 0.65 ? 1 : 0;
     const c10 = randInt(1, 4);
     const targetAmount = c100 * 100 + c50 * 50 + c10 * 10;
@@ -344,12 +377,29 @@ function normalizeAiStoryBlocks(rawAiJson, subject, theme, childName, partnerNam
     if (!pages) return null;
 
     const quizzes = Array.isArray(rawAiJson?.quizzes) && rawAiJson.quizzes.length >= 1
-        ? rawAiJson.quizzes.slice(0, 2).map((q, i) => ({
-            id: `block-${i + 3}`, type: 'quiz', prompt: clean(q.prompt), ttsText: clean(q.prompt),
-            visualLeft: String(q.emoji || '🌟').slice(0, 6), answer: clean(q.answer),
-            choices: shuffle((Array.isArray(q.choices) ? q.choices : [q.answer, '강아지', '구름']).map(clean)).slice(0, 4),
-            hint: '방금 읽은 이야기를 떠올려 보아요!'
-        }))
+        ? rawAiJson.quizzes.slice(0, 2).map((q, i) => {
+            const ans = clean(q.answer);
+            const rawChoices = (Array.isArray(q.choices) ? q.choices : []).map(clean).filter(Boolean);
+            const deduped = [];
+            for (const c of rawChoices) {
+                if (!deduped.includes(c)) deduped.push(c);
+            }
+            if (ans && !deduped.includes(ans)) {
+                deduped.unshift(ans);
+            }
+            for (const fb of ['강아지', '구름', '별님', '무지개']) {
+                if (deduped.length >= 3) break;
+                if (!deduped.includes(fb)) deduped.push(fb);
+            }
+            const finalChoices = shuffle(deduped.slice(0, 4));
+            if (ans && !finalChoices.includes(ans)) finalChoices[0] = ans;
+            return {
+                id: `block-${i + 3}`, type: 'quiz', prompt: clean(q.prompt), ttsText: clean(q.prompt),
+                visualLeft: String(q.emoji || '🌟').slice(0, 6), answer: ans,
+                choices: shuffle(finalChoices),
+                hint: '방금 읽은 이야기를 떠올려 보아요!'
+            };
+        }).filter((q) => q.prompt && q.answer)
         : [];
     if (!quizzes.length) return null;
     return assembleStorySheet(clean(rawAiJson.title || `${childName}의 ${theme} 이야기`), subject, theme, pages, clean(rawAiJson.voiceWord || '오늘도 정말 재미있는 공부 시간이었어요!'), quizzes);

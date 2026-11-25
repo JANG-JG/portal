@@ -78,7 +78,9 @@ function getApiProviderStatuses() {
         urimalsam: { label: '국립국어원 우리말샘', configured: Boolean(urimal), masked: maskKey(urimal) },
         stdtdic: { label: '국립국어원 표준국어대사전', configured: Boolean(stdt), masked: maskKey(stdt) },
         datagokr: { label: '공공데이터포털(에듀넷/기초학력)', configured: Boolean(dataGoKr), masked: maskKey(dataGoKr) },
-        gemini: { label: 'Google Gemini 맞춤 학습지', configured: Boolean(gemini), masked: maskKey(gemini) }
+        gemini: { label: 'Google Gemini 맞춤 학습지', configured: Boolean(gemini), masked: maskKey(gemini) },
+        arasaac: { label: 'ARASAAC 유아 픽토그램', configured: true, masked: '무료·키불필요' },
+        freedict: { label: 'Free Dictionary 영단어 발음', configured: true, masked: '무료·키불필요' }
     };
 }
 

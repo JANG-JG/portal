@@ -102,21 +102,29 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
 
     const validItems = [];
     const usedWords = new Set();
+    const usedEmojis = new Set();
+    const VALID_EMOJI_RE = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u;
 
     for (let i = 0; i < rawAiJson.items.length; i++) {
         const item = rawAiJson.items[i] || {};
         const rawWord = String(item.word || '').trim();
         const word = subject === 'korean' ? normalizeKoreanWordCandidate(rawWord) : rawWord;
-        const hint = String(item.hint || '').trim();
-        const emoji = sanitizeEmoji(item.emoji, emojiPool, i);
+        let hint = String(item.hint || '').trim();
+        const rawEmoji = String(item.emoji || '').trim();
 
         if (!word || containsBannedWord(word) || containsBannedWord(hint)) continue;
+        if (!rawEmoji || !VALID_EMOJI_RE.test(rawEmoji) || rawEmoji.length > 8) continue;
+        if (usedEmojis.has(rawEmoji)) continue;
 
         if (subject === 'korean') {
             if (!HANGUL_ONLY_RE.test(word)) continue;
             const noSpaceLen = word.replace(/\s+/g, '').length;
             if (lv <= 2 && noSpaceLen > 4) continue;
             if (lv >= 3 && noSpaceLen > 12) continue;
+            if (!hint || hint.length < 4 || hint.includes(word)) {
+                const firstChar = word.replace(/\s+/g, '').charAt(0);
+                hint = `${rawEmoji} 그림을 보고 '${firstChar}'(으)로 시작하는 낱말을 찾아보세요!`;
+            }
         } else if (subject === 'english') {
             if (!ENGLISH_ONLY_RE.test(word) || word.length > 16) continue;
         }
@@ -124,6 +132,8 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
         const normKey = word.toUpperCase();
         if (usedWords.has(normKey)) continue;
         usedWords.add(normKey);
+        usedEmojis.add(rawEmoji);
+        const emoji = rawEmoji;
 
         const rawDistractors = Array.isArray(item.distractors) ? item.distractors : [];
         const distractors = [];
@@ -151,8 +161,9 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
     const fallbackPool = subject === 'english' ? ENGLISH_BANK[lv] : KOREAN_BANK[lv];
     for (const fb of fallbackPool) {
         if (validItems.length >= TARGET_QUESTION_COUNT) break;
-        if (!usedWords.has(fb.word.toUpperCase())) {
+        if (!usedWords.has(fb.word.toUpperCase()) && !usedEmojis.has(fb.emoji)) {
             usedWords.add(fb.word.toUpperCase());
+            usedEmojis.add(fb.emoji);
             validItems.push({
                 word: fb.word,
                 hint: fb.meaning || fb.hint,

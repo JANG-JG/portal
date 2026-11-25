@@ -31,6 +31,7 @@ const {
 } = require('./aiColoringSvg.service');
 const { getCurriculumPromptHint } = require('./curriculumKorea.data');
 const { pickCuratedKoreanWords } = require('./publicEduApi.service');
+const { enrichWorksheetMedia } = require('./studyRichMediaApi.service');
 
 const ipv4HttpsAgent = new https.Agent({ family: 4 });
 
@@ -96,9 +97,11 @@ function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birt
         const isSci = subject === 'science';
         const prompt = isSci
             ? `유아 자연·과학 동화 작가 역할입니다. 대상: ${birthYear}년생 유아("${childName}"), 동반 친구: "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.\n` +
-              `자연/과학 현상을 호기심 있게 알려주는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 말할 핵심 문장 1개(voiceWord), 이해 퀴즈 2개(quizzes)를 순수 유아 친화 한국어로 작성하세요.`
+              `자연/과학 현상을 호기심 있게 알려주는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 말할 핵심 문장 1개(voiceWord), 이해 퀴즈 2개(quizzes)를 순수 유아 친화 한국어로 작성하세요.\n` +
+              `중요: 각 quizzes의 answer는 반드시 본문 내용에서 답을 찾을 수 있어야 하고, choices 배열(서로 다른 3~4개 보기) 안에 정확히 포함되어야 합니다.`
             : `유아 그림 동화 작가 역할입니다. 주인공: "${childName}"과 단짝 포켓몬 "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.\n` +
-              `따뜻하고 재미있는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 읽을 핵심 문장 1개(voiceWord), 독해 퀴즈 2개(quizzes)를 순수 한국어로 작성하세요.`;
+              `따뜻하고 재미있는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 읽을 핵심 문장 1개(voiceWord), 독해 퀴즈 2개(quizzes)를 순수 한국어로 작성하세요.\n` +
+              `중요: 각 quizzes의 answer는 반드시 본문 내용에서 답을 찾을 수 있어야 하고, choices 배열(서로 다른 3~4개 보기) 안에 정확히 포함되어야 합니다.`;
         const schema = {
             type: 'OBJECT',
             properties: {
@@ -169,10 +172,10 @@ function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birt
         `유아 학습지 교사 역할입니다. 대상: ${birthYear}년생 유아(${childName}), 과목: ${subject === 'english' ? '영어' : '한글'}, ` +
         `테마: "${theme}", 수준: Lv.${level}/5.${currGuide}${dictGuide}\n` +
         `규칙:\n` +
-        `1) ${levelGuide}를 생성하세요.\n` +
-        `2) ${subject === 'english' ? 'word와 distractors는 반드시 순수 영문(A-Z)만 쓰고, hint에 짧은 한국어 뜻을 적으세요.' : 'word와 distractors는 반드시 순수 한글만 쓰세요(영어/숫자/특수문자 혼합 금지).'}\n` +
-        `3) 각 항목의 emoji는 표준 유니코드 이모지 1개만 넣으세요.\n` +
-        `4) 서로 중복되지 않는 단어 6개와, 각 단어당 오답 보기 2개(distractors)를 만드세요.\n` +
+        `1) ${levelGuide}를 생성하세요. 추상적인 단어(예: 마음, 생각, 기분) 대신 그림으로 바로 알 수 있는 구체적인 동물·사물·음식·자연물을 우선 고르세요.\n` +
+        `2) ${subject === 'english' ? 'word와 distractors는 반드시 순수 영문(A-Z)만 쓰고, hint에 짧은 한국어 뜻을 적으세요.' : 'word와 distractors는 반드시 순수 한글만 쓰고(영어/숫자/특수문자 금지), hint에는 정답 단어를 직접 쓰지 않은 쉬운 유아용 1문장 수수께끼 설명을 적으세요(예: "코가 길고 귀가 큰 회색 동물이에요").'}\n` +
+        `3) 각 항목의 emoji는 word의 뜻을 정확히 1:1로 나타내는 표준 단일 유니코드 이모지 1개만 넣고, 6개 항목의 이모지가 서로 중복되지 않게 하세요.\n` +
+        `4) 서로 중복되지 않는 단어 6개와, 각 단어당 뜻·그림이 겹치지 않는 분명히 다른 오답 보기 2개(distractors)를 만드세요.\n` +
         `5) "개구리"를 "개구"로, "코끼리"를 "코끼"로 줄이는 것처럼 낱말의 끝 글자를 절대 임의로 자르지 말고 온전한 표준어 낱말만 쓰세요.`;
 
     const schema = {
@@ -209,24 +212,26 @@ async function callGeminiWithPromptAndSchema(prompt, schema) {
     const modelCandidates = [
         configuredModel,
         process.env.GEMINI_STUDY_MODEL,
-        'gemini-3.1-flash-lite',
+        'gemini-4-hydrogen',
         'gemini-3.5-flash-lite',
-        'gemini-3.8-flash',
-        'gemini-3.0-flash'
+        'gemini-3.8-flash'
     ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
-
-    const payload = {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-            responseMimeType: 'application/json',
-            responseSchema: schema,
-            temperature: 0.4,
-            maxOutputTokens: 8192
-        }
-    };
 
     for (const modelName of modelCandidates) {
         try {
+            const generationConfig = {
+                responseMimeType: 'application/json',
+                responseSchema: schema,
+                temperature: 0.4,
+                maxOutputTokens: 8192
+            };
+            if (modelName.startsWith('gemini-4')) {
+                generationConfig.thinkingConfig = { thinkingLevel: 'low' };
+            }
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig
+            };
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`;
             const res = await postJsonIPv4(url, { 'x-goog-api-key': apiKey }, payload, 20000);
             if (res.status !== 200) {
@@ -429,6 +434,7 @@ async function generateWorksheetPayload({
 
     const { injectRecentWrongReviews } = require('./studyMissions.service');
     finalSheet = await injectRecentWrongReviews(cid, subj, finalSheet);
+    finalSheet = await enrichWorksheetMedia(finalSheet, subj).catch(() => finalSheet);
 
     return {
         ok: true,

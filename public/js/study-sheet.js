@@ -165,11 +165,20 @@
             `;
 
             card.querySelector('.btn-block-tts').addEventListener('click', (ev) => {
-                const seq = getTraceBilingualSegments(blk, sheet.subject);
-                if (seq && window.StudyTTS && typeof window.StudyTTS.speakSequence === 'function') {
-                    window.StudyTTS.speakSequence(seq, ev.currentTarget);
+                const targetBtn = ev.currentTarget;
+                const fallbackSpeak = () => {
+                    const seq = getTraceBilingualSegments(blk, sheet.subject);
+                    if (seq && window.StudyTTS && typeof window.StudyTTS.speakSequence === 'function') {
+                        window.StudyTTS.speakSequence(seq, targetBtn);
+                    } else {
+                        speakText(blk.ttsText || blk.prompt, blk.ttsLang || 'ko-KR', targetBtn);
+                    }
+                };
+                if (blk.audioUrl) {
+                    const audio = new Audio(blk.audioUrl);
+                    audio.play().catch(fallbackSpeak);
                 } else {
-                    speakText(blk.ttsText || blk.prompt, blk.ttsLang || 'ko-KR', ev.currentTarget);
+                    fallbackSpeak();
                 }
             });
 
