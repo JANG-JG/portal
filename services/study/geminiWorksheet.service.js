@@ -375,7 +375,14 @@ async function generateWorksheetPayload({
 
     const canUseGemini = hasKey && lastFailureReason !== 'quota_reserved' ? await tryConsumeGeminiQuota() : false;
     if (canUseGemini) {
-        const curriculumHint = getCurriculumPromptHint(subj, level);
+        let curriculumHint = getCurriculumPromptHint(subj, level);
+        if (subj === 'science') {
+            const { getTodayScienceContext } = require('./studyDataGoKr.service');
+            const sciCtx = await getTodayScienceContext().catch(() => null);
+            if (sciCtx?.summaryText) {
+                curriculumHint = `${curriculumHint} (오늘 실제 자연 관찰 참고: ${sciCtx.summaryText})`.trim();
+            }
+        }
         const curatedWords = subj === 'korean'
             ? await pickCuratedKoreanWords({ level, limit: 4 }).catch(() => [])
             : [];

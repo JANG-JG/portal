@@ -34,7 +34,7 @@
             const badge = p.configured
                 ? `<span style="background:#dcfce7; color:#166534; padding:2px 8px; border-radius:999px; font-size:0.74rem; font-weight:800;">✅ 연결됨 (${esc(p.masked)})</span>`
                 : `<span style="background:#f1f5f9; color:#475569; padding:2px 8px; border-radius:999px; font-size:0.74rem; font-weight:700;">⚪ 미설정 (로컬 폴백)</span>`;
-            const testBtn = (key === 'urimalsam' || key === 'stdtdic' || key === 'arasaac' || key === 'freedict')
+            const testBtn = (key === 'urimalsam' || key === 'stdtdic' || key === 'datagokr' || key === 'arasaac' || key === 'freedict')
                 ? `<button type="button" class="btn-admin btn-admin-outline btn-admin-sm" data-test-provider="${esc(key)}">🧪 연동 테스트</button>`
                 : '';
             return `

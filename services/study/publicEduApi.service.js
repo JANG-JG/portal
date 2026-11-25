@@ -311,6 +311,18 @@ async function pickCuratedKoreanWords({ level = 2, limit = 4 } = {}) {
 
 async function testPublicEduProvider({ provider = 'urimalsam', query = '사과' } = {}) {
     await ensurePublicEduTables();
+    if (provider === 'datagokr') {
+        const { testDataGoKrProviders } = require('./studyDataGoKr.service');
+        const out = await testDataGoKrProviders();
+        await logPublicApiCall({
+            provider: 'datagokr',
+            queryText: '월령/단기예보',
+            status: out.ok ? 'test_ok' : 'error',
+            resultCount: out.ok ? 1 : 0,
+            errorMessage: out.ok ? '' : out.message
+        }).catch(() => {});
+        return out;
+    }
     const cleanQuery = String(query || '사과').trim() || '사과';
     const started = Date.now();
     try {
