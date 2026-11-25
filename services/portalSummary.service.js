@@ -68,10 +68,33 @@ async function buildSummaryData() {
         });
     });
 
-    // 2) 최근 투약 일시 및 오늘 복약 완료 여부 Promise
+    // 2) 최근 투약 일시 및 오늘 복약 완료 여부 Promise (records + health_medication_logs 통합)
     const medicationPromise = new Promise((resolve) => {
-        db.get("SELECT medication_time FROM records WHERE medication_time IS NOT NULL AND medication_time != '' ORDER BY medication_time DESC LIMIT 1", (err, row) => {
-            db.get("SELECT 1 FROM records WHERE substr(medication_time, 1, 10) = ? LIMIT 1", [todayKst], (tErr, todayRow) => {
+        const latestMedSql = `
+            SELECT medication_time FROM (
+                SELECT medication_time FROM records
+                WHERE medication_time IS NOT NULL AND medication_time != ''
+                UNION ALL
+                SELECT strftime('%Y-%m-%dT%H:%M', l.taken_at) AS medication_time
+                FROM health_medication_logs l
+                LEFT JOIN health_medications m ON m.id = l.medication_id
+                WHERE l.status = 'taken'
+                  AND l.taken_at IS NOT NULL
+                  AND (m.target_label IS NULL OR m.target_label = '' OR m.target_label = '본인')
+            ) ORDER BY medication_time DESC LIMIT 1
+        `;
+        const todayMedSql = `
+            SELECT 1 FROM (
+                SELECT 1 FROM records WHERE substr(medication_time, 1, 10) = ?
+                UNION ALL
+                SELECT 1 FROM health_medication_logs l
+                LEFT JOIN health_medications m ON m.id = l.medication_id
+                WHERE l.log_date = ? AND l.status = 'taken'
+                  AND (m.target_label IS NULL OR m.target_label = '' OR m.target_label = '본인')
+            ) LIMIT 1
+        `;
+        db.get(latestMedSql, (err, row) => {
+            db.get(todayMedSql, [todayKst, todayKst], (tErr, todayRow) => {
                 const isTodayTaken = !!todayRow;
                 resolve({
                     medication_time: row ? row.medication_time : null,
