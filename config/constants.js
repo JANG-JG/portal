@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 
 const PORT = process.env.PORT || 3004;
-const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261125_204106';
+const STATIC_ASSET_VERSION = process.env.STATIC_ASSET_VERSION || '20261125_205333';
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     console.error('🚨 [보안 오류] JWT_SECRET 환경변수가 누락되었습니다. .env 설정을 확인하세요.');
@@ -50,16 +50,29 @@ const ALLOWED_ORIGINS = [
     'http://localhost:5050'
 ];
 
+const EXTRA_CORS_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+const INTERNAL_ALLOWED_HOSTS = new Set(
+    ['localhost', '127.0.0.1', '192.168.50.111', process.env.LAN_IP].filter(Boolean)
+);
+const INTERNAL_ALLOWED_PORTS = new Set([
+    '3000', '3001', '3002', '3003', '3004', '3005', '5050', '5060',
+    '3443', '3444', '3445', '3446', '3447', '3448'
+]);
+
 function isOriginAllowed(origin) {
     if (!origin) return false;
-    if (ALLOWED_ORIGINS.includes(origin)) return true;
+    if (ALLOWED_ORIGINS.includes(origin) || EXTRA_CORS_ORIGINS.includes(origin)) return true;
     try {
         const u = new URL(origin);
         const h = u.hostname;
-        if (h === 'j-jg.cc' || h.endsWith('.j-jg.cc')) return true;
-        if (u.protocol === 'http:' || u.protocol === 'https:') {
-            if (h === 'localhost' || h === '127.0.0.1' || h.endsWith('.local')) return true;
-            if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) return true;
+        if (u.protocol === 'https:' && (h === 'j-jg.cc' || h.endsWith('.j-jg.cc'))) return true;
+        if ((u.protocol === 'http:' || u.protocol === 'https:') && INTERNAL_ALLOWED_HOSTS.has(h)) {
+            const port = u.port || (u.protocol === 'https:' ? '443' : '80');
+            if (INTERNAL_ALLOWED_PORTS.has(port)) return true;
         }
         return false;
     } catch (e) {

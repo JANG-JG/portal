@@ -124,11 +124,25 @@ router.post('/api/study/shop/use', authenticateToken, async (req, res) => {
     }
 });
 
+const shopPinAttemptMap = new Map();
+function allowShopPinAttempt(username) {
+    const now = Date.now();
+    const key = `shop-pin:${username || 'anon'}`;
+    const list = (shopPinAttemptMap.get(key) || []).filter(t => now - t < 5 * 60 * 1000);
+    if (list.length >= 12) return false;
+    list.push(now);
+    shopPinAttemptMap.set(key, list);
+    return true;
+}
+
 router.post('/api/study/shop/resolve', authenticateToken, async (req, res) => {
     try {
         if (req.user?.role === 'kid') {
+            if (!allowShopPinAttempt(req.user.username)) {
+                return res.status(429).json({ success: false, message: '잠금 해제 시도가 너무 많습니다. 5분 후 다시 시도해 주세요.' });
+            }
             const check = await verifyParentLockPin(req.body?.parentPin || '');
-            if (check.configured && !check.valid) {
+            if (!check.configured || !check.valid) {
                 return res.status(403).json({ success: false, message: '부모님 PIN을 먼저 확인해 주세요! 🔒' });
             }
         }

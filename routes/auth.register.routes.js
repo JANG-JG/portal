@@ -123,6 +123,7 @@ router.post('/api/auth/register', async (req, res) => {
                         nickname = ?, 
                         birthdate = ?, 
                         is_registered = 1, 
+                        invite_token = NULL,
                         pin_reset_required = 1, 
                         failed_pin_attempts = 0, 
                         locked_until = NULL, 

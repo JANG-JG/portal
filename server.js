@@ -23,6 +23,7 @@ const { getLiveMarketData } = require('./services/market.service');
 const { sendUnifiedPushNotification } = require('./services/push.service');
 const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
 const { startLocalHttpsServer, getCaCertPath, getPublicLanConfig } = require('./services/localHttps.service');
+const { isServiceAllowed } = require('./services/moduleRegistry.service');
 
 // 🛡️ 미들웨어
 const {
@@ -379,7 +380,12 @@ app.use(express.static(path.join(__dirname, 'public'), {
 
 // 📸 가족 사진첩 썸네일 동일 오리진 초고속 서빙 (인증 필수 및 공유 캐싱 방지)
 const ALBUM_THUMBNAILS_DIR = path.resolve(__dirname, '..', 'family-album', 'uploads', 'thumbnails');
-app.use('/album-uploads/thumbnails', authenticateToken, express.static(ALBUM_THUMBNAILS_DIR, {
+app.use('/album-uploads/thumbnails', authenticateToken, (req, res, next) => {
+    if (!isServiceAllowed(req.user, 'album')) {
+        return res.status(403).send('Forbidden');
+    }
+    next();
+}, express.static(ALBUM_THUMBNAILS_DIR, {
     maxAge: '7d',
     immutable: true,
     setHeaders: (res) => {
@@ -387,10 +393,13 @@ app.use('/album-uploads/thumbnails', authenticateToken, express.static(ALBUM_THU
     }
 }));
 
-// 요청 로깅 미들웨어 (정적 자원 제외)
+// 요청 로깅 미들웨어 (정적 자원 제외, 토큰/민감 쿼리 마스킹)
 app.use((req, res, next) => {
     if (!req.url.startsWith('/css') && !req.url.startsWith('/favicon') && !req.url.startsWith('/js') && !req.url.startsWith('/components')) {
-        console.log(`[PORTAL] ${req.method} ${req.url}`);
+        const safeUrl = req.url
+            .replace(/(\/invite\/|\/invite-info\/)[^/?#]+/gi, '$1[REDACTED]')
+            .replace(/([?&](?:token|code|key|secret|password|pin)=)[^&]+/gi, '$1[REDACTED]');
+        console.log(`[PORTAL] ${req.method} ${safeUrl}`);
     }
     next();
 });

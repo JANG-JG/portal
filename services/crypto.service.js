@@ -145,8 +145,9 @@ function decryptMemoText(cipherText, userId) {
         decrypted += decipher.final('utf8');
         return decrypted;
     } catch (err) {
-        // 작성자 키로 복호화 실패 시 다른 관리자 키('admin', 'upt0731' 등)로 다중 폴백 시도
-        const fallbackUsers = ['admin', 'upt0731'].filter(u => u !== userId);
+        // 작성자 키로 복호화 실패 시 환경변수 기반 관리자 레거시 키로만 폴백 시도
+        const envAdmins = ['admin', process.env.ADMIN_USER, ...(process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',').map(s => s.trim()) : [])].filter(Boolean);
+        const fallbackUsers = [...new Set(envAdmins)].filter(u => u !== userId);
         for (const fbUser of fallbackUsers) {
             try {
                 const fbKey = deriveKeyForMemo(fbUser);

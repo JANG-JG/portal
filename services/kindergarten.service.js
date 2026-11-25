@@ -12,7 +12,14 @@ const isLocalWorker = process.env.IS_KINDERGARTEN_LOCAL_AGENT === 'true' || fs.e
 
 function getAgentUrl() {
     const cfg = loadConfig();
-    return process.env.KINDERGARTEN_AGENT_URL || cfg.AGENT_URL || 'http://localhost:5055';
+    const raw = process.env.KINDERGARTEN_AGENT_URL || cfg.AGENT_URL || 'http://localhost:5055';
+    try {
+        const u = new URL(raw);
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+            return raw.replace(/\/+$/, '');
+        }
+    } catch (e) {}
+    return 'http://localhost:5055';
 }
 
 function getAgentHeaders(extra = {}) {
@@ -188,7 +195,7 @@ async function startCrawler() {
             const timeout = setTimeout(() => controller.abort(), 4000);
             const res = await fetch(`${getAgentUrl()}/run`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAgentHeaders({ 'Content-Type': 'application/json' }),
                 signal: controller.signal
             });
             clearTimeout(timeout);

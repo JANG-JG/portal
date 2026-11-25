@@ -277,8 +277,9 @@ router.post('/api/portal/user/weather-city', authenticateToken, async (req, res)
                 return res.status(500).json({ success: false, message: '지역 설정 저장에 실패했습니다.' });
             }
 
-            // 2) briefing.db(newsDb) system_settings 테이블에도 즉시 동기화 저장 (날씨 브리핑과 100% 자동 연동)
-            if (newsDb) {
+            // 2) briefing.db(newsDb) system_settings 테이블에도 즉시 동기화 저장 (관리자 계정일 때만 전역 동기화)
+            const isAdminUser = req.user && (req.user.role === 'admin' || ADMIN_USERS.includes(req.user.username));
+            if (newsDb && isAdminUser) {
                 newsDb.run(
                     "INSERT INTO system_settings (key, value, updated_at) VALUES ('weather_city', ?, datetime('now', '+9 hours')) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
                     [cityCode],

@@ -23,6 +23,7 @@ const { getAiConfig } = require('../services/aiConfig.service');
 const { handleSseChatStream } = require('../services/aiStream.service');
 const { orchestrateChatRequest } = require('../services/ai/aiOrchestrator.service');
 const { recordAiAuditLog } = require('../services/aiAuditLog.service');
+const { isServiceAllowed } = require('../services/moduleRegistry.service');
 
 // 🛡️ [보안 강화] AI 채팅 레이트 리미터 & 동시성 제어 (로컬 PC 과부하 및 DoS 방어)
 const chatRateLimitMap = new Map(); // key(user/ip) -> [timestamp]
@@ -395,6 +396,9 @@ router.post('/api/ai/wiki-draft', authenticateToken, async (req, res) => {
 // 8. 📚 [위키 1,2단계] 대화/메모 ➔ 원터치 지능형 자동 병합 & 발행 API
 router.post('/api/ai/publish-to-wiki', authenticateToken, async (req, res) => {
     try {
+        if (!isServiceAllowed(req.user, 'wiki')) {
+            return res.status(403).json({ success: false, message: '위키 서비스 접근 권한이 없습니다.' });
+        }
         const { title = '', content, category = '생활', forceNew = false } = req.body;
         if (!content || !content.trim()) {
             return res.status(400).json({ success: false, message: '위키로 등록할 내용이 없습니다.' });

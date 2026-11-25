@@ -50,7 +50,7 @@ router.get('/unified', authenticateToken, async (req, res) => {
 
     // 1) 메모 검색 (AES-256-GCM 복호화 후 일반/초성 검색 지원)
     const memoPromise = new Promise((resolve) => {
-        portalDb.all("SELECT id, user_id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE (user_id = ? OR ? = 1) ORDER BY is_pinned DESC, updated_at DESC LIMIT 100", [userId, isAdmin], (err, rows) => {
+        portalDb.all("SELECT id, user_id, title, content, category, color, is_pinned, updated_at FROM user_memos WHERE user_id = ? ORDER BY is_pinned DESC, updated_at DESC LIMIT 100", [userId], (err, rows) => {
             if (err || !rows) return resolve([]);
             const cleanQuery = rawQuery.toLowerCase();
             const results = [];

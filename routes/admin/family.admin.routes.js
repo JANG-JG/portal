@@ -14,7 +14,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { db } = require('../../services/db');
-const { JWT_SECRET, ALBUM_DB_PATH } = require('../../config/constants');
+const { JWT_SECRET, ALBUM_DB_PATH, ADMIN_USERS } = require('../../config/constants');
 
 // 전화번호 단방향 해시 헬퍼 (평문 전화번호 서버 미저장)
 function hashPhoneNumber(phone) {
@@ -227,6 +227,10 @@ router.post('/members/:username/reset-pin', async (req, res) => {
             return res.status(400).json({ success: false, message: '초기화할 PIN은 숫자 6자리로 입력해 주세요.' });
         }
 
+        if (ADMIN_USERS.has(targetUsername)) {
+            return res.status(403).json({ success: false, message: '관리자 계정의 PIN은 이 경로로 초기화할 수 없습니다.' });
+        }
+
         const pinHash = await bcrypt.hash(newPin, 10);
         const updateSql = `
             UPDATE users SET 
@@ -235,11 +239,14 @@ router.post('/members/:username/reset-pin', async (req, res) => {
                 pin_reset_required = 1, 
                 failed_pin_attempts = 0, 
                 locked_until = NULL 
-            WHERE username = ?
+            WHERE username = ? AND (role IS NULL OR role != 'admin')
         `;
 
         db.run(updateSql, [pinHash, pinHash, targetUsername], function (err) {
             if (err) return res.status(500).json({ success: false, message: 'PIN 재설정 실패' });
+            if (this.changes === 0) {
+                return res.status(403).json({ success: false, message: '대상 가족 회원을 찾을 수 없거나 관리자 계정은 변경할 수 없습니다.' });
+            }
             res.json({
                 success: true,
                 message: `임시 PIN이 [${newPin}]으로 재설정되었습니다. (최초 접속 시 변경 필수)`

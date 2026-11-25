@@ -12,6 +12,30 @@ const {
     getAllDatabasesOverview
 } = require('../../services/adminDbInspector.service');
 
+const SENSITIVE_DB_COLS = new Set(['password', 'pin', 'invite_token', 'password_hash', 'secret']);
+
+function redactSensitiveRows(rows) {
+    if (!Array.isArray(rows) || rows.length === 0) return rows || [];
+    return rows.map((row) => {
+        if (!row || typeof row !== 'object') return row;
+        const cloned = { ...row };
+        for (const col of Object.keys(cloned)) {
+            if (SENSITIVE_DB_COLS.has(col.toLowerCase()) && cloned[col] !== null && cloned[col] !== '') {
+                cloned[col] = '***[보호됨]***';
+            }
+        }
+        return cloned;
+    });
+}
+
+function escapeCsvFormulaCell(val) {
+    let s = val !== null && val !== undefined ? String(val) : '';
+    if (/^[=+\-@\t\r]/.test(s)) {
+        s = "'" + s;
+    }
+    return `"${s.replace(/"/g, '""')}"`;
+}
+
 /**
  * 0. 전체 데이터베이스 및 테이블 통합 현황 실시간 요약 (신규 감지 DB 포함)
  * GET /api/admin/db/overview
@@ -171,30 +195,6 @@ router.get('/:dbKey/table/:table/data', (req, res) => {
                 if (dataErr) {
                     return res.status(500).json({ success: false, message: '데이터 조회 실패: ' + dataErr.message });
                 }
-
-const SENSITIVE_DB_COLS = new Set(['password', 'pin', 'invite_token', 'password_hash', 'secret']);
-
-function redactSensitiveRows(rows) {
-    if (!Array.isArray(rows) || rows.length === 0) return rows || [];
-    return rows.map((row) => {
-        if (!row || typeof row !== 'object') return row;
-        const cloned = { ...row };
-        for (const col of Object.keys(cloned)) {
-            if (SENSITIVE_DB_COLS.has(col.toLowerCase()) && cloned[col] !== null && cloned[col] !== '') {
-                cloned[col] = '***[보호됨]***';
-            }
-        }
-        return cloned;
-    });
-}
-
-function escapeCsvFormulaCell(val) {
-    let s = val !== null && val !== undefined ? String(val) : '';
-    if (/^[=+\-@\t\r]/.test(s)) {
-        s = "'" + s;
-    }
-    return `"${s.replace(/"/g, '""')}"`;
-}
 
                 res.json({
                     success: true,

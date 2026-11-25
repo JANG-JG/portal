@@ -30,7 +30,9 @@ const {
     getWorksheetById,
     updateWorksheetContent,
     verifyParentLockPin,
-    getSystemConfig
+    getSystemConfig,
+    awardStamp,
+    resolveChildProfileId
 } = require('../services/study/studyDb.service');
 const { generateAndSaveWorksheet } = require('../services/study/geminiWorksheet.service');
 const { regenerateSingleBlock } = require('../services/study/worksheetValidator.service');
@@ -165,6 +167,12 @@ setInterval(() => {
 
 async function verifyStudyParentGate(req) {
     const { parentPin, longPressVerified } = req.body || {};
+    if (parentPin !== undefined && parentPin !== '') {
+        const pinKey = `pin:${req.user?.username || 'anon'}`;
+        if (!checkStudyActionLimit(pinKey, 12, 5 * 60 * 1000)) {
+            return { ok: false, status: 429, requirePin: true, message: '잠금 해제 시도가 너무 많습니다. 5분 후 다시 시도해 주세요.' };
+        }
+    }
     const check = await verifyParentLockPin(parentPin);
     if (check.configured) {
         if (!parentPin || !check.valid) {
@@ -188,6 +196,12 @@ async function verifyStudyParentGate(req) {
         };
     }
     return { ok: true, configured: false };
+}
+
+async function canAccessWorksheet(sheet, user) {
+    if (!sheet || !user || user.role !== 'kid') return true;
+    const ownCid = await resolveChildProfileId(null, user);
+    return sheet.child_id === ownCid;
 }
 
 router.post('/api/study/parent/verify', authenticateToken, async (req, res) => {
@@ -403,6 +417,9 @@ router.get('/api/study/sheets/:id', authenticateToken, async (req, res) => {
         if (!sheet) {
             return res.status(404).json({ success: false, message: '해당 학습지를 찾을 수 없습니다.' });
         }
+        if (!(await canAccessWorksheet(sheet, req.user))) {
+            return res.status(403).json({ success: false, message: '본인의 학습지만 열람할 수 있어요.' });
+        }
         res.json({ success: true, sheet });
     } catch (err) {
         console.error('학습지 단건 조회 오류:', err);
@@ -429,6 +446,7 @@ router.post('/api/study/sheets/:id/regenerate-block', authenticateToken, async (
     try {
         const sheet = await getWorksheetById(req.params.id);
         if (!sheet || !sheet.content) return res.status(404).json({ success: false, message: '학습지를 찾을 수 없습니다.' });
+        if (!(await canAccessWorksheet(sheet, req.user))) return res.status(403).json({ success: false, message: '본인의 학습지만 수정할 수 있어요.' });
         const blockIndex = Number(req.body?.blockIndex);
         if (!Number.isInteger(blockIndex) || blockIndex < 0) return res.status(400).json({ success: false, message: '교체할 문제 번호가 올바르지 않습니다.' });
         const updatedContent = await replaceAndEnrichSheetBlock(sheet, blockIndex);
@@ -443,6 +461,7 @@ router.post('/api/study/sheets/:id/report-block', authenticateToken, async (req,
     try {
         const sheet = await getWorksheetById(req.params.id);
         if (!sheet || !sheet.content) return res.status(404).json({ success: false, message: '학습지를 찾을 수 없습니다.' });
+        if (!(await canAccessWorksheet(sheet, req.user))) return res.status(403).json({ success: false, message: '본인의 학습지만 신고할 수 있어요.' });
         const blockIndex = Number(req.body?.blockIndex);
         if (!Number.isInteger(blockIndex) || blockIndex < 0) return res.status(400).json({ success: false, message: '신고할 문제 번호가 올바르지 않습니다.' });
         await reportBlock({ sheet, blockIndex, reason: req.body?.reason });
@@ -459,6 +478,9 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
         const sheet = await getWorksheetById(req.params.id);
         if (!sheet) {
             return res.status(404).json({ success: false, message: '학습지를 찾을 수 없습니다.' });
+        }
+        if (!(await canAccessWorksheet(sheet, req.user))) {
+            return res.status(403).json({ success: false, message: '본인의 학습지만 제출할 수 있어요.' });
         }
         if (sheet.subject === 'coloring') {
             const done = await markWorksheetCompletedOnly(sheet.id);
