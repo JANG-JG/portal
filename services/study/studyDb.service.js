@@ -23,7 +23,7 @@ const {
 const { getPokemonStateForBoard } = require('./studyPokemon.service');
 
 const VALID_CHILDREN = new Set(['first', 'second']);
-const VALID_SUBJECTS = new Set(['korean', 'math', 'english']);
+const VALID_SUBJECTS = new Set(['korean', 'math', 'english', 'science', 'reading', 'logic']);
 
 const SUBJECT_NAMES = {
     korean: '한글 놀이',
@@ -198,7 +198,7 @@ async function deleteStudyProfile(childId) {
 async function getChildLevels(childId) {
     const cid = normalizeChildId(childId);
     const rows = await dbAll('SELECT subject, level, updated_at FROM study_levels WHERE child_id = ?', [cid]);
-    const levels = { korean: 1, math: 1, english: 1 };
+    const levels = { korean: 1, math: 1, english: 1, science: 1, reading: 1, logic: 1 };
     rows.forEach((r) => {
         if (VALID_SUBJECTS.has(r.subject)) {
             levels[r.subject] = clampLevel(r.level);
@@ -243,12 +243,12 @@ async function getWeeklyBalanceRecommendation(childId) {
          GROUP BY subject`,
         [cid, sinceDate]
     );
-    const counts = { korean: 0, math: 0, english: 0 };
+    const counts = { korean: 0, math: 0, english: 0, science: 0, reading: 0, logic: 0 };
     rows.forEach((r) => {
         if (VALID_SUBJECTS.has(r.subject)) counts[r.subject] = Number(r.cnt || 0);
     });
 
-    const ordered = ['korean', 'math', 'english'].sort((a, b) => counts[a] - counts[b]);
+    const ordered = ['korean', 'math', 'english', 'science', 'reading', 'logic'].sort((a, b) => counts[a] - counts[b]);
     const recommended = ordered[0];
     const reason = counts[recommended] === 0
         ? `이번 주에 아직 '${SUBJECT_NAMES[recommended]}'을 안 했어요! 오늘 도전해 볼까요?`
@@ -346,7 +346,7 @@ async function getChildDashboardState(childId, viewerUser = null) {
         listRecentWorksheets(cid, 16),
         getSystemConfig('study_parent_pin', ''),
         getDailyQuotaStatus(),
-        getWrongNoteStats(cid).catch(() => ({ pendingCount: 0, resolvedCount: 0, bySubject: { korean: 0, math: 0, english: 0 } }))
+        getWrongNoteStats(cid).catch(() => ({ pendingCount: 0, resolvedCount: 0, bySubject: { korean: 0, math: 0, english: 0, science: 0, reading: 0, logic: 0 } }))
     ]);
     const pokemon = await getPokemonStateForBoard(cid, stampBoard).catch((err) => {
         console.warn('포켓몬 알 상태 조회 무시:', err?.message || err);
@@ -369,8 +369,8 @@ async function getChildDashboardState(childId, viewerUser = null) {
 
 async function getDailyQuotaLimit() {
     const cfg = await getSystemConfig('study_daily_gemini_limit', '');
-    const parsed = Number(cfg || process.env.STUDY_GEMINI_DAILY_LIMIT || 30);
-    return Number.isFinite(parsed) && parsed > 0 ? Math.min(500, Math.round(parsed)) : 30;
+    const parsed = Number(cfg || process.env.STUDY_GEMINI_DAILY_LIMIT || 200);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.min(2000, Math.round(parsed)) : 200;
 }
 
 async function getDailyQuotaStatus(dateStr = getKstDateString()) {

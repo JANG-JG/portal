@@ -404,7 +404,7 @@ function normalizeAiStoryBlocks(rawAiJson, subject, theme, childName, partnerNam
     if (!pages) return null;
 
     const quizzes = Array.isArray(rawAiJson?.quizzes) && rawAiJson.quizzes.length >= 1
-        ? rawAiJson.quizzes.slice(0, 2).map((q, i) => {
+        ? rawAiJson.quizzes.slice(0, 3).map((q, i) => {
             const ans = clean(q.answer);
             const rawChoices = (Array.isArray(q.choices) ? q.choices : []).map(clean).filter(Boolean);
             const deduped = [];

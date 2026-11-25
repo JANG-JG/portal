@@ -152,7 +152,7 @@ router.post('/config', async (req, res) => {
         const { dailyLimit, geminiModel, parentPin, clearParentPin } = req.body || {};
 
         if (dailyLimit !== undefined && dailyLimit !== '') {
-            const num = Math.min(500, Math.max(1, Number(dailyLimit) || 30));
+            const num = Math.min(2000, Math.max(1, Number(dailyLimit) || 200));
             await setSystemConfig('study_daily_gemini_limit', String(num));
         }
         if (geminiModel && typeof geminiModel === 'string') {

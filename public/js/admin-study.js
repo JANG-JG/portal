@@ -22,8 +22,11 @@ function studyToast(msg, isError = false) {
     else alert(msg);
 }
 
-const STUDY_SUBJECT_NAMES = { korean: '한글', math: '수학', english: '영어', coloring: '색칠놀이' };
-const STUDY_SOURCE_NAMES = { gemini: 'Gemini AI', fallback_bank: '안전 문제은행', retry_fallback: '안전 문제은행', coloring_studio: '색칠놀이' };
+const STUDY_SUBJECT_NAMES = {
+    korean: '한글', math: '수학', english: '영어',
+    science: '자연과학', reading: '그림동화', logic: '두뇌퍼즐', music: '피아노', coloring: '색칠놀이'
+};
+const STUDY_SOURCE_NAMES = { gemini: 'Gemini AI', fallback_bank: '안전 문제은행', retry_fallback: '안전 문제은행', coloring_studio: '색칠놀이', interactive_engine: '인터랙티브' };
 
 let latestStudyChildren = [];
 let latestStudyKidAccounts = [];
@@ -73,10 +76,10 @@ function populateStudyProfileSelectors(children, kidAccounts) {
 }
 
 function renderStudyStatusCards(data) {
-    const quota = data.quota || { geminiCalls: 0, fallbackCalls: 0, dailyLimit: 30 };
+    const quota = data.quota || { geminiCalls: 0, fallbackCalls: 0, dailyLimit: 200 };
     const cfg = data.config || {};
     const usedCount = Number(quota.usedCount ?? quota.geminiCalls ?? 0);
-    const dailyLimit = Number(quota.dailyLimit || 30);
+    const dailyLimit = Number(quota.dailyLimit || 200);
     const fallbackCalls = Number(quota.fallbackCalls || 0);
 
     const quotaEl = document.getElementById('studyAdminQuotaStat');
@@ -117,7 +120,7 @@ function renderStudyConfigForm(cfg) {
     const modelInput = document.getElementById('studyGeminiModelInput');
     const pinInput = document.getElementById('studyParentPinInput');
     const clearChk = document.getElementById('studyClearParentPinChk');
-    if (limitInput) limitInput.value = cfg.dailyLimit || 30;
+    if (limitInput) limitInput.value = cfg.dailyLimit || 200;
     if (modelInput) modelInput.value = cfg.geminiModel || 'gemini-4-hydrogen';
     if (pinInput) pinInput.value = '';
     if (clearChk) clearChk.checked = false;
@@ -133,7 +136,7 @@ function renderStudyChildrenCards(children, kidAccounts = []) {
 
     grid.innerHTML = children.map((c) => {
         const levels = c.levels || {};
-        const badges = ['korean', 'math', 'english'].map((subj) => {
+        const badges = ['korean', 'math', 'english', 'science', 'reading', 'logic'].map((subj) => {
             const lv = levels[subj]?.level || levels[subj] || 1;
             return `<span style="display:inline-block; background:#eff6ff; color:#1d4ed8; padding:0.2rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:700;">${STUDY_SUBJECT_NAMES[subj]} Lv.${lv}</span>`;
         }).join(' ');
@@ -299,7 +302,7 @@ function onKidProfileModeChange() {
 
 async function saveAdminStudyConfig(event) {
     event.preventDefault();
-    const dailyLimit = Number(document.getElementById('studyDailyLimitInput')?.value || 30);
+    const dailyLimit = Number(document.getElementById('studyDailyLimitInput')?.value || 200);
     const geminiModel = String(document.getElementById('studyGeminiModelInput')?.value || '').trim();
     const parentPin = String(document.getElementById('studyParentPinInput')?.value || '').trim();
     const clearParentPin = Boolean(document.getElementById('studyClearParentPinChk')?.checked);

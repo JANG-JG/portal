@@ -11,9 +11,27 @@
     'use strict';
 
     const SUBJECT_LABELS = {
-        korean: '🇰🇷 한글 놀이', math: '🔢 숫자·수학', english: '🔤 영어 놀이',
-        logic: '🧩 두뇌 퍼즐', reading: '📖 동화·말하기', science: '🌱 자연·과학',
+        korean: '🇰🇷 한글·낱말', math: '🔢 숫자·수학', english: '🔤 영어·파닉스',
+        logic: '🧩 두뇌 퍼즐', reading: '📖 그림동화', science: '🌱 자연·과학',
         music: '🎹 리듬 피아노', coloring: '🎨 색칠놀이'
+    };
+    const SUBJECT_GUIDES = {
+        korean: '📖 국립국어원 우리말샘·표준국어대사전 어휘와 픽토그램 그림으로 배워요!',
+        math: '🧮 수 세기·연산·시계·동전 교구 놀이로 숫자와 친해져요!',
+        english: '🔊 원어민 발음 오디오와 파닉스 소리 조합 놀이를 함께 배워요!',
+        science: '📡 오늘 실제 달 모양·날씨·우리나라 생물다양성 공공데이터로 과학 동화·퀴즈를 만들어요!',
+        reading: '🎤 내 이름과 단짝 포켓몬이 주인공으로 나오는 AI 동화책과 따라 말하기!',
+        logic: '🧩 규칙 찾기·다른 그림 찾기·기억력 카드 두뇌 놀이를 즐겨요!',
+        music: '🎹 알록달록 피아노 건반으로 계이름과 동요 리듬을 직접 연주해요!'
+    };
+    const SUBJECT_THEMES = {
+        korean: [['동물 친구', '🐾 동물 친구'], ['우리말 고운 낱말', '📖 우리말 고운 낱말'], ['달콤 과일', '🍓 달콤 과일'], ['탈것 여행', '🚒 탈것 여행'], ['공룡 탐험', '🦕 공룡 탐험'], ['바다 친구', '🐳 바다 친구'], ['공주·요정', '👑 공주·요정'], ['로봇·변신', '🤖 로봇·변신']],
+        math: [['동물 친구', '🐾 동물 친구'], ['달콤 과일', '🍓 달콤 과일'], ['탈것 여행', '🚒 탈것 여행'], ['공룡 탐험', '🦕 공룡 탐험'], ['우주 모험', '🚀 우주 모험'], ['로봇·변신', '🤖 로봇·변신']],
+        english: [['동물 친구', '🐾 동물 친구'], ['달콤 과일', '🍎 달콤 과일'], ['색깔과 모양', '🎨 색깔과 모양'], ['탈것 여행', '🚗 탈것 여행'], ['우주 모험', '🚀 우주 모험'], ['바다 친구', '🐳 바다 친구']],
+        science: [['오늘 밤하늘과 달', '🌙 오늘 밤하늘과 달'], ['오늘 날씨와 계절', '⛅ 오늘 날씨와 계절'], ['우리나라 숲속 생물', '🦋 우리나라 숲속 생물'], ['신비한 바다 생물', '🌊 신비한 바다 생물'], ['공룡 화석 탐험', '🦕 공룡 화석 탐험'], ['태양계 우주 탐험', '🚀 태양계 우주 탐험']],
+        reading: [['단짝 포켓몬 모험', '🌟 단짝 포켓몬 모험'], ['숲속 요정 마을', '🧚 숲속 요정 마을'], ['별나라 우주 여행', '🚀 별나라 우주 여행'], ['바닷속 인어 왕국', '🐳 바닷속 인어 왕국'], ['아기 공룡의 하루', '🦕 아기 공룡의 하루'], ['달콤 과자 나라', '🍰 달콤 과자 나라']],
+        logic: [['동물 친구', '🐾 동물 친구'], ['우주 모험', '🚀 우주 모험'], ['공룡 탐험', '🦕 공룡 탐험'], ['바다 친구', '🐳 바다 친구'], ['달콤 과일', '🍓 달콤 과일'], ['로봇·변신', '🤖 로봇·변신']],
+        music: [['동물 친구', '🐾 동물 친구'], ['별나라 동요', '⭐ 별나라 동요'], ['숲속 음악회', '🎵 숲속 음악회'], ['신나는 행진', '🎺 신나는 행진']]
     };
 
     const state = {
@@ -155,7 +173,7 @@
         const grid = document.getElementById('levelsGrid');
         if (!grid) return;
 
-        grid.innerHTML = ['korean', 'math', 'english'].map((subj) => {
+        grid.innerHTML = ['korean', 'math', 'english', 'science', 'reading', 'logic'].map((subj) => {
             const lv = Number(levels[subj] || 1);
             const stars = '⭐'.repeat(lv) + '☆'.repeat(5 - lv);
             return `
@@ -220,7 +238,10 @@
         const link = document.getElementById('btnOpenWrongReview');
         if (badge) badge.textContent = pending > 0 ? `복습 ${pending}문제` : '모두 해결! 🌟';
         if (text) text.textContent = pending > 0 ? `아직 다시 풀어야 할 문제가 ${pending}개 있어요! 맞추면 못 받았던 별을 받을 수 있어요 ⭐` : `와! 틀린 문제가 하나도 없어요! (${resolved}문제 복습 완료 🌟)`;
-        if (pills) pills.innerHTML = ['korean', 'math', 'english'].map((k) => `<span class="wrong-subj-pill">${SUBJECT_LABELS[k]} <strong>${Number(s.bySubject?.[k] || 0)}</strong>개</span>`).join('');
+        if (pills) {
+            const subjKeys = ['korean', 'math', 'english', 'science', 'reading', 'logic'].filter((k, i) => i < 3 || Number(s.bySubject?.[k] || 0) > 0);
+            pills.innerHTML = subjKeys.map((k) => `<span class="wrong-subj-pill">${SUBJECT_LABELS[k]} <strong>${Number(s.bySubject?.[k] || 0)}</strong>개</span>`).join('');
+        }
         if (link) {
             link.href = `/study/review?childId=${encodeURIComponent(state.childId)}`;
             link.textContent = pending > 0 ? `📝 틀린 ${pending}문제 복습하러 가기` : '📖 해결한 오답 복습 기록 보기';
@@ -267,8 +288,22 @@
         state.selectedSubject = subject;
         if (byUser) state._userPickedSubject = true;
         document.querySelectorAll('.subject-chip').forEach((btn) => {
-            btn.classList.toggle('active', btn.dataset.subject === subject);
+            const isSel = btn.dataset.subject === subject;
+            btn.classList.toggle('active', isSel);
+            btn.setAttribute('aria-pressed', isSel ? 'true' : 'false');
         });
+        const guideEl = document.getElementById('subjectFeatureGuide');
+        if (guideEl && SUBJECT_GUIDES[subject]) guideEl.textContent = SUBJECT_GUIDES[subject];
+        const themeGroup = document.getElementById('themePillsGroup') || document.querySelector('.theme-pills');
+        const list = SUBJECT_THEMES[subject] || SUBJECT_THEMES.korean;
+        if (themeGroup && Array.isArray(list) && list.length) {
+            const keepCurrent = list.some(([val]) => val === state.selectedTheme);
+            state.selectedTheme = keepCurrent ? state.selectedTheme : list[0][0];
+            themeGroup.innerHTML = list.map(([val, label]) => {
+                const active = val === state.selectedTheme;
+                return `<button type="button" class="theme-pill${active ? ' active' : ''}" data-theme="${escapeHtml(val)}" aria-pressed="${active ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
+            }).join('');
+        }
         const playRow = document.getElementById('playMissionRow');
         if (playRow) playRow.hidden = ['logic', 'reading', 'science', 'music'].includes(subject);
     }
@@ -312,13 +347,18 @@
             btn.addEventListener('click', () => selectSubjectChip(btn.dataset.subject, true));
         });
 
-        document.querySelectorAll('.theme-pill').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                state.selectedTheme = btn.dataset.theme;
-                document.querySelectorAll('.theme-pill').forEach((p) => p.classList.toggle('active', p === btn));
-                const custom = document.getElementById('customThemeInput');
-                if (custom) custom.value = '';
+        const themeGroup = document.getElementById('themePillsGroup') || document.querySelector('.theme-pills');
+        themeGroup?.addEventListener('click', (e) => {
+            const btn = e.target.closest('.theme-pill');
+            if (!btn) return;
+            state.selectedTheme = btn.dataset.theme;
+            themeGroup.querySelectorAll('.theme-pill').forEach((p) => {
+                const isSel = p === btn;
+                p.classList.toggle('active', isSel);
+                p.setAttribute('aria-pressed', isSel ? 'true' : 'false');
             });
+            const custom = document.getElementById('customThemeInput');
+            if (custom) custom.value = '';
         });
 
         // 부모 잠금 해제 상태 동기화 & 3분 미활동 자동 재잠금

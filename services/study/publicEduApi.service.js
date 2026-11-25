@@ -301,13 +301,25 @@ async function lookupKoreanWord(rawWord, { level = 2, preferFresh = false, skipP
     };
 }
 
+const AUTO_SEED_WORDS = ['무지개', '다람쥐', '민들레', '강아지', '소나무', '참새', '개구리', '해바라기', '구름', '바다'];
+
 async function pickCuratedKoreanWords({ level = 2, limit = 4 } = {}) {
     await ensurePublicEduTables();
     const lv = Math.min(Math.max(Number(level) || 2, 1), 5);
-    const cached = await dbAll(
-        'SELECT word, definition FROM study_public_word_cache WHERE level_hint <= ? ORDER BY hit_count DESC, fetched_at DESC LIMIT ?',
-        [lv + 1, limit]
+    let cached = await dbAll(
+        'SELECT word, definition FROM study_public_word_cache WHERE level_hint <= ? ORDER BY RANDOM() LIMIT ?',
+        [lv + 2, limit]
     ).catch(() => []);
+
+    if (cached.length < limit) {
+        const seed = AUTO_SEED_WORDS[Math.floor(Math.random() * AUTO_SEED_WORDS.length)];
+        await lookupKoreanWord(seed, { level: lv }).catch(() => null);
+        cached = await dbAll(
+            'SELECT word, definition FROM study_public_word_cache WHERE level_hint <= ? ORDER BY fetched_at DESC LIMIT ?',
+            [lv + 2, limit]
+        ).catch(() => cached);
+    }
+
     const merged = [...cached];
     for (const local of LOCAL_KOREAN_DICT_WORDS) {
         if (merged.length >= limit) break;

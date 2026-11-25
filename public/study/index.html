@@ -198,29 +198,28 @@
 
                 <div id="panelGenWorksheet" class="gen-tab-panel" role="tabpanel" aria-labelledby="tabGenWorksheet">
                     <div class="subject-chips" role="group" aria-label="영역 선택">
-                        <button type="button" class="subject-chip active" data-subject="korean">🇰🇷 한글</button>
-                        <button type="button" class="subject-chip" data-subject="math">🔢 수학</button>
-                        <button type="button" class="subject-chip" data-subject="english">🔤 영어</button>
-                        <button type="button" class="subject-chip" data-subject="logic" data-phase3-subj="1">🧩 두뇌퍼즐</button>
-                        <button type="button" class="subject-chip" data-subject="reading" data-phase3-subj="1">📖 그림동화</button>
-                        <button type="button" class="subject-chip" data-subject="science" data-phase3-subj="1">🌱 자연과학</button>
-                        <button type="button" class="subject-chip" data-subject="music" data-phase3-subj="1">🎹 피아노</button>
+                        <button type="button" class="subject-chip active" data-subject="korean" aria-pressed="true">🇰🇷 한글·낱말</button>
+                        <button type="button" class="subject-chip" data-subject="math" aria-pressed="false">🔢 숫자·수학</button>
+                        <button type="button" class="subject-chip" data-subject="english" aria-pressed="false">🔤 영어·파닉스</button>
+                        <button type="button" class="subject-chip" data-subject="science" data-phase3-subj="1" aria-pressed="false">🌱 자연·과학</button>
+                        <button type="button" class="subject-chip" data-subject="reading" data-phase3-subj="1" aria-pressed="false">📖 그림동화</button>
+                        <button type="button" class="subject-chip" data-subject="logic" data-phase3-subj="1" aria-pressed="false">🧩 두뇌퍼즐</button>
+                        <button type="button" class="subject-chip" data-subject="music" data-phase3-subj="1" aria-pressed="false">🎹 리듬피아노</button>
                     </div>
-
-                    <div class="theme-pills" role="group" aria-label="추천 주제">
-                        <button type="button" class="theme-pill active" data-theme="동물 친구">🐾 동물 친구</button>
-                        <button type="button" class="theme-pill" data-theme="공룡 탐험">🦕 공룡 탐험</button>
-                        <button type="button" class="theme-pill" data-theme="달콤 과일">🍓 달콤 과일</button>
-                        <button type="button" class="theme-pill" data-theme="탈것 여행">🚒 탈것 여행</button>
-                        <button type="button" class="theme-pill" data-theme="우주 모험">🚀 우주 모험</button>
-                        <button type="button" class="theme-pill" data-theme="바다 친구">🐳 바다 친구</button>
-                        <button type="button" class="theme-pill" data-theme="공주·요정">👑 공주·요정</button>
-                        <button type="button" class="theme-pill" data-theme="로봇·변신">🤖 로봇·변신</button>
+                    <p id="subjectFeatureGuide" style="margin: 8px 0 10px; padding: 8px 12px; border-radius: 10px; background: #f0f9ff; color: #0369a1; font-size: 0.84rem; font-weight: 700;">📖 국립국어원 우리말샘·표준국어대사전 어휘와 픽토그램 그림으로 배워요!</p>
+                    <div id="themePillsGroup" class="theme-pills" role="group" aria-label="추천 주제">
+                        <button type="button" class="theme-pill active" data-theme="동물 친구" aria-pressed="true">🐾 동물 친구</button>
+                        <button type="button" class="theme-pill" data-theme="우리말 고운 낱말" aria-pressed="false">📖 우리말 고운 낱말</button>
+                        <button type="button" class="theme-pill" data-theme="달콤 과일" aria-pressed="false">🍓 달콤 과일</button>
+                        <button type="button" class="theme-pill" data-theme="탈것 여행" aria-pressed="false">🚒 탈것 여행</button>
+                        <button type="button" class="theme-pill" data-theme="공룡 탐험" aria-pressed="false">🦕 공룡 탐험</button>
+                        <button type="button" class="theme-pill" data-theme="바다 친구" aria-pressed="false">🐳 바다 친구</button>
+                        <button type="button" class="theme-pill" data-theme="공주·요정" aria-pressed="false">👑 공주·요정</button>
+                        <button type="button" class="theme-pill" data-theme="로봇·변신" aria-pressed="false">🤖 로봇·변신</button>
                     </div>
-
                     <div class="theme-custom-row">
                         <label for="customThemeInput" class="visually-hidden">원하는 학습 주제 직접 입력</label>
-                        <input type="text" id="customThemeInput" class="study-input" placeholder="원하는 주제를 직접 적을 수 있어요 (예: 공주님, 자동차)" maxlength="24">
+                        <input type="text" id="customThemeInput" class="study-input" placeholder="원하는 주제를 직접 적을 수 있어요 (예: 무지개, 반딧불이)" maxlength="24">
                         <label id="playMissionRow" style="display: inline-flex; align-items: center; gap: 8px; min-block-size: 44px; font-weight: 700; color: #475569; cursor: pointer;">
                             <input type="checkbox" id="chkIncludePlayBlock" checked style="width: 20px; height: 20px; accent-color: #ff7a45;">
                             <span>🎨 놀이 미션 포함 (점잇기 · 미로 찾기 · 색칠 놀이)</span>

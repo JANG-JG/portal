@@ -27,9 +27,10 @@ const PREGEN_ENABLED_KEY = 'study_pregen_enabled';
 const PREGEN_LAST_RUN_KEY = 'study_pregen_last_run';
 const PREGEN_LAST_SUMMARY_KEY = 'study_pregen_last_summary';
 const DEFAULT_PREGEN_THEME = '동물 친구';
+const SUBJECT_DEFAULT_THEMES = { korean: '동물 친구', math: '동물 친구', english: '동물 친구', science: '오늘 밤하늘과 달', reading: '단짝 포켓몬 모험' };
 const PREGEN_SUBJECTS = ['korean', 'math', 'english', 'reading', 'science'];
-const MAX_BUFFER_PER_SLOT = 1;
-const RESERVE_DAILY_QUOTA = 4;
+const MAX_BUFFER_PER_SLOT = 2;
+const RESERVE_DAILY_QUOTA = 6;
 
 let tableReadyPromise = null;
 let cronTask = null;
@@ -188,7 +189,8 @@ async function consumePregeneratedWorksheet({
 
     let content = null;
     try { content = JSON.parse(row.content_json); } catch (e) { content = null; }
-    if (!content || !Array.isArray(content.blocks) || content.blocks.length < 6) return null;
+    const minBlocks = (subj === 'reading' || subj === 'science') ? 3 : 6;
+    if (!content || !Array.isArray(content.blocks) || content.blocks.length < minBlocks) return null;
 
     const sheetId = await saveWorksheet({
         childId: cid,
@@ -351,7 +353,8 @@ async function triggerWarmupAll({ reason = 'manual' } = {}) {
             for (const themeName of themes) {
                 const targetSubjects = themeName === DEFAULT_PREGEN_THEME ? PREGEN_SUBJECTS : ['korean', 'math', 'english'];
                 for (const subj of targetSubjects) {
-                    const out = await replenishSlot(p.id, subj, themeName);
+                    const effectiveTheme = themeName === DEFAULT_PREGEN_THEME ? (SUBJECT_DEFAULT_THEMES[subj] || DEFAULT_PREGEN_THEME) : themeName;
+                    const out = await replenishSlot(p.id, subj, effectiveTheme);
                     if (out.status === 'generated') {
                         created += 1;
                         ttsCount += Number(out.ttsWarmed || 0);

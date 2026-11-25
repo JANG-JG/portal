@@ -8,9 +8,11 @@
  */
 
 const CURRICULUM_SUBJECTS = [
-    { id: 'korean', label: '한글·국어', emoji: '🇰🇷', badgeColor: '#ef4444' },
+    { id: 'korean', label: '한글·국어 (우리말 사전)', emoji: '🇰🇷', badgeColor: '#ef4444' },
     { id: 'math', label: '수·연산·도형', emoji: '🔢', badgeColor: '#3b82f6' },
-    { id: 'english', label: '기초 영어', emoji: '🔤', badgeColor: '#10b981' }
+    { id: 'english', label: '기초 영어·파닉스', emoji: '🔤', badgeColor: '#10b981' },
+    { id: 'science', label: '자연·과학 탐험 (날씨·달·생물)', emoji: '🌱', badgeColor: '#059669' },
+    { id: 'reading', label: '그림동화·이야기 말하기', emoji: '📖', badgeColor: '#8b5cf6' }
 ];
 
 const CURRICULUM_TREE = {
@@ -29,7 +31,7 @@ const CURRICULUM_TREE = {
             unitCode: 'KOR-B2',
             title: '② 받침 없는 글자 조합과 낱말',
             goal: '자음과 모음이 만나 소리가 나는 원리를 알고 일상 사물 낱말을 읽어요.',
-            recommendedTheme: '달콤 과일',
+            recommendedTheme: '우리말 고운 낱말',
             keywords: ['바나나', '포도', '토마토', '우유', '기차', '구두'],
             promptGuidance: '받침 없는 2~3글자 생활 친숙 낱말(사물·음식·탈것)'
         },
@@ -47,7 +49,7 @@ const CURRICULUM_TREE = {
             unitCode: 'KOR-B4',
             title: '④ 쌍자음·이중모음과 풍부한 낱말',
             goal: 'ㄲ·ㄸ·ㅃ·ㅆ·ㅉ와 ㅐ·ㅔ·ㅘ·ㅝ가 들어간 낱말을 바르게 구분해요.',
-            recommendedTheme: '바다 친구',
+            recommendedTheme: '우리말 고운 낱말',
             keywords: ['꼬마', '딸기', '코끼리', '무지개', '시계', '다람쥐'],
             promptGuidance: '쌍자음·복합모음 포함 3~4글자 낱말과 의성어/의태어'
         },
@@ -153,6 +155,100 @@ const CURRICULUM_TREE = {
             recommendedTheme: '바다 친구',
             keywords: ['ELEPHANT', 'DOLPHIN', 'BUTTERFLY', 'MORNING'],
             promptGuidance: '어린이 생활 친화 7~9글자 영단어 및 인사 어휘'
+        }
+    ],
+    science: [
+        {
+            level: 1,
+            unitCode: 'SCI-B1',
+            title: '① 낮과 밤 · 하늘의 해와 달 관찰',
+            goal: '초승달·보름달 등 오늘 밤하늘 달 모양과 해·별의 특징을 알아봐요.',
+            recommendedTheme: '오늘 밤하늘과 달',
+            keywords: ['초승달', '보름달', '햇님', '별빛'],
+            promptGuidance: '낮과 밤의 차이, 달의 모양 변화(초승달·상현달·보름달) 쉬운 관찰 동화'
+        },
+        {
+            level: 2,
+            unitCode: 'SCI-B2',
+            title: '② 오늘의 날씨와 사계절 변화',
+            goal: '맑음·구름·비·눈 등 오늘의 날씨와 봄·여름·가을·겨울을 배워요.',
+            recommendedTheme: '오늘 날씨와 계절',
+            keywords: ['구름', '소나기', '무지개', '사계절'],
+            promptGuidance: '비·눈·구름·바람이 생기는 이유와 계절에 따른 자연의 모습'
+        },
+        {
+            level: 3,
+            unitCode: 'SCI-B3',
+            title: '③ 우리나라 숲과 들판의 동식물',
+            goal: '한반도에 사는 다람쥐·곤충·꽃·나무가 어떻게 자라는지 탐험해요.',
+            recommendedTheme: '우리나라 숲속 생물',
+            keywords: ['다람쥐', '민들레', '나비', '도토리'],
+            promptGuidance: '우리나라 산과 들에 사는 동식물의 먹이와 보금자리 특징'
+        },
+        {
+            level: 4,
+            unitCode: 'SCI-B4',
+            title: '④ 신비한 바다 생물과 물의 여행',
+            goal: '갯벌과 바다에 사는 생물들을 만나고 물의 순환을 이해해요.',
+            recommendedTheme: '신비한 바다 생물',
+            keywords: ['고래', '바다거북', '갯벌', '산호초'],
+            promptGuidance: '강과 바다 생태계 생물 다양성과 물이 구름·비가 되는 과정'
+        },
+        {
+            level: 5,
+            unitCode: 'SCI-B5',
+            title: '⑤ 태양계 우주와 소중한 지구 지키기',
+            goal: '지구와 행성들의 비밀을 알고 자연과 생물을 보호하는 방법을 실천해요.',
+            recommendedTheme: '태양계 우주 탐험',
+            keywords: ['지구', '토성', '생물다양성', '환경보호'],
+            promptGuidance: '태양계 행성 특징과 지구 생태계·멸종위기 생물을 아끼는 과학 이야기'
+        }
+    ],
+    reading: [
+        {
+            level: 1,
+            unitCode: 'RED-B1',
+            title: '① 의성어·의태어 리듬 동화 읽기',
+            goal: '폴짝폴짝, 반짝반짝 재미있는 소리와 모양 낱말을 소리 내어 따라 말해요.',
+            recommendedTheme: '동물 친구',
+            keywords: ['폴짝폴짝', '반짝반짝', '아장아장'],
+            promptGuidance: '의성어·의태어가 반복되는 짧고 리듬감 있는 1문장 유아 동화'
+        },
+        {
+            level: 2,
+            unitCode: 'RED-B2',
+            title: '② 누가·무엇을 했는지 내용 찾기',
+            goal: '단짝 포켓몬과 함께한 모험 이야기를 듣고 주인공이 한 일을 기억해요.',
+            recommendedTheme: '단짝 포켓몬 모험',
+            keywords: ['주인공', '출발', '도움', '보물'],
+            promptGuidance: '뚜렷한 사건 순서가 있는 따뜻한 우정 동화와 사실 확인 퀴즈'
+        },
+        {
+            level: 3,
+            unitCode: 'RED-B3',
+            title: '③ 친구의 기분과 마음 공감하기',
+            goal: '이야기 속 친구가 왜 기쁘거나 속상했는지 마음을 헤아려 보아요.',
+            recommendedTheme: '숲속 요정 마을',
+            keywords: ['고마워', '미안해', '용기', '배려'],
+            promptGuidance: '감정 표현(기쁨·설렘·고마움·용기)과 친구 배려를 다룬 창작 동화'
+        },
+        {
+            level: 4,
+            unitCode: 'RED-B4',
+            title: '④ 왜 그랬을까? 원인과 결과 알기',
+            goal: '사건이 일어난 까닭과 해결 방법을 연결하며 이야기를 깊이 읽어요.',
+            recommendedTheme: '별나라 우주 여행',
+            keywords: ['까닭', '해결', '지혜', '협동'],
+            promptGuidance: '작은 문제를 지혜와 협동으로 해결하는 인과관계 중심 동화'
+        },
+        {
+            level: 5,
+            unitCode: 'RED-B5',
+            title: '⑤ 풍부한 표현으로 생각 말하기',
+            goal: '조금 더 긴 문장을 또박또박 낭독하고 이야기의 교훈을 찾아보아요.',
+            recommendedTheme: '바닷속 인어 왕국',
+            keywords: ['상상', '약속', '모험', '낭독'],
+            promptGuidance: '어휘가 풍부한 2문장 구성 창작 동화와 추론형 독해 퀴즈'
         }
     ]
 };

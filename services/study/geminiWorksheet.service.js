@@ -95,12 +95,13 @@ function postJsonIPv4(urlStr, headers, bodyObj, timeoutMs = 15000) {
 function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birthYear, subject, level, theme, curriculumHint = '', curatedWords = [] }) {
     if (subject === 'reading' || subject === 'science') {
         const isSci = subject === 'science';
+        const sciOrReadHint = curriculumHint ? `\n학습 단원 및 오늘의 공공데이터 참고: ${curriculumHint}` : '';
         const prompt = isSci
-            ? `유아 자연·과학 동화 작가 역할입니다. 대상: ${birthYear}년생 유아("${childName}"), 동반 친구: "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.\n` +
-              `자연/과학 현상을 호기심 있게 알려주는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 말할 핵심 문장 1개(voiceWord), 이해 퀴즈 2개(quizzes)를 순수 유아 친화 한국어로 작성하세요.\n` +
+            ? `유아 자연·과학 동화 작가 역할입니다. 대상: ${birthYear}년생 유아("${childName}"), 동반 친구: "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.${sciOrReadHint}\n` +
+              `참고 정보(오늘의 달 모양·날씨·우리나라 생물 등)가 있다면 주제와 자연스럽게 엮어 호기심을 키우는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 말할 핵심 문장 1개(voiceWord), 이해 퀴즈 3개(quizzes)를 순수 유아 친화 한국어로 작성하세요.\n` +
               `중요: 각 quizzes의 answer는 반드시 본문 내용에서 답을 찾을 수 있어야 하고, choices 배열(서로 다른 3~4개 보기) 안에 정확히 포함되어야 합니다.`
-            : `유아 그림 동화 작가 역할입니다. 주인공: "${childName}"과 단짝 포켓몬 "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.\n` +
-              `따뜻하고 재미있는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 읽을 핵심 문장 1개(voiceWord), 독해 퀴즈 2개(quizzes)를 순수 한국어로 작성하세요.\n` +
+            : `유아 그림 동화 작가 역할입니다. 주인공: "${childName}"과 단짝 포켓몬 "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.${sciOrReadHint}\n` +
+              `따뜻하고 재미있는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 읽을 핵심 문장 1개(voiceWord), 독해 퀴즈 3개(quizzes)를 순수 한국어로 작성하세요.\n` +
               `중요: 각 quizzes의 answer는 반드시 본문 내용에서 답을 찾을 수 있어야 하고, choices 배열(서로 다른 3~4개 보기) 안에 정확히 포함되어야 합니다.`;
         const schema = {
             type: 'OBJECT',
@@ -165,7 +166,7 @@ function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birt
                     : '짧은 2어절 순수 한글 표현 6개(예: 반짝이는 별)');
     const currGuide = curriculumHint ? `\n공교육 진도 기준: ${curriculumHint}` : '';
     const dictGuide = (subject === 'korean' && curatedWords.length)
-        ? `\n참고 추천 어휘(자연스럽게 일부 반영 가능): ${curatedWords.map((w) => w.word).join(', ')}`
+        ? `\n국립국어원 사전 추천 어휘(주제에 어울리면 1~3개 적극 활용): ${curatedWords.map((w) => (w.definition ? `${w.word}(${String(w.definition).slice(0, 28)})` : w.word)).join(', ')}`
         : '';
 
     const prompt =
@@ -348,7 +349,7 @@ async function generateWorksheetPayload({
 
     const { dbGet } = require('./studyDb.service');
     const levels = await getChildLevels(cid);
-    const level = subj === 'logic' ? (levels.math || 1) : (levels[subj] || levels.korean || 1);
+    const level = levels[subj] || (subj === 'logic' ? levels.math : levels.korean) || 1;
     const profileRow = await dbGet('SELECT display_name, birth_year FROM study_profiles WHERE id = ?', [cid]).catch(() => null);
     const partnerRow = await dbGet('SELECT pokemon_name FROM study_pokemon_pokedex WHERE child_id = ? ORDER BY is_partner DESC, id ASC LIMIT 1', [cid]).catch(() => null);
     const childName = profileRow?.display_name || (cid === 'first' ? '첫째' : '둘째');
@@ -384,10 +385,9 @@ async function generateWorksheetPayload({
             }
         }
         const curatedWords = subj === 'korean'
-            ? await pickCuratedKoreanWords({ level, limit: 4 }).catch(() => [])
+            ? await pickCuratedKoreanWords({ level, limit: 5 }).catch(() => [])
             : [];
-        // ③ 자동 재시도 (최대 2회 시도 후 검증 통과 시 채택)
-        for (let attempt = 1; attempt <= 2; attempt++) {
+        for (let attempt = 1; attempt <= 3; attempt++) {
             const aiRes = await callGeminiStructuredJson({
                 childName,
                 partnerName,
