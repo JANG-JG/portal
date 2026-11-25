@@ -127,9 +127,10 @@ function createServiceProxyHandler(spec, lanIp, portalPort) {
         });
 
         proxyReq.on('error', (err) => {
+            console.error(`⚠️ [LAN Proxy] ${spec.label}(${spec.targetPort}) 연결 오류:`, err.message);
             if (!res.headersSent) {
                 res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
-                res.end(JSON.stringify({ success: false, message: `${spec.label} 서비스(${spec.targetPort})에 일시적으로 연결할 수 없습니다.`, detail: err.message }));
+                res.end(JSON.stringify({ success: false, message: `${spec.label} 서비스(${spec.targetPort})에 일시적으로 연결할 수 없습니다.` }));
             } else {
                 res.end();
             }

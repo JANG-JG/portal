@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { portalDb, newsDb } = require('../services/db');
 const { authenticateToken, getClientIp, revokedTokens } = require('../middleware/auth');
-const { JWT_SECRET, ADMIN_USERS } = require('../config/constants');
+const { JWT_SECRET, INTERNAL_API_SECRET, ADMIN_USERS } = require('../config/constants');
 const {
     VAPID_PUBLIC_KEY, getVapidKeyFingerprint, isAllowedWebPushEndpoint,
     detectBrowserName, recordPushDiagEvent, sendUnifiedPushNotification, publishNotificationEvent
@@ -457,11 +457,11 @@ router.post('/sw-ack', (req, res) => {
 async function handleInternalEventPublish(req, res) {
     const internalSecret = req.headers['x-internal-secret'];
     const isInternalValid =
-        typeof JWT_SECRET === 'string' &&
-        JWT_SECRET.length > 0 &&
+        typeof INTERNAL_API_SECRET === 'string' &&
+        INTERNAL_API_SECRET.length > 0 &&
         typeof internalSecret === 'string' &&
-        internalSecret.length === JWT_SECRET.length &&
-        crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(JWT_SECRET));
+        internalSecret.length === INTERNAL_API_SECRET.length &&
+        crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(INTERNAL_API_SECRET));
 
     let isAdminTokenValid = false;
     const authHeader = req.headers['authorization'];

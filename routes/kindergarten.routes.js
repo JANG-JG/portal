@@ -41,7 +41,8 @@ router.post('/run', authenticateToken, requireAdmin, async (req, res) => {
         }
         return res.json(result);
     } catch (err) {
-        return res.status(500).json({ success: false, error: '프로세스 실행 요청 실패: ' + err.message });
+        console.error('[kindergarten] 실행 요청 실패:', err);
+        return res.status(500).json({ success: false, error: '프로세스 실행 요청에 실패했습니다.' });
     }
 });
 
@@ -51,7 +52,8 @@ router.get('/status', authenticateToken, requireAdmin, async (req, res) => {
         const status = await kindergartenService.getStatus();
         return res.json({ success: true, status });
     } catch (err) {
-        return res.status(500).json({ success: false, error: '상태 조회 실패: ' + err.message });
+        console.error('[kindergarten] 상태 조회 실패:', err);
+        return res.status(500).json({ success: false, error: '상태 조회에 실패했습니다.' });
     }
 });
 
@@ -61,7 +63,8 @@ router.get('/history-log', authenticateToken, requireAdmin, async (req, res) => 
         const logData = await kindergartenService.getCumulativeHistoryLog();
         return res.json({ success: true, log: logData });
     } catch (err) {
-        return res.status(500).json({ success: false, error: '누적 로그 조회 실패: ' + err.message });
+        console.error('[kindergarten] 누적 로그 조회 실패:', err);
+        return res.status(500).json({ success: false, error: '누적 로그 조회에 실패했습니다.' });
     }
 });
 

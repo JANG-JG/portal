@@ -4,7 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { spawn } = require('child_process');
-const { WORKSPACE_ROOT } = require('../../config/constants');
+const { WORKSPACE_ROOT, SECONDARY_HOST } = require('../../config/constants');
 const { getSecondaryServerStatus } = require('../../services/systemMonitor.service');
 
 // 백업 중복 실행 방지 잠금 플래그
@@ -105,7 +105,7 @@ router.get('/status', async (req, res) => {
         }
 
         // 보조 스토리지(HP 노트북) 온라인 상태
-        let secondaryStatus = { online: false, host: process.env.SECONDARY_HOST || '192.168.50.75' };
+        let secondaryStatus = { online: false, host: SECONDARY_HOST };
         try {
             secondaryStatus = await getSecondaryServerStatus();
         } catch (e) {}
@@ -116,7 +116,7 @@ router.get('/status', async (req, res) => {
             running_since: backupProcessStartTime,
             status: statusData,
             secondary_server: {
-                host: statusData?.secondary_host || process.env.SECONDARY_HOST || '192.168.50.75',
+                host: statusData?.secondary_host || SECONDARY_HOST,
                 port: statusData?.secondary_port || 22,
                 online: !!secondaryStatus.online,
                 external_ssd: secondaryStatus.externalSsd || null
@@ -145,9 +145,10 @@ router.post('/run', (req, res) => {
 
     const scriptPath = getScriptFilePath('backup-to-secondary.sh');
     if (!fs.existsSync(scriptPath)) {
+        console.error('[backup.admin] 백업 스크립트를 찾을 수 없습니다:', scriptPath);
         return res.status(500).json({
             success: false,
-            message: `백업 스크립트를 찾을 수 없습니다: ${scriptPath}`
+            message: '백업 스크립트를 찾을 수 없습니다.'
         });
     }
 

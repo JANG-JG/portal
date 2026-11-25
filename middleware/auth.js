@@ -1,18 +1,105 @@
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET, COOKIE_DOMAIN, ADMIN_USERS } = require('../config/constants');
 const { db } = require('../services/db');
 
-// 🛡️ [보안 강화] 로그아웃된 JWT 무효화(Blacklist) 인메모리 관리
-const revokedTokens = new Map(); // token -> expiresAt (timestamp)
+// 🛡️ [보안 강화] 로그아웃된 JWT 무효화(Blacklist) 파일 기반 영속 관리 (DB 스키마 무변경)
+const REVOKED_TOKENS_FILE = path.resolve(__dirname, '../data/revoked-tokens.json');
+const revokedTokenHashes = new Map(); // sha256(token) -> expiresAt (timestamp)
+let persistTimer = null;
+
+function hashRevokedToken(token) {
+    return crypto.createHash('sha256').update(String(token || '')).digest('hex');
+}
+
+function loadRevokedTokensFromDisk() {
+    try {
+        if (!fs.existsSync(REVOKED_TOKENS_FILE)) return;
+        const raw = fs.readFileSync(REVOKED_TOKENS_FILE, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return;
+        const now = Date.now();
+        for (const [key, exp] of Object.entries(parsed)) {
+            if (typeof exp === 'number' && exp > now) {
+                revokedTokenHashes.set(key, exp);
+            }
+        }
+    } catch (e) {
+        console.warn('⚠️ [Auth] 블랙리스트 파일 복원 실패 (무시됨):', e.message);
+    }
+}
+
+function persistRevokedTokensSync() {
+    try {
+        const dir = path.dirname(REVOKED_TOKENS_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+        }
+        const now = Date.now();
+        const out = {};
+        for (const [k, exp] of revokedTokenHashes.entries()) {
+            if (exp > now) out[k] = exp;
+        }
+        const tmpFile = `${REVOKED_TOKENS_FILE}.tmp`;
+        fs.writeFileSync(tmpFile, JSON.stringify(out), { mode: 0o600 });
+        fs.renameSync(tmpFile, REVOKED_TOKENS_FILE);
+        try { fs.chmodSync(REVOKED_TOKENS_FILE, 0o600); } catch (_) {}
+    } catch (e) {
+        console.warn('⚠️ [Auth] 블랙리스트 파일 저장 실패:', e.message);
+    }
+}
+
+function scheduleRevokedTokensPersist() {
+    if (persistTimer) return;
+    persistTimer = setTimeout(() => {
+        persistTimer = null;
+        persistRevokedTokensSync();
+    }, 300);
+    if (typeof persistTimer.unref === 'function') persistTimer.unref();
+}
+
+loadRevokedTokensFromDisk();
+
+const revokedTokens = {
+    has(token) {
+        if (!token) return false;
+        const key = hashRevokedToken(token);
+        const exp = revokedTokenHashes.get(key);
+        if (exp === undefined) return false;
+        if (exp <= Date.now()) {
+            revokedTokenHashes.delete(key);
+            return false;
+        }
+        return true;
+    },
+    set(token, expiresAt) {
+        if (!token) return this;
+        const exp = typeof expiresAt === 'number' ? expiresAt : (Date.now() + 7 * 24 * 60 * 60 * 1000);
+        revokedTokenHashes.set(hashRevokedToken(token), exp);
+        scheduleRevokedTokensPersist();
+        return this;
+    },
+    delete(token) {
+        if (!token) return false;
+        const deleted = revokedTokenHashes.delete(hashRevokedToken(token));
+        if (deleted) scheduleRevokedTokensPersist();
+        return deleted;
+    }
+};
 
 // 30분마다 만료된 블랙리스트 토큰 정리
 setInterval(() => {
     const now = Date.now();
-    for (const [t, exp] of revokedTokens.entries()) {
+    let changed = false;
+    for (const [t, exp] of revokedTokenHashes.entries()) {
         if (exp <= now) {
-            revokedTokens.delete(t);
+            revokedTokenHashes.delete(t);
+            changed = true;
         }
     }
+    if (changed) persistRevokedTokensSync();
 }, 30 * 60 * 1000).unref();
 
 function buildLoginRedirect(req) {

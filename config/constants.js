@@ -10,6 +10,7 @@ if (!JWT_SECRET) {
     console.error('🚨 [보안 오류] JWT_SECRET 환경변수가 누락되었습니다. .env 설정을 확인하세요.');
     process.exit(1);
 }
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || JWT_SECRET;
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || '.j-jg.cc';
 
 // 서브 프로젝트 기본 경로 자동 탐색 (환경 변수 -> 상위 폴더 상대경로 -> 홈 workspace)
@@ -89,6 +90,7 @@ module.exports = {
     PORT,
     STATIC_ASSET_VERSION,
     JWT_SECRET,
+    INTERNAL_API_SECRET,
     COOKIE_DOMAIN,
     WORKSPACE_ROOT,
     BLOOD_DIR,

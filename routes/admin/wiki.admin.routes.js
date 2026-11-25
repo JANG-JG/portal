@@ -13,13 +13,13 @@ const express = require('express');
 const http = require('http');
 const router = express.Router();
 const { db } = require('../../services/db');
-const { WIKI_HOST, WIKI_PORT, JWT_SECRET } = require('../../config/constants');
+const { WIKI_HOST, WIKI_PORT, INTERNAL_API_SECRET } = require('../../config/constants');
 const { CHAT_MODEL } = require('../../services/aiModelRouter.service');
 
 function wikiInternalRequest(method, targetPath, payload = null) {
     return new Promise((resolve, reject) => {
         const headers = { 'Accept': 'application/json' };
-        if (JWT_SECRET) headers['X-Internal-Secret'] = JWT_SECRET;
+        if (INTERNAL_API_SECRET) headers['X-Internal-Secret'] = INTERNAL_API_SECRET;
 
         let bodyBuf = null;
         if (payload && ['POST', 'PUT', 'PATCH'].includes(method)) {
@@ -190,7 +190,8 @@ router.get('/revision-detail', async (req, res) => {
             v1
         });
     } catch (err) {
-        res.status(502).json({ success: false, message: '보조서버 위키 이력 조회 실패: ' + err.message });
+        console.error('[wiki.admin] 위키 이력 조회 실패:', err);
+        res.status(502).json({ success: false, message: '보조서버 위키 이력 조회에 실패했습니다.' });
     }
 });
 
@@ -210,7 +211,8 @@ router.post('/revert', async (req, res) => {
         });
         res.status(revRes.statusCode || 200).json(revRes.data);
     } catch (err) {
-        res.status(502).json({ success: false, message: '보조서버 문서 복원 요청 실패: ' + err.message });
+        console.error('[wiki.admin] 문서 복원 요청 실패:', err);
+        res.status(502).json({ success: false, message: '보조서버 문서 복원 요청에 실패했습니다.' });
     }
 });
 

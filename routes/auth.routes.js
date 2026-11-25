@@ -471,6 +471,11 @@ router.post('/api/auth/unlink-device', (req, res) => {
 
 // 로그아웃 API
 router.get('/logout', (req, res) => {
+    const fetchDest = String(req.headers['sec-fetch-dest'] || '').toLowerCase();
+    if (fetchDest && fetchDest !== 'document' && fetchDest !== 'empty') {
+        return res.status(403).send('Forbidden');
+    }
+
     const authHeader = req.headers['authorization'];
     const bearerToken = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.split(' ')[1] : null;
     const tokensToRevoke = [req.cookies?.portal_token, bearerToken].filter(Boolean);
@@ -484,22 +489,25 @@ router.get('/logout', (req, res) => {
         }
     }
 
-    res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN });
-    res.clearCookie('portal_token', { path: '/' });
-    res.clearCookie('portal_token', { path: '/', domain: 'j-jg.cc' });
-    res.clearCookie('jg_user_role', { path: '/', domain: COOKIE_DOMAIN });
-    res.clearCookie('jg_user_role', { path: '/' });
-    res.clearCookie('jg_allowed_services', { path: '/', domain: COOKIE_DOMAIN });
-    res.clearCookie('jg_allowed_services', { path: '/' });
+    const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https';
+    const secureAttr = isHttps ? '; Secure' : '';
+
+    res.clearCookie('portal_token', { path: '/', domain: COOKIE_DOMAIN, secure: isHttps });
+    res.clearCookie('portal_token', { path: '/', secure: isHttps });
+    res.clearCookie('portal_token', { path: '/', domain: 'j-jg.cc', secure: isHttps });
+    res.clearCookie('jg_user_role', { path: '/', domain: COOKIE_DOMAIN, secure: isHttps });
+    res.clearCookie('jg_user_role', { path: '/', secure: isHttps });
+    res.clearCookie('jg_allowed_services', { path: '/', domain: COOKIE_DOMAIN, secure: isHttps });
+    res.clearCookie('jg_allowed_services', { path: '/', secure: isHttps });
 
     res.setHeader('Set-Cookie', [
-        'portal_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
-        `portal_token=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`,
-        'portal_token=; Path=/; Domain=j-jg.cc; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax',
-        `jg_user_role=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`,
-        `jg_allowed_services=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`
+        `portal_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${secureAttr}`,
+        `portal_token=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${secureAttr}`,
+        `portal_token=; Path=/; Domain=j-jg.cc; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${secureAttr}`,
+        `jg_user_role=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureAttr}`,
+        `jg_allowed_services=; Path=/; Domain=${COOKIE_DOMAIN}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax${secureAttr}`
     ]);
-    if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    if (isHttps) {
         res.setHeader('Clear-Site-Data', '"cookies", "storage", "cache"');
     }
 

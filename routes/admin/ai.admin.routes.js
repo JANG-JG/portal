@@ -16,7 +16,8 @@ router.get('/', (req, res) => {
         const config = getAiConfig();
         res.json({ success: true, config, envDefaults: { chatModel: CHAT_MODEL, balancedModel: BALANCED_MODEL, reasoningModel: REASONING_MODEL } });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'AI 설정을 불러오지 못했습니다.', error: err.message });
+        console.error('[ai.admin] AI 설정 조회 실패:', err);
+        res.status(500).json({ success: false, message: 'AI 설정을 불러오지 못했습니다.' });
     }
 });
 
@@ -80,7 +81,8 @@ router.post('/', async (req, res) => {
 
         res.json({ success: true, message: 'AI 비서 설정이 성공적으로 저장되었습니다.', config: result.config });
     } catch (err) {
-        res.status(500).json({ success: false, message: '설정 저장 중 오류가 발생했습니다.', error: err.message });
+        console.error('[ai.admin] AI 설정 저장 실패:', err);
+        res.status(500).json({ success: false, message: '설정 저장 중 오류가 발생했습니다.' });
     }
 });
 
@@ -91,7 +93,8 @@ router.get('/health', async (req, res) => {
         const health = await getOllamaRuntimeDetails();
         res.json({ success: true, health });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'AI 헬스체크 실패', error: err.message });
+        console.error('[ai.admin] AI 헬스체크 실패:', err);
+        res.status(500).json({ success: false, message: 'AI 헬스체크 실패' });
     }
 });
 
@@ -102,7 +105,8 @@ router.get('/audit-logs', async (req, res) => {
         const summary = await getAiAuditSummary(req.query.limit || 60);
         res.json({ success: true, ...summary });
     } catch (err) {
-        res.status(500).json({ success: false, message: 'AI 감사 로그 조회 실패: ' + err.message });
+        console.error('[ai.admin] AI 감사 로그 조회 실패:', err);
+        res.status(500).json({ success: false, message: 'AI 감사 로그 조회에 실패했습니다.' });
     }
 });
 
@@ -127,7 +131,8 @@ router.get('/briefing-status', async (req, res) => {
             }
         });
     } catch (err) {
-        res.status(500).json({ success: false, message: '브리핑 날씨 상태 조회 실패', error: err.message });
+        console.error('[ai.admin] 브리핑 날씨 상태 조회 실패:', err);
+        res.status(500).json({ success: false, message: '브리핑 날씨 상태 조회 실패' });
     }
 });
 
