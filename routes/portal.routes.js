@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { JWT_SECRET, ADMIN_USERS } = require('../config/constants');
+const { JWT_SECRET, INTERNAL_API_SECRET, ADMIN_USERS } = require('../config/constants');
 const { db, newsDb, albumDb } = require('../services/db');
 const { authenticateToken } = require('../middleware/auth');
 const { getLiveWeatherData, CITY_LIST, normalizeCityCode, getDefaultWeatherCity } = require('../services/weather.service');
@@ -361,6 +361,34 @@ router.get('/api/portal/study-buddies', authenticateToken, async (req, res) => {
         console.warn('포털 학습 단짝 위젯 조회 오류:', err.message);
         res.json({ success: true, enabled: false, buddies: [] });
     }
+});
+
+// 내부 서비스용 사용자 별명 맵 조회 API (X-Internal-Secret 인증)
+router.get('/api/internal/user-nicknames', (req, res) => {
+    const internalSecret = req.headers['x-internal-secret'];
+    const isInternalValid =
+        typeof INTERNAL_API_SECRET === 'string' &&
+        INTERNAL_API_SECRET.length > 0 &&
+        typeof internalSecret === 'string' &&
+        internalSecret.length === INTERNAL_API_SECRET.length &&
+        crypto.timingSafeEqual(Buffer.from(internalSecret), Buffer.from(INTERNAL_API_SECRET));
+
+    if (!isInternalValid) {
+        return res.status(401).json({ success: false, message: '내부 인증이 필요합니다.' });
+    }
+
+    db.all('SELECT username, nickname FROM users', [], (err, rows) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: '사용자 별명 조회 실패' });
+        }
+        const nicknames = {};
+        (rows || []).forEach((r) => {
+            if (!r || !r.username) return;
+            const nick = String(r.nickname || '').trim();
+            if (nick) nicknames[r.username] = nick;
+        });
+        res.json({ success: true, nicknames });
+    });
 });
 
 module.exports = router;
