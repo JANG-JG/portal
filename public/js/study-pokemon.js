@@ -162,21 +162,56 @@
         const partnerBtn = document.getElementById('btnPokemonPartnerStage');
         const partner = pokemonData.partnerPokemon;
         if (partnerBtn) {
+            const cond = pokemonData.condition;
             if (partner) {
+                const lv = Number(partner.level || 1);
+                const skills = Array.isArray(partner.skills) ? partner.skills : [];
+                const shinyBadge = partner.isShiny ? '<span class="pokemon-shiny-badge">✨ 이로치</span>' : '';
+                const condBadge = cond ? `<span class="pokemon-condition-pill is-${esc(cond.statusKey)}">${esc(cond.label)}</span>` : '';
+                const subText = cond?.statusKey && cond.statusKey !== 'happy' ? cond.bubble : '톡 누르면 반갑게 점프해요! ✨';
+                partnerBtn.classList.toggle('is-shiny-pokemon', Boolean(partner.isShiny));
+                partnerBtn.classList.toggle('is-sleepy-pokemon', cond?.statusKey === 'sleepy');
                 partnerBtn.innerHTML = `
-                    <span class="pokemon-stage__tag">⭐ 내 단짝 · ${esc(partner.typeEmoji)} ${esc(partner.typeLabel)}</span>
+                    <span class="pokemon-stage__tag">⭐ Lv.${lv} 단짝 · ${esc(partner.typeEmoji)} ${esc(partner.typeLabel)} ${shinyBadge}</span>
+                    ${condBadge}
                     <div class="pokemon-actor-wrap">
-                        <img class="pokemon-sprite-img"
+                        <img class="pokemon-sprite-img ${partner.isShiny ? 'is-shiny-sprite' : ''}"
                              src="${esc(partner.artworkUrl || partner.animatedUrl)}"
                              data-fallback="${esc(partner.animatedUrl || '')}"
                              alt="${esc(partner.nameKo)}">
                     </div>
                     <div>
                         <div class="pokemon-stage__label">${esc(partner.nameKo)}</div>
-                        <div class="pokemon-stage__sub">톡 누르면 반갑게 점프해요! ✨</div>
+                        <div class="pokemon-stage__sub">${esc(subText)}</div>
                     </div>
                     <div class="pokemon-fx-layer" aria-hidden="true"></div>
                 `;
+                let skillBar = partnerBtn.parentElement?.querySelector('.pokemon-skill-bar');
+                if (!skillBar && partnerBtn.parentElement && skills.length > 0) {
+                    skillBar = document.createElement('div');
+                    skillBar.className = 'pokemon-skill-bar';
+                    partnerBtn.insertAdjacentElement('afterend', skillBar);
+                }
+                if (skillBar) {
+                    skillBar.hidden = skills.length === 0;
+                    skillBar.innerHTML = skills.map((sk) => `
+                        <button type="button" class="pokemon-skill-btn ${sk.unlocked ? '' : 'is-locked'}"
+                                data-skill-id="${esc(sk.id)}" ${sk.unlocked ? '' : 'disabled'}
+                                title="${sk.unlocked ? `${sk.name} 초원에서 사용하기` : `Lv.${sk.minLevel}에 해금돼요!`}">
+                            ${esc(sk.emoji)} ${esc(sk.name)}${sk.unlocked ? '' : ` <small>Lv.${sk.minLevel}</small>`}
+                        </button>
+                    `).join('');
+                    skillBar.querySelectorAll('.pokemon-skill-btn:not([disabled])').forEach((btn) => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const sk = skills.find((s) => s.id === btn.dataset.skillId);
+                            if (sk) {
+                                currentMeadow?._playApi?.triggerSkill?.(sk);
+                                document.getElementById('pokemonMeadowStage')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }
+                        });
+                    });
+                }
                 const img = partnerBtn.querySelector('img');
                 if (img) {
                     img.addEventListener('error', () => {
@@ -186,6 +221,9 @@
                     });
                 }
             } else {
+                partnerBtn.classList.remove('is-shiny-pokemon', 'is-sleepy-pokemon');
+                const oldSkillBar = partnerBtn.parentElement?.querySelector('.pokemon-skill-bar');
+                if (oldSkillBar) oldSkillBar.hidden = true;
                 partnerBtn.innerHTML = `
                     <span class="pokemon-stage__tag">🐾 첫 단짝 기다리는 중</span>
                     <div class="pokemon-actor-wrap">
@@ -325,8 +363,9 @@
                         </div>`;
                     }
                     return `
-                    <div class="pokemon-dex-card is-unlocked ${item.isPartner ? 'is-partner' : ''}">
-                        <img src="${esc(item.artworkUrl || item.animatedUrl)}" alt="${esc(item.nameKo)}">
+                    <div class="pokemon-dex-card is-unlocked ${item.isPartner ? 'is-partner' : ''} ${item.isShiny ? 'is-shiny-pokemon' : ''}">
+                        ${item.isShiny ? '<span class="pokemon-shiny-badge">✨ 이로치</span>' : ''}
+                        <img class="${item.isShiny ? 'is-shiny-sprite' : ''}" src="${esc(item.artworkUrl || item.animatedUrl)}" alt="${esc(item.nameKo)}">
                         <strong style="font-size:0.88rem; color:#0f172a;">${esc(item.nameKo)} ${item.count > 1 ? `<small style="color:#6366f1;">x${item.count}</small>` : ''}</strong>
                         <span style="font-size:0.74rem; color:${esc(item.color || '#475569')}; font-weight:700;">${esc(item.typeEmoji)} ${esc(item.typeLabel)}</span>
                         <button type="button" class="pokemon-dex-partner-btn" data-select-partner="${esc(item.id)}" ${item.isPartner ? 'disabled' : ''}>

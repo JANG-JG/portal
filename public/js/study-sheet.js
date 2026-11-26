@@ -220,6 +220,9 @@
                 syncBlockChip(card, cur);
                 updateScoreBar(sheet);
                 window.StudySheetStepper?.refreshStates?.(blockStates);
+                if (info.status === 'correct' || info.status === 'wrong') {
+                    window.StudySheetStepper?.cheerBuddy?.(info.status);
+                }
             };
 
             const initialState = scoredState?.status === 'correct' ? 'correct' : null;
@@ -500,6 +503,15 @@
                 if (data.stampAwarded) {
                     window.StudyFx?.fanfare?.();
                     window.StudyFx?.celebrate?.({ big: Boolean(data.reachedTen) });
+                    window.StudySheetStepper?.cheerBuddy?.('finish');
+                    if (data.pokemonXpGain?.gainedXp) {
+                        const xp = data.pokemonXpGain;
+                        const skillMsg = xp.newlyUnlockedSkills?.length
+                            ? ` 🎉 새 기술 [${xp.newlyUnlockedSkills[0].name}] 해금!`
+                            : '';
+                        const lvMsg = xp.leveledUp ? `Lv.${xp.level} 레벨업!` : `+${xp.gainedXp} XP`;
+                        showToast(`🐾 단짝 포켓몬 ${lvMsg}${xp.bonusLabel ? ` (${xp.bonusLabel})` : ''}${skillMsg}`);
+                    }
                     btn.textContent = data.reachedTen ? '🎉 도장 10칸 완성! 알 부화 보러 가기 🥚✨' : '✅ 별(칭찬 도장)을 받았어요! (학습실로 가기)';
                 } else {
                     window.StudyFx?.retry?.();

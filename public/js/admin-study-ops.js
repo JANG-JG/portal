@@ -152,9 +152,13 @@
             const pills = (c.snacks || []).map((s) =>
                 `<span style="display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:999px; background:#fff; border:1px solid #e2e8f0; font-size:0.76rem; font-weight:700;">${esc(s.emoji)} ${esc(s.name)} ${Number(s.qty || 0)}</span>`
             ).join('');
+            const condTxt = c.condition?.label ? esc(c.condition.label) : '상태 확인 중';
             return `
                 <div style="border:1px solid #e2e8f0; border-radius:0.7rem; padding:0.7rem; background:#f8fafc; box-sizing:border-box;">
-                    <div style="font-weight:800; font-size:0.88rem; margin-bottom:0.4rem;">${esc(c.avatarEmoji)} ${esc(c.displayName)} 보유 간식</div>
+                    <div style="font-weight:800; font-size:0.88rem; margin-bottom:0.25rem;">${esc(c.avatarEmoji)} ${esc(c.displayName)} 보유 간식</div>
+                    <div style="font-size:0.75rem; color:#475569; margin-bottom:0.4rem;">
+                        단짝 <strong>Lv.${Number(c.partnerLevel || 1)}</strong> · ✨ 이로치 <strong>${Number(c.shinyCount || 0)}</strong> · ${condTxt}
+                    </div>
                     <div style="display:flex; flex-wrap:wrap; gap:4px;">${pills}</div>
                 </div>
             `;

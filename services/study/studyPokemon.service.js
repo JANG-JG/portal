@@ -29,26 +29,9 @@ const SPRITE_CACHE_DIR = path.join(__dirname, '..', '..', 'public', 'img', 'poke
 const ipv4Agent = new https.Agent({ family: 4 });
 let tablesReady = false;
 
-function dbGet(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        portalDb.get(sql, params, (err, row) => (err ? reject(err) : resolve(row || null)));
-    });
-}
-
-function dbAll(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        portalDb.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows || [])));
-    });
-}
-
-function dbRun(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        portalDb.run(sql, params, function (err) {
-            if (err) reject(err);
-            else resolve({ lastID: this.lastID, changes: this.changes });
-        });
-    });
-}
+const dbGet = (sql, params = []) => new Promise((res, rej) => portalDb.get(sql, params, (e, r) => (e ? rej(e) : res(r || null))));
+const dbAll = (sql, params = []) => new Promise((res, rej) => portalDb.all(sql, params, (e, r) => (e ? rej(e) : res(r || []))));
+const dbRun = (sql, params = []) => new Promise((res, rej) => portalDb.run(sql, params, function (e) { e ? rej(e) : res({ lastID: this.lastID, changes: this.changes }); }));
 
 async function ensurePokemonTables() {
     if (tablesReady) return;
@@ -71,6 +54,7 @@ async function ensurePokemonTables() {
     `);
     await dbRun('ALTER TABLE study_pokemon_eggs ADD COLUMN reward_approved_at DATETIME', []).catch(() => {});
     await dbRun("ALTER TABLE study_pokemon_eggs ADD COLUMN reward_approved_by TEXT DEFAULT ''", []).catch(() => {});
+    await dbRun('ALTER TABLE study_pokemon_eggs ADD COLUMN is_shiny INTEGER NOT NULL DEFAULT 0', []).catch(() => {});
     await dbRun(`
         CREATE TABLE IF NOT EXISTS study_pokemon_pokedex (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,11 +62,13 @@ async function ensurePokemonTables() {
             pokemon_id INTEGER NOT NULL,
             count INTEGER NOT NULL DEFAULT 1,
             is_partner INTEGER NOT NULL DEFAULT 0,
+            is_shiny INTEGER NOT NULL DEFAULT 0,
             first_hatched_at DATETIME DEFAULT (datetime('now', 'localtime')),
             last_hatched_at DATETIME DEFAULT (datetime('now', 'localtime')),
             UNIQUE (child_id, pokemon_id)
         )
     `);
+    await dbRun('ALTER TABLE study_pokemon_pokedex ADD COLUMN is_shiny INTEGER NOT NULL DEFAULT 0', []).catch(() => {});
     tablesReady = true;
 }
 
@@ -128,6 +114,7 @@ function formatCollectedEntry(row) {
         ...meta,
         count: Number(row.count || 1),
         isPartner: Number(row.is_partner || 0) === 1,
+        isShiny: Number(row.is_shiny || 0) === 1,
         firstHatchedAt: row.first_hatched_at,
         lastHatchedAt: row.last_hatched_at,
         animatedUrl: `/api/study/pokemon/sprite/${meta.id}?kind=animated`,
@@ -179,14 +166,16 @@ async function syncEggProgressWithBoard(childId, board) {
 
     let newlyHatched = false;
     if (steps >= 10 && Number(egg.hatched) === 0) {
+        const isShiny = Math.random() < 0.20 ? 1 : 0;
         await dbRun(
             `UPDATE study_pokemon_eggs
-             SET current_steps = 10, hatched = 1, hatched_at = datetime('now', 'localtime')
+             SET current_steps = 10, hatched = 1, is_shiny = ?, hatched_at = datetime('now', 'localtime')
              WHERE id = ?`,
-            [egg.id]
+            [isShiny, egg.id]
         );
         egg.current_steps = 10;
         egg.hatched = 1;
+        egg.is_shiny = isShiny;
         newlyHatched = true;
 
         const existingPartner = await dbGet(
@@ -196,12 +185,13 @@ async function syncEggProgressWithBoard(childId, board) {
         const makePartner = existingPartner ? 0 : 1;
 
         await dbRun(
-            `INSERT INTO study_pokemon_pokedex (child_id, pokemon_id, count, is_partner, first_hatched_at, last_hatched_at)
-             VALUES (?, ?, 1, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
+            `INSERT INTO study_pokemon_pokedex (child_id, pokemon_id, count, is_partner, is_shiny, first_hatched_at, last_hatched_at)
+             VALUES (?, ?, 1, ?, ?, datetime('now', 'localtime'), datetime('now', 'localtime'))
              ON CONFLICT(child_id, pokemon_id) DO UPDATE SET
                 count = count + 1,
+                is_shiny = MAX(is_shiny, excluded.is_shiny),
                 last_hatched_at = datetime('now', 'localtime')`,
-            [cid, egg.target_pokemon_id, makePartner]
+            [cid, egg.target_pokemon_id, makePartner, isShiny]
         );
     }
 
@@ -233,6 +223,7 @@ async function getPokemonStateForBoard(childId, board) {
         steps: Number(egg.current_steps || 0),
         requiredSteps: Number(egg.required_steps || 10),
         hatched: isHatched,
+        isShiny: Number(egg.is_shiny || 0) === 1,
         hatchAcknowledged: Number(egg.hatch_acknowledged || 0) === 1,
         stage: stageInfo.stage,
         stageLabel: stageInfo.stageLabel,
@@ -246,6 +237,7 @@ async function getPokemonStateForBoard(childId, board) {
         revealedPokemon: isHatched
             ? {
                 ...targetMeta,
+                isShiny: Number(egg.is_shiny || 0) === 1,
                 animatedUrl: `/api/study/pokemon/sprite/${targetMeta.id}?kind=animated`,
                 artworkUrl: `/api/study/pokemon/sprite/${targetMeta.id}?kind=artwork`
             }
@@ -274,6 +266,7 @@ async function getPokemonStateForBoard(childId, board) {
             unlocked: Boolean(owned),
             count: owned ? owned.count : 0,
             isPartner: owned ? owned.isPartner : false,
+            isShiny: owned ? owned.isShiny : false,
             animatedUrl: owned ? owned.animatedUrl : null,
             artworkUrl: owned ? owned.artworkUrl : null
         };

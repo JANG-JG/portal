@@ -98,8 +98,25 @@ router.get('/api/study/dashboard', authenticateToken, async (req, res) => {
         const requestedChild = req.query.childId ? String(req.query.childId).trim() : '';
         const state = await getChildDashboardState(requestedChild, req.user);
         if (state?.pokemon?.enabled && state?.childId) {
-            const { getActiveVisitingGuestsForMeadow } = require('../services/study/studyPokemonSocial.service');
-            state.pokemon.visitingGuests = await getActiveVisitingGuestsForMeadow(state.childId).catch(() => []);
+            const { getActiveVisitingGuestsForMeadow, getAffectionMap } = require('../services/study/studyPokemonSocial.service');
+            const { getPokemonCondition, getSubjectSynergyOverview, getUnlockedSkills } = require('../services/study/studyPokemonGrowth.service');
+            const partner = state.pokemon.partnerPokemon;
+            const partnerType = partner?.typeKey || 'normal';
+            const [guests, affectionMap, condition, synergy] = await Promise.all([
+                getActiveVisitingGuestsForMeadow(state.childId).catch(() => []),
+                getAffectionMap(state.childId).catch(() => ({})),
+                getPokemonCondition(state.childId).catch(() => null),
+                getSubjectSynergyOverview(state.childId, partnerType).catch(() => null)
+            ]);
+            state.pokemon.visitingGuests = guests;
+            state.pokemon.condition = condition;
+            state.pokemon.synergy = synergy;
+            if (partner) {
+                const aff = affectionMap[partner.id] || { exp: 0, level: 1 };
+                partner.exp = aff.exp;
+                partner.level = aff.level;
+                partner.skills = getUnlockedSkills(partnerType, aff.level);
+            }
         }
         if (state?.childId) {
             const { getDailyMissionsState } = require('../services/study/studyMissions.service');
@@ -554,9 +571,28 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
             const { evaluateLevelPromotion } = require('../services/study/studyPromotion.service');
             levelPromotion = await evaluateLevelPromotion(sheet.child_id, sheet.subject).catch(() => null);
         }
+        let pokemonXpGain = null;
+        if (result.stampAwarded && !result.alreadyAwarded) {
+            try {
+                const { portalDb } = require('../services/db');
+                const partnerRow = await new Promise((resolve) => {
+                    portalDb.get(
+                        'SELECT pokemon_id FROM study_pokemon_pokedex WHERE child_id = ? ORDER BY is_partner DESC, last_hatched_at DESC LIMIT 1',
+                        [sheet.child_id],
+                        (err, row) => resolve(err ? null : row)
+                    );
+                });
+                if (partnerRow?.pokemon_id) {
+                    const { getPokemonById } = require('../services/study/pokemonCatalog.data');
+                    const { grantStudyPokemonXp } = require('../services/study/studyPokemonGrowth.service');
+                    const pMeta = getPokemonById(partnerRow.pokemon_id);
+                    pokemonXpGain = await grantStudyPokemonXp(sheet.child_id, partnerRow.pokemon_id, pMeta?.typeKey || 'normal', sheet.subject, result.score || 0);
+                }
+            } catch (_) {}
+        }
         const { markDailyThemeCompleted } = require('../services/study/studyDailyTheme.service');
         const dailyTheme = await markDailyThemeCompleted(sheet.child_id).catch(() => null);
-        res.json({ success: true, earnedSnacks, missionProgress, earnedPoints, levelPromotion, dailyTheme, ...result });
+        res.json({ success: true, earnedSnacks, missionProgress, earnedPoints, levelPromotion, pokemonXpGain, dailyTheme, ...result });
     } catch (err) {
         const status = err.statusCode || 500;
         console.error('학습지 완료 처리 오류:', err);

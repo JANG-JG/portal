@@ -260,6 +260,33 @@
                 throwSnackAt((stageEl.clientWidth || 320) * (0.35 + Math.random() * 0.3), (stageEl.clientHeight || 260) * 0.68, null);
                 updateScorePill();
             },
+            triggerSkill(skill) {
+                const actor = (meadowCtrl.actors || []).find((a) => a.isPartner) || (meadowCtrl.actors || [])[0];
+                if (!actor || !skill) return;
+                const c = getActorCenter(actor);
+                const effMap = {
+                    electric: ['#facc15', ['⚡', '✨', '💛']],
+                    electric_max: ['#eab308', ['🌩️', '⚡', '💥', '✨']],
+                    fire: ['#f97316', ['🔥', '✨', '🧡']],
+                    fire_max: ['#ef4444', ['🌋', '🔥', '💥', '⭐']],
+                    water: ['#38bdf8', ['💧', '🫧', '💙']],
+                    water_max: ['#0284c7', ['🌊', '💧', '🫧', '✨']],
+                    grass: ['#22c55e', ['🌿', '🍃', '💚']],
+                    grass_max: ['#16a34a', ['☀️', '🌿', '🌸', '✨']],
+                    psychic: ['#a855f7', ['🔮', '✨', '💜']],
+                    psychic_max: ['#7e22ce', ['🌌', '🔮', '💫', '⭐']],
+                    fairy: ['#ec4899', ['✨', '🌸', '💖']],
+                    fairy_max: ['#db2777', ['🌈', '✨', '💖', '🌟']],
+                    impact: ['#f59e0b', ['💫', '💥', '⭐']]
+                };
+                const [ringColor, glyphs] = effMap[skill.effect] || effMap.impact;
+                const isMax = String(skill.effect || '').endsWith('_max');
+                world.addRing(c.x, c.y, ringColor, isMax ? 105 : 68);
+                if (isMax) world.addRing(c.x, c.y, '#ffffff', 130);
+                world.spawnParticles(c.x, c.y - 10, glyphs, isMax ? 18 : 10);
+                meadowCtrl.celebrateActor(actor);
+                meadowCtrl.showBubble(actor, `${skill.name}! ${skill.emoji}`, 2.5);
+            },
             destroy() {
                 meadowCtrl.setFrameHook(null);
                 stageEl.removeEventListener('pointerdown', onPointerDown);

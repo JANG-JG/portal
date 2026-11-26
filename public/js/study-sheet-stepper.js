@@ -117,6 +117,10 @@
                     <span id="sheetStepBadge" class="sheet-step-badge">1 / 1 문제</span>
                     <div class="sheet-step-track" aria-hidden="true">
                         <div id="sheetStepFill" class="sheet-step-fill"></div>
+                        <div id="sheetRunningBuddy" class="sheet-running-buddy" hidden>
+                            <img id="sheetRunningBuddyImg" alt="" />
+                            <span id="sheetBuddyBubble" class="sheet-buddy-bubble" hidden></span>
+                        </div>
                     </div>
                 </div>
                 <div id="sheetStepDots" class="sheet-step-dots" role="tablist" aria-label="문제 번호 선택"></div>
@@ -194,8 +198,11 @@
         if (stepNav) stepNav.hidden = isSingle;
 
         if (!isSingle && badgeEl && fillEl) {
+            const pct = Math.round(((currentIndex + 1) / totalCount) * 100);
             badgeEl.textContent = `${currentIndex + 1} / ${totalCount} 문제`;
-            fillEl.style.width = `${Math.round(((currentIndex + 1) / totalCount) * 100)}%`;
+            fillEl.style.width = `${pct}%`;
+            const buddyEl = document.getElementById('sheetRunningBuddy');
+            if (buddyEl) buddyEl.style.left = `${Math.min(95, Math.max(5, pct))}%`;
         }
 
         if (dotsEl) {
@@ -351,6 +358,52 @@
         const startIdx = pickInitialIndex({ focusIndex, preserveStep });
         currentIndex = startIdx;
         applyStepVisibility(startIdx, { animate: false });
+        loadRunningBuddy();
+    }
+
+    let buddyLoaded = false;
+    let buddyBubbleTimer = null;
+    async function loadRunningBuddy() {
+        if (buddyLoaded) return;
+        buddyLoaded = true;
+        try {
+            const res = await fetch('/api/study/dashboard', { credentials: 'include' });
+            if (!res.ok) return;
+            const data = await res.json();
+            const partner = data?.pokemon?.partnerPokemon;
+            const buddyEl = document.getElementById('sheetRunningBuddy');
+            const imgEl = document.getElementById('sheetRunningBuddyImg');
+            if (!partner || !buddyEl || !imgEl) return;
+            imgEl.src = partner.animatedUrl || partner.artworkUrl || '';
+            imgEl.alt = partner.nameKo || '단짝 포켓몬';
+            imgEl.classList.toggle('is-shiny-sprite', Boolean(partner.isShiny));
+            buddyEl.hidden = false;
+            cheerBuddy('start', `${partner.nameKo}와 같이 풀자! 💪`);
+        } catch (_) {}
+    }
+
+    function cheerBuddy(kind = 'correct', customMsg = '') {
+        const buddyEl = document.getElementById('sheetRunningBuddy');
+        const bubbleEl = document.getElementById('sheetBuddyBubble');
+        if (!buddyEl || !bubbleEl || buddyEl.hidden) return;
+        const pool = {
+            correct: ['우와 멋져! ✨', '최고야! 🌟', '대단해! 🎉', '잘했어! 💪'],
+            wrong: ['괜찮아! 다시 보자 🐾', '조금만 더 생각해보자! 💡'],
+            finish: ['골인! 정말 잘했어! 🏆'],
+            start: ['같이 힘내자! 💪']
+        };
+        const list = pool[kind] || pool.correct;
+        const msg = customMsg || list[Math.floor(Math.random() * list.length)];
+        bubbleEl.textContent = msg;
+        bubbleEl.hidden = false;
+        buddyEl.classList.remove('is-cheering');
+        void buddyEl.offsetWidth;
+        buddyEl.classList.add('is-cheering');
+        if (buddyBubbleTimer) clearTimeout(buddyBubbleTimer);
+        buddyBubbleTimer = setTimeout(() => {
+            bubbleEl.hidden = true;
+            buddyEl.classList.remove('is-cheering');
+        }, 2300);
     }
 
     function refreshStates(blockStates) {
@@ -362,6 +415,7 @@
         mount,
         goToStep,
         refreshStates,
+        cheerBuddy,
         getCurrentIndex: () => currentIndex
     };
 })();

@@ -239,14 +239,31 @@ async function getAdminOpsOverview() {
         )
     ]);
 
+    const { getPokemonCondition } = require('./studyPokemonGrowth.service');
     const childrenSnacks = [];
     for (const p of profiles) {
-        const snacks = await getSnackInventory(p.id);
+        const [snacks, condition, partnerRow, shinyRow] = await Promise.all([
+            getSnackInventory(p.id),
+            getPokemonCondition(p.id).catch(() => null),
+            dbGet(
+                `SELECT a.level FROM study_pokemon_pokedex d
+                 LEFT JOIN study_pokemon_affection a ON a.child_id = d.child_id AND a.pokemon_id = d.pokemon_id
+                 WHERE d.child_id = ? ORDER BY d.is_partner DESC, d.last_hatched_at DESC LIMIT 1`,
+                [p.id]
+            ).catch(() => null),
+            dbGet(
+                'SELECT COUNT(*) AS cnt FROM study_pokemon_pokedex WHERE child_id = ? AND is_shiny = 1',
+                [p.id]
+            ).catch(() => null)
+        ]);
         childrenSnacks.push({
             childId: p.id,
             displayName: p.display_name,
             avatarEmoji: p.avatar_emoji || '🧒',
-            snacks
+            snacks,
+            condition,
+            partnerLevel: Number(partnerRow?.level || 1),
+            shinyCount: Number(shinyRow?.cnt || 0)
         });
     }
 

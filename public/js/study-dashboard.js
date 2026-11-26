@@ -129,6 +129,18 @@
         if (window.StudyPokemon && typeof window.StudyPokemon.render === 'function') {
             window.StudyPokemon.render(data.pokemon, data.activeChild);
         }
+        const synergyMap = data.pokemon?.synergy?.bySubject || {};
+        document.querySelectorAll('.subject-chip[data-subject]').forEach((btn) => {
+            btn.querySelector('.subject-synergy-pill')?.remove();
+            const subInfo = synergyMap[btn.dataset.subject];
+            if (subInfo?.badgeText) {
+                const pill = document.createElement('span');
+                pill.className = `subject-synergy-pill${subInfo.isUnderplayed ? ' is-underplayed' : ''}`;
+                pill.textContent = subInfo.xpMultiplier >= 2.5 ? '🌟 2.5배' : (subInfo.isUnderplayed ? '🐾 2배' : '⚡ 1.5배');
+                pill.title = subInfo.badgeText;
+                btn.appendChild(pill);
+            }
+        });
         const phase3Enabled = data.missions?.phase3SubjectsEnabled !== false;
         const pianoVoiceEnabled = data.featureFlags?.pianoVoiceEnabled !== false;
         const aiCustomColoringEnabled = data.featureFlags?.aiCustomColoringEnabled !== false;
