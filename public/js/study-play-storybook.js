@@ -11,6 +11,8 @@
 (function () {
     'use strict';
 
+    const voiceCleanupHandlers = new Set();
+
     function renderStorybookBlock(container, blk, speakFn) {
         const pages = Array.isArray(blk.pages) && blk.pages.length ? blk.pages : [{ pageNo: 1, sceneEmoji: '📖', text: '재미있는 이야기예요!' }];
         let pageIdx = 0;
@@ -123,30 +125,86 @@
         const meter = document.createElement('div');
         meter.className = 'voice-meter-bars no-print';
         meter.innerHTML = '<span></span><span></span><span></span><span></span><span></span>';
+        const meterBars = Array.from(meter.querySelectorAll('span'));
+
+        const gaugeWrap = document.createElement('div');
+        gaugeWrap.className = 'voice-gauge-wrap no-print';
+        gaugeWrap.hidden = true;
+        const gaugeProgress = Object.assign(document.createElement('progress'), {
+            className: 'voice-rec-progress',
+            max: 100,
+            value: 0
+        });
+        gaugeProgress.setAttribute('aria-label', '녹음 진행 게이지');
+        const gaugeMeta = document.createElement('div');
+        gaugeMeta.className = 'voice-gauge-meta';
+        const gaugeState = Object.assign(document.createElement('span'), { textContent: '🔴 녹음 중...' });
+        const gaugeTime = Object.assign(document.createElement('span'), { textContent: '0.0초 / 10초' });
+        gaugeMeta.append(gaugeState, gaugeTime);
+        gaugeWrap.append(gaugeProgress, gaugeMeta);
 
         const statusLine = Object.assign(document.createElement('p'), {
             className: 'voice-status-line',
             textContent: '💡 녹음된 목소리는 서버에 저장되지 않고, 내 패드에서만 바로 들려요!'
         });
+        statusLine.setAttribute('role', 'status');
+        statusLine.setAttribute('aria-live', 'polite');
 
         const btnRow = document.createElement('div');
         btnRow.className = 'voice-btn-row no-print';
         const recBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'study-btn study-btn-primary', textContent: '🎤 내 목소리 녹음하기' });
-        const playBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'study-btn study-btn-outline', textContent: '🎧 내 목소리 다시 듣기', hidden: true });
+        const playBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'study-btn study-btn-outline', textContent: '🎧 내 목소리 듣기', hidden: true });
         const cheerBtn = Object.assign(document.createElement('button'), { type: 'button', className: 'study-btn study-btn-outline', textContent: '👏 큰 소리로 따라 읽었어요!' });
         btnRow.append(recBtn, playBtn, cheerBtn);
 
+        const MAX_REC_MS = 10000;
         let recordedUrl = '';
         let mediaRecorder = null;
         let stopTimer = null;
+        let rafId = 0;
         let streamRef = null;
+        let audioCtx = null;
+        let analyser = null;
+        let activeAudio = null;
         let isRecording = false;
+        let isCancelled = false;
+
+        const resetMeterBars = () => {
+            meter.classList.remove('is-recording', 'is-live-audio');
+            meterBars.forEach((bar) => { bar.style.height = ''; });
+        };
+
+        const stopAudioPreview = () => {
+            if (activeAudio) {
+                activeAudio.pause();
+                activeAudio.src = '';
+                activeAudio = null;
+            }
+            playBtn.textContent = '🎧 내 목소리 듣기';
+            playBtn.classList.remove('is-playing');
+        };
+
+        const stopAnalyser = () => {
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = 0;
+            }
+            analyser = null;
+            if (audioCtx) {
+                audioCtx.close().catch(() => {});
+                audioCtx = null;
+            }
+        };
 
         const stopMedia = () => {
             clearTimeout(stopTimer);
             isRecording = false;
-            meter.classList.remove('is-recording');
-            recBtn.textContent = '🎤 다시 녹음하기';
+            resetMeterBars();
+            stopAnalyser();
+            gaugeWrap.hidden = true;
+            gaugeProgress.value = 0;
+            recBtn.classList.remove('is-recording');
+            recBtn.textContent = recordedUrl ? '🎤 다시 녹음하기' : '🎤 내 목소리 녹음하기';
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 try { mediaRecorder.stop(); } catch (_) {}
             }
@@ -155,6 +213,21 @@
                 streamRef = null;
             }
         };
+
+        const clearRecordingData = () => {
+            isCancelled = true;
+            stopMedia();
+            stopAudioPreview();
+            if (recordedUrl) {
+                URL.revokeObjectURL(recordedUrl);
+                recordedUrl = '';
+            }
+            playBtn.hidden = true;
+            recBtn.textContent = '🎤 내 목소리 녹음하기';
+            statusLine.textContent = '🧹 문제를 다 풀어서 녹음된 목소리를 깨끗하게 지웠어요!';
+        };
+
+        voiceCleanupHandlers.add(clearRecordingData);
 
         recBtn.addEventListener('click', async () => {
             if (isRecording) {
@@ -165,26 +238,71 @@
                 statusLine.textContent = '이 기기에서는 마이크 녹음이 지원되지 않아요. 큰 소리로 읽고 👏 버튼을 눌러 주세요!';
                 return;
             }
+            stopAudioPreview();
+            isCancelled = false;
             try {
                 streamRef = await navigator.mediaDevices.getUserMedia({ audio: true });
                 const chunks = [];
                 mediaRecorder = new MediaRecorder(streamRef);
                 mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
                 mediaRecorder.onstop = () => {
+                    if (streamRef) { streamRef.getTracks().forEach((t) => t.stop()); streamRef = null; }
+                    if (isCancelled || chunks.length === 0) return;
                     if (recordedUrl) URL.revokeObjectURL(recordedUrl);
                     const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' });
                     recordedUrl = URL.createObjectURL(blob);
                     playBtn.hidden = false;
+                    recBtn.textContent = '🎤 다시 녹음하기';
                     window.StudyFx?.correct?.();
-                    statusLine.textContent = '🌟 녹음 완료! "내 목소리 다시 듣기"를 눌러 들어 보세요!';
-                    if (streamRef) { streamRef.getTracks().forEach((t) => t.stop()); streamRef = null; }
+                    statusLine.textContent = '🌟 녹음 완료! "내 목소리 듣기"를 눌러 들어 보세요!';
                 };
+
                 isRecording = true;
-                meter.classList.add('is-recording');
-                recBtn.textContent = '⏹️ 멈추기 (최대 5초)';
-                statusLine.textContent = '🔴 지금 말하고 있어요! 예쁜 목소리로 따라 읽어 보아요~';
+                gaugeWrap.hidden = false;
+                gaugeProgress.value = 0;
+                gaugeTime.textContent = '0.0초 / 10초';
+                recBtn.classList.add('is-recording');
+                recBtn.textContent = '⏹️ 녹음 종료';
+                statusLine.textContent = '🔴 녹음 중이에요! 다 말하면 "녹음 종료"를 눌러 주세요.';
+
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                let freqData = null;
+                if (AudioCtx) {
+                    try {
+                        audioCtx = new AudioCtx();
+                        const source = audioCtx.createMediaStreamSource(streamRef);
+                        analyser = audioCtx.createAnalyser();
+                        analyser.fftSize = 32;
+                        source.connect(analyser);
+                        freqData = new Uint8Array(analyser.frequencyBinCount);
+                        meter.classList.add('is-recording', 'is-live-audio');
+                    } catch (_) {
+                        meter.classList.add('is-recording');
+                    }
+                } else {
+                    meter.classList.add('is-recording');
+                }
+
+                const startedAt = performance.now();
+                const tickGauge = (now) => {
+                    if (!isRecording) return;
+                    const elapsed = Math.min(MAX_REC_MS, now - startedAt);
+                    gaugeProgress.value = Math.round((elapsed / MAX_REC_MS) * 100);
+                    gaugeTime.textContent = `${(elapsed / 1000).toFixed(1)}초 / ${Math.round(MAX_REC_MS / 1000)}초`;
+                    if (analyser && freqData) {
+                        analyser.getByteFrequencyData(freqData);
+                        meterBars.forEach((bar, idx) => {
+                            const sample = freqData[Math.min(idx * 2 + 1, freqData.length - 1)] || 0;
+                            const px = Math.max(6, Math.min(28, Math.round(6 + (sample / 255) * 22)));
+                            bar.style.height = `${px}px`;
+                        });
+                    }
+                    rafId = requestAnimationFrame(tickGauge);
+                };
+                rafId = requestAnimationFrame(tickGauge);
+
                 mediaRecorder.start();
-                stopTimer = setTimeout(stopMedia, 5200);
+                stopTimer = setTimeout(stopMedia, MAX_REC_MS);
 
                 const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
                 if (Rec) {
@@ -206,8 +324,23 @@
 
         playBtn.addEventListener('click', () => {
             if (!recordedUrl) return;
+            if (activeAudio) {
+                stopAudioPreview();
+                return;
+            }
             const audio = new Audio(recordedUrl);
-            audio.play().catch(() => {});
+            activeAudio = audio;
+            playBtn.textContent = '⏹️ 듣기 멈추기';
+            playBtn.classList.add('is-playing');
+            audio.addEventListener('ended', () => {
+                if (activeAudio === audio) stopAudioPreview();
+            });
+            audio.addEventListener('error', () => {
+                if (activeAudio === audio) stopAudioPreview();
+            });
+            audio.play().catch(() => {
+                if (activeAudio === audio) stopAudioPreview();
+            });
         });
 
         cheerBtn.addEventListener('click', () => {
@@ -216,12 +349,21 @@
             toastFn?.('씩씩하게 말하기 성공! 🎤🌟');
         });
 
-        wrap.append(promptRow, meter, statusLine, btnRow);
+        wrap.append(promptRow, meter, gaugeWrap, statusLine, btnRow);
         container.appendChild(wrap);
     }
 
+    function clearAllRecordings() {
+        voiceCleanupHandlers.forEach((fn) => {
+            try { fn(); } catch (_) {}
+        });
+    }
+
+    window.addEventListener('pagehide', clearAllRecordings);
+
     window.StudyPlayStorybook = {
         renderStorybookBlock,
-        renderVoiceRepeatBlock
+        renderVoiceRepeatBlock,
+        clearAllRecordings
     };
 })();

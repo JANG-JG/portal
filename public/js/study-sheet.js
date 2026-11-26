@@ -489,6 +489,7 @@
                 const data = await res.json();
                 showToast(data.message || '완료되었어요!');
                 if (!data.success) { btn.disabled = false; return; }
+                window.StudyPlayStorybook?.clearAllRecordings?.();
                 if (isColoring) {
                     window.StudyFx?.tap?.();
                     btn.textContent = '✅ 색칠 완성! (학습실로 가기)';
