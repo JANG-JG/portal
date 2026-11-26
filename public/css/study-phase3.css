@@ -223,7 +223,7 @@
 }
 .storybook-art-box { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .storybook-banner-slot { width: 120px; max-width: 100%; }
-.storybook-real-photo { width: min(240px, 100%); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; border: 2px solid #e2e8f0; background: #f1f5f9; flex-shrink: 0; }
+.storybook-real-photo { display: block; width: min(360px, 100%); height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; border: 2px solid #e2e8f0; background: #f1f5f9; flex-shrink: 0; }
 .storybook-scene-emoji { font-size: 3.1rem; line-height: 1; }
 .storybook-scene-emoji.is-corner { font-size: 2.2rem; }
 .storybook-page-text { margin: 0; font-size: clamp(1.05rem, 2.5vw, 1.24rem); font-weight: 800; line-height: 1.6; color: #1e293b; text-align: center; overflow-wrap: break-word; }
@@ -291,3 +291,65 @@
     .piano-keys-row { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
     .piano-key { min-block-size: 74px; }
 }
+
+/* 7. 학습 공간(집중 풀이 모드) 진입 시 사진·문제 그림 대폭 확대 (그리기 학습실 스테이지 규격 준수) */
+@media screen {
+    body.is-sheet-step-mode .worksheet-block.is-step-active .storybook-stage,
+    body.is-sheet-step-mode .worksheet-block.is-step-active .storybook-page-card {
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: safe center;
+    }
+
+    body.is-sheet-step-mode .worksheet-block.is-step-active .storybook-art-box {
+        container-type: inline-size;
+        width: 100%;
+        min-width: 0;
+    }
+
+    body.is-sheet-step-mode .worksheet-block.is-step-active .storybook-art-box:has(.storybook-real-photo:not([hidden])) .storybook-banner-slot {
+        display: none;
+    }
+
+    body.is-sheet-step-mode .worksheet-block.is-step-active .storybook-real-photo {
+        width: min(96cqw, calc(46dvh * 4 / 3), 680px);
+        max-height: 46dvh;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+    }
+
+    body.is-sheet-step-mode .worksheet-block.is-step-active .quiz-visual-box {
+        container-type: inline-size;
+        width: 100%;
+        padding: clamp(14px, 2.4vw, 24px);
+        box-sizing: border-box;
+    }
+
+    body.is-sheet-step-mode .worksheet-block.is-step-active .quiz-pictogram-img {
+        width: min(92cqw, calc(38dvh * 4 / 3), 520px);
+        max-height: 38dvh;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        object-fit: contain;
+        padding: 10px;
+        border-radius: 20px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+    }
+
+    body.is-sheet-step-mode .worksheet-block.is-step-active .match-node--visual {
+        padding: 10px 14px;
+    }
+
+    body.is-sheet-step-mode .worksheet-block.is-step-active .match-pictogram-img {
+        width: clamp(72px, 16vw, 120px);
+        height: clamp(72px, 16vw, 120px);
+        border-radius: 14px;
+        padding: 4px;
+    }
+}
+

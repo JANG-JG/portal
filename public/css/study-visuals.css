@@ -493,6 +493,6 @@
         max-width: 100%;
     }
 }
-.quiz-pictogram-img { width: clamp(104px, 30vw, 148px); height: clamp(104px, 30vw, 148px); aspect-ratio: 1 / 1; object-fit: contain; background: #fff; border-radius: 16px; padding: 6px; box-shadow: 0 4px 12px rgba(15,23,42,0.08); flex-shrink: 0; max-width: 100%; }
+.quiz-pictogram-img { display: block; width: clamp(150px, 42vw, 240px); height: clamp(150px, 42vw, 240px); aspect-ratio: 1 / 1; object-fit: contain; background: #fff; border-radius: 16px; padding: 8px; box-shadow: 0 4px 12px rgba(15,23,42,0.08); flex-shrink: 0; max-width: 100%; }
 .quiz-pictogram-img.is-speakable { cursor: pointer; }
-.match-pictogram-img { width: 48px; height: 48px; aspect-ratio: 1 / 1; object-fit: contain; background: #fff; border-radius: 10px; padding: 2px; flex-shrink: 0; }
+.match-pictogram-img { display: block; width: clamp(56px, 12vw, 80px); height: clamp(56px, 12vw, 80px); aspect-ratio: 1 / 1; object-fit: contain; background: #fff; border-radius: 10px; padding: 3px; flex-shrink: 0; }
