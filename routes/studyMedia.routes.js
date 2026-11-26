@@ -23,7 +23,8 @@ const {
 router.post('/api/study/test/start', authenticateToken, async (req, res) => {
     try {
         const childId = normalizeChildId(req.body?.childId || 'first');
-        const session = await startLevelTest(childId);
+        const subjects = Array.isArray(req.body?.subjects) ? req.body.subjects : undefined;
+        const session = await startLevelTest(childId, subjects);
         res.json({ success: true, ...session });
     } catch (err) {
         console.error('수준 테스트 시작 오류:', err);

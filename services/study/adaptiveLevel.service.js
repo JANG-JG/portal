@@ -15,8 +15,28 @@ const {
 } = require('./studyDb.service');
 const { KOREAN_BANK, ENGLISH_BANK } = require('./fallbackBank.data');
 const { buildDeterministicMathBlocks } = require('./worksheetValidator.service');
+const {
+    TESTABLE_SUBJECTS,
+    DEFAULT_TEST_SUBJECTS,
+    SCIENCE_TEST_BANK,
+    HISTORY_TEST_BANK,
+    LOGIC_TEST_BANK
+} = require('./adaptiveLevelBank.data');
 
-const SUBJECT_ORDER = ['korean', 'math', 'english'];
+const LEGACY_SUBJECT_ORDER = ['korean', 'math', 'english'];
+
+function normalizeTestSubjects(rawSubjects) {
+    if (!Array.isArray(rawSubjects) || !rawSubjects.length) {
+        return [...DEFAULT_TEST_SUBJECTS];
+    }
+    const allowed = new Set(TESTABLE_SUBJECTS);
+    const picked = [];
+    rawSubjects.forEach((s) => {
+        const key = String(s || '').trim().toLowerCase();
+        if (allowed.has(key) && !picked.includes(key)) picked.push(key);
+    });
+    return picked.length ? picked : [...DEFAULT_TEST_SUBJECTS];
+}
 
 function buildExplorerQuestion(subject, level, stepIndex) {
     const lv = Math.min(5, Math.max(1, Number(level) || 3));
@@ -34,6 +54,24 @@ function buildExplorerQuestion(subject, level, stepIndex) {
             equationText: picked.equationText || '',
             choices: picked.choices,
             answer: picked.answer
+        };
+    }
+
+    if (subject === 'science' || subject === 'history' || subject === 'logic') {
+        const poolMap = { science: SCIENCE_TEST_BANK, history: HISTORY_TEST_BANK, logic: LOGIC_TEST_BANK };
+        const bank = poolMap[subject][lv] || poolMap[subject][3];
+        const item = bank[stepIndex % bank.length] || bank[0];
+        return {
+            subject,
+            level: lv,
+            stepIndex,
+            prompt: item.prompt,
+            ttsText: item.prompt,
+            ttsLang: 'ko-KR',
+            visual: item.emoji || '✨',
+            equationText: '',
+            choices: item.choices || [item.answer],
+            answer: item.answer
         };
     }
 
@@ -55,16 +93,18 @@ function buildExplorerQuestion(subject, level, stepIndex) {
     };
 }
 
-async function startLevelTest(childId) {
+async function startLevelTest(childId, subjects) {
     const cid = normalizeChildId(childId);
+    const selectedSubjects = normalizeTestSubjects(subjects);
     const state = {
+        subjects: selectedSubjects,
         subjectIdx: 0,
         stepInSubject: 0, // 0, 1, 2 (각 과목 3문항)
         currentLevel: 3,  // Lv.3에서 시작
         results: {},
         history: []
     };
-    const firstQ = buildExplorerQuestion(SUBJECT_ORDER[0], 3, 0);
+    const firstQ = buildExplorerQuestion(selectedSubjects[0], 3, 0);
     state.activeQuestion = firstQ;
 
     const res = await dbRun(
@@ -75,8 +115,9 @@ async function startLevelTest(childId) {
     return {
         testId: res.lastID,
         childId: cid,
+        subjects: selectedSubjects,
         status: 'in_progress',
-        progress: { current: 1, total: 9 },
+        progress: { current: 1, total: selectedSubjects.length * 3 },
         question: sanitizeQuestionForClient(firstQ)
     };
 }
@@ -107,6 +148,8 @@ async function submitLevelTestAnswer(testId, selectedChoice) {
     }
 
     const state = JSON.parse(row.state_json);
+    const subjectOrder = Array.isArray(state.subjects) && state.subjects.length ? state.subjects : LEGACY_SUBJECT_ORDER;
+    const totalQuestions = subjectOrder.length * 3;
     const activeQ = state.activeQuestion;
     const isCorrect = String(selectedChoice || '').trim().toUpperCase() === String(activeQ.answer || '').trim().toUpperCase();
 
@@ -125,7 +168,7 @@ async function submitLevelTestAnswer(testId, selectedChoice) {
     if (nextStep < 3) {
         state.stepInSubject = nextStep;
         state.currentLevel = nextLevel;
-        state.activeQuestion = buildExplorerQuestion(SUBJECT_ORDER[state.subjectIdx], nextLevel, nextStep);
+        state.activeQuestion = buildExplorerQuestion(subjectOrder[state.subjectIdx], nextLevel, nextStep);
 
         await dbRun(
             'UPDATE study_level_tests SET state_json = ? WHERE id = ?',
@@ -139,24 +182,24 @@ async function submitLevelTestAnswer(testId, selectedChoice) {
             correctAnswer: activeQ.answer,
             progress: {
                 current: state.subjectIdx * 3 + state.stepInSubject + 1,
-                total: 9
+                total: totalQuestions
             },
             question: sanitizeQuestionForClient(state.activeQuestion)
         };
     }
 
     // 현재 영역 3문항 완료 -> 최종 레벨 확정 및 DB 반영
-    const finalSubject = SUBJECT_ORDER[state.subjectIdx];
+    const finalSubject = subjectOrder[state.subjectIdx];
     const finalizedLv = isCorrect ? nextLevel : Math.max(1, activeQ.level - 1);
     state.results[finalSubject] = finalizedLv;
     await setChildLevel(row.child_id, finalSubject, finalizedLv);
 
     const nextSubjectIdx = state.subjectIdx + 1;
-    if (nextSubjectIdx < SUBJECT_ORDER.length) {
+    if (nextSubjectIdx < subjectOrder.length) {
         state.subjectIdx = nextSubjectIdx;
         state.stepInSubject = 0;
         state.currentLevel = 3;
-        state.activeQuestion = buildExplorerQuestion(SUBJECT_ORDER[nextSubjectIdx], 3, 0);
+        state.activeQuestion = buildExplorerQuestion(subjectOrder[nextSubjectIdx], 3, 0);
 
         await dbRun(
             'UPDATE study_level_tests SET state_json = ? WHERE id = ?',
@@ -171,15 +214,16 @@ async function submitLevelTestAnswer(testId, selectedChoice) {
             subjectCompleted: { subject: finalSubject, level: finalizedLv },
             progress: {
                 current: nextSubjectIdx * 3 + 1,
-                total: 9
+                total: totalQuestions
             },
             question: sanitizeQuestionForClient(state.activeQuestion)
         };
     }
 
-    // 3영역 모두 완료!
+    // 선택한 모든 영역 완료!
     const resultPayload = {
         childId: row.child_id,
+        subjects: subjectOrder,
         levels: state.results,
         correctCount: state.history.filter((h) => h.isCorrect).length,
         totalCount: state.history.length

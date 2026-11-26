@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/css/study-play.css">
     <link rel="stylesheet" href="/css/study-visuals.css">
     <link rel="stylesheet" href="/css/study-tablet.css">
+    <link rel="stylesheet" href="/css/study-phase3.css">
 </head>
 <body>
     <div class="study-shell">
@@ -36,15 +37,34 @@
         </header>
 
         <main>
-            <section class="study-card" id="testProgressCard">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 800;">
-                    <span id="testSubjectBadge" class="level-badge">탐험 준비 중</span>
-                    <span id="testStepLabel">0 / 9</span>
+            <section class="study-card" id="testSetupCard">
+                <h2 style="margin: 0 0 6px; font-size: 1.25rem;">🎯 측정할 영역을 골라 보세요</h2>
+                <p style="margin: 0 0 12px; color: #475569; font-weight: 700; font-size: 0.92rem;">추천 6개 영역이 기본 선택되어 있어요. 원하는 과목만 골라 과목별 3문제씩 풀어요.</p>
+                <div class="test-preset-row" role="group" aria-label="영역 빠른 선택">
+                    <button type="button" class="study-btn study-btn-outline test-preset-btn" data-preset="all">✨ 추천 6영역 전체</button>
+                    <button type="button" class="study-btn study-btn-outline test-preset-btn" data-preset="core">📚 기초 3과목 (한글·수학·영어)</button>
+                    <button type="button" class="study-btn study-btn-outline test-preset-btn" data-preset="explore">🔬 탐험 3과목 (자연·역사·사고력)</button>
                 </div>
-                <progress id="testProgressBar" value="0" max="9" style="width: 100%; height: 14px; accent-color: #ff7a45;"></progress>
+                <div class="test-subject-grid" id="testSubjectGrid">
+                    <label class="test-subject-option"><input type="checkbox" name="testSubject" value="korean" checked><span>🇰🇷 한글</span></label>
+                    <label class="test-subject-option"><input type="checkbox" name="testSubject" value="math" checked><span>🔢 숫자·수학</span></label>
+                    <label class="test-subject-option"><input type="checkbox" name="testSubject" value="english" checked><span>🔤 영어</span></label>
+                    <label class="test-subject-option"><input type="checkbox" name="testSubject" value="science" checked><span>🔬 자연·과학</span></label>
+                    <label class="test-subject-option"><input type="checkbox" name="testSubject" value="history" checked><span>🏛️ 역사·문화</span></label>
+                    <label class="test-subject-option"><input type="checkbox" name="testSubject" value="logic" checked><span>🧩 관찰·사고력</span></label>
+                </div>
+                <button type="button" id="btnStartSelectedTest" class="study-btn study-btn-primary" style="width: 100%; min-block-size: 50px; font-size: 1.08rem;">🚀 선택한 영역 테스트 시작하기</button>
             </section>
 
-            <section class="study-card" id="testQuestionCard">
+            <section class="study-card" id="testProgressCard" hidden>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 800;">
+                    <span id="testSubjectBadge" class="level-badge">탐험 준비 중</span>
+                    <span id="testStepLabel">0 / 18</span>
+                </div>
+                <progress id="testProgressBar" value="0" max="18" style="width: 100%; height: 14px; accent-color: #ff7a45;"></progress>
+            </section>
+
+            <section class="study-card" id="testQuestionCard" hidden>
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px;">
                     <h2 id="testPrompt" style="margin: 0; font-size: clamp(1.15rem, 3vw, 1.4rem);">문제를 준비하고 있어요...</h2>
                     <button type="button" id="btnSpeakQuestion" class="study-btn study-btn-secondary">🔊 읽어주기</button>

@@ -353,3 +353,55 @@
     }
 }
 
+/* 8. 5분 수준 테스트 영역 선택 & 일상 학습 승급 제안 카드 */
+.test-preset-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.test-preset-btn { min-block-size: 40px; font-size: 0.86rem; }
+.test-subject-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+    accent-color: #ea580c;
+}
+.test-subject-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-block-size: 50px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 2px solid #e2e8f0;
+    background: #f8fafc;
+    font-weight: 800;
+    font-size: 0.96rem;
+    color: #0f172a;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+.test-subject-option:has(input:checked) {
+    border-color: #fb923c;
+    background: #fff7ed;
+}
+.test-subject-option input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+@supports not (accent-color: #ea580c) {
+    .test-subject-option input[type="checkbox"] {
+        accent-color: auto;
+    }
+}
+.result-promotion-box {
+    margin: 12px 0;
+    padding: 14px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #ecfdf5 0%, #fefce8 100%);
+    border: 2px solid #86efac;
+    text-align: center;
+}
+.result-promotion-title { font-weight: 900; font-size: 1.04rem; color: #166534; margin-bottom: 4px; }
+.result-promotion-desc { margin: 0 0 10px; font-size: 0.9rem; font-weight: 700; color: #334155; }
+.result-promotion-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+
+

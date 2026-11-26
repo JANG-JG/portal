@@ -75,6 +75,48 @@
             }).join('');
         }
 
+        const prevPromo = dialogEl.querySelector('#sheetPromotionBox');
+        if (prevPromo) prevPromo.remove();
+        if (awarded && data.levelPromotion?.eligible && actionsEl) {
+            const promo = data.levelPromotion;
+            const promoBox = document.createElement('div');
+            promoBox.id = 'sheetPromotionBox';
+            promoBox.className = 'result-promotion-box';
+            promoBox.innerHTML = `
+                <div class="result-promotion-title">🎓 Lv.${promo.currentLevel} 마스터! (최근 ${promo.recentCount}회 평균 ${promo.avgAccuracyPct}%)</div>
+                <p class="result-promotion-desc">다음 단계(<strong>Lv.${promo.nextLevel}</strong>)에 도전할 준비가 되었어요!</p>
+                <div class="result-promotion-actions">
+                    <button type="button" class="study-btn study-btn-primary btn-accept-promo">🚀 Lv.${promo.nextLevel}로 승급하기</button>
+                    <button type="button" class="study-btn study-btn-outline btn-keep-promo">현재 레벨 유지</button>
+                </div>
+            `;
+            promoBox.querySelector('.btn-accept-promo').addEventListener('click', async (ev) => {
+                const acceptBtn = ev.currentTarget;
+                acceptBtn.disabled = true;
+                try {
+                    const res = await fetch('/api/study/levels/accept-promotion', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ childId, subject: sheet?.subject })
+                    });
+                    const out = await res.json();
+                    if (res.ok && out.promoted) {
+                        window.StudyFx?.fanfare?.();
+                        promoBox.innerHTML = `<div class="result-promotion-title">✅ Lv.${out.newLevel}로 승급했어요! 🎉</div><p class="result-promotion-desc">다음 학습지부터 새 단계로 나와요 🌟</p>`;
+                    } else {
+                        acceptBtn.disabled = false;
+                    }
+                } catch (_) {
+                    acceptBtn.disabled = false;
+                }
+            });
+            promoBox.querySelector('.btn-keep-promo').addEventListener('click', () => {
+                promoBox.remove();
+            });
+            actionsEl.before(promoBox);
+        }
+
         if (actionsEl) {
             actionsEl.innerHTML = '';
             if (!awarded) {

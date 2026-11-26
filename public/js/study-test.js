@@ -13,7 +13,10 @@
     const SUBJECT_NAMES = {
         korean: '🇰🇷 한글 탐험',
         math: '🔢 숫자·수학 탐험',
-        english: '🔤 영어 탐험'
+        english: '🔤 영어 탐험',
+        science: '🔬 자연·과학 탐험',
+        history: '🏛️ 역사·문화 탐험',
+        logic: '🧩 관찰·사고력 탐험'
     };
 
     const params = new URLSearchParams(window.location.search);
@@ -38,16 +41,22 @@
         } catch (e) {}
     }
 
-    async function beginTest() {
-        document.getElementById('btnBackToStudy').href = `/study?childId=${encodeURIComponent(childId)}`;
-        document.getElementById('btnFinishReturn').href = `/study?childId=${encodeURIComponent(childId)}`;
+    function getSelectedSubjects() {
+        return Array.from(document.querySelectorAll('#testSubjectGrid input[name="testSubject"]:checked'))
+            .map((el) => el.value);
+    }
+
+    async function beginTest(selectedSubjects) {
+        document.getElementById('testSetupCard').hidden = true;
+        document.getElementById('testProgressCard').hidden = false;
+        document.getElementById('testQuestionCard').hidden = false;
 
         try {
             const res = await fetch('/api/study/test/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ childId })
+                body: JSON.stringify({ childId, subjects: selectedSubjects })
             });
             const data = await res.json();
             if (!data.success) {
@@ -67,7 +76,9 @@
 
         document.getElementById('testSubjectBadge').textContent = `${SUBJECT_NAMES[q.subject] || q.subject} (Lv.${q.level})`;
         document.getElementById('testStepLabel').textContent = `${progress.current} / ${progress.total}`;
-        document.getElementById('testProgressBar').value = progress.current;
+        const bar = document.getElementById('testProgressBar');
+        bar.max = progress.total;
+        bar.value = progress.current;
         document.getElementById('testPrompt').textContent = q.prompt;
         const visualBox = document.getElementById('testVisualBox');
         const visText = String(q.visual || '✨').trim();
@@ -132,12 +143,13 @@
             `총 ${result.totalCount}문제 중 ${result.correctCount}문제를 맞히며 멋지게 탐험했어요!`;
 
         const levels = result.levels || {};
-        document.getElementById('testResultLevels').innerHTML = ['korean', 'math', 'english'].map((s) => {
+        const tested = Array.isArray(result.subjects) && result.subjects.length ? result.subjects : Object.keys(levels);
+        document.getElementById('testResultLevels').innerHTML = tested.map((s) => {
             const lv = levels[s] || 1;
             return `
                 <article class="level-tile">
                     <div class="level-tile-head">
-                        <span>${SUBJECT_NAMES[s]}</span>
+                        <span>${SUBJECT_NAMES[s] || s}</span>
                         <span class="level-badge">Lv.${lv}</span>
                     </div>
                     <div class="level-stars">${'⭐'.repeat(lv)}${'☆'.repeat(5 - lv)}</div>
@@ -147,12 +159,41 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('btnBackToStudy').href = `/study?childId=${encodeURIComponent(childId)}`;
+        document.getElementById('btnFinishReturn').href = `/study?childId=${encodeURIComponent(childId)}`;
+
         const speakBtn = document.getElementById('btnSpeakQuestion');
         if (speakBtn) {
             speakBtn.addEventListener('click', () => {
                 if (activeQuestion) speakText(activeQuestion.ttsText || activeQuestion.prompt, activeQuestion.ttsLang || 'ko-KR', speakBtn);
             });
         }
-        beginTest();
+
+        const presetMap = {
+            all: ['korean', 'math', 'english', 'science', 'history', 'logic'],
+            core: ['korean', 'math', 'english'],
+            explore: ['science', 'history', 'logic']
+        };
+        document.querySelectorAll('.test-preset-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const target = new Set(presetMap[btn.dataset.preset] || presetMap.all);
+                document.querySelectorAll('#testSubjectGrid input[name="testSubject"]').forEach((cb) => {
+                    cb.checked = target.has(cb.value);
+                });
+            });
+        });
+
+        const startBtn = document.getElementById('btnStartSelectedTest');
+        if (startBtn) {
+            startBtn.addEventListener('click', () => {
+                const picked = getSelectedSubjects();
+                if (!picked.length) {
+                    const toast = document.getElementById('studyToast');
+                    if (toast) { toast.textContent = '최소 1개 영역을 선택해 주세요 😊'; toast.hidden = false; setTimeout(() => { toast.hidden = true; }, 2200); }
+                    return;
+                }
+                beginTest(picked);
+            });
+        }
     });
 })();

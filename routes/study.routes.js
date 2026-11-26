@@ -271,6 +271,23 @@ router.post('/api/study/levels/adjust', authenticateToken, async (req, res) => {
     }
 });
 
+router.post('/api/study/levels/accept-promotion', authenticateToken, async (req, res) => {
+    try {
+        const { acceptLevelPromotion } = require('../services/study/studyPromotion.service');
+        const cid = normalizeChildId(req.body?.childId || 'first');
+        const subj = normalizeSubject(req.body?.subject);
+        const outcome = await acceptLevelPromotion(cid, subj);
+        if (!outcome.promoted) {
+            return res.status(400).json({ success: false, ...outcome });
+        }
+        scheduleReplenish(cid, subj);
+        res.json({ success: true, ...outcome });
+    } catch (err) {
+        console.error('학습 레벨 승급 처리 오류:', err);
+        res.status(500).json({ success: false, message: '레벨 승급 처리에 실패했습니다.' });
+    }
+});
+
 router.post('/api/study/stamps/paper', authenticateToken, async (req, res) => {
     try {
         const gate = await verifyStudyParentGate(req);
@@ -522,7 +539,12 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
         }
         const { recordWorksheetCompletionPoints } = require('../services/study/studyPlazaRewards.service');
         const earnedPoints = await recordWorksheetCompletionPoints(sheet, result, missionProgress).catch(() => null);
-        res.json({ success: true, earnedSnacks, missionProgress, earnedPoints, ...result });
+        let levelPromotion = null;
+        if (result.stampAwarded) {
+            const { evaluateLevelPromotion } = require('../services/study/studyPromotion.service');
+            levelPromotion = await evaluateLevelPromotion(sheet.child_id, sheet.subject).catch(() => null);
+        }
+        res.json({ success: true, earnedSnacks, missionProgress, earnedPoints, levelPromotion, ...result });
     } catch (err) {
         const status = err.statusCode || 500;
         console.error('학습지 완료 처리 오류:', err);
