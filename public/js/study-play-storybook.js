@@ -20,9 +20,15 @@
 
         const topRow = document.createElement('div');
         topRow.className = 'storybook-top-row';
+        const badgeWrap = document.createElement('div');
+        badgeWrap.className = 'storybook-badge-wrap';
         const badge = Object.assign(document.createElement('span'), { className: 'storybook-badge', textContent: blk.badge || '📖 그림 동화책' });
+        badgeWrap.appendChild(badge);
+        if (blk.sourceBadge) {
+            badgeWrap.appendChild(Object.assign(document.createElement('span'), { className: 'storybook-source-badge', textContent: blk.sourceBadge }));
+        }
         const pageCounter = Object.assign(document.createElement('span'), { className: 'storybook-counter' });
-        topRow.append(badge, pageCounter);
+        topRow.append(badgeWrap, pageCounter);
 
         const card = document.createElement('div');
         card.className = 'storybook-page-card';
@@ -33,8 +39,13 @@
         if (window.StudyIllustrations) {
             bannerSlot.innerHTML = window.StudyIllustrations.getThemeBannerSvg(blk.theme || '', blk.badge || '');
         }
+        const photoEl = document.createElement('img');
+        photoEl.className = 'storybook-real-photo';
+        photoEl.hidden = true;
+        photoEl.loading = 'lazy';
+        photoEl.onerror = () => { photoEl.hidden = true; };
         const emojiEl = Object.assign(document.createElement('div'), { className: 'storybook-scene-emoji' });
-        artBox.append(bannerSlot, emojiEl);
+        artBox.append(bannerSlot, photoEl, emojiEl);
 
         const textEl = Object.assign(document.createElement('p'), { className: 'storybook-page-text' });
         card.append(artBox, textEl);
@@ -52,6 +63,15 @@
         const drawPage = () => {
             const pg = pages[pageIdx] || pages[0];
             pageCounter.textContent = `${pageIdx + 1} / ${pages.length} 쪽`;
+            if (pg.imageUrl) {
+                photoEl.src = pg.imageUrl;
+                photoEl.alt = pg.title || blk.theme || '자연·역사 관찰 사진';
+                photoEl.hidden = false;
+                emojiEl.classList.add('is-corner');
+            } else {
+                photoEl.hidden = true;
+                emojiEl.classList.remove('is-corner');
+            }
             emojiEl.textContent = pg.sceneEmoji || '✨';
             textEl.textContent = pg.text || '';
             prevBtn.disabled = pageIdx === 0;

@@ -103,10 +103,16 @@ router.post('/growth/config', async (req, res) => {
 router.post('/growth/test-api', async (req, res) => {
     try {
         const provider = String(req.body?.provider || 'urimalsam').trim();
-        const query = String(req.body?.query || (provider === 'freedict' ? 'apple' : '사과')).trim();
-        const result = (provider === 'arasaac' || provider === 'freedict')
-            ? await testRichMediaProvider({ provider, query })
-            : await testPublicEduProvider({ provider, query });
+        const query = String(req.body?.query || (provider === 'freedict' ? 'apple' : '')).trim();
+        const { testHeritageOrNatureProvider } = require('../../services/study/studyHeritageNatureApi.service');
+        let result;
+        if (provider === 'arasaac' || provider === 'freedict') {
+            result = await testRichMediaProvider({ provider, query });
+        } else if (provider === 'khs' || provider === 'inaturalist' || provider === 'nasa') {
+            result = await testHeritageOrNatureProvider(provider, query);
+        } else {
+            result = await testPublicEduProvider({ provider, query });
+        }
         const overview = await getPublicEduOverview();
         res.json({
             success: result.ok,

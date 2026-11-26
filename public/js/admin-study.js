@@ -24,7 +24,7 @@ function studyToast(msg, isError = false) {
 
 const STUDY_SUBJECT_NAMES = {
     korean: '한글', math: '수학', english: '영어',
-    science: '자연과학', reading: '그림동화', logic: '두뇌퍼즐', music: '피아노', coloring: '색칠놀이'
+    science: '자연과학', history: '역사문화', reading: '그림동화', logic: '두뇌퍼즐', music: '피아노', coloring: '색칠놀이'
 };
 const STUDY_SOURCE_NAMES = { gemini: 'Gemini AI', fallback_bank: '안전 문제은행', retry_fallback: '안전 문제은행', coloring_studio: '색칠놀이', interactive_engine: '인터랙티브' };
 
@@ -136,7 +136,7 @@ function renderStudyChildrenCards(children, kidAccounts = []) {
 
     grid.innerHTML = children.map((c) => {
         const levels = c.levels || {};
-        const badges = ['korean', 'math', 'english', 'science', 'reading', 'logic'].map((subj) => {
+        const badges = ['korean', 'math', 'english', 'science', 'history', 'reading', 'logic'].map((subj) => {
             const lv = levels[subj]?.level || levels[subj] || 1;
             return `<span style="display:inline-block; background:#eff6ff; color:#1d4ed8; padding:0.2rem 0.5rem; border-radius:999px; font-size:0.75rem; font-weight:700;">${STUDY_SUBJECT_NAMES[subj]} Lv.${lv}</span>`;
         }).join(' ');

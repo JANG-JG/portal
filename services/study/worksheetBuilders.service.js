@@ -51,10 +51,12 @@ function buildMathChoices(answer, minVal, maxVal, totalCount = 4) {
 /**
  * ① 서버가 직접 계산하는 Lv.1~5 수학 블록 6개 생성
  */
-function buildDeterministicMathBlocks(level, theme, aiEmojis = []) {
+function buildDeterministicMathBlocks(level, theme, aiEmojis = [], storyContexts = []) {
     const lv = clampLevel(level);
     const pool = pickThemeEmojis(theme);
     const pickEmoji = (idx) => sanitizeEmoji(aiEmojis[idx], pool, idx);
+    const ctx1 = Array.isArray(storyContexts) && storyContexts[0] ? `${String(storyContexts[0]).trim().slice(0, 24)} ` : '';
+    const ctx2 = Array.isArray(storyContexts) && storyContexts[1] ? `${String(storyContexts[1]).trim().slice(0, 24)} ` : '';
     const blocks = [];
 
     // 블록 1: 터치해서 하나씩 세어보기 (Count & Touch)
@@ -83,7 +85,7 @@ function buildDeterministicMathBlocks(level, theme, aiEmojis = []) {
         blocks.push({
             id: 'block-2',
             type: 'quiz',
-            prompt: `${e2} ${a}개와 ${b}개를 모으면 모두 몇 개가 될까요?`,
+            prompt: `${ctx1}${e2} ${a}개와 ${b}개를 모으면 모두 몇 개가 될까요?`,
             ttsText: `${a}개와 ${b}개를 모두 모으면 몇 개가 될까요?`,
             visualLeft: Array(a).fill(e2).join(' '),
             visualRight: Array(b).fill(e2).join(' '),
@@ -273,7 +275,7 @@ function buildDeterministicMathBlocks(level, theme, aiEmojis = []) {
         blocks.push({
             id: 'block-6',
             type: 'quiz',
-            prompt: `${e6} ${total2}개 중에서 ${take2}개를 친구에게 선물했어요. 남은 개수는?`,
+            prompt: `${e6} ${ctx2}${total2}개 중에서 ${take2}개를 친구에게 선물했어요. 남은 개수는?`,
             ttsText: `${total2} 빼기 ${take2}는 얼마일까요?`,
             equationText: `${total2} - ${take2} = ?`,
             answer: String(left2),
@@ -282,13 +284,13 @@ function buildDeterministicMathBlocks(level, theme, aiEmojis = []) {
         });
     }
 
-    return blocks;
+    return lv <= 2 ? blocks.slice(0, 5) : blocks;
 }
 
 /**
- * 6개 단어 항목으로 한글/영어 6문항 학습 블록 조립
+ * 단어 항목으로 한글/영어 학습 블록 조립 (Lv.1~2: 5문항, Lv.3+: 6문항)
  */
-function buildLanguageBlocksFromItems(validItems, subject) {
+function buildLanguageBlocksFromItems(validItems, subject, level = 3) {
     const lang = subject === 'english' ? 'en-US' : 'ko-KR';
     const isEn = subject === 'english';
     const safeItem = (idx) => validItems[idx % validItems.length];
@@ -308,7 +310,7 @@ function buildLanguageBlocksFromItems(validItems, subject) {
         ttsLang: lang
     }));
 
-    return [
+    const allBlocks = [
         {
             id: 'block-1', type: 'trace', ttsText: it0.word, ttsLang: lang,
             targetWord: it0.word, emoji: it0.emoji, hint: it0.hint || it0.meaning || '',
@@ -348,6 +350,7 @@ function buildLanguageBlocksFromItems(validItems, subject) {
                 : `마지막 퀴즈! '${it5.hint || it5.emoji}' 알맞은 낱말을 눌러 주세요!`
         }
     ];
+    return clampLevel(level) <= 2 ? allBlocks.slice(0, 5) : allBlocks;
 }
 
 function buildFallbackLanguageSheet(subject, level, theme) {
@@ -361,8 +364,8 @@ function buildFallbackLanguageSheet(subject, level, theme) {
     }));
     return {
         title: `${theme} ${subject === 'english' ? '영어' : '한글'} 놀이 (Lv.${lv})`,
-        encouragement: '와! 6문제를 끝까지 집중해서 정말 잘했어요! 👏',
-        blocks: buildLanguageBlocksFromItems(picked, subject)
+        encouragement: '와! 끝까지 집중해서 정말 잘했어요! 👏',
+        blocks: buildLanguageBlocksFromItems(picked, subject, lv)
     };
 }
 

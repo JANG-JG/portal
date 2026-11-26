@@ -148,7 +148,7 @@ async function getWrongNoteStats(childId) {
 
     let pendingCount = 0;
     let resolvedCount = 0;
-    const bySubject = { korean: 0, math: 0, english: 0, science: 0, reading: 0, logic: 0 };
+    const bySubject = { korean: 0, math: 0, english: 0, science: 0, history: 0, reading: 0, logic: 0 };
 
     rows.forEach((r) => {
         const cnt = Number(r.cnt || 0);
@@ -276,7 +276,7 @@ async function listWrongNotes(childId, { status = 'pending', subject = 'all', li
     await ensureWrongNotesTable();
     const cid = normalizeChildId(childId);
     const cleanStatus = status === 'resolved' ? 'resolved' : (status === 'all' ? 'all' : 'pending');
-    const cleanSubj = ['korean', 'math', 'english', 'science', 'reading', 'logic'].includes(subject) ? subject : 'all';
+    const cleanSubj = ['korean', 'math', 'english', 'science', 'history', 'reading', 'logic'].includes(subject) ? subject : 'all';
 
     const where = ['n.child_id = ?'];
     const params = [cid];

@@ -12,7 +12,8 @@ const CURRICULUM_SUBJECTS = [
     { id: 'math', label: '수·연산·도형', emoji: '🔢', badgeColor: '#3b82f6' },
     { id: 'english', label: '기초 영어·파닉스', emoji: '🔤', badgeColor: '#10b981' },
     { id: 'science', label: '자연·과학 탐험 (날씨·달·생물)', emoji: '🌱', badgeColor: '#059669' },
-    { id: 'reading', label: '그림동화·이야기 말하기', emoji: '📖', badgeColor: '#8b5cf6' }
+    { id: 'history', label: '역사·우리 문화 (유산·위인)', emoji: '🏛️', badgeColor: '#b45309' },
+    { id: 'reading', label: '그림동화 (전래·명작·창작)', emoji: '📖', badgeColor: '#8b5cf6' }
 ];
 
 const CURRICULUM_TREE = {
@@ -248,7 +249,54 @@ const CURRICULUM_TREE = {
             goal: '조금 더 긴 문장을 또박또박 낭독하고 이야기의 교훈을 찾아보아요.',
             recommendedTheme: '바닷속 인어 왕국',
             keywords: ['상상', '약속', '모험', '낭독'],
-            promptGuidance: '어휘가 풍부한 2문장 구성 창작 동화와 추론형 독해 퀴즈'
+            promptGuidance: '어휘가 풍부한 2문장 구성 창작·전래 동화와 추론형 독해 퀴즈'
+        }
+    ],
+    history: [
+        {
+            level: 1,
+            unitCode: 'HIS-B1',
+            title: '① 한복과 명절 · 즐거운 전통놀이',
+            goal: '한복의 이름과 윷놀이·연날리기 등 우리나라 전통놀이를 알아보아요.',
+            recommendedTheme: '한복과 전통놀이',
+            keywords: ['한복', '윷놀이', '연날리기', '명절'],
+            promptGuidance: '누리과정 우리나라 생활주제: 한복, 윷놀이, 제기차기 등 친숙한 전통문화 이야기'
+        },
+        {
+            level: 2,
+            unitCode: 'HIS-B2',
+            title: '② 기와집·초가집과 옛날 사람들 이야기',
+            goal: '옛날 사람들이 살던 집과 단군신화 속 곰과 호랑이 이야기를 만나요.',
+            recommendedTheme: '기와집과 옛날 생활',
+            keywords: ['기와집', '초가집', '고인돌', '단군신화'],
+            promptGuidance: '전통 가옥(한옥·온돌)과 단군신화·고인돌 등 기초 우리 문화 이야기'
+        },
+        {
+            level: 3,
+            unitCode: 'HIS-B3',
+            title: '③ 세종대왕과 우리 글자 훈민정음',
+            goal: '세종대왕이 백성을 사랑하는 마음으로 한글을 만드신 까닭을 배워요.',
+            recommendedTheme: '세종대왕과 훈민정음',
+            keywords: ['세종대왕', '훈민정음', '한글', '측우기'],
+            promptGuidance: '세종대왕의 한글 창제와 장영실의 해시계·측우기 발명 이야기'
+        },
+        {
+            level: 4,
+            unitCode: 'HIS-B4',
+            title: '④ 이순신 장군과 바다를 지킨 거북선',
+            goal: '지혜와 용기로 나라를 지킨 이순신 장군과 거북선의 비밀을 탐험해요.',
+            recommendedTheme: '이순신 장군과 거북선',
+            keywords: ['이순신', '거북선', '판옥선', '바다'],
+            promptGuidance: '이순신 장군의 용기와 거북선의 구조적 특징을 유아 눈높이로 설명'
+        },
+        {
+            level: 5,
+            unitCode: 'HIS-B5',
+            title: '⑤ 천년 신라의 보물 · 첨성대와 불국사',
+            goal: '별을 보던 첨성대와 신라 금관·불국사 등 소중한 국가유산을 아껴요.',
+            recommendedTheme: '첨성대와 신라 보물',
+            keywords: ['첨성대', '금관', '불국사', '국가유산'],
+            promptGuidance: '첨성대·불국사·신라 금관 등 대표 국가유산의 뜻과 보존 가치'
         }
     ]
 };

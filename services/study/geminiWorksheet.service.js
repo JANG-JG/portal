@@ -30,8 +30,10 @@ const {
     buildExtendedColoringWorksheet
 } = require('./aiColoringSvg.service');
 const { getCurriculumPromptHint } = require('./curriculumKorea.data');
-const { pickCuratedKoreanWords } = require('./publicEduApi.service');
+const { pickCuratedKoreanWords, verifyKoreanDictWords } = require('./publicEduApi.service');
 const { enrichWorksheetMedia } = require('./studyRichMediaApi.service');
+const { buildGeminiPromptAndSchema } = require('./studyPromptBuilder.service');
+const { getHeritageContextForTheme } = require('./studyHeritageNatureApi.service');
 
 const ipv4HttpsAgent = new https.Agent({ family: 4 });
 
@@ -90,119 +92,6 @@ function postJsonIPv4(urlStr, headers, bodyObj, timeoutMs = 15000) {
         req.write(payload);
         req.end();
     });
-}
-
-function buildGeminiPromptAndSchema({ childName, partnerName = '피카츄', birthYear, subject, level, theme, curriculumHint = '', curatedWords = [] }) {
-    if (subject === 'reading' || subject === 'science') {
-        const isSci = subject === 'science';
-        const sciOrReadHint = curriculumHint ? `\n학습 단원 및 오늘의 공공데이터 참고: ${curriculumHint}` : '';
-        const prompt = isSci
-            ? `유아 자연·과학 동화 작가 역할입니다. 대상: ${birthYear}년생 유아("${childName}"), 동반 친구: "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.${sciOrReadHint}\n` +
-              `참고 정보(오늘의 달 모양·날씨·우리나라 생물 등)가 있다면 주제와 자연스럽게 엮어 호기심을 키우는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 말할 핵심 문장 1개(voiceWord), 이해 퀴즈 3개(quizzes)를 순수 유아 친화 한국어로 작성하세요.\n` +
-              `중요: 각 quizzes의 answer는 반드시 본문 내용에서 답을 찾을 수 있어야 하고, choices 배열(서로 다른 3~4개 보기) 안에 정확히 포함되어야 합니다.`
-            : `유아 그림 동화 작가 역할입니다. 주인공: "${childName}"과 단짝 포켓몬 "${partnerName}", 주제: "${theme}", 수준: Lv.${level}/5.${sciOrReadHint}\n` +
-              `따뜻하고 재미있는 5쪽 그림 동화(pages 5개, 각 1~2문장), 따라 읽을 핵심 문장 1개(voiceWord), 독해 퀴즈 3개(quizzes)를 순수 한국어로 작성하세요.\n` +
-              `중요: 각 quizzes의 answer는 반드시 본문 내용에서 답을 찾을 수 있어야 하고, choices 배열(서로 다른 3~4개 보기) 안에 정확히 포함되어야 합니다.`;
-        const schema = {
-            type: 'OBJECT',
-            properties: {
-                title: { type: 'STRING' },
-                voiceWord: { type: 'STRING' },
-                pages: {
-                    type: 'ARRAY',
-                    items: {
-                        type: 'OBJECT',
-                        properties: { text: { type: 'STRING' }, emoji: { type: 'STRING' } },
-                        required: ['text', 'emoji']
-                    }
-                },
-                quizzes: {
-                    type: 'ARRAY',
-                    items: {
-                        type: 'OBJECT',
-                        properties: {
-                            prompt: { type: 'STRING' },
-                            emoji: { type: 'STRING' },
-                            answer: { type: 'STRING' },
-                            choices: { type: 'ARRAY', items: { type: 'STRING' } }
-                        },
-                        required: ['prompt', 'emoji', 'answer', 'choices']
-                    }
-                }
-            },
-            required: ['title', 'voiceWord', 'pages', 'quizzes']
-        };
-        return { prompt, schema };
-    }
-
-    if (subject === 'math') {
-        const currLine = curriculumHint ? `\n공교육 연계 단원: ${curriculumHint}` : '';
-        const prompt =
-            `유아 학습지 디자이너 역할입니다. 대상: ${birthYear}년생(${childName}), 테마: "${theme}", 난이도: Lv.${level}/5.${currLine}\n` +
-            `수학 계산과 숫자 문제는 서버가 직접 생성하므로, "${theme}" 테마에 어울리는 친근한 학습지 제목 1개와 유아 친화적인 표준 단일 유니코드 이모지 6개만 JSON으로 주세요.\n` +
-            `금지어(폭력/어려운 한자어/부정적 단어)는 절대 쓰지 마세요.`;
-
-        const schema = {
-            type: 'OBJECT',
-            properties: {
-                title: { type: 'STRING' },
-                themeEmojis: {
-                    type: 'ARRAY',
-                    items: { type: 'STRING' }
-                }
-            },
-            required: ['title', 'themeEmojis']
-        };
-        return { prompt, schema };
-    }
-
-    const levelGuide = subject === 'english'
-        ? (level === 1 ? '알파벳 대문자 A~Z 1글자 6개와 대표 뜻'
-            : level <= 3 ? '3~5글자 기초 영단어 6개(예: CAT, SUN, APPLE)'
-                : '5~9글자 어린이 친숙 영단어 6개')
-        : (level === 1 ? '1~3글자 받침 없는 쉽고 온전한 순수 한글 낱말 6개(예: 나비, 사자, 오리, 개구리, 코끼리)'
-            : level <= 3 ? '2~3글자 친숙한 순수 한글 낱말 6개'
-                : level === 4 ? '3~4글자 받침 포함 순수 한글 낱말 6개'
-                    : '짧은 2어절 순수 한글 표현 6개(예: 반짝이는 별)');
-    const currGuide = curriculumHint ? `\n공교육 진도 기준: ${curriculumHint}` : '';
-    const dictGuide = (subject === 'korean' && curatedWords.length)
-        ? `\n국립국어원 사전 추천 어휘(주제에 어울리면 1~3개 적극 활용): ${curatedWords.map((w) => (w.definition ? `${w.word}(${String(w.definition).slice(0, 28)})` : w.word)).join(', ')}`
-        : '';
-
-    const prompt =
-        `유아 학습지 교사 역할입니다. 대상: ${birthYear}년생 유아(${childName}), 과목: ${subject === 'english' ? '영어' : '한글'}, ` +
-        `테마: "${theme}", 수준: Lv.${level}/5.${currGuide}${dictGuide}\n` +
-        `규칙:\n` +
-        `1) ${levelGuide}를 생성하세요. 추상적인 단어(예: 마음, 생각, 기분) 대신 그림으로 바로 알 수 있는 구체적인 동물·사물·음식·자연물을 우선 고르세요.\n` +
-        `2) ${subject === 'english' ? 'word와 distractors는 반드시 순수 영문(A-Z)만 쓰고, hint에 짧은 한국어 뜻을 적으세요.' : 'word와 distractors는 반드시 순수 한글만 쓰고(영어/숫자/특수문자 금지), hint에는 정답 단어를 직접 쓰지 않은 쉬운 유아용 1문장 수수께끼 설명을 적으세요(예: "코가 길고 귀가 큰 회색 동물이에요").'}\n` +
-        `3) 각 항목의 emoji는 word의 뜻을 정확히 1:1로 나타내는 표준 단일 유니코드 이모지 1개만 넣고, 6개 항목의 이모지가 서로 중복되지 않게 하세요.\n` +
-        `4) 서로 중복되지 않는 단어 6개와, 각 단어당 뜻·그림이 겹치지 않는 분명히 다른 오답 보기 2개(distractors)를 만드세요.\n` +
-        `5) "개구리"를 "개구"로, "코끼리"를 "코끼"로 줄이는 것처럼 낱말의 끝 글자를 절대 임의로 자르지 말고 온전한 표준어 낱말만 쓰세요.`;
-
-    const schema = {
-        type: 'OBJECT',
-        properties: {
-            title: { type: 'STRING' },
-            items: {
-                type: 'ARRAY',
-                items: {
-                    type: 'OBJECT',
-                    properties: {
-                        word: { type: 'STRING' },
-                        hint: { type: 'STRING' },
-                        emoji: { type: 'STRING' },
-                        distractors: {
-                            type: 'ARRAY',
-                            items: { type: 'STRING' }
-                        }
-                    },
-                    required: ['word', 'hint', 'emoji', 'distractors']
-                }
-            }
-        },
-        required: ['title', 'items']
-    };
-    return { prompt, schema };
 }
 
 async function callGeminiWithPromptAndSchema(prompt, schema) {
@@ -374,18 +263,26 @@ async function generateWorksheetPayload({
         }
     }
 
+    let sciCtx = null;
+    let publicDataContext = '';
+    if (subj === 'science') {
+        const { getTodayScienceContext } = require('./studyDataGoKr.service');
+        sciCtx = await getTodayScienceContext().catch(() => null);
+        if (sciCtx?.summaryText) {
+            publicDataContext = sciCtx.summaryText;
+        }
+    } else if (subj === 'history') {
+        const heritageList = await getHeritageContextForTheme(cleanTheme).catch(() => []);
+        if (heritageList.length) {
+            publicDataContext = heritageList.map((h) => `${h.keyword}(${h.provider}): ${h.fact}`).join(' / ');
+        }
+    }
+
     const canUseGemini = hasKey && lastFailureReason !== 'quota_reserved' ? await tryConsumeGeminiQuota() : false;
     if (canUseGemini) {
-        let curriculumHint = getCurriculumPromptHint(subj, level);
-        if (subj === 'science') {
-            const { getTodayScienceContext } = require('./studyDataGoKr.service');
-            const sciCtx = await getTodayScienceContext().catch(() => null);
-            if (sciCtx?.summaryText) {
-                curriculumHint = `${curriculumHint} (오늘 실제 자연 관찰 참고: ${sciCtx.summaryText})`.trim();
-            }
-        }
-        const curatedWords = subj === 'korean'
-            ? await pickCuratedKoreanWords({ level, limit: 5 }).catch(() => [])
+        const curriculumHint = getCurriculumPromptHint(subj, level);
+        const curatedWords = (subj === 'korean' || subj === 'reading')
+            ? await pickCuratedKoreanWords({ level, limit: 5, theme: cleanTheme }).catch(() => [])
             : [];
         for (let attempt = 1; attempt <= 3; attempt++) {
             const aiRes = await callGeminiStructuredJson({
@@ -396,6 +293,7 @@ async function generateWorksheetPayload({
                 level,
                 theme: cleanTheme,
                 curriculumHint,
+                publicDataContext,
                 curatedWords
             });
             if (!aiRes.ok) {
@@ -408,7 +306,8 @@ async function generateWorksheetPayload({
                 theme: cleanTheme,
                 includePlayBlock,
                 childName,
-                partnerName
+                partnerName,
+                sciCtx
             });
             if (validated.ok) {
                 finalSheet = validated.sheet;
@@ -434,9 +333,21 @@ async function generateWorksheetPayload({
             theme: cleanTheme,
             includePlayBlock,
             childName,
-            partnerName
+            partnerName,
+            sciCtx
         });
         sourceLabel = skipGemini ? 'interactive_engine' : `fallback:${lastFailureReason || 'safe_bank'}`;
+    }
+
+    if (subj === 'korean' && Array.isArray(finalSheet?.blocks)) {
+        const koWords = finalSheet.blocks
+            .filter((b) => b && (b.type === 'quiz' || b.type === 'trace'))
+            .map((b) => b.answer || b.targetWord)
+            .filter(Boolean);
+        await verifyKoreanDictWords(koWords, level).catch(() => ({}));
+        if (!finalSheet.sourceBadge) finalSheet.sourceBadge = '📕 국립국어원 사전 · ARASAAC';
+    } else if (subj === 'english' && finalSheet && !finalSheet.sourceBadge) {
+        finalSheet.sourceBadge = '🔊 원어민 발음 · ARASAAC';
     }
 
     const { injectRecentWrongReviews } = require('./studyMissions.service');

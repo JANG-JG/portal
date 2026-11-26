@@ -27,8 +27,8 @@ const PREGEN_ENABLED_KEY = 'study_pregen_enabled';
 const PREGEN_LAST_RUN_KEY = 'study_pregen_last_run';
 const PREGEN_LAST_SUMMARY_KEY = 'study_pregen_last_summary';
 const DEFAULT_PREGEN_THEME = '동물 친구';
-const SUBJECT_DEFAULT_THEMES = { korean: '동물 친구', math: '동물 친구', english: '동물 친구', science: '오늘 밤하늘과 달', reading: '단짝 포켓몬 모험' };
-const PREGEN_SUBJECTS = ['korean', 'math', 'english', 'reading', 'science'];
+const SUBJECT_DEFAULT_THEMES = { korean: '동물 친구', math: '동물 친구', english: '동물 친구', science: '오늘 밤하늘과 달', history: '세종대왕과 훈민정음', reading: '토끼와 거북이' };
+const PREGEN_SUBJECTS = ['korean', 'math', 'english', 'reading', 'science', 'history'];
 const MAX_BUFFER_PER_SLOT = 2;
 const RESERVE_DAILY_QUOTA = 6;
 
@@ -189,7 +189,7 @@ async function consumePregeneratedWorksheet({
 
     let content = null;
     try { content = JSON.parse(row.content_json); } catch (e) { content = null; }
-    const minBlocks = (subj === 'reading' || subj === 'science') ? 3 : 6;
+    const minBlocks = (subj === 'reading' || subj === 'science' || subj === 'history') ? 3 : 5;
     if (!content || !Array.isArray(content.blocks) || content.blocks.length < minBlocks) return null;
 
     const sheetId = await saveWorksheet({

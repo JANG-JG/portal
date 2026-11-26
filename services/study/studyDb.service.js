@@ -23,15 +23,16 @@ const {
 const { getPokemonStateForBoard } = require('./studyPokemon.service');
 
 const VALID_CHILDREN = new Set(['first', 'second']);
-const VALID_SUBJECTS = new Set(['korean', 'math', 'english', 'science', 'reading', 'logic']);
+const VALID_SUBJECTS = new Set(['korean', 'math', 'english', 'science', 'history', 'reading', 'logic']);
 
 const SUBJECT_NAMES = {
     korean: '한글 놀이',
     math: '숫자·수학 놀이',
     english: '영어 놀이',
     logic: '두뇌·사고력 퍼즐',
-    reading: 'AI 그림 동화·말하기',
+    reading: '그림동화·말하기',
     science: '자연·과학 탐험',
+    history: '역사·우리 문화',
     music: '리듬 피아노',
     coloring: '색칠놀이'
 };
@@ -84,6 +85,7 @@ function normalizeSubject(input) {
     if (val === 'logic' || val === '퍼즐' || val === '사고력' || val === '두뇌퍼즐') return 'logic';
     if (val === 'reading' || val === '동화' || val === '독서' || val === '말하기') return 'reading';
     if (val === 'science' || val === '과학' || val === '자연') return 'science';
+    if (val === 'history' || val === '역사' || val === '문화' || val === '한국사') return 'history';
     if (val === 'music' || val === '피아노' || val === '음악') return 'music';
     if (val === 'coloring' || val === 'color' || val === '색칠놀이' || val === '색칠') return 'coloring';
     return 'korean';
@@ -198,7 +200,7 @@ async function deleteStudyProfile(childId) {
 async function getChildLevels(childId) {
     const cid = normalizeChildId(childId);
     const rows = await dbAll('SELECT subject, level, updated_at FROM study_levels WHERE child_id = ?', [cid]);
-    const levels = { korean: 1, math: 1, english: 1, science: 1, reading: 1, logic: 1 };
+    const levels = { korean: 1, math: 1, english: 1, science: 1, history: 1, reading: 1, logic: 1 };
     rows.forEach((r) => {
         if (VALID_SUBJECTS.has(r.subject)) {
             levels[r.subject] = clampLevel(r.level);
@@ -243,12 +245,12 @@ async function getWeeklyBalanceRecommendation(childId) {
          GROUP BY subject`,
         [cid, sinceDate]
     );
-    const counts = { korean: 0, math: 0, english: 0, science: 0, reading: 0, logic: 0 };
+    const counts = { korean: 0, math: 0, english: 0, science: 0, history: 0, reading: 0, logic: 0 };
     rows.forEach((r) => {
         if (VALID_SUBJECTS.has(r.subject)) counts[r.subject] = Number(r.cnt || 0);
     });
 
-    const ordered = ['korean', 'math', 'english', 'science', 'reading', 'logic'].sort((a, b) => counts[a] - counts[b]);
+    const ordered = ['korean', 'math', 'english', 'science', 'history', 'reading', 'logic'].sort((a, b) => counts[a] - counts[b]);
     const recommended = ordered[0];
     const reason = counts[recommended] === 0
         ? `이번 주에 아직 '${SUBJECT_NAMES[recommended]}'을 안 했어요! 오늘 도전해 볼까요?`
@@ -346,7 +348,7 @@ async function getChildDashboardState(childId, viewerUser = null) {
         listRecentWorksheets(cid, 16),
         getSystemConfig('study_parent_pin', ''),
         getDailyQuotaStatus(),
-        getWrongNoteStats(cid).catch(() => ({ pendingCount: 0, resolvedCount: 0, bySubject: { korean: 0, math: 0, english: 0, science: 0, reading: 0, logic: 0 } }))
+        getWrongNoteStats(cid).catch(() => ({ pendingCount: 0, resolvedCount: 0, bySubject: { korean: 0, math: 0, english: 0, science: 0, history: 0, reading: 0, logic: 0 } }))
     ]);
     const pokemon = await getPokemonStateForBoard(cid, stampBoard).catch((err) => {
         console.warn('포켓몬 알 상태 조회 무시:', err?.message || err);

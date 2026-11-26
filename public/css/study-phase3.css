@@ -211,7 +211,9 @@
 /* 5. 동화책 & 음성 말하기 */
 .storybook-stage { display: flex; flex-direction: column; gap: 10px; }
 .storybook-top-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.storybook-badge-wrap { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .storybook-badge { padding: 4px 10px; border-radius: 999px; background: #ede9fe; color: #5b21b6; font-weight: 800; font-size: 0.84rem; }
+.storybook-source-badge { padding: 3px 9px; border-radius: 999px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-weight: 700; font-size: 0.76rem; }
 .storybook-counter { font-weight: 800; color: #475569; font-size: 0.9rem; }
 .storybook-page-card {
     padding: 14px;
@@ -221,7 +223,9 @@
 }
 .storybook-art-box { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
 .storybook-banner-slot { width: 120px; max-width: 100%; }
+.storybook-real-photo { width: min(240px, 100%); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; border: 2px solid #e2e8f0; background: #f1f5f9; flex-shrink: 0; }
 .storybook-scene-emoji { font-size: 3.1rem; line-height: 1; }
+.storybook-scene-emoji.is-corner { font-size: 2.2rem; }
 .storybook-page-text { margin: 0; font-size: clamp(1.05rem, 2.5vw, 1.24rem); font-weight: 800; line-height: 1.6; color: #1e293b; text-align: center; overflow-wrap: break-word; }
 .storybook-dots { display: flex; justify-content: center; gap: 8px; }
 .storybook-dot { width: 12px; height: 12px; min-block-size: 24px; min-inline-size: 24px; padding: 6px; border-radius: 999px; border: 0; background: transparent; cursor: pointer; position: relative; }

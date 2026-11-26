@@ -80,7 +80,10 @@ function getApiProviderStatuses() {
         datagokr: { label: '공공데이터포털(에듀넷/기초학력)', configured: Boolean(dataGoKr), masked: maskKey(dataGoKr) },
         gemini: { label: 'Google Gemini 맞춤 학습지', configured: Boolean(gemini), masked: maskKey(gemini) },
         arasaac: { label: 'ARASAAC 유아 픽토그램', configured: true, masked: '무료·키불필요' },
-        freedict: { label: 'Free Dictionary 영단어 발음', configured: true, masked: '무료·키불필요' }
+        freedict: { label: 'Free Dictionary 영단어 발음', configured: true, masked: '무료·키불필요' },
+        khs: { label: '국가유산청 문화유산 · 위키백과', configured: true, masked: '무료·키불필요' },
+        inaturalist: { label: 'iNaturalist 자연생물 도감', configured: true, masked: '무료·키불필요' },
+        nasa: { label: 'NASA 우주 · 천체 이미지', configured: true, masked: '무료·키불필요' }
     };
 }
 
@@ -302,17 +305,45 @@ async function lookupKoreanWord(rawWord, { level = 2, preferFresh = false, skipP
 }
 
 const AUTO_SEED_WORDS = ['무지개', '다람쥐', '민들레', '강아지', '소나무', '참새', '개구리', '해바라기', '구름', '바다'];
+const THEME_SEED_MAP = [
+    { key: '동물', words: ['다람쥐', '강아지', '코끼리', '고양이', '개구리', '참새', '토끼', '기린'] },
+    { key: '과일', words: ['사과', '딸기', '바나나', '포도', '수박', '복숭아', '참외', '귤'] },
+    { key: '탈것', words: ['자동차', '기차', '비행기', '자전거', '버스', '배', '소방차'] },
+    { key: '바다', words: ['고래', '돌고래', '문어', '바다', '조개', '거북이', '갈매기'] },
+    { key: '우주', words: ['별님', '보름달', '초승달', '지구', '은하수', '로켓', '태양'] },
+    { key: '공룡', words: ['공룡', '화석', '도토리', '화산', '나뭇잎', '발자국'] },
+    { key: '우리말', words: ['무지개', '미소', '햇살', '별빛', '시냇물', '꽃잎', '소나무', '나들이'] }
+];
 
-async function pickCuratedKoreanWords({ level = 2, limit = 4 } = {}) {
+async function pickCuratedKoreanWords({ level = 2, limit = 4, theme = '' } = {}) {
     await ensurePublicEduTables();
     const lv = Math.min(Math.max(Number(level) || 2, 1), 5);
+    const matchedTheme = THEME_SEED_MAP.find((t) => String(theme || '').includes(t.key));
+    const seedPool = matchedTheme ? matchedTheme.words : AUTO_SEED_WORDS;
+
     let cached = await dbAll(
         'SELECT word, definition FROM study_public_word_cache WHERE level_hint <= ? ORDER BY RANDOM() LIMIT ?',
         [lv + 2, limit]
     ).catch(() => []);
 
-    if (cached.length < limit) {
-        const seed = AUTO_SEED_WORDS[Math.floor(Math.random() * AUTO_SEED_WORDS.length)];
+    if (matchedTheme) {
+        const themeCached = await dbAll(
+            `SELECT word, definition FROM study_public_word_cache WHERE word IN (${seedPool.map(() => '?').join(',')})`,
+            seedPool
+        ).catch(() => []);
+        if (themeCached.length < 2) {
+            const pickSeed = seedPool[Math.floor(Math.random() * seedPool.length)];
+            await lookupKoreanWord(pickSeed, { level: lv }).catch(() => null);
+        }
+        const refreshedTheme = await dbAll(
+            `SELECT word, definition FROM study_public_word_cache WHERE word IN (${seedPool.map(() => '?').join(',')}) ORDER BY RANDOM() LIMIT ?`,
+            [...seedPool, limit]
+        ).catch(() => []);
+        if (refreshedTheme.length) {
+            cached = [...refreshedTheme, ...cached.filter((c) => !refreshedTheme.some((r) => r.word === c.word))];
+        }
+    } else if (cached.length < limit) {
+        const seed = seedPool[Math.floor(Math.random() * seedPool.length)];
         await lookupKoreanWord(seed, { level: lv }).catch(() => null);
         cached = await dbAll(
             'SELECT word, definition FROM study_public_word_cache WHERE level_hint <= ? ORDER BY fetched_at DESC LIMIT ?',
@@ -328,6 +359,24 @@ async function pickCuratedKoreanWords({ level = 2, limit = 4 } = {}) {
         }
     }
     return merged.slice(0, limit);
+}
+
+async function verifyKoreanDictWords(words = [], level = 2) {
+    await ensurePublicEduTables();
+    const out = {};
+    const list = Array.from(new Set((Array.isArray(words) ? words : []).map((w) => String(w || '').trim()).filter((w) => /^[가-힣]{1,8}$/.test(w)))).slice(0, 6);
+    await Promise.race([
+        Promise.allSettled(
+            list.map(async (w) => {
+                const res = await lookupKoreanWord(w, { level }).catch(() => null);
+                if (res?.ok && res.entry?.definition) {
+                    out[w] = { verified: true, provider: res.entry.providerLabel || res.entry.provider, definition: res.entry.definition };
+                }
+            })
+        ),
+        new Promise((resolve) => setTimeout(resolve, 2500))
+    ]);
+    return out;
 }
 
 async function testPublicEduProvider({ provider = 'urimalsam', query = '사과' } = {}) {
@@ -395,6 +444,7 @@ module.exports = {
     getApiProviderStatuses,
     lookupKoreanWord,
     pickCuratedKoreanWords,
+    verifyKoreanDictWords,
     testPublicEduProvider,
     getPublicEduOverview,
     parseKoreanDictItems,

@@ -153,9 +153,33 @@ async function fetchFreeDictionaryAudio(word) {
     }
 }
 
+const {
+    fetchWikipediaPhotoAndSummary,
+    fetchInaturalistPhoto,
+    fetchNasaSpacePhoto,
+    fetchKoreaHeritageInfo
+} = require('./studyHeritageNatureApi.service');
+
+async function resolveScienceOrHistoryPhoto(keyword, subject) {
+    const clean = String(keyword || '').trim();
+    if (!clean) return null;
+    if (subject === 'history') {
+        const khs = await fetchKoreaHeritageInfo(clean).catch(() => null);
+        if (khs?.imageUrl) return khs.imageUrl;
+        const wiki = await fetchWikipediaPhotoAndSummary(clean).catch(() => null);
+        return wiki?.imageUrl || null;
+    }
+    const nasa = await fetchNasaSpacePhoto(clean).catch(() => null);
+    if (nasa?.imageUrl) return nasa.imageUrl;
+    const inat = await fetchInaturalistPhoto(clean).catch(() => null);
+    if (inat?.imageUrl) return inat.imageUrl;
+    const wiki = await fetchWikipediaPhotoAndSummary(clean).catch(() => null);
+    return wiki?.imageUrl || null;
+}
+
 async function enrichWorksheetMedia(sheet, subject) {
     if (!sheet || !Array.isArray(sheet.blocks)) return sheet;
-    if (subject !== 'korean' && subject !== 'english') return sheet;
+    if (!['korean', 'english', 'science', 'history'].includes(subject)) return sheet;
 
     const [arasaacOn, freedictOn] = await Promise.all([
         getSystemConfig('study_arasaac_enabled', '1'),
@@ -163,18 +187,30 @@ async function enrichWorksheetMedia(sheet, subject) {
     ]);
     const useArasaac = arasaacOn !== '0';
     const useFreedict = subject === 'english' && freedictOn !== '0';
-    if (!useArasaac && !useFreedict) return sheet;
+    const isDiscovery = subject === 'science' || subject === 'history';
+    if (!isDiscovery && !useArasaac && !useFreedict) return sheet;
 
     const lang = subject === 'english' ? 'en' : 'ko';
     const tasks = [];
 
     for (const blk of sheet.blocks) {
         if (!blk) continue;
-        if ((blk.type === 'quiz' || blk.type === 'phonics_blend') && (blk.answer || blk.targetWord)) {
-            const word = String(blk.type === 'phonics_blend' ? blk.targetWord : blk.answer).trim();
-            if (useArasaac && !blk.imageUrl) {
-                const fetcher = subject === 'science'
-                    ? async () => (await fetchScienceRealPhoto(word)) || (await fetchArasaacPictogram(word, lang))
+        if (blk.type === 'storybook' && isDiscovery && Array.isArray(blk.pages)) {
+            for (const pg of blk.pages) {
+                const kw = String(pg?.photoKeyword || '').trim();
+                if (pg && kw && !pg.imageUrl) {
+                    tasks.push(
+                        resolveScienceOrHistoryPhoto(kw, subject).then((url) => {
+                            if (url) pg.imageUrl = url;
+                        })
+                    );
+                }
+            }
+        } else if ((blk.type === 'quiz' || blk.type === 'phonics_blend') && (blk.answer || blk.targetWord || blk.photoKeyword)) {
+            const word = String(blk.photoKeyword || (blk.type === 'phonics_blend' ? blk.targetWord : blk.answer)).trim();
+            if ((isDiscovery || useArasaac) && !blk.imageUrl) {
+                const fetcher = isDiscovery
+                    ? async () => (await resolveScienceOrHistoryPhoto(word, subject)) || (useArasaac ? await fetchArasaacPictogram(word, lang) : null)
                     : () => fetchArasaacPictogram(word, lang);
                 tasks.push(
                     fetcher().then((url) => {
@@ -198,11 +234,15 @@ async function enrichWorksheetMedia(sheet, subject) {
                     })
                 );
             }
-        } else if (blk.type === 'match' && Array.isArray(blk.pairs) && useArasaac) {
+        } else if (blk.type === 'match' && Array.isArray(blk.pairs) && (isDiscovery || useArasaac)) {
             for (const p of blk.pairs) {
-                if (p && p.right && !p.imageUrl) {
+                const target = String(p?.photoKeyword || p?.right || '').trim();
+                if (p && target && !p.imageUrl) {
+                    const fetcher = isDiscovery
+                        ? () => resolveScienceOrHistoryPhoto(target, subject)
+                        : () => fetchArasaacPictogram(target, lang);
                     tasks.push(
-                        fetchArasaacPictogram(String(p.right).trim(), lang).then((url) => {
+                        fetcher().then((url) => {
                             if (url) p.imageUrl = url;
                         })
                     );
@@ -214,7 +254,7 @@ async function enrichWorksheetMedia(sheet, subject) {
     if (tasks.length) {
         await Promise.race([
             Promise.allSettled(tasks),
-            new Promise((resolve) => setTimeout(resolve, 4000))
+            new Promise((resolve) => setTimeout(resolve, 4500))
         ]);
     }
     return sheet;
@@ -243,12 +283,16 @@ async function getRichMediaStats() {
     const row = await dbGet(
         `SELECT
             SUM(CASE WHEN provider = 'arasaac' AND image_url != '' THEN 1 ELSE 0 END) AS arasaacCount,
-            SUM(CASE WHEN provider = 'freedict' AND audio_url != '' THEN 1 ELSE 0 END) AS freedictCount
+            SUM(CASE WHEN provider = 'freedict' AND audio_url != '' THEN 1 ELSE 0 END) AS freedictCount,
+            SUM(CASE WHEN provider IN ('khs', 'wiki_photo') AND image_url != '' THEN 1 ELSE 0 END) AS heritageWikiCount,
+            SUM(CASE WHEN provider IN ('inaturalist', 'nasa') AND image_url != '' THEN 1 ELSE 0 END) AS natureNasaCount
          FROM study_rich_media_cache`
     ).catch(() => null);
     return {
         arasaacCount: Number(row?.arasaacCount || 0),
-        freedictCount: Number(row?.freedictCount || 0)
+        freedictCount: Number(row?.freedictCount || 0),
+        heritageWikiCount: Number(row?.heritageWikiCount || 0),
+        natureNasaCount: Number(row?.natureNasaCount || 0)
     };
 }
 

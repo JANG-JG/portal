@@ -65,28 +65,32 @@ function normalizeKoreanWordCandidate(rawWord) {
 /**
  * 4단계 전체 검증 + 정제 + 폴백 결합 엔트리포인트
  */
-function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, includePlayBlock = true, childName = '친구', partnerName = '피카츄' }) {
+function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, includePlayBlock = true, childName = '친구', partnerName = '피카츄', sciCtx = null }) {
     const lv = clampLevel(level);
     const cleanTheme = containsBannedWord(theme) ? '동물 친구' : String(theme || '동물 친구').trim().slice(0, 20);
     const emojiPool = pickThemeEmojis(cleanTheme);
 
     if (PHASE3_SUBJECTS.has(subject)) {
-        const phase3Sheet = buildPhase3Worksheet({ subject, level: lv, theme: cleanTheme, childName, partnerName, rawAiJson });
+        const phase3Sheet = buildPhase3Worksheet({ subject, level: lv, theme: cleanTheme, childName, partnerName, rawAiJson, sciCtx });
         if (phase3Sheet) {
             return { ok: true, usedFallback: false, sheet: phase3Sheet };
+        }
+        if (subject === 'science' || subject === 'history' || subject === 'reading') {
+            return { ok: false, reason: `${subject}_validation_failed` };
         }
     }
 
     if (subject === 'math') {
         const aiEmojis = Array.isArray(rawAiJson?.themeEmojis) ? rawAiJson.themeEmojis : [];
+        const storyContexts = Array.isArray(rawAiJson?.storyContexts) ? rawAiJson.storyContexts : [];
         const rawTitle = String(rawAiJson?.title || '').trim();
         const safeTitle = (rawTitle && !containsBannedWord(rawTitle) && rawTitle.length <= 40)
             ? rawTitle
             : `${cleanTheme} 숫자·수학 놀이 (Lv.${lv})`;
-        const baseBlocks = buildDeterministicMathBlocks(lv, cleanTheme, aiEmojis);
+        const baseBlocks = buildDeterministicMathBlocks(lv, cleanTheme, aiEmojis, storyContexts);
         const mathSheet = mixManipulativeIntoSheet({
             title: safeTitle,
-            encouragement: '숫자 박사님처럼 6문제를 정말 똑똑하게 풀었어요! 🌟',
+            encouragement: '숫자 박사님처럼 끝까지 정말 똑똑하게 풀었어요! 🌟',
             blocks: appendOptionalPlayBlock(baseBlocks, { subject, level: lv, theme: cleanTheme, includePlayBlock })
         }, { subject, level: lv, theme: cleanTheme });
         return {
@@ -190,8 +194,8 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
 
     const langSheet = mixManipulativeIntoSheet({
         title: safeTitle,
-        encouragement: '6문제를 끝까지 스스로 해내다니 정말 멋져요! 🎉',
-        blocks: appendOptionalPlayBlock(buildLanguageBlocksFromItems(validItems, subject), {
+        encouragement: '끝까지 스스로 해내다니 정말 멋져요! 🎉',
+        blocks: appendOptionalPlayBlock(buildLanguageBlocksFromItems(validItems, subject, lv), {
             subject,
             level: lv,
             theme: cleanTheme,
@@ -206,11 +210,11 @@ function validateAndNormalizeWorksheet(rawAiJson, { subject, level, theme, inclu
     };
 }
 
-function buildFallbackWorksheet({ subject, level, theme, includePlayBlock = true, childName = '친구', partnerName = '피카츄' }) {
+function buildFallbackWorksheet({ subject, level, theme, includePlayBlock = true, childName = '친구', partnerName = '피카츄', sciCtx = null }) {
     const lv = clampLevel(level);
     const cleanTheme = containsBannedWord(theme) ? '동물 친구' : String(theme || '동물 친구').trim().slice(0, 20);
     if (PHASE3_SUBJECTS.has(subject)) {
-        const p3 = buildPhase3Worksheet({ subject, level: lv, theme: cleanTheme, childName, partnerName });
+        const p3 = buildPhase3Worksheet({ subject, level: lv, theme: cleanTheme, childName, partnerName, sciCtx });
         if (p3) return p3;
     }
     const baseSheet = subject === 'math'
