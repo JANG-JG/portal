@@ -198,3 +198,95 @@
         display: none !important;
     }
 }
+
+/* ==========================================================================
+   매일 1개 오늘의 주제 배너 & 선택적 직접 입력 접기 (Content-First)
+   ========================================================================== */
+.daily-theme-banner {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 10px 0;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 2px solid #bae6fd;
+    background: linear-gradient(135deg, #f0f9ff 0%, #fffbeb 100%);
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.daily-theme-banner.is-carried {
+    border-color: #fdba74;
+    background: linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%);
+}
+
+.daily-theme-banner.is-completed {
+    border-color: #86efac;
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfeff 100%);
+}
+
+.daily-theme-main {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.daily-theme-kicker {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.daily-theme-banner.is-carried .daily-theme-kicker {
+    background: #ea580c;
+}
+
+.daily-theme-banner.is-completed .daily-theme-kicker {
+    background: #16a34a;
+}
+
+.daily-theme-title {
+    font-size: 1.05rem;
+    font-weight: 900;
+    color: #0f172a;
+    word-break: keep-all;
+}
+
+.daily-theme-status {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #475569;
+}
+
+.daily-theme-override {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.daily-theme-override-summary {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 40px;
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    list-style: none;
+}
+
+.daily-theme-override-summary::-webkit-details-marker {
+    display: none;
+}
+
+.daily-theme-override-body {
+    margin-top: 6px;
+}
+

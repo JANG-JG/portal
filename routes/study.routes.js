@@ -103,7 +103,9 @@ router.get('/api/study/dashboard', authenticateToken, async (req, res) => {
         }
         if (state?.childId) {
             const { getDailyMissionsState } = require('../services/study/studyMissions.service');
+            const { getDailyThemeState } = require('../services/study/studyDailyTheme.service');
             state.missions = await getDailyMissionsState(state.childId).catch(() => null);
+            state.dailyTheme = await getDailyThemeState(state.childId).catch(() => null);
         }
         state.featureFlags = await getStudyFeatureFlags().catch(() => ({}));
         res.json({
@@ -395,10 +397,18 @@ router.post('/api/study/sheets/generate', authenticateToken, async (req, res) =>
         }
 
         const { childId, subject, theme, includePlayBlock, coloringMode, customPrompt } = req.body || {};
+        const cid = normalizeChildId(childId);
+        const subj = normalizeSubject(subject);
+        let resolvedTheme = typeof theme === 'string' ? theme.trim().slice(0, 24) : '';
+        if (!resolvedTheme && subj !== 'coloring') {
+            const { getDailyThemeState } = require('../services/study/studyDailyTheme.service');
+            const dt = await getDailyThemeState(cid).catch(() => null);
+            resolvedTheme = dt?.theme || '동물 친구';
+        }
         const opts = {
-            childId: normalizeChildId(childId),
-            subject: normalizeSubject(subject),
-            theme: theme || '동물 친구',
+            childId: cid,
+            subject: subj,
+            theme: resolvedTheme || '동물 친구',
             createdBy: req.user.username || 'web',
             includePlayBlock: includePlayBlock !== false,
             coloringMode: coloringMode || 'auto_3',
@@ -544,7 +554,9 @@ router.post('/api/study/sheets/:id/complete', authenticateToken, async (req, res
             const { evaluateLevelPromotion } = require('../services/study/studyPromotion.service');
             levelPromotion = await evaluateLevelPromotion(sheet.child_id, sheet.subject).catch(() => null);
         }
-        res.json({ success: true, earnedSnacks, missionProgress, earnedPoints, levelPromotion, ...result });
+        const { markDailyThemeCompleted } = require('../services/study/studyDailyTheme.service');
+        const dailyTheme = await markDailyThemeCompleted(sheet.child_id).catch(() => null);
+        res.json({ success: true, earnedSnacks, missionProgress, earnedPoints, levelPromotion, dailyTheme, ...result });
     } catch (err) {
         const status = err.statusCode || 500;
         console.error('학습지 완료 처리 오류:', err);

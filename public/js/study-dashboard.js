@@ -115,6 +115,9 @@
             }
         }
 
+        // 매일 1개 오늘의 주제 배너 (안 풀면 다음 날로 이월)
+        renderDailyTheme(data.dailyTheme);
+
         // Gemini 남은 횟수
         const qBadge = document.getElementById('quotaBadge');
         if (qBadge && data.quota) {
@@ -265,6 +268,30 @@
         }).join('');
     }
 
+    function renderDailyTheme(dt) {
+        const banner = document.getElementById('dailyThemeBanner');
+        const titleEl = document.getElementById('dailyThemeTitle');
+        const statusEl = document.getElementById('dailyThemeStatus');
+        if (!dt || !dt.theme) return;
+        state.selectedTheme = dt.theme;
+        if (titleEl) {
+            titleEl.textContent = `${dt.emoji || '🌟'} ${dt.theme}`;
+        }
+        if (banner) {
+            banner.classList.toggle('is-carried', Boolean(dt.carriedOver));
+            banner.classList.toggle('is-completed', Boolean(dt.completedToday));
+        }
+        if (statusEl) {
+            if (dt.completedToday) {
+                statusEl.textContent = '오늘 주제 완료! ✅ (추가 학습지도 계속 풀 수 있어요)';
+            } else if (dt.carriedOver) {
+                statusEl.textContent = '어제 안 풀어서 오늘로 이어졌어요! 오늘 꼭 풀어볼까요?';
+            } else {
+                statusEl.textContent = '매일 새로운 주제 1가지가 자동으로 정해져요';
+            }
+        }
+    }
+
     function selectSubjectChip(subject, byUser = true) {
         if (!['korean', 'math', 'english', 'logic', 'reading', 'science', 'history', 'music'].includes(subject)) return;
         state.selectedSubject = subject;
@@ -276,16 +303,6 @@
         });
         const guideEl = document.getElementById('subjectFeatureGuide');
         if (guideEl && SUBJECT_GUIDES[subject]) guideEl.textContent = SUBJECT_GUIDES[subject];
-        const themeGroup = document.getElementById('themePillsGroup') || document.querySelector('.theme-pills');
-        const list = SUBJECT_THEMES[subject] || SUBJECT_THEMES.korean;
-        if (themeGroup && Array.isArray(list) && list.length) {
-            const keepCurrent = list.some(([val]) => val === state.selectedTheme);
-            state.selectedTheme = keepCurrent ? state.selectedTheme : list[0][0];
-            themeGroup.innerHTML = list.map(([val, label]) => {
-                const active = val === state.selectedTheme;
-                return `<button type="button" class="theme-pill${active ? ' active' : ''}" data-theme="${escapeHtml(val)}" aria-pressed="${active ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
-            }).join('');
-        }
         const playRow = document.getElementById('playMissionRow');
         if (playRow) playRow.hidden = ['logic', 'reading', 'science', 'music'].includes(subject);
     }
@@ -327,20 +344,6 @@
 
         document.querySelectorAll('.subject-chip').forEach((btn) => {
             btn.addEventListener('click', () => selectSubjectChip(btn.dataset.subject, true));
-        });
-
-        const themeGroup = document.getElementById('themePillsGroup') || document.querySelector('.theme-pills');
-        themeGroup?.addEventListener('click', (e) => {
-            const btn = e.target.closest('.theme-pill');
-            if (!btn) return;
-            state.selectedTheme = btn.dataset.theme;
-            themeGroup.querySelectorAll('.theme-pill').forEach((p) => {
-                const isSel = p === btn;
-                p.classList.toggle('active', isSel);
-                p.setAttribute('aria-pressed', isSel ? 'true' : 'false');
-            });
-            const custom = document.getElementById('customThemeInput');
-            if (custom) custom.value = '';
         });
 
         // 부모 잠금 해제 상태 동기화 & 3분 미활동 자동 재잠금
