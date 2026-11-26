@@ -166,7 +166,7 @@
             if (partner) {
                 const lv = Number(partner.level || 1);
                 const skills = Array.isArray(partner.skills) ? partner.skills : [];
-                const shinyBadge = partner.isShiny ? '<span class="pokemon-shiny-badge">✨ 이로치</span>' : '';
+                const shinyBadge = partner.isShiny ? '<span class="pokemon-shiny-badge">✨ 반짝이</span>' : '';
                 const condBadge = cond ? `<span class="pokemon-condition-pill is-${esc(cond.statusKey)}">${esc(cond.label)}</span>` : '';
                 const subText = cond?.statusKey && cond.statusKey !== 'happy' ? cond.bubble : '톡 누르면 반갑게 점프해요! ✨';
                 partnerBtn.classList.toggle('is-shiny-pokemon', Boolean(partner.isShiny));
@@ -364,7 +364,7 @@
                     }
                     return `
                     <div class="pokemon-dex-card is-unlocked ${item.isPartner ? 'is-partner' : ''} ${item.isShiny ? 'is-shiny-pokemon' : ''}">
-                        ${item.isShiny ? '<span class="pokemon-shiny-badge">✨ 이로치</span>' : ''}
+                        ${item.isShiny ? '<span class="pokemon-shiny-badge">✨ 반짝이</span>' : ''}
                         <img class="${item.isShiny ? 'is-shiny-sprite' : ''}" src="${esc(item.artworkUrl || item.animatedUrl)}" alt="${esc(item.nameKo)}">
                         <strong style="font-size:0.88rem; color:#0f172a;">${esc(item.nameKo)} ${item.count > 1 ? `<small style="color:#6366f1;">x${item.count}</small>` : ''}</strong>
                         <span style="font-size:0.74rem; color:${esc(item.color || '#475569')}; font-weight:700;">${esc(item.typeEmoji)} ${esc(item.typeLabel)}</span>
