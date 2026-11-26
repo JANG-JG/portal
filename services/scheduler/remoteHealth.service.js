@@ -2,7 +2,8 @@ const http = require('http');
 const os = require('os');
 const { exec } = require('child_process');
 const { SECONDARY_HOST } = require('../../config/constants');
-const { sendServerTelegram } = require('../telegramAlert.service');
+const { sendGuidedServerTelegram } = require('./serverAlertConfig.service');
+const { checkExternalTunnelHealth } = require('./hardwareHealth.service');
 
 const LOCAL_HTTP_TARGETS = [
     { name: 'portal', label: 'JG 통합 포털', port: 3004, path: '/health' },
@@ -36,8 +37,13 @@ function probeLocalHttp(port, reqPath, timeoutMs = 3000) {
     });
 }
 
-function emitSystemAlert(sendBroadcastPush, { title, body, tgText, url, tag }) {
-    sendServerTelegram(tgText);
+function emitSystemAlert(sendBroadcastPush, { category, title, body, tgText, guide, url, tag }) {
+    sendGuidedServerTelegram({
+        category: category || 'httpAlerts',
+        title,
+        tgText,
+        guide
+    });
     if (typeof sendBroadcastPush === 'function') {
         sendBroadcastPush({
             title,
@@ -45,7 +51,8 @@ function emitSystemAlert(sendBroadcastPush, { title, body, tgText, url, tag }) {
             url: url || 'https://j-jg.cc/admin#tab-overview',
             type: 'system',
             tag: tag || 'jg-system-health',
-            adminOnly: true
+            adminOnly: true,
+            meta: { skipTelegram: true }
         });
     }
 }
@@ -84,12 +91,15 @@ async function checkLocalHttpEndpoints(currentTargetDateTime, sendBroadcastPush)
             currentTargetDateTime,
             sendBroadcastPush,
             {
+                category: 'httpAlerts',
                 title: '🚨 서비스 응답 장애',
                 body: `${target.label}(:${target.port}) 응답 이상 (${errDetail})`,
                 tag: `jg-http-${target.name}`,
-                tgText: `🚨 *[JG Server HTTP 응답 이상]*\n\n• *서비스*: \`${target.name}\` (${target.label})\n• *포트*: \`${target.port}${target.path}\`\n• *원인*: \`${errDetail}\``
+                tgText: `🚨 *[JG Server HTTP 응답 이상]*\n\n• *서비스*: \`${target.name}\` (${target.label})\n• *포트*: \`${target.port}${target.path}\`\n• *원인*: \`${errDetail}\``,
+                guide: `관리자 페이지(https://j-jg.cc/admin#tab-overview)에서 로그 확인 또는 SSH 재시작:\n\`pm2 restart ${target.name}\``
             },
             {
+                category: 'httpAlerts',
                 title: '✅ 서비스 응답 복구',
                 body: `${target.label}(:${target.port}) HTTP 응답이 정상 복구되었습니다.`,
                 tag: `jg-http-${target.name}`,
@@ -119,10 +129,12 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
                 currentTargetDateTime,
                 sendBroadcastPush,
                 {
+                    category: 'secondaryAlerts',
                     title: '🚨 보조 서버 연결 끊김',
                     body: `보조 서버(${SECONDARY_HOST}) SSH 응답이 없습니다. 위키/사진 외장 SSD 확인이 필요합니다.`,
                     tag: 'jg-sec-host',
-                    tgText: `🚨 *[보조 서버(${SECONDARY_HOST}) 오프라인 경보]*\n\n• *대상*: 보조 서버 (\`${SECONDARY_HOST}\`)\n• *원인*: SSH 연결 실패 또는 전원 꺼짐\n• *영향*: \`family-wiki\`, \`ssd-https-agent\`, 외장 SSD 접근 불가`
+                    tgText: `🚨 *[보조 서버(${SECONDARY_HOST}) 오프라인 경보]*\n\n• *대상*: 보조 서버 (\`${SECONDARY_HOST}\`)\n• *원인*: SSH 연결 실패 또는 전원 꺼짐\n• *영향*: \`family-wiki\`, \`ssd-https-agent\`, 외장 SSD 접근 불가`,
+                    guide: 'HP 노트북 전원·Wi-Fi 연결 및 절전 모드 진입 여부를 확인하세요.'
                 },
                 { title: '', body: '', tag: 'jg-sec-host', tgText: '' }
             );
@@ -136,6 +148,7 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
             sendBroadcastPush,
             { title: '', body: '', tag: 'jg-sec-host', tgText: '' },
             {
+                category: 'secondaryAlerts',
                 title: '✅ 보조 서버 연결 복구',
                 body: `보조 서버(${SECONDARY_HOST}) 연결이 정상 복구되었습니다.`,
                 tag: 'jg-sec-host',
@@ -159,6 +172,7 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
 
                     if (secondaryRestartCounts[appName] !== undefined && restarts > secondaryRestartCounts[appName] && isOnline) {
                         emitSystemAlert(sendBroadcastPush, {
+                            category: 'secondaryAlerts',
                             title: '⚠️ 보조 서버 재시작 감지',
                             body: `${appName}(${SECONDARY_HOST}) 재시작 감지 (${secondaryRestartCounts[appName]} → ${restarts}회)`,
                             tag: `jg-sec-restart-${appName}`,
@@ -173,12 +187,15 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
                         currentTargetDateTime,
                         sendBroadcastPush,
                         {
+                            category: 'secondaryAlerts',
                             title: '🚨 보조 서버 프로세스 장애',
                             body: `${appName}(${SECONDARY_HOST}) 상태 이상 (${status})`,
                             tag: `jg-sec-pm2-${appName}`,
-                            tgText: `🚨 *[보조 서버 프로세스 장애]*\n\n• *서버*: \`${SECONDARY_HOST}\`\n• *프로세스*: \`${appName}\`\n• *상태*: \`${status}\``
+                            tgText: `🚨 *[보조 서버 프로세스 장애]*\n\n• *서버*: \`${SECONDARY_HOST}\`\n• *프로세스*: \`${appName}\`\n• *상태*: \`${status}\``,
+                            guide: `보조 서버 SSH 접속 후 재시작하세요:\n\`ssh ${sshUser}@${SECONDARY_HOST} "pm2 restart ${appName}"\``
                         },
                         {
+                            category: 'secondaryAlerts',
                             title: '✅ 보조 서버 프로세스 복구',
                             body: `${appName}(${SECONDARY_HOST}) 상태가 online으로 복구되었습니다.`,
                             tag: `jg-sec-pm2-${appName}`,
@@ -197,12 +214,15 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
                 currentTargetDateTime,
                 sendBroadcastPush,
                 {
+                    category: 'secondaryAlerts',
                     title: '🚨 가족 위키 응답 장애',
                     body: `family-wiki(${SECONDARY_HOST}:5060) HTTP 응답 오류 (${code})`,
                     tag: 'jg-sec-wiki-http',
-                    tgText: `🚨 *[보조 서버 HTTP 응답 이상]*\n\n• *서비스*: \`family-wiki\` (\`${SECONDARY_HOST}:5060/health\`)\n• *응답 코드*: \`${code}\``
+                    tgText: `🚨 *[보조 서버 HTTP 응답 이상]*\n\n• *서비스*: \`family-wiki\` (\`${SECONDARY_HOST}:5060/health\`)\n• *응답 코드*: \`${code}\``,
+                    guide: `보조 서버에서 \`pm2 restart family-wiki\` 실행 후 로그를 확인하세요.`
                 },
                 {
+                    category: 'secondaryAlerts',
                     title: '✅ 가족 위키 응답 복구',
                     body: `family-wiki(${SECONDARY_HOST}:5060) HTTP 응답이 정상 복구되었습니다.`,
                     tag: 'jg-sec-wiki-http',
@@ -219,12 +239,15 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
                 currentTargetDateTime,
                 sendBroadcastPush,
                 {
+                    category: 'secondaryAlerts',
                     title: '🚨 외장 SSD 마운트 해제',
                     body: `보조 서버(${SECONDARY_HOST}) /media/external_ssd 마운트가 해제되었습니다.`,
                     tag: 'jg-sec-ssd',
-                    tgText: `🚨 *[보조 서버 외장 SSD 마운트 경보]*\n\n• *서버*: \`${SECONDARY_HOST}\`\n• *경로*: \`/media/external_ssd\`\n• *상태*: 언마운트(UNMOUNTED) 감지`
+                    tgText: `🚨 *[보조 서버 외장 SSD 마운트 경보]*\n\n• *서버*: \`${SECONDARY_HOST}\`\n• *경로*: \`/media/external_ssd\`\n• *상태*: 언마운트(UNMOUNTED) 감지`,
+                    guide: 'HP 노트북 외장 SSD USB 케이블 재연결 후 `sudo mount -a`를 실행하세요.'
                 },
                 {
+                    category: 'secondaryAlerts',
                     title: '✅ 외장 SSD 마운트 복구',
                     body: `보조 서버(${SECONDARY_HOST}) 외장 SSD 마운트가 정상 복구되었습니다.`,
                     tag: 'jg-sec-ssd',
@@ -238,10 +261,12 @@ function checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroad
             if (!isNaN(pct) && pct >= 90 && lastSecondaryDiskAlertDate !== kstDateStr) {
                 lastSecondaryDiskAlertDate = kstDateStr;
                 emitSystemAlert(sendBroadcastPush, {
+                    category: 'secondaryAlerts',
                     title: '⚠️ 보조 서버 디스크 부족',
                     body: `보조 서버(${SECONDARY_HOST}) 디스크 사용량이 ${pct}%에 도달했습니다.`,
                     tag: 'jg-sec-disk',
-                    tgText: `⚠️ *[보조 서버 디스크 용량 경보]*\n\n• *서버*: \`${SECONDARY_HOST}\`\n• *사용률*: *${pct}%*\n• *감지 시각*: ${currentTargetDateTime}`
+                    tgText: `⚠️ *[보조 서버 디스크 용량 경보]*\n\n• *서버*: \`${SECONDARY_HOST}\`\n• *사용률*: *${pct}%*\n• *감지 시각*: ${currentTargetDateTime}`,
+                    guide: `보조 서버의 오래된 백업(\`~/backups/jg_server\`)이나 로그를 정리하세요.`
                 });
             }
         }
@@ -255,6 +280,7 @@ function checkExtendedHealth(kstDateStr, currentTargetDateTime, sendBroadcastPus
     lastProbeTimestamp = now;
 
     checkLocalHttpEndpoints(currentTargetDateTime, sendBroadcastPush).catch(() => {});
+    checkExternalTunnelHealth(currentTargetDateTime, sendBroadcastPush);
     checkSecondaryServerHealth(kstDateStr, currentTargetDateTime, sendBroadcastPush);
 }
 

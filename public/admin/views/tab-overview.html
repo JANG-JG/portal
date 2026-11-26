@@ -477,4 +477,27 @@
                     </div>
                 </div>
             </div>
+
+            <!-- 서버 텔레그램 알림 항목 제어 및 발송 이력 -->
+            <div class="admin-card" style="margin-top:1.2rem; box-sizing:border-box; max-width:100%;">
+                <div class="admin-card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                    <div>
+                        <h3 style="margin:0; font-size:0.95rem;">✈️ 서버 텔레그램 알림 설정 &amp; 최근 이력</h3>
+                        <p style="margin:0.2rem 0 0; font-size:0.76rem; color:#64748b;">항목별 ON/OFF 제어 (모든 경보에 상황별 조치 가이드 자동 포함)</p>
+                    </div>
+                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadServerAlertConfig()">🔄 새로고침</button>
+                </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:0.55rem; margin-top:0.75rem;">
+                    <label style="display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; cursor:pointer;"><input type="checkbox" id="srvAlertPm2" onchange="saveServerAlertConfig()"> PM2 다운·재시작·CrashLoop</label>
+                    <label style="display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; cursor:pointer;"><input type="checkbox" id="srvAlertHttp" onchange="saveServerAlertConfig()"> 로컬 HTTP·외부 터널</label>
+                    <label style="display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; cursor:pointer;"><input type="checkbox" id="srvAlertResource" onchange="saveServerAlertConfig()"> 디스크·메모리(RAM) 90%</label>
+                    <label style="display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; cursor:pointer;"><input type="checkbox" id="srvAlertHardware" onchange="saveServerAlertConfig()"> 노트 9 배터리·발열</label>
+                    <label style="display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; cursor:pointer;"><input type="checkbox" id="srvAlertSecondary" onchange="saveServerAlertConfig()"> 보조 서버(HP)·외장 SSD</label>
+                    <label style="display:flex; align-items:center; gap:0.45rem; font-size:0.82rem; cursor:pointer;"><input type="checkbox" id="srvAlertDaily" onchange="saveServerAlertConfig()"> 매일 08:00 상태 브리핑</label>
+                </div>
+                <div style="margin-top:0.9rem; border-top:1px solid #e2e8f0; padding-top:0.65rem;">
+                    <div style="font-size:0.76rem; font-weight:700; color:#475569; margin-bottom:0.35rem;">최근 발송 이력 (최대 12건)</div>
+                    <div id="srvAlertHistoryList" style="max-height:180px; overflow-y:auto;"></div>
+                </div>
+            </div>
         </div>

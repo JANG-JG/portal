@@ -2,11 +2,14 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { exec } = require('child_process');
-const { sendServerTelegram } = require('../telegramAlert.service');
+const { sendGuidedServerTelegram } = require('./serverAlertConfig.service');
 const { checkExtendedHealth } = require('./remoteHealth.service');
+const { checkRamAndHardwareHealth, checkDailyServerSummary } = require('./hardwareHealth.service');
 
 const pm2DownAlertState = {};
 const restartAlertCooldown = {};
+const restartHistoryTimestamps = {};
+const crashLoopAlertCooldown = {};
 let lastDiskAlertDate = '';
 let lastPm2CheckTimestamp = 0;
 
@@ -65,20 +68,50 @@ function checkPm2Health(currentTargetDateTime, sendBroadcastPush) {
                         stateDirty = true;
                     } else if (restarts > prevRestarts && isOnline && !pm2DownAlertState[appName]) {
                         const cooldownAt = restartAlertCooldown[appName] || 0;
+                        const delta = restarts - prevRestarts;
                         savedRestartCounts[appName] = restarts;
                         stateDirty = true;
-                        if (now - cooldownAt >= 60000) {
+
+                        // Crash Loop 추적 (10분 내 5회 이상 재시작 시 긴급 경보)
+                        const hist = restartHistoryTimestamps[appName] || [];
+                        for (let i = 0; i < Math.min(delta, 10); i++) hist.push(now);
+                        const recentHist = hist.filter(ts => now - ts <= 10 * 60 * 1000);
+                        restartHistoryTimestamps[appName] = recentHist;
+
+                        if (recentHist.length >= 5 && now - (crashLoopAlertCooldown[appName] || 0) >= 30 * 60 * 1000) {
+                            crashLoopAlertCooldown[appName] = now;
                             restartAlertCooldown[appName] = now;
-                            const delta = restarts - prevRestarts;
-                            const restartMsg = `⚠️ *[JG Server 프로세스 재시작 감지]*\n\n• *프로세스*: \`${appName}\`\n• *변경*: 재시작 누적 ${prevRestarts}회 → ${restarts}회 (+${delta})\n• *감지 시각*: ${currentTargetDateTime}\n\n_PM2 자동 재기동으로 현재 \`online\` 상태입니다._`;
-                            sendServerTelegram(restartMsg);
+                            sendGuidedServerTelegram({
+                                category: 'pm2Alerts',
+                                title: `반복 크래시(Crash Loop) 경보: ${appName}`,
+                                tgText: `🔥 *[JG Server 반복 크래시(Crash Loop) 경보]*\n\n• *프로세스*: \`${appName}\`\n• *상태*: 최근 10분간 *${recentHist.length}회* 연속 재시작\n• *감지 시각*: ${currentTargetDateTime}`,
+                                guide: `최근 코드/DB 오류 또는 메모리 부족이 의심됩니다.\n관리자 콘솔 또는 SSH로 에러 로그를 확인하세요:\n\`pm2 logs ${appName} --err --lines 30\``
+                            });
+                            sendBroadcastPush({
+                                title: '🔥 반복 크래시(Crash Loop)',
+                                body: `${appName} 최근 10분간 ${recentHist.length}회 재시작`,
+                                url: 'https://j-jg.cc/admin#tab-overview',
+                                type: 'system',
+                                tag: `jg-pm2-crashloop-${appName}`,
+                                adminOnly: true,
+                                meta: { skipTelegram: true }
+                            });
+                        } else if (now - cooldownAt >= 60000) {
+                            restartAlertCooldown[appName] = now;
+                            sendGuidedServerTelegram({
+                                category: 'pm2Alerts',
+                                title: `프로세스 재시작 감지: ${appName}`,
+                                tgText: `⚠️ *[JG Server 프로세스 재시작 감지]*\n\n• *프로세스*: \`${appName}\`\n• *변경*: 재시작 누적 ${prevRestarts}회 → ${restarts}회 (+${delta})\n• *감지 시각*: ${currentTargetDateTime}\n\n_PM2 자동 재기동으로 현재 \`online\` 상태입니다._`,
+                                guide: `단발성 재시작이면 추가 조치는 불필요합니다. 반복될 경우 로그 확인:\n\`pm2 logs ${appName} --lines 20\``
+                            });
                             sendBroadcastPush({
                                 title: '⚠️ 프로세스 재시작 감지',
                                 body: `${appName} 재시작 감지 (${prevRestarts} → ${restarts}회)`,
                                 url: 'https://j-jg.cc/admin#tab-overview',
                                 type: 'system',
                                 tag: `jg-pm2-restart-${appName}`,
-                                adminOnly: true
+                                adminOnly: true,
+                                meta: { skipTelegram: true }
                             });
                         }
                     } else if (restarts < prevRestarts) {
@@ -92,8 +125,11 @@ function checkPm2Health(currentTargetDateTime, sendBroadcastPush) {
                         console.warn(`🚨 [PM2 ALERT] ${appName} 프로세스 비정상 상태 감지 (${status})`);
 
                         // [텔레그램 경보 발송]
-                        const alertMsg = `🚨 *[JG Server 프로세스 장애 경보]*\n\n• *프로세스*: \`${appName}\`\n• *상태*: \`${status}\` (비정상 다운 감지)\n• *감지 시각*: ${currentTargetDateTime}\n\n⚙️ *자동 복구(pm2 restart)를 1회 시도합니다...*`;
-                        sendServerTelegram(alertMsg);
+                        sendGuidedServerTelegram({
+                            category: 'pm2Alerts',
+                            title: `프로세스 장애 경보: ${appName}`,
+                            tgText: `🚨 *[JG Server 프로세스 장애 경보]*\n\n• *프로세스*: \`${appName}\`\n• *상태*: \`${status}\` (비정상 다운 감지)\n• *감지 시각*: ${currentTargetDateTime}\n\n⚙️ *자동 복구(pm2 restart)를 1회 시도합니다...*`
+                        });
 
                         // [웹 푸시 발송 (관리자 전용)]
                         sendBroadcastPush({
@@ -102,7 +138,8 @@ function checkPm2Health(currentTargetDateTime, sendBroadcastPush) {
                             url: 'https://j-jg.cc/admin#tab-overview',
                             type: 'system',
                             tag: `jg-pm2-${appName}`,
-                            adminOnly: true
+                            adminOnly: true,
+                            meta: { skipTelegram: true }
                         });
 
                         // [1회 자동 복구 시도: pm2 restart]
@@ -121,19 +158,27 @@ function checkPm2Health(currentTargetDateTime, sendBroadcastPush) {
                                             pm2DownAlertState[appName] = false;
                                             savedRestartCounts[appName] = Number(target.pm2_env.restart_time || restarts);
                                             saveRestartState(savedRestartCounts);
-                                            const recoveryMsg = `✅ *[JG Server 자동 복구 성공]*\n\n• *프로세스*: \`${appName}\`\n• *현재 상태*: \`online\`\n• *복구 완료*: 정상 가동 중입니다.`;
-                                            sendServerTelegram(recoveryMsg);
+                                            sendGuidedServerTelegram({
+                                                category: 'pm2Alerts',
+                                                title: `자동 복구 성공: ${appName}`,
+                                                tgText: `✅ *[JG Server 자동 복구 성공]*\n\n• *프로세스*: \`${appName}\`\n• *현재 상태*: \`online\`\n• *복구 완료*: 정상 가동 중입니다.`
+                                            });
                                             sendBroadcastPush({
                                                 title: '✅ 서버 복구 성공',
                                                 body: `${appName} 프로세스가 자동 재기동되어 정상 복구되었습니다.`,
                                                 url: 'https://j-jg.cc/admin#tab-overview',
                                                 type: 'system',
                                                 tag: `jg-pm2-${appName}`,
-                                                adminOnly: true
+                                                adminOnly: true,
+                                                meta: { skipTelegram: true }
                                             });
                                         } else {
-                                            const failMsg = `❌ *[JG Server 자동 복구 실패]*\n\n• *프로세스*: \`${appName}\`\n• *현재 상태*: \`${target ? target.pm2_env.status : 'unknown'}\`\n• *경고*: 재기동 후에도 online 상태가 아닙니다. 관리자의 수동 확인이 필요합니다!`;
-                                            sendServerTelegram(failMsg);
+                                            sendGuidedServerTelegram({
+                                                category: 'pm2Alerts',
+                                                title: `자동 복구 실패: ${appName}`,
+                                                tgText: `❌ *[JG Server 자동 복구 실패]*\n\n• *프로세스*: \`${appName}\`\n• *현재 상태*: \`${target ? target.pm2_env.status : 'unknown'}\`\n• *경고*: 재기동 후에도 online 상태가 아닙니다.`,
+                                                guide: `관리자 페이지(https://j-jg.cc/admin#tab-overview) 또는 SSH에서 에러 로그를 확인하고 수동 재기동하세요:\n\`pm2 logs ${appName} --err --lines 30\``
+                                            });
                                         }
                                     } catch (parseChkErr) {}
                                 });
@@ -147,14 +192,19 @@ function checkPm2Health(currentTargetDateTime, sendBroadcastPush) {
                         stateDirty = true;
                         console.log(`✅ [PM2 RECOVERY] ${appName} 프로세스 정상 복구 확인`);
 
-                        sendServerTelegram(`✅ *[JG Server 프로세스 정상 복구]*\n\n• *프로세스*: \`${appName}\`\n• *상태*: \`online\`\n• *복구 시각*: ${currentTargetDateTime}`);
+                        sendGuidedServerTelegram({
+                            category: 'pm2Alerts',
+                            title: `프로세스 정상 복구: ${appName}`,
+                            tgText: `✅ *[JG Server 프로세스 정상 복구]*\n\n• *프로세스*: \`${appName}\`\n• *상태*: \`online\`\n• *복구 시각*: ${currentTargetDateTime}`
+                        });
                         sendBroadcastPush({
                             title: '✅ 서버 복구',
                             body: `${appName} 프로세스가 다시 온라인(online) 상태로 정상 복구되었습니다.`,
                             url: 'https://j-jg.cc/admin#tab-overview',
                             type: 'system',
                             tag: `jg-pm2-${appName}`,
-                            adminOnly: true
+                            adminOnly: true,
+                            meta: { skipTelegram: true }
                         });
                     }
                 }
@@ -168,8 +218,12 @@ function checkPm2Health(currentTargetDateTime, sendBroadcastPush) {
 }
 
 function checkDiskHealth(kstDateStr, kstTimeStr, currentTargetDateTime, sendBroadcastPush) {
-    // 1. 로컬 HTTP 및 보조 서버(192.168.50.75) 상태 주기적 점검 (60초 스로틀 내장)
+    // 1. 로컬 HTTP, 외부 터널 및 보조 서버(192.168.50.75) 상태 주기적 점검 (60초 스로틀 내장)
     checkExtendedHealth(kstDateStr, currentTargetDateTime, sendBroadcastPush);
+
+    // 1-1. RAM 90%, 노트 9 배터리/발열, 일일 상태 브리핑 점검
+    checkRamAndHardwareHealth(currentTargetDateTime, sendBroadcastPush);
+    checkDailyServerSummary(kstDateStr, kstTimeStr, currentTargetDateTime);
 
     // 2. 메인 서버 루트 디스크 용량 점검 (5분마다)
     if (kstTimeStr.endsWith('0') || kstTimeStr.endsWith('5')) {
@@ -185,8 +239,13 @@ function checkDiskHealth(kstDateStr, kstTimeStr, currentTargetDateTime, sendBroa
                         const totalGB = (parseInt(totalBlocks, 10) / 1024 / 1024).toFixed(1);
                         const availGB = (parseInt(availBlocks, 10) / 1024 / 1024).toFixed(1);
 
-                        const diskAlertMsg = `⚠️ *[JG Server 디스크 용량 경보]*\n\n• *루트 저장소(/)*: *${usePercent}%* 사용 중!\n• *잔여 용량*: ${availGB} GB / 전체: ${totalGB} GB\n• *감지 시각*: ${currentTargetDateTime}\n\n_디스크 풀(100%) 발생 시 DB 락 및 서버 크래시가 발생할 수 있습니다. 불필요한 로그와 캐시 정리를 권장합니다._`;
-                        sendServerTelegram(diskAlertMsg);
+                        const diskAlertMsg = `⚠️ *[JG Server 디스크 용량 경보]*\n\n• *루트 저장소(/)*: *${usePercent}%* 사용 중!\n• *잔여 용량*: ${availGB} GB / 전체: ${totalGB} GB\n• *감지 시각*: ${currentTargetDateTime}\n\n_디스크 풀(100%) 발생 시 DB 락 및 서버 크래시가 발생할 수 있습니다._`;
+                        sendGuidedServerTelegram({
+                            category: 'resourceAlerts',
+                            title: '디스크 용량 경보',
+                            tgText: diskAlertMsg,
+                            guide: 'PM2 로그 비우기(`pm2 flush`) 및 오래된 백업/임시파일을 정리하세요 (`df -h`).'
+                        });
                         if (typeof sendBroadcastPush === 'function') {
                             sendBroadcastPush({
                                 title: '⚠️ 디스크 용량 경보',
@@ -194,7 +253,8 @@ function checkDiskHealth(kstDateStr, kstTimeStr, currentTargetDateTime, sendBroa
                                 url: 'https://j-jg.cc/admin#tab-overview',
                                 type: 'system',
                                 tag: 'jg-main-disk',
-                                adminOnly: true
+                                adminOnly: true,
+                                meta: { skipTelegram: true }
                             });
                         }
                         console.warn(`⚠️ [DISK ALERT] 루트 디스크 사용량 ${usePercent}% 초과 경보 발송`);

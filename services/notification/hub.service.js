@@ -291,19 +291,21 @@ async function publishNotificationEvent(rawEvent = {}) {
         wpResult.results.filter((r) => r.ok && r.userId).map((r) => r.userId)
     );
 
-    // 3) 외부 메신저(텔레그램) 3모드 라우팅
-    const tgResult = await dispatchTelegramForUsers({
-        targetUserIds: eligibleUsers,
-        messengerMode,
-        webPushSuccessUsers,
-        serviceKey,
-        severity,
-        title: cleanTitle,
-        body: cleanBody,
-        action_url: targetUrl,
-        iconEmoji,
-        meta
-    });
+    // 3) 외부 메신저(텔레그램) 3모드 라우팅 (직접 sendServerTelegram 발송 건은 중복 방지 스킵)
+    const tgResult = (meta && meta.skipTelegram)
+        ? { sentCount: 0, skipped: true }
+        : await dispatchTelegramForUsers({
+            targetUserIds: eligibleUsers,
+            messengerMode,
+            webPushSuccessUsers,
+            serviceKey,
+            severity,
+            title: cleanTitle,
+            body: cleanBody,
+            action_url: targetUrl,
+            iconEmoji,
+            meta
+        });
 
     if (wpResult.targetCount > 0 || tgResult.sentCount > 0) {
         console.log(`📨 [NotifHub] "${cleanTitle}" (${eventType}) WebPush:${wpResult.successCount}/${wpResult.targetCount}, TG:${tgResult.sentCount}`);
