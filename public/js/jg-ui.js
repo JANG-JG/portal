@@ -309,47 +309,17 @@
         return null;
     })();
 
-    function isPrivateHostName(h) {
-        const host = String(h || '').split(':')[0].trim().toLowerCase();
-        if (!host) return false;
-        return (
-            host === 'localhost' ||
-            host === '127.0.0.1' ||
-            host === 'lan.j-jg.cc' ||
-            host.endsWith('.local') ||
-            /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)
-        );
-    }
+    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-    const lanCfg = window.__JG_LAN_CONFIG__ || {};
-    const lanPortalPort = (lanCfg.ports && lanCfg.ports.portal) || 3443;
-    const isCurrentLan = isPrivateHostName(window.location.hostname);
-
-    let origin = 'https://j-jg.cc';
+    let origin = isLocalDev ? window.location.origin : 'https://j-jg.cc';
     let enableNav = true;
     let enableTicker = true;
-
-    if (isCurrentLan) {
-        origin = window.location.protocol === 'https:'
-            ? `https://${window.location.hostname}:${lanPortalPort}`
-            : window.location.origin;
-    } else if (currentScript) {
-        try {
-            if (currentScript.src) {
-                const url = new URL(currentScript.src);
-                if (isPrivateHostName(url.hostname)) {
-                    origin = url.origin;
-                }
-            }
-        } catch (e) {}
-    }
 
     if (currentScript && currentScript.dataset) {
         if (currentScript.dataset.nav === 'false') enableNav = false;
         if (currentScript.dataset.ticker === 'false') enableTicker = false;
     }
 
-    window.__JG_IS_LAN__ = isCurrentLan;
     window.__JG_PORTAL_ORIGIN__ = origin;
 
     // 2. 리소스 주입 헬퍼 함수
@@ -371,15 +341,10 @@
         (document.head || document.documentElement).appendChild(script);
     }
 
-    // 2-0. 내부 Wi-Fi 자동 감지 및 원클릭 SSO 브릿지 로더 주입 (LAN 접속 중이거나 자동 전환 활성 시에만 로드)
-    if (isCurrentLan || (lanCfg.enabled !== false && lanCfg.active !== false && lanCfg.autoRedirect === true)) {
-        injectScript(`${origin}/js/lan-auto.js?v=${JG_UI_VERSION}`);
-    }
-
     // 2-1. 전 사이트 파비콘 및 애플 터치 아이콘 / 매니페스트 캐시 고착 원천 차단 (동적 버전 스탬핑)
     (function syncGlobalFavicons() {
         const host = window.location.hostname;
-        if (host === 'j-jg.cc' || host === 'album.j-jg.cc' || host === 'localhost' || host === '127.0.0.1' || isCurrentLan) return;
+        if (host === 'j-jg.cc' || host === 'album.j-jg.cc' || isLocalDev) return;
         const head = document.head || document.getElementsByTagName('head')[0];
         if (!head) return;
         const base = origin || 'https://j-jg.cc';

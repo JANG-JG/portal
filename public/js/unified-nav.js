@@ -46,7 +46,7 @@
             let targetUrl;
             try { targetUrl = new URL(link.href, window.location.href); } catch (err) { return; }
 
-            const isFamilySite = targetUrl.hostname === 'j-jg.cc' || targetUrl.hostname.endsWith('.j-jg.cc') || targetUrl.hostname === 'localhost' || /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(targetUrl.hostname);
+            const isFamilySite = targetUrl.hostname === 'j-jg.cc' || targetUrl.hostname.endsWith('.j-jg.cc') || targetUrl.hostname === 'localhost';
             if (!isFamilySite) return;
 
             if (targetUrl.origin === window.location.origin && targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search && targetUrl.hash) return;
@@ -54,10 +54,7 @@
             e.preventDefault();
             if (typeof window.closeUnavDrawer === 'function') window.closeUnavDrawer();
 
-            const dest = (window.__JG_IS_LAN__ && window.JGLanBridge && typeof window.JGLanBridge.toLanUrl === 'function')
-                ? window.JGLanBridge.toLanUrl(targetUrl.href)
-                : targetUrl.href;
-            setTimeout(() => { window.location.href = dest; }, 10);
+            setTimeout(() => { window.location.href = targetUrl.href; }, 10);
         }, true);
     })();
 
@@ -103,9 +100,7 @@
     function isPortalMainPage() {
         const host = window.location.hostname;
         const path = window.location.pathname;
-        const lanPorts = (window.__JG_LAN_CONFIG__ && window.__JG_LAN_CONFIG__.ports) || { portal: 3443 };
-        const isPortalLanPort = !window.location.port || String(window.location.port) === String(lanPorts.portal) || String(window.location.port) === '3004';
-        const isPortalHost = (host === 'j-jg.cc' || host === 'localhost' || host === '127.0.0.1' || (isPortalLanPort && /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)));
+        const isPortalHost = (host === 'j-jg.cc' || host === 'localhost' || host === '127.0.0.1');
         return (isPortalHost && (path === '/' || path === '/index.html')) || !!document.getElementById('portal-tab-bar');
     }
 
@@ -192,12 +187,10 @@
 
     function detectServiceByHostOrPort() {
         const host = window.location.hostname.toLowerCase();
-        const port = String(window.location.port || '');
-        const lanPorts = (window.__JG_LAN_CONFIG__ && window.__JG_LAN_CONFIG__.ports) || { portal: 3443, asset: 3444, blood: 3445, album: 3446, news: 3447 };
-        if (host.includes('blood') || (port && port === String(lanPorts.blood))) return 'blood';
-        if (host.includes('asset') || (port && port === String(lanPorts.asset))) return 'asset';
-        if (host.includes('news') || (port && port === String(lanPorts.news))) return 'news';
-        if (host.includes('album') || (port && port === String(lanPorts.album))) return 'album';
+        if (host.includes('blood')) return 'blood';
+        if (host.includes('asset')) return 'asset';
+        if (host.includes('news')) return 'news';
+        if (host.includes('album')) return 'album';
         return '';
     }
 
@@ -244,7 +237,7 @@
         else if (path.includes('admin')) activeKey = 'admin';
         else if (path.includes('calendar')) activeKey = 'calendar';
         else if (path.includes('memo')) activeKey = 'memo';
-        else if (host === 'j-jg.cc' || host === 'localhost' || window.__JG_IS_LAN__) activeKey = 'home';
+        else if (host === 'j-jg.cc' || host === 'localhost') activeKey = 'home';
 
         const lifeKeys = new Set(['calendar', 'memo', 'album', 'wiki', 'study', 'kindergarten']);
         document.querySelectorAll('.unav-link[data-nav]').forEach(el => {

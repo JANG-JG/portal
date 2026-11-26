@@ -30,7 +30,6 @@ const STUDY_SOURCE_NAMES = { gemini: 'Gemini AI', fallback_bank: '안전 문제�
 
 let latestStudyChildren = [];
 let latestStudyKidAccounts = [];
-let latestStudyLanUrl = '';
 
 async function loadAdminStudyOverview() {
     try {
@@ -40,7 +39,6 @@ async function loadAdminStudyOverview() {
 
         latestStudyChildren = data.children || [];
         latestStudyKidAccounts = data.kidAccounts || [];
-        latestStudyLanUrl = data.lanInfo?.studyUrl || '';
         if (typeof window.renderStudyPreGenPanel === 'function') window.renderStudyPreGenPanel(data.pregen);
         renderStudyStatusCards(data);
         renderStudyConfigForm(data.config || {});
@@ -104,14 +102,6 @@ function renderStudyStatusCards(data) {
     if (pinEl) {
         pinEl.textContent = cfg.hasParentPin ? '🔒 PIN 잠금 사용 중' : '👆 길게 누르기 모드';
         pinEl.style.color = '#2563eb';
-    }
-
-    const lanEl = document.getElementById('studyLanHttpsUrlText');
-    if (lanEl) {
-        const lan = data.lanInfo || {};
-        lanEl.innerHTML = lan.active
-            ? `<strong>${escStudyAdmin(lan.studyUrl)}</strong> (활성화됨)`
-            : `준비 중: <code>${escStudyAdmin(lan.studyUrl || '')}</code>`;
     }
 }
 
@@ -278,7 +268,7 @@ function renderStudyKidAccounts(accounts) {
             <td style="font-size:0.78rem; color:#64748b;">${escStudyAdmin(a.lastLoginAt || '접속 이력 없음')}</td>
             <td>
                 ${a.inviteUrl
-                    ? `<div style="display:flex; gap:0.3rem; flex-wrap:wrap;"><button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(a.inviteUrl)}')">🔗 외부 초대</button>${a.lanInviteUrl ? `<button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(a.lanInviteUrl)}')">⚡ 내부 초대</button>` : ''}</div>`
+                    ? `<div style="display:flex; gap:0.3rem; flex-wrap:wrap;"><button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(a.inviteUrl)}')">🔗 초대 링크 복사</button></div>`
                     : '<span style="color:#64748b; font-size:0.78rem;">기기 등록 완료</span>'}
             </td>
         </tr>
@@ -518,9 +508,8 @@ async function createAdminKidAccount(event) {
             resultBox.style.display = 'block';
             resultBox.innerHTML = `
                 <div style="font-weight:700; margin-bottom:0.35rem;">🎉 ${escStudyAdmin(data.message)}</div>
-                <div style="word-break:break-all; margin-bottom:0.3rem;">외부 초대 링크: <code>${escStudyAdmin(data.inviteUrl)}</code></div>
-                ${data.lanInviteUrl ? `<div style="word-break:break-all; margin-bottom:0.5rem;">⚡ 내부 Wi-Fi 초대: <code>${escStudyAdmin(data.lanInviteUrl)}</code></div>` : ''}
-                <div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(data.inviteUrl)}')">📋 외부 링크 복사</button>${data.lanInviteUrl ? `<button type="button" class="btn-admin btn-admin-primary btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(data.lanInviteUrl)}')">⚡ 내부 링크 복사</button>` : ''}</div>
+                <div style="word-break:break-all; margin-bottom:0.5rem;">초대 링크: <code>${escStudyAdmin(data.inviteUrl)}</code></div>
+                <div style="display:flex; gap:0.4rem; flex-wrap:wrap;"><button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="copyStudyInviteUrl('${escStudyAdmin(data.inviteUrl)}')">📋 초대 링크 복사</button></div>
             `;
         }
         studyToast('아이 전용 태블릿 계정이 발급되었습니다!');
@@ -537,15 +526,10 @@ async function copyStudyInviteUrl(url) {
     catch (e) { prompt('아래 링크를 복사해 주세요:', url); }
 }
 
-function copyStudyLanUrl() {
-    if (!latestStudyLanUrl) return studyToast('내부 Wi-Fi 주소를 확인하지 못했습니다.', true);
-    return copyStudyInviteUrl(latestStudyLanUrl);
-}
-
 Object.assign(window, {
     loadAdminStudyOverview, toggleAddStudyProfileForm, onKidProfileModeChange,
     createAdminStudyProfile, createProfileFromKidAccount, saveAdminStudyConfig,
     saveAdminStudyProfile, deleteAdminStudyProfile, addAdminTelegramUser,
     updateAdminTelegramUserRole, toggleAdminTelegramUser, deleteAdminTelegramUser,
-    createAdminKidAccount, copyStudyInviteUrl, copyStudyLanUrl
+    createAdminKidAccount, copyStudyInviteUrl
 });

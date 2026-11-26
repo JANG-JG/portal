@@ -23,7 +23,6 @@ const { getLiveWeatherData, initWeatherAutoRefresh } = require('./services/weath
 const { getLiveMarketData } = require('./services/market.service');
 const { sendUnifiedPushNotification } = require('./services/push.service');
 const { initUnifiedNotificationScheduler } = require('./services/unifiedNotificationScheduler');
-const { startLocalHttpsServer, getCaCertPath, getPublicLanConfig } = require('./services/localHttps.service');
 const { isServiceAllowed } = require('./services/moduleRegistry.service');
 
 // 🛡️ 미들웨어
@@ -37,7 +36,6 @@ const {
 const authRoutes = require('./routes/auth.routes');
 const authResetRoutes = require('./routes/auth.reset.routes');
 const authRegisterRoutes = require('./routes/auth.register.routes');
-const lanRoutes = require('./routes/lan.routes');
 const portalRoutes = require('./routes/portal.routes');
 const calendarRoutes = require('./routes/calendar.routes');
 const memoRoutes = require('./routes/memo.routes');
@@ -115,9 +113,7 @@ app.get('/api/jg-ui', (req, res) => {
     if (body === null) {
         return res.sendFile(jgUiPath);
     }
-    const lanBanner = `window.__JG_LAN_CONFIG__ = ${JSON.stringify(getPublicLanConfig(req))};\n`;
-    const payload = lanBanner + body;
-    const etag = `W/"${crypto.createHash('sha1').update(payload).digest('hex').slice(0, 16)}"`;
+    const etag = `W/"${crypto.createHash('sha1').update(body).digest('hex').slice(0, 16)}"`;
 
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -130,7 +126,7 @@ app.get('/api/jg-ui', (req, res) => {
     if (req.headers['if-none-match'] === etag) {
         return res.status(304).end();
     }
-    return res.send(payload);
+    return res.send(body);
 });
 
 // ==========================================
@@ -324,18 +320,6 @@ app.get('/favicon.ico', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
 });
 
-// 1-10. 내부 Wi-Fi HTTPS 전용 로컬 루트 CA 인증서 다운로드
-app.get('/api/lan-ca.crt', (req, res) => {
-    const caPath = getCaCertPath();
-    if (!caPath) {
-        return res.status(404).json({ success: false, message: '로컬 루트 CA 인증서가 아직 생성되지 않았습니다.' });
-    }
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    res.setHeader('Content-Type', 'application/x-x509-ca-cert');
-    res.setHeader('Content-Disposition', 'attachment; filename="jg-lan-ca.crt"');
-    res.sendFile(caPath);
-});
-
 // 2. 로그인 페이지
 app.get(['/login', '/login.html'], (req, res) => {
     // 🔗 구버전/URL 파라미터형 초대 링크(?invite=...) 감지 시 초대 처리 엔드포인트로 즉시 전달
@@ -439,7 +423,6 @@ app.use((req, res, next) => {
 app.use('/', authRoutes);
 app.use('/', authResetRoutes);
 app.use('/', authRegisterRoutes);
-app.use('/', lanRoutes);
 
 // 포털 메인 & 공통 대시보드 API (/api/summary, /api/ticker, /api/blood/quick-med, /go/:service)
 app.use('/', portalRoutes);
@@ -525,7 +508,6 @@ if (!isDevInstance && isPrimaryWorker) {
 // 서버 기동
 app.listen(PORT, () => {
     console.log(`🚀 JG 통합 포털 서버 구동 완료 (Port: ${PORT}, Cookie Domain: ${COOKIE_DOMAIN})`);
-    startLocalHttpsServer(app);
     // 백그라운드 캐시 사전 웜업 및 주기적 자동 갱신 스케줄러 기동
     initWeatherAutoRefresh();
     getLiveMarketData().catch(() => {});

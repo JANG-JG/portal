@@ -28,7 +28,6 @@ const {
     normalizeChildId
 } = require('../../services/study/studyDb.service');
 const { resolveGeminiApiKey } = require('../../services/study/geminiWorksheet.service');
-const { getLocalHttpsStatus } = require('../../services/localHttps.service');
 const {
     getPreGenStatus,
     setPreGenEnabled,
@@ -74,7 +73,6 @@ router.get('/overview', async (req, res) => {
             });
         }
 
-        const lanInfo = getLocalHttpsStatus();
         const kidAccounts = kidRows.map((r) => {
             const linkedProfile = children.find((c) => c.linkedUsername.toLowerCase() === r.username.toLowerCase());
             return {
@@ -84,7 +82,6 @@ router.get('/overview', async (req, res) => {
                 emoji: r.avatar_emoji || '🎒',
                 pinResetRequired: Boolean(r.pin_reset_required),
                 inviteUrl: r.invite_token ? `https://j-jg.cc/invite/${r.invite_token}` : '',
-                lanInviteUrl: r.invite_token ? `${lanInfo.origin}/invite/${r.invite_token}` : '',
                 lastLoginAt: r.last_login_at,
                 linkedProfileId: linkedProfile?.id || '',
                 linkedProfileName: linkedProfile?.displayName || ''
@@ -121,7 +118,6 @@ router.get('/overview', async (req, res) => {
             success: true,
             children,
             quota,
-            lanInfo,
             pregen,
             pokemon,
             interactiveConfig,
@@ -344,12 +340,10 @@ router.post('/kid-account', async (req, res) => {
             }
         }
 
-        const lanInfo = getLocalHttpsStatus();
         res.json({
             success: true,
             message: `아이 전용 학습실 계정(${rawUsername})이 발급되었습니다!${profileMsg}`,
             inviteUrl: `https://j-jg.cc/invite/${inviteToken}`,
-            lanInviteUrl: `${lanInfo.origin}/invite/${inviteToken}`,
             localInvitePath: `/invite/${inviteToken}`
         });
     } catch (err) {
@@ -429,8 +423,7 @@ async function readTabletConfigObj() {
 router.get('/tablet-config', async (req, res) => {
     try {
         const config = await readTabletConfigObj();
-        const lanInfo = getLocalHttpsStatus();
-        const urls = { extLoginUrl: 'https://j-jg.cc/study/login', lanLoginUrl: lanInfo?.origin ? `${lanInfo.origin}/study/login` : '', studyPath: '/study' };
+        const urls = { extLoginUrl: 'https://j-jg.cc/study/login', studyPath: '/study' };
         res.json({ success: true, config, urls });
     } catch (err) {
         res.status(500).json({ success: false, message: '태블릿 앱 설정 조회에 실패했습니다.' });

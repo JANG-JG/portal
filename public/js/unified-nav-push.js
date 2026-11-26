@@ -13,11 +13,8 @@
         if (window.location.origin === portalOrigin) return true;
         const h = window.location.hostname;
         const p = String(window.location.port || '');
-        if (h === 'j-jg.cc' || h === 'lan.j-jg.cc' || h === 'jg-server.local' || h === 'localhost' || h === '127.0.0.1') {
-            return !p || p === '3443' || p === '3004' || p === '443' || p === '80';
-        }
-        if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h)) {
-            return p === '3443' || p === '3004';
+        if (h === 'j-jg.cc' || h === 'localhost' || h === '127.0.0.1') {
+            return !p || p === '3004' || p === '443' || p === '80';
         }
         return false;
     }

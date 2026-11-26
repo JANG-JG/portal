@@ -63,18 +63,6 @@
                         </div>
                     </form>
 
-                    <div id="studyLanHttpsBox" style="margin-top:0.85rem; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:0.75rem; padding:0.8rem 0.9rem; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.65rem; box-sizing:border-box;">
-                        <div style="min-width:0; flex:1 1 220px;">
-                            <div style="font-size:0.83rem; font-weight:800; color:#065f46;">⚡ 같은 Wi-Fi 빠른 내부 HTTPS 접속</div>
-                            <div id="studyLanHttpsUrlText" style="font-size:0.82rem; color:#047857; word-break:break-all; margin-top:0.15rem;">확인 중...</div>
-                            <div style="font-size:0.74rem; color:#065f46; margin-top:0.2rem;">태블릿에서 인증서(CA)를 1회 설치하면 보안 경고 없이 빠르게 바로 열립니다.</div>
-                        </div>
-                        <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                            <button type="button" id="studyLanCopyBtn" class="btn-admin btn-admin-primary btn-admin-sm" onclick="copyStudyLanUrl()">📋 내부 주소 복사</button>
-                            <a id="studyLanCaDownloadBtn" href="/api/lan-ca.crt" download="jg-lan-ca.crt" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;">🔐 루트 인증서 받기</a>
-                        </div>
-                    </div>
-
                     <div id="studyPreGenPanel" style="margin-top:0.75rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:0.75rem; padding:0.85rem 0.9rem; box-sizing:border-box;">
                         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.5rem;">
                             <div style="min-width:0; flex:1 1 220px;">
@@ -128,14 +116,12 @@
                                 </div>
                             </div>
                             <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
-                                <button type="button" id="btnCopyStudyPwaExtUrl" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;" onclick="copyStudyTabletUrl('ext')">🔗 외부 전용 로그인 복사</button>
-                                <button type="button" id="btnCopyStudyPwaLanUrl" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;" onclick="copyStudyTabletUrl('lan')">⚡ 내부 빠른 로그인 복사</button>
+                                <button type="button" id="btnCopyStudyPwaExtUrl" class="btn-admin btn-admin-outline btn-admin-sm" style="background:#fff;" onclick="copyStudyTabletUrl('ext')">🔗 전용 로그인 주소 복사</button>
                                 <a href="/study" target="_blank" rel="noopener" class="btn-admin btn-admin-primary btn-admin-sm">🚀 학습실 열기</a>
                             </div>
                         </div>
                         <div style="display:flex; flex-wrap:wrap; gap:0.85rem; margin-top:0.65rem; font-size:0.75rem; color:#7c2d12;">
-                            <span>외부: <strong id="studyTabletExtLoginText">https://j-jg.cc/study/login</strong></span>
-                            <span>내부: <strong id="studyTabletLanLoginText">확인 중...</strong></span>
+                            <span>전용 주소: <strong id="studyTabletExtLoginText">https://j-jg.cc/study/login</strong></span>
                         </div>
                         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.75rem; margin-top:0.7rem; padding-top:0.65rem; border-top:1px dashed #fdba74;">
                             <div style="display:flex; flex-wrap:wrap; gap:0.9rem; font-size:0.8rem; font-weight:700; color:#334155;">

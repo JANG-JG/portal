@@ -10,7 +10,6 @@
 
     let latestTabletUrls = {
         extLoginUrl: 'https://j-jg.cc/study/login',
-        lanLoginUrl: '',
         studyPath: '/study'
     };
 
@@ -139,11 +138,7 @@
             if (crossShareChk) crossShareChk.checked = cfg.crossShareEnabled !== false;
 
             const extEl = document.getElementById('studyTabletExtLoginText');
-            const lanEl = document.getElementById('studyTabletLanLoginText');
-            const lanBtn = document.getElementById('btnCopyStudyPwaLanUrl');
             if (extEl) extEl.textContent = latestTabletUrls.extLoginUrl || 'https://j-jg.cc/study/login';
-            if (lanEl) lanEl.textContent = latestTabletUrls.lanLoginUrl || '내부 HTTPS 주소 확인 중';
-            if (lanBtn) lanBtn.disabled = !latestTabletUrls.lanLoginUrl;
 
             syncTabletBadge(cfg);
             await loadAdminStudyArtworks();
@@ -188,17 +183,11 @@
         }
     }
 
-    async function copyStudyTabletUrl(kind) {
-        const url = kind === 'lan' ? latestTabletUrls.lanLoginUrl : latestTabletUrls.extLoginUrl;
-        if (!url) {
-            toast('복사할 태블릿 전용 주소가 아직 준비되지 않았습니다.', true);
-            return;
-        }
+    async function copyStudyTabletUrl() {
+        const url = latestTabletUrls.extLoginUrl || 'https://j-jg.cc/study/login';
         try {
             await navigator.clipboard.writeText(url);
-            toast(kind === 'lan'
-                ? '내부 빠른 HTTPS 로그인 주소(/study/login)를 복사했습니다.'
-                : '외부 태블릿 로그인 주소(/study/login)를 복사했습니다.');
+            toast('태블릿 전용 로그인 주소(/study/login)를 복사했습니다.');
         } catch (_) {
             toast(`주소: ${url}`);
         }

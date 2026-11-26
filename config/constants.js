@@ -60,8 +60,7 @@ const INTERNAL_ALLOWED_HOSTS = new Set(
     ['localhost', '127.0.0.1', '192.168.50.111', process.env.LAN_IP].filter(Boolean)
 );
 const INTERNAL_ALLOWED_PORTS = new Set([
-    '3000', '3001', '3002', '3003', '3004', '3005', '5050', '5060',
-    '3443', '3444', '3445', '3446', '3447', '3448'
+    '3000', '3001', '3002', '3003', '3004', '3005', '5050', '5060'
 ]);
 
 function isOriginAllowed(origin) {
