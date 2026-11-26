@@ -24,7 +24,7 @@ const LAN_CONFIG_FILE = path.join(__dirname, '..', 'data', 'lan-config.json');
 const state = {
     enabled: process.env.LOCAL_HTTPS_ENABLED !== 'false',
     active: false,
-    autoRedirect: true,
+    autoRedirect: false,
     port: parseInt(process.env.LOCAL_HTTPS_PORT, 10) || 3443,
     lanIp: '',
     certPath: '',

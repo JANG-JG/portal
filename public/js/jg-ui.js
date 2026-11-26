@@ -371,8 +371,10 @@
         (document.head || document.documentElement).appendChild(script);
     }
 
-    // 2-0. 내부 Wi-Fi 자동 감지 및 원클릭 SSO 브릿지 로더 주입
-    injectScript(`${origin}/js/lan-auto.js?v=${JG_UI_VERSION}`);
+    // 2-0. 내부 Wi-Fi 자동 감지 및 원클릭 SSO 브릿지 로더 주입 (LAN 접속 중이거나 자동 전환 활성 시에만 로드)
+    if (isCurrentLan || (lanCfg.enabled !== false && lanCfg.active !== false && lanCfg.autoRedirect === true)) {
+        injectScript(`${origin}/js/lan-auto.js?v=${JG_UI_VERSION}`);
+    }
 
     // 2-1. 전 사이트 파비콘 및 애플 터치 아이콘 / 매니페스트 캐시 고착 원천 차단 (동적 버전 스탬핑)
     (function syncGlobalFavicons() {

@@ -5,6 +5,7 @@ const cookieParser = require('cookie-parser');
 const compression = require('compression');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 // ⚙️ 환경변수 및 상수
@@ -93,20 +94,43 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// 🚀 중앙 UI 로더 무캐시 동적 엔드포인트 (.js 확장자 제외로 Cloudflare Edge 캐시 100% 원천 우회: cf-cache-status: DYNAMIC)
+// 🚀 중앙 UI 로더 스마트 캐싱 엔드포인트 (Cloudflare 엣지 고착은 차단하되, 브라우저는 5분 0ms 즉시 실행 + SWR 백그라운드 갱신)
+const jgUiFileCache = { mtimeMs: 0, body: '' };
+function getJgUiBodyCached(jgUiPath) {
+    try {
+        const stat = fs.statSync(jgUiPath);
+        if (!jgUiFileCache.body || stat.mtimeMs !== jgUiFileCache.mtimeMs) {
+            jgUiFileCache.body = fs.readFileSync(jgUiPath, 'utf8');
+            jgUiFileCache.mtimeMs = stat.mtimeMs;
+        }
+        return jgUiFileCache.body;
+    } catch (_) {
+        return null;
+    }
+}
+
 app.get('/api/jg-ui', (req, res) => {
+    const jgUiPath = path.join(__dirname, 'public', 'js', 'jg-ui.js');
+    const body = getJgUiBodyCached(jgUiPath);
+    if (body === null) {
+        return res.sendFile(jgUiPath);
+    }
+    const lanBanner = `window.__JG_LAN_CONFIG__ = ${JSON.stringify(getPublicLanConfig(req))};\n`;
+    const payload = lanBanner + body;
+    const etag = `W/"${crypto.createHash('sha1').update(payload).digest('hex').slice(0, 16)}"`;
+
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    const jgUiPath = path.join(__dirname, 'public', 'js', 'jg-ui.js');
-    fs.readFile(jgUiPath, 'utf8', (err, body) => {
-        if (err) return res.sendFile(jgUiPath);
-        const lanBanner = `window.__JG_LAN_CONFIG__ = ${JSON.stringify(getPublicLanConfig(req))};\n`;
-        res.send(lanBanner + body);
-    });
+    res.setHeader('Cache-Control', 'private, max-age=300, stale-while-revalidate=86400');
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('Cloudflare-CDN-Cache-Control', 'no-store');
+    res.setHeader('ETag', etag);
+
+    if (req.headers['if-none-match'] === etag) {
+        return res.status(304).end();
+    }
+    return res.send(payload);
 });
 
 // ==========================================
@@ -294,10 +318,9 @@ app.get('/sw.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'sw.js'));
 });
 
-// 1-9. 브라우저 표준 파비콘 (루트 요청 대응 및 즉시 갱신)
+// 1-9. 브라우저 표준 파비콘 (불필요한 매 페이지 왕복 방지)
 app.get('/favicon.ico', (req, res) => {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
     res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
 });
 
