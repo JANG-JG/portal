@@ -303,6 +303,7 @@
 
                 mediaRecorder.start();
                 stopTimer = setTimeout(stopMedia, MAX_REC_MS);
+                window.StudyPwaMic?.sync?.();
 
                 const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
                 if (Rec) {
@@ -316,8 +317,15 @@
                         sr.start();
                     } catch (_) {}
                 }
-            } catch (_) {
-                statusLine.textContent = '마이크 권한이 없어도 괜찮아요! 큰 소리로 읽고 👏 버튼을 눌러 주세요.';
+            } catch (err) {
+                if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+                    statusLine.textContent = '마이크가 차단되어 있어요. 상단/메뉴의 "🎤 마이크 허용" 또는 기기 앱 설정에서 마이크 권한을 켜 주세요!';
+                } else if (err && err.name === 'NotFoundError') {
+                    statusLine.textContent = '연결된 마이크를 찾을 수 없어요. 큰 소리로 읽고 👏 버튼을 눌러 주세요!';
+                } else {
+                    statusLine.textContent = '마이크 권한이 없어도 괜찮아요! 큰 소리로 읽고 👏 버튼을 눌러 주세요.';
+                }
+                window.StudyPwaMic?.sync?.();
                 stopMedia();
             }
         });

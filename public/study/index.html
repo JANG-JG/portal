@@ -25,19 +25,22 @@
     <link rel="stylesheet" href="/css/study-phase3.css">
     <link rel="stylesheet" href="/css/study-plaza-shop.css">
     <link rel="stylesheet" href="/css/study-curriculum.css">
+    <link rel="stylesheet" href="/css/study-rail.css">
 </head>
 <body>
-    <div class="study-shell">
-        <header class="study-topbar">
+    <div class="study-shell study-shell--dashboard">
+        <header class="study-topbar" id="studyDashTopbar">
             <div class="study-brand">
-                <img src="/study/icons/favicon-64.png" alt="" width="38" height="38" style="border-radius: 10px; object-fit: cover; flex-shrink: 0;" aria-hidden="true">
+                <img src="/study/icons/favicon-64.png" alt="" width="34" height="34" style="border-radius: 10px; object-fit: cover; flex-shrink: 0;" aria-hidden="true">
                 <div>
                     <h1>빨간패드공부</h1>
                     <small id="studyGreeting" style="color: #64748b; font-weight: 700;">오늘도 즐겁게 놀면서 배워보아요!</small>
                 </div>
+                <button type="button" id="btnToggleDashMenu" class="study-btn study-btn-outline study-topbar-menu-btn" aria-expanded="false" aria-controls="studyDashActions">⚙️ 메뉴</button>
             </div>
-            <div class="study-topbar-actions">
+            <div class="study-topbar-actions" id="studyDashActions">
                 <button type="button" id="btnRefreshDashboard" class="study-btn study-btn-outline" title="학습실 정보를 최신 상태로 새로고침해요">🔄 새로고침</button>
+                <button type="button" id="btnMicPermissionToggle" class="study-btn study-btn-outline" aria-pressed="false" title="따라 말하기 녹음을 위해 마이크 사용 권한을 확인하거나 허용해요">🎤 마이크 허용</button>
                 <button type="button" id="btnWakeLockToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">💡 화면 유지 중</button>
                 <button type="button" id="btnSoundFxToggle" class="study-btn study-btn-outline is-active" aria-pressed="true">🔔 효과음</button>
                 <a id="portalBackLink" href="/" class="study-link-btn study-btn-outline" hidden>🏠 포털 홈</a>

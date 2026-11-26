@@ -338,6 +338,10 @@ app.get(['/login', '/login.html'], (req, res) => {
 // 정적 파일 서빙 및 캐시 제어 (.well-known 디지털 자산 링크만 예외 허용하고 일반 dotfiles 차단)
 const studyPwaRoutes = require('./routes/studyPwa.routes');
 app.use('/', studyPwaRoutes);
+app.use('/study', (req, res, next) => {
+    res.setHeader('Permissions-Policy', 'microphone=(self)');
+    next();
+});
 app.use('/study', authenticateToken);
 app.use('/.well-known', express.static(path.join(__dirname, 'public', '.well-known')));
 app.use(express.static(path.join(__dirname, 'public'), {

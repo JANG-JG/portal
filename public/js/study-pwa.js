@@ -85,10 +85,104 @@
         });
     }
 
+    function showPwaToast(msg) {
+        const toast = document.getElementById('studyToast');
+        if (!toast) return;
+        toast.textContent = msg;
+        toast.hidden = false;
+        clearTimeout(toast._pwaTimer);
+        toast._pwaTimer = setTimeout(() => { toast.hidden = true; }, 3200);
+    }
+
+    function setupDashMenuToggle() {
+        const topbar = document.getElementById('studyDashTopbar');
+        const btn = document.getElementById('btnToggleDashMenu');
+        if (!topbar || !btn) return;
+        btn.addEventListener('click', () => {
+            const open = topbar.classList.toggle('is-menu-open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            btn.textContent = open ? '✕ 닫기' : '⚙️ 메뉴';
+        });
+    }
+
+    async function syncMicButtonState(btn) {
+        if (!btn) return;
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+            btn.textContent = '🎤 마이크 미지원';
+            btn.disabled = true;
+            return;
+        }
+        if (navigator.permissions && typeof navigator.permissions.query === 'function') {
+            try {
+                const status = await navigator.permissions.query({ name: 'microphone' });
+                const apply = () => {
+                    if (status.state === 'granted') {
+                        btn.textContent = '🎤 마이크 켜짐';
+                        btn.classList.add('is-active');
+                        btn.setAttribute('aria-pressed', 'true');
+                    } else if (status.state === 'denied') {
+                        btn.textContent = '🎤 마이크 차단됨';
+                        btn.classList.remove('is-active');
+                        btn.setAttribute('aria-pressed', 'false');
+                    } else {
+                        btn.textContent = '🎤 마이크 허용';
+                        btn.classList.remove('is-active');
+                        btn.setAttribute('aria-pressed', 'false');
+                    }
+                };
+                apply();
+                if (!status._studyBound) {
+                    status._studyBound = true;
+                    status.addEventListener('change', apply);
+                }
+            } catch (_) {}
+        }
+    }
+
+    function setupMicPermissionControl() {
+        const btn = document.getElementById('btnMicPermissionToggle');
+        if (!btn) return;
+        syncMicButtonState(btn);
+        btn.addEventListener('click', async () => {
+            if (!window.isSecureContext || !navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+                showPwaToast('HTTPS 보안 연결 환경에서만 마이크 권한을 요청할 수 있어요.');
+                return;
+            }
+            btn.disabled = true;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                stream.getTracks().forEach((t) => t.stop());
+                btn.textContent = '🎤 마이크 켜짐';
+                btn.classList.add('is-active');
+                btn.setAttribute('aria-pressed', 'true');
+                showPwaToast('✅ 마이크 권한이 허용되었어요! 이제 따라 말하기 녹음을 할 수 있어요.');
+            } catch (err) {
+                if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+                    btn.textContent = '🎤 마이크 차단됨';
+                    btn.classList.remove('is-active');
+                    btn.setAttribute('aria-pressed', 'false');
+                    showPwaToast('기기 설정 → 앱 → 빨간패드공부(또는 브라우저) → 권한 → 마이크를 허용해 주세요.');
+                } else if (err && err.name === 'NotFoundError') {
+                    showPwaToast('연결된 마이크를 찾을 수 없어요.');
+                } else {
+                    showPwaToast('마이크 권한 확인 중 오류가 발생했어요.');
+                }
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    }
+
+    window.StudyPwaMic = {
+        sync: () => syncMicButtonState(document.getElementById('btnMicPermissionToggle'))
+    };
+
     applyStandaloneUi();
     registerStudyServiceWorker();
     document.addEventListener('DOMContentLoaded', () => {
         applyStandaloneUi();
         setupInstallBanner();
+        setupDashMenuToggle();
+        setupMicPermissionControl();
     });
 })();

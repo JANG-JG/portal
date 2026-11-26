@@ -1,0 +1,200 @@
+/**
+ * ==============================================================================
+ * 학습실(/study) & 학습공간(sheet.html) 좌측 세로 레일(태블릿+) / 초슬림 상단(모바일)
+ * ------------------------------------------------------------------------------
+ * [규칙 3] 500줄 이하 모듈화 | [규칙 6] 360px 무넘침 · 44px+ 터치 · @media print 호환
+ * ==============================================================================
+ */
+
+.study-topbar-menu-btn {
+    display: none;
+}
+
+@media (max-width: 899px) {
+    .study-shell--dashboard .study-topbar {
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        gap: 8px;
+    }
+
+    .study-shell--dashboard .study-brand {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .study-shell--dashboard #studyGreeting {
+        display: none;
+    }
+
+    .study-topbar-menu-btn {
+        display: inline-flex;
+        min-height: 36px;
+        padding: 5px 10px;
+        font-size: 0.82rem;
+        flex-shrink: 0;
+    }
+
+    .study-shell--dashboard .study-topbar:not(.is-menu-open) .study-topbar-actions {
+        display: none;
+    }
+
+    .study-shell--dashboard .child-tabs {
+        gap: 8px;
+    }
+
+    .study-shell--dashboard .child-tab-btn {
+        padding: 8px 10px;
+        min-height: 48px;
+    }
+
+    .study-shell--dashboard .balance-banner {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+    body.is-sheet-step-mode .sheet-focus-bar {
+        padding: 5px 8px;
+        gap: 4px 6px;
+    }
+
+    body.is-sheet-step-mode .sheet-focus-back,
+    body.is-sheet-step-mode .sheet-focus-mini,
+    body.is-sheet-step-mode .sheet-focus-toggle {
+        min-block-size: 36px;
+        padding: 4px 9px;
+        font-size: 0.8rem;
+    }
+
+    body.is-sheet-step-mode .sheet-step-bar {
+        padding: 5px 8px;
+        gap: 4px 8px;
+    }
+}
+
+@media (min-width: 900px) {
+    .study-shell--dashboard {
+        display: grid;
+        grid-template-columns: 204px minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+        max-width: 1340px;
+    }
+
+    .study-shell--dashboard > .study-topbar {
+        grid-column: 1;
+        position: sticky;
+        top: 12px;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 12px;
+        gap: 10px;
+        margin-bottom: 0;
+    }
+
+    .study-shell--dashboard > .study-topbar .study-brand {
+        gap: 8px;
+    }
+
+    .study-shell--dashboard > .study-topbar h1 {
+        font-size: 1.05rem;
+    }
+
+    .study-shell--dashboard > .study-topbar #studyGreeting {
+        display: none;
+    }
+
+    .study-shell--dashboard > .study-topbar .study-topbar-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+
+    .study-shell--dashboard > .study-topbar .study-btn,
+    .study-shell--dashboard > .study-topbar .study-link-btn {
+        width: 100%;
+        justify-content: flex-start;
+        min-height: 40px;
+        padding: 7px 10px;
+        font-size: 0.84rem;
+    }
+
+    .study-shell--dashboard > #studyInstallBanner,
+    .study-shell--dashboard > .study-dashboard-main {
+        grid-column: 2;
+        min-width: 0;
+    }
+
+    /* 문제 풀이 학습 공간: 좌측 세로 진행·도구 레일 + 우측 전체 문제 영역 */
+    body.is-sheet-step-mode .study-shell--sheet {
+        display: grid;
+        grid-template-columns: 168px minmax(0, 1fr);
+        grid-template-rows: auto 1fr;
+        gap: 10px 14px;
+        max-width: 1340px;
+    }
+
+    body.is-sheet-step-mode.is-tools-open .study-topbar {
+        grid-column: 1 / -1;
+    }
+
+    body.is-sheet-step-mode .sheet-focus-bar {
+        grid-column: 1;
+        grid-row: 1 / -1;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        align-self: start;
+        padding: 10px;
+        gap: 8px;
+    }
+
+    body.is-sheet-step-mode.is-tools-open .sheet-focus-bar {
+        grid-row: 2;
+    }
+
+    body.is-sheet-step-mode .sheet-focus-left,
+    body.is-sheet-step-mode .sheet-focus-right {
+        flex-direction: column;
+        align-items: stretch;
+        flex: 0 0 auto;
+        width: 100%;
+        gap: 6px;
+    }
+
+    body.is-sheet-step-mode .sheet-focus-title {
+        white-space: normal;
+        font-size: 0.88rem;
+        line-height: 1.3;
+    }
+
+    body.is-sheet-step-mode .sheet-focus-back,
+    body.is-sheet-step-mode .sheet-focus-mini,
+    body.is-sheet-step-mode .sheet-focus-toggle {
+        width: 100%;
+        justify-content: flex-start;
+        min-block-size: 40px;
+        font-size: 0.83rem;
+    }
+
+    body.is-sheet-step-mode .study-shell--sheet > main {
+        grid-column: 2;
+        min-width: 0;
+    }
+
+    body.is-sheet-step-mode .sheet-step-bar {
+        padding: 5px 10px;
+    }
+}
+
+@media print {
+    .study-shell--dashboard {
+        display: block !important;
+        max-width: none !important;
+        padding: 0 !important;
+    }
+
+    #btnToggleDashMenu,
+    #btnMicPermissionToggle {
+        display: none !important;
+    }
+}
