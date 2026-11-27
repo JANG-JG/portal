@@ -357,7 +357,7 @@ async function getSuggestions(user, rawPrefix) {
     }
 
     extSuggestions.forEach((ext, idx) => {
-        const base = ext.type === 'wikipedia' ? 50 : 40;
+        const base = ext.type === 'google' ? 50 : 40;
         const rawScore = scoreCandidate(ext.text, q, isChosung, cleanChosung, base);
         const finalScore = rawScore >= 0 ? rawScore - idx : (base - idx);
         addCandidate(ext, finalScore);

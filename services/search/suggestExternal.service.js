@@ -127,7 +127,7 @@ async function fetchExternalSuggestions(rawPrefix) {
 
     const wikiItems = wikiRes.status === 'fulfilled' ? wikiRes.value : [];
     const googleItems = googleRes.status === 'fulfilled' ? googleRes.value : [];
-    const combined = [...wikiItems, ...googleItems];
+    const combined = [...googleItems, ...wikiItems];
 
     setExtCache(cacheKey, combined);
     return combined;
