@@ -37,29 +37,36 @@ let summaryCache = {
 };
 
 function requireWikiAccess(req, res, next) {
-    let effectiveUser = req.user;
-    if (req.user && req.user.id) {
-        try {
-            const dbUser = db.prepare('SELECT id, username, role, allowed_services, is_active FROM users WHERE id = ?').get(req.user.id);
-            if (!dbUser || dbUser.is_active === 0) {
-                if (req.path && req.path.startsWith('/api/')) {
-                    return res.status(403).json({ success: false, message: '비활성화된 계정입니다.' });
-                }
-                return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
+    const proceed = (effectiveUser) => {
+        if (!isServiceAllowed(effectiveUser, 'wiki')) {
+            if (req.path && req.path.startsWith('/api/')) {
+                return res.status(403).json({ success: false, message: '위키 접근 권한이 없습니다.' });
             }
-            effectiveUser = { ...req.user, ...dbUser };
-            req.user = effectiveUser;
-        } catch (e) {
-            // DB 조회 실패 시 토큰 정보 폴백
+            return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
         }
+        next();
+    };
+
+    if (req.user && req.user.username) {
+        return db.get(
+            'SELECT username, role, allowed_services, is_active FROM users WHERE username = ?',
+            [req.user.username],
+            (err, dbUser) => {
+                if (err) {
+                    return proceed(req.user);
+                }
+                if (!dbUser || dbUser.is_active === 0) {
+                    if (req.path && req.path.startsWith('/api/')) {
+                        return res.status(403).json({ success: false, message: '비활성화된 계정입니다.' });
+                    }
+                    return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
+                }
+                req.user = { ...req.user, ...dbUser };
+                return proceed(req.user);
+            }
+        );
     }
-    if (!isServiceAllowed(effectiveUser, 'wiki')) {
-        if (req.path && req.path.startsWith('/api/')) {
-            return res.status(403).json({ success: false, message: '위키 접근 권한이 없습니다.' });
-        }
-        return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
-    }
-    next();
+    return proceed(req.user);
 }
 
 function verifyWikiCsrfOrigin(req, res, next) {
