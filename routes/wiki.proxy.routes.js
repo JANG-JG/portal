@@ -15,8 +15,9 @@ const http = require('http');
 const path = require('path');
 const querystring = require('querystring');
 const { WIKI_HOST, WIKI_PORT, WIKI_BASE_URL, INTERNAL_API_SECRET } = require('../config/constants');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { isServiceAllowed } = require('../services/moduleRegistry.service');
+const { db } = require('../services/db');
 
 const router = express.Router();
 
@@ -36,13 +37,66 @@ let summaryCache = {
 };
 
 function requireWikiAccess(req, res, next) {
-    if (!isServiceAllowed(req.user, 'wiki')) {
+    let effectiveUser = req.user;
+    if (req.user && req.user.id) {
+        try {
+            const dbUser = db.prepare('SELECT id, username, role, allowed_services, is_active FROM users WHERE id = ?').get(req.user.id);
+            if (!dbUser || dbUser.is_active === 0) {
+                if (req.path && req.path.startsWith('/api/')) {
+                    return res.status(403).json({ success: false, message: '비활성화된 계정입니다.' });
+                }
+                return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
+            }
+            effectiveUser = { ...req.user, ...dbUser };
+            req.user = effectiveUser;
+        } catch (e) {
+            // DB 조회 실패 시 토큰 정보 폴백
+        }
+    }
+    if (!isServiceAllowed(effectiveUser, 'wiki')) {
         if (req.path && req.path.startsWith('/api/')) {
             return res.status(403).json({ success: false, message: '위키 접근 권한이 없습니다.' });
         }
         return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
     }
     next();
+}
+
+function verifyWikiCsrfOrigin(req, res, next) {
+    const method = (req.method || 'GET').toUpperCase();
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+        return next();
+    }
+    const rawSource = req.headers.origin || req.headers.referer || '';
+    if (!rawSource) {
+        return res.status(403).json({ success: false, message: '요청 출처(Origin)를 확인할 수 없어 차단되었습니다.' });
+    }
+    try {
+        const parsed = new URL(rawSource);
+        const reqHost = (req.get('host') || '').toLowerCase();
+        const allowedHosts = new Set(['j-jg.cc', reqHost, 'localhost', '127.0.0.1']);
+        const hostNoPort = parsed.hostname.toLowerCase();
+        if (!allowedHosts.has(parsed.host.toLowerCase()) && !allowedHosts.has(hostNoPort)) {
+            return res.status(403).json({ success: false, message: '허용되지 않은 출처에서의 상태 변경 요청입니다.' });
+        }
+        return next();
+    } catch (_) {
+        return res.status(403).json({ success: false, message: '유효하지 않은 Origin 헤더입니다.' });
+    }
+}
+
+function isSafeProxyTargetPath(rawTargetPath) {
+    if (!rawTargetPath || typeof rawTargetPath !== 'string') return false;
+    if (/[\r\n\0\\]/.test(rawTargetPath)) return false;
+    const qIdx = rawTargetPath.indexOf('?');
+    const rawPath = qIdx >= 0 ? rawTargetPath.slice(0, qIdx) : rawTargetPath;
+    try {
+        const decoded = decodeURIComponent(rawPath);
+        if (decoded.includes('\0') || decoded.includes('\\') || decoded.includes('..')) return false;
+    } catch (_) {
+        return false;
+    }
+    return rawPath.startsWith('/');
 }
 
 function sanitizeWikiStaticPath(rawOriginalUrl, allowedPrefix) {
@@ -70,20 +124,32 @@ function sanitizeWikiStaticPath(rawOriginalUrl, allowedPrefix) {
  * 범용 HTTP 리버스 프록시 포워더 (Keep-Alive 소켓 재사용)
  */
 function forwardToSecondaryWiki(req, res, targetPath, { injectInternalSecret = true } = {}) {
+    if (!isSafeProxyTargetPath(targetPath)) {
+        return res.status(400).json({ success: false, message: '잘못된 위키 요청 경로입니다.' });
+    }
     const rawContentType = req.headers['content-type'] || '';
     const isFormUrlEncoded = rawContentType.toLowerCase().includes('application/x-www-form-urlencoded');
     const isJson = rawContentType.toLowerCase().includes('application/json');
 
-    // 클라이언트 헤더 복사 및 호스트/길이 헤더 정돈
+    // 클라이언트 헤더 복사 및 호스트/길이/스푸핑 가능 내부 헤더 정돈
     const forwardHeaders = { ...req.headers };
     delete forwardHeaders['host'];
     delete forwardHeaders['content-length']; // 바디 직렬화 후 재계산 주입
     delete forwardHeaders['x-internal-secret'];
+    for (const key of Object.keys(forwardHeaders)) {
+        if (key.toLowerCase().startsWith('x-user-')) {
+            delete forwardHeaders[key];
+        }
+    }
 
     forwardHeaders['host'] = `${WIKI_HOST}:${WIKI_PORT}`;
     forwardHeaders['x-forwarded-for'] = req.ip || req.connection.remoteAddress;
     forwardHeaders['x-forwarded-proto'] = req.protocol;
     forwardHeaders['x-forwarded-host'] = req.get('host');
+    if (req.user) {
+        forwardHeaders['x-user-role'] = req.user.role === 'admin' ? 'admin' : 'family';
+        forwardHeaders['x-user-name'] = encodeURIComponent(String(req.user.username || '가족').slice(0, 20));
+    }
     if (injectInternalSecret && INTERNAL_API_SECRET) {
         forwardHeaders['x-internal-secret'] = INTERNAL_API_SECRET;
     }
@@ -109,11 +175,17 @@ function forwardToSecondaryWiki(req, res, targetPath, { injectInternalSecret = t
         }
 
         const outHeaders = { ...proxyRes.headers };
-        // 정적 자원에 버전 쿼리(?v=...)가 있는 경우 24시간 브라우저 캐싱 보장 ([규칙 4] 준수)
-        if (targetPath.startsWith('/static/') && req.query.v) {
-            outHeaders['cache-control'] = targetPath.startsWith('/static/uploads/')
-                ? 'private, max-age=86400'
-                : 'public, max-age=86400, immutable';
+        outHeaders['x-content-type-options'] = outHeaders['x-content-type-options'] || 'nosniff';
+        if (targetPath.startsWith('/static/uploads/')) {
+            outHeaders['cache-control'] = 'private, max-age=86400';
+            outHeaders['cdn-cache-control'] = 'no-store';
+        } else if (targetPath.startsWith('/static/')) {
+            outHeaders['cache-control'] = req.query.v
+                ? 'public, max-age=31536000, immutable'
+                : 'no-store, no-cache, must-revalidate, max-age=0';
+        } else {
+            outHeaders['cache-control'] = 'no-store, no-cache, must-revalidate, max-age=0';
+            outHeaders['cdn-cache-control'] = 'no-store';
         }
 
         res.writeHead(proxyRes.statusCode, outHeaders);
@@ -233,9 +305,17 @@ router.get('/api/wiki/dashboard-summary', authenticateToken, requireWikiAccess, 
 });
 
 // ------------------------------------------------------------------------------
-// 2. 위키 관련 REST API 프록시 (/api/wiki/*)
+// 2. 위키 관련 REST API 프록시 (/api/wiki/*) - 관리자 전용 라우트 선행 분리
 // ------------------------------------------------------------------------------
-router.all('/api/wiki/*', authenticateToken, requireWikiAccess, (req, res) => {
+router.get(['/api/wiki/ai/logs', '/api/wiki/revisions/recent'], authenticateToken, requireAdmin, (req, res) => {
+    forwardToSecondaryWiki(req, res, req.originalUrl);
+});
+
+router.post(['/api/wiki/wifi/update', '/api/wiki/medical/update'], verifyWikiCsrfOrigin, authenticateToken, requireAdmin, (req, res) => {
+    forwardToSecondaryWiki(req, res, req.originalUrl);
+});
+
+router.all('/api/wiki/*', verifyWikiCsrfOrigin, authenticateToken, requireWikiAccess, (req, res) => {
     forwardToSecondaryWiki(req, res, req.originalUrl);
 });
 
@@ -268,13 +348,17 @@ router.get('/static/uploads/*', authenticateToken, requireWikiAccess, (req, res)
     const safePath = sanitizeWikiStaticPath(req.originalUrl, '/static/uploads/');
     if (!safePath) return res.status(400).send('잘못된 파일 경로입니다.');
     res.setHeader('Cache-Control', 'private, max-age=86400');
-    forwardToSecondaryWiki(req, res, safePath, { injectInternalSecret: false });
+    forwardToSecondaryWiki(req, res, safePath, { injectInternalSecret: true });
 });
 
 // ------------------------------------------------------------------------------
-// 4. 위키 웹 화면 라우팅 (/wiki, /wiki/*) - 포털 단일 인증 필수
+// 4. 위키 웹 화면 라우팅 (/wiki, /wiki/*) - 관리자 삭제 분리 및 포털 단일 인증 필수
 // ------------------------------------------------------------------------------
-router.all(['/wiki', '/wiki/*'], authenticateToken, requireWikiAccess, (req, res) => {
+router.post('/wiki/delete/*', verifyWikiCsrfOrigin, authenticateToken, requireAdmin, (req, res) => {
+    forwardToSecondaryWiki(req, res, req.originalUrl);
+});
+
+router.all(['/wiki', '/wiki/*'], verifyWikiCsrfOrigin, authenticateToken, requireWikiAccess, (req, res) => {
     forwardToSecondaryWiki(req, res, req.originalUrl);
 });
 

@@ -127,8 +127,13 @@ function isServiceAllowed(user, serviceId) {
     if (!mod || mod.enabled === false) return false;
     if (mod.adminOnly) return false;
 
+    const hasExplicitAllowed =
+        user.allowed_services !== undefined &&
+        user.allowed_services !== null &&
+        String(user.allowed_services).trim() !== '';
     const allowedList = parseAllowedServices(user.allowed_services);
     if (allowedList.includes('all') || allowedList.includes(serviceId)) return true;
+    if (hasExplicitAllowed) return false;
 
     return Boolean(mod.defaultFamilyAllowed);
 }

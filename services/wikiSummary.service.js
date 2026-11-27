@@ -7,7 +7,7 @@
  */
 
 const http = require('http');
-const { WIKI_BASE_URL, JWT_SECRET } = require('../config/constants');
+const { WIKI_BASE_URL, INTERNAL_API_SECRET } = require('../config/constants');
 const { wikiDb } = require('./db');
 
 /**
@@ -39,7 +39,7 @@ function fetchWikiApi(apiPath, timeoutMs = 3000) {
         const url = `${WIKI_BASE_URL}${apiPath}`;
         const options = {
             timeout: timeoutMs,
-            headers: JWT_SECRET ? { 'X-Internal-Secret': JWT_SECRET } : {}
+            headers: INTERNAL_API_SECRET ? { 'X-Internal-Secret': INTERNAL_API_SECRET } : {}
         };
         const req = http.get(url, options, (res) => {
             if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -307,7 +307,7 @@ async function createWikiPage({ category = '생활', title, content_md, slug = '
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(payload),
-                    ...(JWT_SECRET ? { 'X-Internal-Secret': JWT_SECRET } : {})
+                    ...(INTERNAL_API_SECRET ? { 'X-Internal-Secret': INTERNAL_API_SECRET } : {})
                 }
             }, (res) => {
                 let rawData = '';
@@ -347,8 +347,8 @@ async function createWikiPage({ category = '생활', title, content_md, slug = '
         throw new Error('위키 DB에 연결할 수 없습니다.');
     }
 
-    let baseSlug = cleanSlug || cleanTitle.toLowerCase().replace(/[^a-z0-9가-힣\s-]/g, '').trim().replace(/\s+/g, '-');
-    if (!baseSlug) baseSlug = `page-${Date.now()}`;
+    let baseSlug = (cleanSlug || cleanTitle).toLowerCase().replace(/[^a-z0-9가-힣\s-]/g, '').trim().replace(/[\s-]+/g, '-').replace(/^-+|-+$/g, '');
+    if (!baseSlug || ['new', 'edit', 'delete'].includes(baseSlug)) baseSlug = `page-${Date.now()}`;
 
     const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
@@ -429,7 +429,7 @@ async function updateWikiPage({ slug, content_md, title = '', category = '', cha
                 headers: {
                     'Content-Type': 'application/json',
                     'Content-Length': Buffer.byteLength(payload),
-                    ...(JWT_SECRET ? { 'X-Internal-Secret': JWT_SECRET } : {})
+                    ...(INTERNAL_API_SECRET ? { 'X-Internal-Secret': INTERNAL_API_SECRET } : {})
                 }
             }, (res) => {
                 let data = '';

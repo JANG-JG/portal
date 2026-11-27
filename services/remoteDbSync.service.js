@@ -11,13 +11,27 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { WORKSPACE_ROOT } = require('../config/constants');
 
 const SECONDARY_HOST = process.env.SECONDARY_HOST || '192.168.50.75';
-const SECONDARY_PORT = process.env.SECONDARY_PORT || '22';
-const SECONDARY_USER = process.env.SECONDARY_USER || os.userInfo().username;
-const SECONDARY_SSH_OPTS = `ssh -p ${SECONDARY_PORT} -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=accept-new`;
+const SECONDARY_PORT = String(process.env.SECONDARY_PORT || '22').replace(/[^0-9]/g, '') || '22';
+const SECONDARY_USER = String(process.env.SECONDARY_USER || os.userInfo().username).replace(/[^a-zA-Z0-9._-]/g, '');
+const SECONDARY_SSH_ARGS = ['-p', SECONDARY_PORT, '-o', 'ConnectTimeout=3', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new'];
+const SECONDARY_SSH_RSH = `ssh -p ${SECONDARY_PORT} -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=accept-new`;
+
+function execFileAsync(cmd, args, timeout = 8000) {
+    return new Promise((resolve, reject) => {
+        execFile(cmd, args, { timeout }, (err, stdout, stderr) => {
+            if (err) {
+                err.stdout = stdout;
+                err.stderr = stderr;
+                return reject(err);
+            }
+            resolve({ stdout, stderr });
+        });
+    });
+}
 
 // 동기화 상태 인메모리 캐시
 const syncCache = {
@@ -43,7 +57,7 @@ function isRemoteDb(moduleConfig) {
 }
 
 /**
- * 보조 서버 원격 DB를 로컬로 동기화 (Pull)
+ * 보조 서버 원격 DB를 로컬로 동기화 (Pull - SQLite 온라인 스냅샷으로 WAL 무결성 보장)
  * @param {string} dbKey - 모듈 키 (예: 'wiki')
  * @param {boolean} force - 강제 동기화 여부
  */
@@ -70,76 +84,101 @@ async function pullRemoteDb(dbKey = 'wiki', force = false) {
     meta.syncing = true;
     const localDir = path.resolve(WORKSPACE_ROOT, 'family-wiki');
     const localPath = path.resolve(localDir, 'wiki.db');
+    const localTmpPath = path.resolve(localDir, '.wiki.sync.tmp.db');
     const remotePath = `/home/${SECONDARY_USER}/family-wiki/wiki.db`;
+    const remoteSnapPath = `/home/${SECONDARY_USER}/family-wiki/.wiki.sync.tmp.db`;
+    const sshTarget = `${SECONDARY_USER}@${SECONDARY_HOST}`;
 
-    return new Promise((resolve) => {
-        try {
-            if (!fs.existsSync(localDir)) {
-                fs.mkdirSync(localDir, { recursive: true });
-            }
-        } catch (e) {}
+    try {
+        if (!fs.existsSync(localDir)) {
+            fs.mkdirSync(localDir, { recursive: true });
+        }
 
-        const rsyncCmd = `rsync -avz -e "${SECONDARY_SSH_OPTS}" "${SECONDARY_USER}@${SECONDARY_HOST}:${remotePath}" "${localPath}"`;
+        // 1. 보조 서버에서 WAL 반영 온라인 백업 스냅샷 생성
+        await execFileAsync('ssh', [
+            ...SECONDARY_SSH_ARGS,
+            sshTarget,
+            `umask 077 && sqlite3 '${remotePath}' ".backup '${remoteSnapPath}'" && chmod 600 '${remoteSnapPath}'`
+        ], 8000);
 
-        exec(rsyncCmd, { timeout: 8000 }, (err, stdout, stderr) => {
-            meta.syncing = false;
-            if (err) {
-                console.warn(`⚠️ [보조 서버 DB 동기화 경고]: ${err.message}`);
-                meta.lastError = err.message;
-                const fileExists = fs.existsSync(localPath);
-                return resolve({
-                    success: fileExists,
-                    cachedFallback: fileExists,
-                    error: '보조 서버에 연결할 수 없어 기존 로컬 데이터를 유지합니다.',
-                    details: err.message,
-                    lastSyncedAt: meta.lastSyncedAt
-                });
-            }
+        // 2. 생성된 스냅샷을 안전하게 rsync 전송 후 원자적 교체
+        const { stdout } = await execFileAsync('rsync', [
+            '-avz', '--chmod=Fu=rw,Fgo=', '-e', SECONDARY_SSH_RSH,
+            `${sshTarget}:${remoteSnapPath}`, localTmpPath
+        ], 8000);
 
-            meta.lastSyncedAt = Date.now();
-            meta.lastError = null;
+        try { fs.chmodSync(localTmpPath, 0o600); } catch (e) {}
+        fs.renameSync(localTmpPath, localPath);
+        try { fs.chmodSync(localPath, 0o600); } catch (e) {}
 
-            let fileSize = 0;
-            try {
-                fileSize = fs.statSync(localPath).size;
-            } catch (e) {}
+        // 원격 임시 스냅샷 정리
+        execFileAsync('ssh', [...SECONDARY_SSH_ARGS, sshTarget, `rm -f '${remoteSnapPath}'`], 4000).catch(() => {});
 
-            resolve({
-                success: true,
-                message: '보조 서버 DB가 최신 상태로 동기화되었습니다.',
-                lastSyncedAt: meta.lastSyncedAt,
-                fileSize,
-                stdout: stdout.trim()
-            });
-        });
-    });
+        meta.syncing = false;
+        meta.lastSyncedAt = Date.now();
+        meta.lastError = null;
+
+        let fileSize = 0;
+        try { fileSize = fs.statSync(localPath).size; } catch (e) {}
+
+        return {
+            success: true,
+            message: '보조 서버 DB가 최신 상태로 동기화되었습니다.',
+            lastSyncedAt: meta.lastSyncedAt,
+            fileSize,
+            stdout: String(stdout || '').trim()
+        };
+    } catch (err) {
+        meta.syncing = false;
+        console.warn(`⚠️ [보조 서버 DB 동기화 경고]: ${err.message}`);
+        meta.lastError = '동기화 연결 실패';
+        try { if (fs.existsSync(localTmpPath)) fs.unlinkSync(localTmpPath); } catch (e) {}
+        execFileAsync('ssh', [...SECONDARY_SSH_ARGS, sshTarget, `rm -f '${remoteSnapPath}'`], 4000).catch(() => {});
+
+        const fileExists = fs.existsSync(localPath);
+        return {
+            success: fileExists,
+            cachedFallback: fileExists,
+            error: '보조 서버에 연결할 수 없어 기존 로컬 데이터를 유지합니다.',
+            lastSyncedAt: meta.lastSyncedAt
+        };
+    }
 }
 
 /**
- * 로컬 변경 사항을 보조 서버 원격 DB로 역동기화 (Push)
+ * 로컬 변경 사항을 보조 서버 원격 DB로 역동기화 (Push - SQLite 온라인 복원)
  * @param {string} dbKey - 모듈 키 (예: 'wiki')
  */
 async function pushRemoteDb(dbKey = 'wiki') {
     const meta = syncCache[dbKey] || {};
     const localPath = path.resolve(WORKSPACE_ROOT, 'family-wiki/wiki.db');
     const remotePath = `/home/${SECONDARY_USER}/family-wiki/wiki.db`;
+    const remotePushTmp = `/home/${SECONDARY_USER}/family-wiki/.wiki.push.tmp.db`;
+    const sshTarget = `${SECONDARY_USER}@${SECONDARY_HOST}`;
 
     if (!fs.existsSync(localPath)) {
         return { success: false, message: '로컬 DB 파일이 존재하지 않습니다.' };
     }
 
-    return new Promise((resolve) => {
-        const rsyncCmd = `rsync -avz -e "${SECONDARY_SSH_OPTS}" "${localPath}" "${SECONDARY_USER}@${SECONDARY_HOST}:${remotePath}"`;
+    try {
+        const { stdout } = await execFileAsync('rsync', [
+            '-avz', '--chmod=Fu=rw,Fgo=', '-e', SECONDARY_SSH_RSH,
+            localPath, `${sshTarget}:${remotePushTmp}`
+        ], 8000);
 
-        exec(rsyncCmd, { timeout: 8000 }, (err, stdout) => {
-            if (err) {
-                console.error(`🚨 [보조 서버 DB 푸시 오류]: ${err.message}`);
-                return resolve({ success: false, message: '보조 서버 푸시 실패', details: err.message });
-            }
-            if (meta) meta.lastSyncedAt = Date.now();
-            resolve({ success: true, message: '보조 서버 DB로 안전하게 반영되었습니다.', stdout: stdout.trim() });
-        });
-    });
+        await execFileAsync('ssh', [
+            ...SECONDARY_SSH_ARGS,
+            sshTarget,
+            `umask 077 && sqlite3 '${remotePath}' ".restore '${remotePushTmp}'" && chmod 600 '${remotePath}'* && rm -f '${remotePushTmp}'`
+        ], 8000);
+
+        if (meta) meta.lastSyncedAt = Date.now();
+        return { success: true, message: '보조 서버 DB로 안전하게 반영되었습니다.', stdout: String(stdout || '').trim() };
+    } catch (err) {
+        console.error(`🚨 [보조 서버 DB 푸시 오류]: ${err.message}`);
+        execFileAsync('ssh', [...SECONDARY_SSH_ARGS, sshTarget, `rm -f '${remotePushTmp}'`], 4000).catch(() => {});
+        return { success: false, message: '보조 서버 DB 반영에 실패했습니다.' };
+    }
 }
 
 /**

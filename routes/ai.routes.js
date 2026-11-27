@@ -231,6 +231,9 @@ router.post('/api/ai/chat', authenticateToken, async (req, res) => {
 // 4. 메모 ➔ 위키 정돈 API
 router.post('/api/ai/memo-to-wiki', authenticateToken, async (req, res) => {
     try {
+        if (!isServiceAllowed(req.user, 'wiki')) {
+            return res.status(403).json({ success: false, message: '위키 접근 권한이 없습니다.' });
+        }
         const { title, content } = req.body;
         if (!content || !content.trim()) {
             return res.status(400).json({ success: false, message: '정리할 메모 내용이 없습니다.' });
@@ -355,6 +358,9 @@ router.post('/api/ai/summarize', authenticateToken, async (req, res) => {
 // 7. 프롬프트 기반 위키 초안 자동 작성 API
 router.post('/api/ai/wiki-draft', authenticateToken, async (req, res) => {
     try {
+        if (!isServiceAllowed(req.user, 'wiki')) {
+            return res.status(403).json({ success: false, message: '위키 접근 권한이 없습니다.' });
+        }
         const { prompt, category = '생활' } = req.body;
         if (!prompt || !prompt.trim()) {
             return res.status(400).json({ success: false, message: '작성할 주제를 입력해 주세요.' });
