@@ -1,0 +1,420 @@
+/* ==========================================================================
+   🔍 JG 통합 스마트 검색 (/search & 포털 인라인 검색바) 스타일시트
+   - 모바일 360px 뷰포트 무넘침 보장 (box-sizing: border-box, min-width: 0)
+   ========================================================================== */
+
+:root {
+    --jgs-bg: #f8fafc;
+    --jgs-card: #ffffff;
+    --jgs-border: #e2e8f0;
+    --jgs-text: #0f172a;
+    --jgs-muted: #64748b;
+    --jgs-primary: #2563eb;
+    --jgs-primary-soft: #eff6ff;
+    --jgs-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--jgs-bg);
+    color: var(--jgs-text);
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    overflow-x: hidden;
+}
+
+.jg-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+.jg-search-shell {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1rem 0.85rem 3rem;
+    min-width: 0;
+}
+
+/* 헤더 & 검색 폼 */
+.jg-search-hero {
+    background: var(--jgs-card);
+    border: 1px solid var(--jgs-border);
+    border-radius: 16px;
+    padding: 1rem;
+    box-shadow: var(--jgs-shadow);
+    margin-bottom: 1rem;
+}
+
+.jg-search-brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.jg-search-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    color: var(--jgs-text);
+    font-weight: 800;
+    font-size: 1.15rem;
+}
+
+.jg-search-logo-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #0ea5e9);
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.jg-mini-weather-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border: 1px solid var(--jgs-border);
+    font-size: 0.82rem;
+    color: var(--jgs-text);
+}
+
+.jg-search-form {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.jg-search-box-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #ffffff;
+    border: 2px solid var(--jgs-primary);
+    border-radius: 12px;
+    padding: 0.35rem 0.45rem 0.35rem 0.75rem;
+    min-width: 0;
+}
+
+.jg-search-icon {
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.jg-search-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--jgs-text);
+    background: transparent;
+    padding: 0.4rem 0.2rem;
+}
+
+.jg-search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+}
+
+.jg-search-clear-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 50%;
+    background: #e2e8f0;
+    color: #475569;
+    cursor: pointer;
+    flex-shrink: 0;
+    font-size: 0.8rem;
+}
+
+.jg-search-submit-btn {
+    border: none;
+    border-radius: 9px;
+    background: var(--jgs-primary);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 0.55rem 0.95rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.jg-search-submit-btn:hover {
+    background: #1d4ed8;
+}
+
+/* 자동완성 드롭다운 */
+.jg-suggest-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 1px solid var(--jgs-border);
+    border-radius: 12px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.14);
+    z-index: 90;
+    overflow: hidden;
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.jg-suggest-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 0.65rem 0.9rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.92rem;
+    color: var(--jgs-text);
+}
+
+.jg-suggest-item:last-child {
+    border-bottom: none;
+}
+
+.jg-suggest-item:hover,
+.jg-suggest-item.active {
+    background: var(--jgs-primary-soft);
+}
+
+.jg-suggest-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jg-suggest-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: var(--jgs-muted);
+    flex-shrink: 0;
+}
+
+/* 카테고리 탭 */
+.jg-search-tabs {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.85rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+}
+
+.jg-search-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.jg-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid var(--jgs-border);
+    background: #f8fafc;
+    color: var(--jgs-muted);
+    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.jg-tab-btn.active {
+    background: var(--jgs-primary);
+    border-color: var(--jgs-primary);
+    color: #ffffff;
+}
+
+.jg-tab-count {
+    font-size: 0.75rem;
+    opacity: 0.85;
+}
+
+/* 검색 홈 카드 */
+.jg-home-card {
+    background: var(--jgs-card);
+    border: 1px solid var(--jgs-border);
+    border-radius: 14px;
+    padding: 1rem;
+    margin-bottom: 0.9rem;
+}
+
+.jg-home-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.jg-home-card-header h2 {
+    margin: 0;
+    font-size: 0.96rem;
+    font-weight: 700;
+}
+
+.jg-history-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.jg-text-btn {
+    background: transparent;
+    border: none;
+    color: var(--jgs-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.2rem 0.35rem;
+}
+
+.jg-text-btn.danger {
+    color: #ef4444;
+}
+
+.jg-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.jg-history-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #f1f5f9;
+    border: 1px solid var(--jgs-border);
+    border-radius: 999px;
+    padding: 0.32rem 0.65rem;
+    font-size: 0.84rem;
+    max-width: 100%;
+}
+
+.jg-history-chip-btn {
+    background: transparent;
+    border: none;
+    color: var(--jgs-text);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.84rem;
+    padding: 0;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jg-history-del-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.78rem;
+    padding: 0 2px;
+}
+
+.jg-hint-chip {
+    background: var(--jgs-primary-soft);
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
+    border-radius: 999px;
+    padding: 0.38rem 0.75rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.jg-shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.6rem;
+}
+
+.jg-shortcut-card {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--jgs-border);
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--jgs-text);
+    background: #f8fafc;
+    min-width: 0;
+}
+
+.jg-shortcut-card:hover {
+    border-color: var(--jgs-primary);
+    background: var(--jgs-primary-soft);
+}
+
+.jg-shortcut-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.jg-shortcut-info {
+    min-width: 0;
+    flex: 1;
+}
+
+.jg-shortcut-title {
+    font-size: 0.86rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.jg-shortcut-desc {
+    font-size: 0.73rem;
+    color: var(--jgs-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 즉답 카드·결과 목록·포털 인라인 검색바 스타일은 /css/search-widgets.css에 모듈화 */

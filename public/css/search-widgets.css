@@ -1,0 +1,322 @@
+/* ==========================================================================
+   ✨ JG 통합 스마트 검색 - 즉답 카드·결과 카드·모바일 반응형 스타일 (search-widgets.css)
+   ========================================================================== */
+
+/* 스마트 즉답 카드 */
+.jg-smart-card {
+    background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--jgs-shadow);
+}
+
+.jg-smart-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #1d4ed8;
+    background: #dbeafe;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    margin-bottom: 0.5rem;
+}
+
+.jg-weather-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.jg-weather-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.jg-weather-big-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.jg-weather-temp {
+    font-size: 1.85rem;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.jg-weather-city {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.15rem;
+}
+
+.jg-weather-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+    font-size: 0.82rem;
+    color: #334155;
+}
+
+.jg-forecast-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #dbeafe;
+}
+
+.jg-forecast-item {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.45rem;
+    text-align: center;
+    font-size: 0.78rem;
+}
+
+.jg-calc-value {
+    font-size: 1.7rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0.25rem 0;
+    word-break: break-all;
+}
+
+.jg-market-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.jg-market-tile {
+    background: #ffffff;
+    border: 1px solid var(--jgs-border);
+    border-radius: 10px;
+    padding: 0.55rem 0.7rem;
+}
+
+/* 내부 검색 결과 섹션 */
+.jg-section-card {
+    background: var(--jgs-card);
+    border: 1px solid var(--jgs-border);
+    border-radius: 14px;
+    padding: 0.95rem 1rem;
+    margin-bottom: 0.9rem;
+}
+
+.jg-section-title {
+    margin: 0 0 0.7rem;
+    font-size: 0.95rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.jg-result-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.jg-result-item {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    padding: 0.65rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid #f1f5f9;
+    background: #f8fafc;
+}
+
+.jg-result-item:hover {
+    border-color: #bfdbfe;
+    background: var(--jgs-primary-soft);
+}
+
+.jg-result-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 0.2rem;
+    word-break: break-word;
+}
+
+.jg-result-desc {
+    font-size: 0.82rem;
+    color: var(--jgs-muted);
+    line-height: 1.45;
+    word-break: break-word;
+}
+
+.jg-result-meta {
+    margin-top: 0.25rem;
+    font-size: 0.74rem;
+    color: #94a3b8;
+}
+
+/* 앨범 썸네일 그리드 (규칙 6 준수) */
+.jg-album-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+    gap: 0.65rem;
+}
+
+.jg-album-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--jgs-border);
+    border-radius: 10px;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    background: #ffffff;
+}
+
+.jg-album-thumb-wrap {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    background: #e2e8f0;
+    flex-shrink: 0;
+}
+
+.jg-album-thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.jg-album-info {
+    padding: 0.45rem 0.55rem;
+}
+
+.jg-album-caption {
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.jg-album-date {
+    font-size: 0.72rem;
+    color: var(--jgs-muted);
+}
+
+.jg-search-status-line {
+    font-size: 0.82rem;
+    color: var(--jgs-muted);
+    margin: 0 0 0.65rem 0.2rem;
+}
+
+.jg-loading-box,
+.jg-empty-box {
+    text-align: center;
+    padding: 2.2rem 1rem;
+    background: var(--jgs-card);
+    border: 1px solid var(--jgs-border);
+    border-radius: 14px;
+    color: var(--jgs-muted);
+}
+
+.jg-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #e2e8f0;
+    border-top-color: var(--jgs-primary);
+    border-radius: 50%;
+    margin: 0 auto 0.65rem;
+    animation: jgSpin 0.8s linear infinite;
+}
+
+@keyframes jgSpin {
+    to { transform: rotate(360deg); }
+}
+
+.jg-empty-icon {
+    font-size: 2rem;
+    margin-bottom: 0.4rem;
+}
+
+.jg-muted-text {
+    font-size: 0.84rem;
+    color: var(--jgs-muted);
+}
+
+/* 포털 메인(index.html) 상단 인라인 검색 위젯 */
+.jg-portal-search-section {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto 0.9rem;
+    padding: 0 0.25rem;
+}
+
+.jg-portal-search-form {
+    position: relative;
+    width: 100%;
+}
+
+.jg-portal-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    background: var(--hm-surface, #ffffff);
+    border: 1.5px solid var(--hm-border, #cbd5e1);
+    border-radius: 14px;
+    padding: 0.35rem 0.45rem 0.35rem 0.85rem;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+}
+
+.jg-portal-search-bar:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.jg-portal-search-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--hm-text, #0f172a);
+    font-size: 0.95rem;
+    font-family: inherit;
+    padding: 0.38rem 0;
+}
+
+.jg-portal-search-btn {
+    border: none;
+    border-radius: 10px;
+    background: #2563eb;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 0.48rem 0.9rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+    .jg-search-shell {
+        padding: 0.7rem 0.65rem 2.5rem;
+    }
+    .jg-search-hero {
+        padding: 0.8rem;
+    }
+    .jg-shortcuts-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .jg-album-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

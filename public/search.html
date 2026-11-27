@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JG 통합 검색</title>
+    <link rel="stylesheet" href="/css/pretendard.css">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="stylesheet" href="/css/search.css">
+    <link rel="stylesheet" href="/css/search-widgets.css">
+    <script>
+        (function() {
+            try {
+                var c = document.cookie || '';
+                var role = '';
+                var allowed = '';
+                var mRole = c.match(/(?:^|;\s*)jg_user_role=([^;]*)/);
+                role = mRole ? decodeURIComponent(mRole[1]) : (localStorage.getItem('jg_user_role') || '');
+                var mAllowed = c.match(/(?:^|;\s*)jg_allowed_services=([^;]*)/);
+                allowed = mAllowed ? decodeURIComponent(mAllowed[1]) : (localStorage.getItem('jg_allowed_services') || '');
+
+                if (role === 'admin') {
+                    document.documentElement.classList.add('role-admin');
+                } else if (role === 'family') {
+                    document.documentElement.classList.add('role-family', 'hide-ops');
+                    var arr = [];
+                    try { arr = JSON.parse(allowed); } catch(e) { arr = allowed ? allowed.split(',') : []; }
+                    if (!arr.includes('asset') && !arr.includes('all')) document.documentElement.classList.add('hide-asset');
+                    if (!arr.includes('blood') && !arr.includes('all')) document.documentElement.classList.add('hide-blood');
+                } else {
+                    document.documentElement.classList.add('hide-blood', 'hide-asset', 'hide-ops');
+                }
+            } catch (e) {}
+        })();
+    </script>
+</head>
+<body>
+    <div id="unified-nav-root"></div>
+
+    <main class="jg-search-shell">
+        <!-- 상단 고정 검색 헤더 -->
+        <section class="jg-search-hero" aria-label="통합 검색창">
+            <div class="jg-search-brand-row">
+                <a href="/" class="jg-search-logo" title="포털 홈으로">
+                    <span class="jg-search-logo-badge">JG</span>
+                    <span class="jg-search-logo-title">통합 검색</span>
+                </a>
+                <div class="jg-mini-weather-pill" id="jgHomeWeatherPill" style="display:none;">
+                    <span id="jgHomeWeatherIcon">🌤️</span>
+                    <span id="jgHomeWeatherCity">서울</span>
+                    <strong id="jgHomeWeatherTemp">-</strong>
+                </div>
+            </div>
+
+            <form id="jgSearchForm" class="jg-search-form" autocomplete="off" role="search">
+                <label for="jgSearchInput" class="jg-sr-only">검색어 입력</label>
+                <div class="jg-search-box-wrap">
+                    <span class="jg-search-icon" aria-hidden="true">🔍</span>
+                    <input
+                        type="search"
+                        id="jgSearchInput"
+                        class="jg-search-input"
+                        placeholder="날씨, 환율, 계산기, 메모, 위키, 앨범, 일정 검색..."
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <button type="button" id="jgSearchClearBtn" class="jg-search-clear-btn" aria-label="검색어 지우기" style="display:none;">✕</button>
+                    <button type="submit" id="jgSearchSubmitBtn" class="jg-search-submit-btn">검색</button>
+                </div>
+                <div id="jgSuggestDropdown" class="jg-suggest-dropdown" role="listbox" style="display:none;"></div>
+            </form>
+
+            <!-- 카테고리 필터 탭 (검색어 입력 시 표시) -->
+            <nav class="jg-search-tabs" id="jgSearchTabs" aria-label="검색 카테고리" style="display:none;">
+                <button type="button" class="jg-tab-btn active" data-tab="all">통합검색 <span class="jg-tab-count" id="tabCntAll">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="memoCalendar">메모·일정 <span class="jg-tab-count" id="tabCntMemoCal">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="wikiNews">위키·뉴스 <span class="jg-tab-count" id="tabCntWikiNews">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="album">사진·앨범 <span class="jg-tab-count" id="tabCntAlbum">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="healthAsset">건강·자산 <span class="jg-tab-count" id="tabCntHealthAsset">0</span></button>
+            </nav>
+        </section>
+
+        <!-- 1. 검색 홈 화면 (검색어 없을 때) -->
+        <section id="jgSearchHomeSection" class="jg-search-home">
+            <div class="jg-home-card">
+                <div class="jg-home-card-header">
+                    <h2>🕒 최근 검색어</h2>
+                    <div class="jg-history-controls">
+                        <button type="button" id="jgToggleAutoSaveBtn" class="jg-text-btn">자동저장 켜짐</button>
+                        <button type="button" id="jgClearHistoryBtn" class="jg-text-btn danger">전체 삭제</button>
+                    </div>
+                </div>
+                <div id="jgRecentHistoryList" class="jg-chip-list">
+                    <span class="jg-muted-text">불러오는 중...</span>
+                </div>
+            </div>
+
+            <div class="jg-home-card">
+                <div class="jg-home-card-header">
+                    <h2>✨ 이렇게 검색해 보세요</h2>
+                </div>
+                <div class="jg-chip-list">
+                    <button type="button" class="jg-hint-chip" data-query="오늘 날씨">🌤️ 오늘 날씨</button>
+                    <button type="button" class="jg-hint-chip" data-query="도쿄 날씨">🗼 도쿄 날씨</button>
+                    <button type="button" class="jg-hint-chip" data-query="원달러 환율">💱 원달러 환율</button>
+                    <button type="button" class="jg-hint-chip" data-query="코스피 증시">📈 코스피 증시</button>
+                    <button type="button" class="jg-hint-chip" data-query="34평 몇제곱미터">📐 34평 몇제곱미터</button>
+                    <button type="button" class="jg-hint-chip" data-query="12500 * 12">🧮 12500 * 12</button>
+                </div>
+            </div>
+
+            <div class="jg-home-card">
+                <div class="jg-home-card-header">
+                    <h2>⚡ 우리 사이트 바로가기</h2>
+                </div>
+                <div id="jgHomeShortcutsGrid" class="jg-shortcuts-grid"></div>
+            </div>
+        </section>
+
+        <!-- 2. 검색 결과 화면 -->
+        <section id="jgSearchResultsSection" class="jg-search-results" style="display:none;">
+            <div id="jgSearchStatusLine" class="jg-search-status-line"></div>
+            <div id="jgSearchLoading" class="jg-loading-box" style="display:none;">
+                <div class="jg-spinner"></div>
+                <span>스마트 즉답과 우리 사이트 자료를 찾고 있어요...</span>
+            </div>
+            <div id="jgSmartWidgetMount"></div>
+            <div id="jgInternalResultsMount"></div>
+            <div id="jgEmptyResults" class="jg-empty-box" style="display:none;">
+                <div class="jg-empty-icon">🔎</div>
+                <p id="jgEmptyResultsText">검색 결과가 없습니다.</p>
+                <small>다른 키워드나 초성, 또는 날씨·환율·계산식을 입력해 보세요.</small>
+            </div>
+        </section>
+    </main>
+
+    <script src="/js/search-renderers.js"></script>
+    <script src="/js/search-page.js"></script>
+    <script src="/api/jg-ui" defer></script>
+</body>
+</html>

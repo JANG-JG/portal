@@ -173,4 +173,129 @@ router.get('/unified', authenticateToken, async (req, res) => {
     }
 });
 
+// ==============================================================================
+// 🚀 [전용 스마트 통합 검색 (/search) 1단계 API]
+// ==============================================================================
+const { resolveSmartWidget, getHomeMiniWeather } = require('../services/search/smartWidget.service');
+const { searchAllInternal, getAllowedShortcuts } = require('../services/search/internalSearch.service');
+const {
+    getHistory,
+    addHistory,
+    deleteHistoryItem,
+    clearHistory,
+    getAutoSaveSetting,
+    setAutoSaveSetting,
+    getSuggestions
+} = require('../services/search/searchHistory.service');
+
+router.get('/home', authenticateToken, async (req, res) => {
+    const userId = req.user.username || 'admin';
+    try {
+        const [miniWeather, history, autoSave] = await Promise.all([
+            getHomeMiniWeather(req.user),
+            getHistory(userId, 12),
+            getAutoSaveSetting(userId)
+        ]);
+        const shortcuts = getAllowedShortcuts(req.user);
+        res.json({
+            success: true,
+            miniWeather,
+            history,
+            autoSave,
+            shortcuts
+        });
+    } catch (e) {
+        console.error('[Search home err]:', e);
+        res.status(500).json({ success: false, message: '검색 홈 정보를 불러오지 못했습니다.' });
+    }
+});
+
+router.get('/portal', authenticateToken, async (req, res) => {
+    const rawQuery = (req.query.q || '').trim().slice(0, 120);
+    const userId = req.user.username || 'admin';
+
+    if (!rawQuery) {
+        return res.json({
+            success: true,
+            query: '',
+            smartWidget: null,
+            internal: { isChosung: false, total: 0, results: {} },
+            counts: {}
+        });
+    }
+
+    try {
+        // 검색 실행 시 자동저장 설정에 따라 최근 검색어 비동기 기록
+        if (req.query.save !== '0') {
+            addHistory(userId, rawQuery).catch(() => {});
+        }
+
+        const [smartWidget, internal] = await Promise.all([
+            resolveSmartWidget(rawQuery, req.user),
+            searchAllInternal(rawQuery, req.user)
+        ]);
+
+        const r = internal.results || {};
+        const counts = {
+            all: internal.total + (smartWidget ? 1 : 0),
+            internal: internal.total,
+            memoCalendar: (r.memos?.length || 0) + (r.calendar?.length || 0),
+            wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0),
+            album: r.album?.length || 0,
+            healthAsset: (r.hospitals?.length || 0) + (r.medications?.length || 0) + (r.assets?.length || 0) + (r.kindergarten?.length || 0)
+        };
+
+        res.json({
+            success: true,
+            query: rawQuery,
+            smartWidget,
+            internal,
+            counts
+        });
+    } catch (e) {
+        console.error('[Portal search err]:', e);
+        res.status(500).json({ success: false, message: '통합 검색 처리 중 오류가 발생했습니다.' });
+    }
+});
+
+router.get('/suggest', authenticateToken, async (req, res) => {
+    const prefix = (req.query.q || '').trim().slice(0, 80);
+    try {
+        const suggestions = await getSuggestions(req.user, prefix);
+        res.json({ success: true, suggestions });
+    } catch (e) {
+        res.json({ success: true, suggestions: [] });
+    }
+});
+
+router.post('/history', authenticateToken, async (req, res) => {
+    const userId = req.user.username || 'admin';
+    const q = (req.body?.query || '').trim().slice(0, 100);
+    if (!q) return res.status(400).json({ success: false, message: '검색어가 비어 있습니다.' });
+    const saved = await addHistory(userId, q);
+    res.json({ success: true, saved });
+});
+
+router.delete('/history/:id', authenticateToken, async (req, res) => {
+    const userId = req.user.username || 'admin';
+    const ok = await deleteHistoryItem(userId, req.params.id);
+    if (!ok) return res.status(404).json({ success: false, message: '삭제할 검색어를 찾지 못했습니다.' });
+    res.json({ success: true });
+});
+
+router.delete('/history', authenticateToken, async (req, res) => {
+    const userId = req.user.username || 'admin';
+    await clearHistory(userId);
+    res.json({ success: true });
+});
+
+router.patch('/settings', authenticateToken, async (req, res) => {
+    const userId = req.user.username || 'admin';
+    if (typeof req.body?.autoSave !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'autoSave 값이 올바르지 않습니다.' });
+    }
+    const autoSave = await setAutoSaveSetting(userId, req.body.autoSave);
+    res.json({ success: true, autoSave });
+});
+
 module.exports = router;

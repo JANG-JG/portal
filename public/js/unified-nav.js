@@ -25,7 +25,7 @@
         }
     };
 
-    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261127_200647';
+    const UNAV_VERSION = window.__JG_UI_VERSION__ || '20261127_234517';
     const CACHE_KEY_HTML = 'jg_unav_html_v2', CACHE_KEY_VER = 'jg_unav_ver_v2', CACHE_KEY_TIME = 'jg_unav_time_v2';
     const STALE_CHECK_INTERVAL = 5 * 60 * 1000;
     const PORTAL_ORIGIN = window.__JG_PORTAL_ORIGIN__ || 'https://j-jg.cc';
@@ -637,6 +637,14 @@
         if (btn) {
             e.preventDefault();
             if (typeof window.addTelegramBriefingTime === 'function') window.addTelegramBriefingTime();
+        }
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            const target = (window.location.origin === PORTAL_ORIGIN || window.location.hostname === 'localhost') ? '/search' : `${PORTAL_ORIGIN}/search`;
+            window.location.href = target;
         }
     });
 

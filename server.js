@@ -278,6 +278,11 @@ app.get(['/ai', '/ai.html', '/chat'], authenticateToken, (req, res) => {
     sendHtml(res, 'ai.html');
 });
 
+// 1-4-1. 전용 스마트 통합 검색 화면
+app.get(['/search', '/search.html'], authenticateToken, (req, res) => {
+    sendHtml(res, 'search.html');
+});
+
 // 1-4. 오프라인 대체 화면
 app.get('/offline.html', (req, res) => {
     sendHtml(res, 'offline.html');

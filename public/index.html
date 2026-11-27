@@ -33,6 +33,8 @@
     <link rel="stylesheet" href="/css/portal-ai-chat.css">
     <link rel="stylesheet" href="/css/portal-ai-history.css">
     <link rel="stylesheet" href="/css/pokemon-meadow.css">
+    <link rel="stylesheet" href="/css/search.css">
+    <link rel="stylesheet" href="/css/search-widgets.css">
     <!-- 🛡️ 권한 기반 UI 즉시 적용 (FOUC / 메뉴 깜빡임 원천 차단) -->
     <script>
         (function() {
@@ -71,6 +73,26 @@
     <button type="button" id="btnPwaInstall" style="display:none;"></button>
 
     <main class="main-shell">
+
+        <!-- 🔍 JG 통합 스마트 검색바 -->
+        <section class="jg-portal-search-section" aria-label="통합 스마트 검색">
+            <form id="jgPortalInlineSearchForm" class="jg-portal-search-form" autocomplete="off" role="search">
+                <label for="jgPortalInlineSearchInput" class="jg-sr-only">통합 검색어 입력</label>
+                <div class="jg-portal-search-bar">
+                    <span class="jg-search-icon" aria-hidden="true">🔍</span>
+                    <input
+                        type="search"
+                        id="jgPortalInlineSearchInput"
+                        class="jg-portal-search-input"
+                        placeholder="날씨, 환율, 계산기, 메모, 위키, 앨범, 일정 통합 검색..."
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <button type="submit" class="jg-portal-search-btn">검색</button>
+                </div>
+                <div id="jgPortalInlineSuggest" class="jg-suggest-dropdown" role="listbox" style="display:none;"></div>
+            </form>
+        </section>
 
         <!-- ===================================================================== -->
         <!-- 🍱 JG UNIFIED BENTO COMMAND CENTER (12-Column High-Density Layout) -->
@@ -612,6 +634,7 @@
     <script src="/js/portal-dashboard-dnd.js"></script>
     <script src="/js/pokemon-meadow.js"></script>
     <script src="/js/portal-study-pokemon.js"></script>
+    <script src="/js/search-bar-widget.js"></script>
     <script src="/api/jg-ui" defer></script>
 </body>
 </html>

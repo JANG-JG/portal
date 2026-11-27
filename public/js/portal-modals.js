@@ -73,22 +73,9 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// 🔍 3. 통합 퀵 검색 모달 (Ctrl+K)
+// 🔍 3. 통합 퀵 검색 (/search 전용 페이지 이동)
 function openQuickSearchModal() {
-    const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
-    if (modal) {
-        modal.classList.add('active');
-        modal.classList.add('open');
-        modal.style.setProperty('display', 'flex', 'important');
-        const input = document.getElementById('qsInput');
-        if (input) {
-            setTimeout(() => {
-                input.focus();
-                input.select();
-            }, 60);
-        }
-        lockBodyScroll();
-    }
+    window.location.href = '/search';
 }
 
 function closeQuickSearchModal() {
@@ -105,12 +92,7 @@ function closeQuickSearchModal() {
 window.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
-        const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
-        if (modal && (modal.classList.contains('active') || modal.style.display === 'flex')) {
-            closeQuickSearchModal();
-        } else {
-            openQuickSearchModal();
-        }
+        window.location.href = '/search';
     } else if (e.key === 'Escape') {
         closeBpGuideModal();
         closeQuickSearchModal();

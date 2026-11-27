@@ -1,0 +1,380 @@
+/**
+ * 🔍 JG 통합 스마트 검색 페이지 컨트롤러 (search-page.js)
+ * - IME 안전 엔터 제출, 실시간 자동완성, 최근 검색어 관리, 스마트 즉답 카드 & 내부 통합 결과 렌더링
+ */
+(function () {
+    'use strict';
+
+    const state = {
+        query: '',
+        tab: 'all',
+        autoSave: true,
+        lastPayload: null,
+        suggestTimer: null,
+        suggestIndex: -1,
+        suggestions: []
+    };
+
+    const el = (id) => document.getElementById(id);
+    const makeEl = (tag, className, text) => {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = String(text);
+        return node;
+    };
+
+    function safeHref(url) {
+        if (!url || typeof url !== 'string') return '#';
+        const trimmed = url.trim();
+        if (trimmed.startsWith('/') || trimmed.startsWith('https://') || trimmed.startsWith('http://')) {
+            return trimmed;
+        }
+        return '#';
+    }
+
+    function readUrlParams() {
+        const sp = new URLSearchParams(window.location.search);
+        return {
+            q: (sp.get('q') || '').trim(),
+            tab: (sp.get('tab') || 'all').trim()
+        };
+    }
+
+    function updateUrl(q, tab, replace = false) {
+        const sp = new URLSearchParams();
+        if (q) sp.set('q', q);
+        if (tab && tab !== 'all') sp.set('tab', tab);
+        const qs = sp.toString();
+        const nextUrl = qs ? `/search?${qs}` : '/search';
+        if (replace) window.history.replaceState({ q, tab }, '', nextUrl);
+        else window.history.pushState({ q, tab }, '', nextUrl);
+    }
+
+    async function loadHomeData() {
+        try {
+            const res = await fetch('/api/search/home', { credentials: 'include' });
+            const data = await res.json();
+            if (!data.success) return;
+
+            state.autoSave = data.autoSave !== false;
+            updateAutoSaveBtn();
+
+            if (data.miniWeather && data.miniWeather.temp) {
+                el('jgHomeWeatherIcon').textContent = data.miniWeather.icon || '🌤️';
+                el('jgHomeWeatherCity').textContent = data.miniWeather.city || '서울';
+                el('jgHomeWeatherTemp').textContent = data.miniWeather.temp;
+                el('jgHomeWeatherPill').style.display = 'inline-flex';
+            }
+
+            renderHistoryChips(data.history || []);
+            renderShortcutsGrid(data.shortcuts || []);
+        } catch (_) {}
+    }
+
+    function updateAutoSaveBtn() {
+        const btn = el('jgToggleAutoSaveBtn');
+        if (btn) btn.textContent = state.autoSave ? '자동저장 켜짐' : '자동저장 꺼짐';
+    }
+
+    function renderHistoryChips(history) {
+        const box = el('jgRecentHistoryList');
+        if (!box) return;
+        box.replaceChildren();
+        if (!history.length) {
+            box.appendChild(makeEl('span', 'jg-muted-text', state.autoSave ? '최근 검색 기록이 없습니다.' : '자동저장이 꺼져 있습니다.'));
+            return;
+        }
+        history.forEach((item) => {
+            const chip = makeEl('div', 'jg-history-chip');
+            const qBtn = makeEl('button', 'jg-history-chip-btn', item.query);
+            qBtn.type = 'button';
+            qBtn.addEventListener('click', () => runSearch(item.query, 'all'));
+
+            const delBtn = makeEl('button', 'jg-history-del-btn', '✕');
+            delBtn.type = 'button';
+            delBtn.title = '검색어 삭제';
+            delBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await fetch(`/api/search/history/${item.id}`, { method: 'DELETE', credentials: 'include' });
+                loadHomeData();
+            });
+
+            chip.append(qBtn, delBtn);
+            box.appendChild(chip);
+        });
+    }
+
+    function renderShortcutsGrid(shortcuts) {
+        const grid = el('jgHomeShortcutsGrid');
+        if (!grid) return;
+        grid.replaceChildren();
+        shortcuts.forEach((s) => {
+            const card = makeEl('a', 'jg-shortcut-card');
+            card.href = safeHref(s.url);
+            const icon = makeEl('span', 'jg-shortcut-icon', s.icon || '🔗');
+            const info = makeEl('div', 'jg-shortcut-info');
+            info.append(makeEl('div', 'jg-shortcut-title', s.title), makeEl('div', 'jg-shortcut-desc', s.desc));
+            card.append(icon, info);
+            grid.appendChild(card);
+        });
+    }
+
+    function showHomeMode() {
+        state.query = '';
+        state.lastPayload = null;
+        el('jgSearchTabs').style.display = 'none';
+        el('jgSearchResultsSection').style.display = 'none';
+        el('jgSearchHomeSection').style.display = 'block';
+        document.title = 'JG 통합 검색';
+        loadHomeData();
+    }
+
+    async function runSearch(rawQuery, tab = 'all', pushUrl = true) {
+        const q = (rawQuery || '').trim();
+        if (!q) {
+            if (pushUrl) updateUrl('', 'all');
+            showHomeMode();
+            return;
+        }
+
+        state.query = q;
+        state.tab = tab || 'all';
+        el('jgSearchInput').value = q;
+        el('jgSearchClearBtn').style.display = 'inline-flex';
+        hideSuggest();
+
+        if (pushUrl) updateUrl(q, state.tab);
+        document.title = `${q} - JG 통합 검색`;
+
+        el('jgSearchHomeSection').style.display = 'none';
+        el('jgSearchResultsSection').style.display = 'block';
+        el('jgSearchTabs').style.display = 'flex';
+        el('jgSearchLoading').style.display = 'block';
+        el('jgEmptyResults').style.display = 'none';
+        el('jgSmartWidgetMount').replaceChildren();
+        el('jgInternalResultsMount').replaceChildren();
+        updateTabUI();
+
+        try {
+            const res = await fetch(`/api/search/portal?q=${encodeURIComponent(q)}`, { credentials: 'include' });
+            const payload = await res.json();
+            el('jgSearchLoading').style.display = 'none';
+            if (!payload.success) {
+                showEmpty(q);
+                return;
+            }
+            state.lastPayload = payload;
+            updateTabCounts(payload.counts || {});
+            renderResults();
+        } catch (_) {
+            el('jgSearchLoading').style.display = 'none';
+            showEmpty(q);
+        }
+    }
+
+    function updateTabUI() {
+        document.querySelectorAll('#jgSearchTabs .jg-tab-btn').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.tab === state.tab);
+        });
+    }
+
+    function updateTabCounts(counts) {
+        el('tabCntAll').textContent = counts.all || 0;
+        el('tabCntMemoCal').textContent = counts.memoCalendar || 0;
+        el('tabCntWikiNews').textContent = counts.wikiNews || 0;
+        el('tabCntAlbum').textContent = counts.album || 0;
+        el('tabCntHealthAsset').textContent = counts.healthAsset || 0;
+    }
+
+    function showEmpty(q) {
+        el('jgEmptyResultsText').textContent = `'${q}'에 대한 검색 결과가 없습니다.`;
+        el('jgEmptyResults').style.display = 'block';
+    }
+
+    function renderResults() {
+        const p = state.lastPayload;
+        if (!p) return;
+        const r = p.internal?.results || {};
+        const tab = state.tab;
+        const R = window.JGSearchRenderers;
+
+        if (tab === 'all') R.renderSmartWidget(el('jgSmartWidgetMount'), p.smartWidget);
+        else el('jgSmartWidgetMount').replaceChildren();
+
+        let shownCount = tab === 'all' && p.smartWidget ? 1 : 0;
+        shownCount += R.renderInternalSections(el('jgInternalResultsMount'), r, tab);
+
+        el('jgSearchStatusLine').textContent = `'${p.query}' 검색 결과 (${p.internal?.isChosung ? '초성 검색 · ' : ''}총 ${p.counts?.all || 0}건)`;
+        el('jgEmptyResults').style.display = shownCount === 0 ? 'block' : 'none';
+        if (shownCount === 0) showEmpty(p.query);
+    }
+
+    // 자동완성 제어
+    function hideSuggest() {
+        el('jgSuggestDropdown').style.display = 'none';
+        state.suggestIndex = -1;
+    }
+
+    function renderSuggestions(list) {
+        const box = el('jgSuggestDropdown');
+        box.replaceChildren();
+        state.suggestions = list || [];
+        state.suggestIndex = -1;
+        if (!state.suggestions.length) {
+            box.style.display = 'none';
+            return;
+        }
+        state.suggestions.forEach((s, idx) => {
+            const btn = makeEl('button', 'jg-suggest-item');
+            btn.type = 'button';
+            btn.dataset.idx = String(idx);
+            btn.append(makeEl('span', 'jg-suggest-text', s.text), makeEl('span', 'jg-suggest-badge', s.badge || ''));
+            btn.addEventListener('click', () => {
+                hideSuggest();
+                if (s.type === 'shortcut' && s.url) {
+                    window.location.href = safeHref(s.url);
+                } else {
+                    runSearch(s.text, 'all');
+                }
+            });
+            box.appendChild(btn);
+        });
+        box.style.display = 'block';
+    }
+
+    async function fetchSuggestions(prefix) {
+        try {
+            const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(prefix)}`, { credentials: 'include' });
+            const data = await res.json();
+            if (data.success) renderSuggestions(data.suggestions);
+        } catch (_) {}
+    }
+
+    function initEvents() {
+        const form = el('jgSearchForm');
+        const input = el('jgSearchInput');
+        const clearBtn = el('jgSearchClearBtn');
+
+        input.addEventListener('input', () => {
+            const val = input.value;
+            clearBtn.style.display = val ? 'inline-flex' : 'none';
+            clearTimeout(state.suggestTimer);
+            state.suggestTimer = setTimeout(() => fetchSuggestions(val.trim()), 150);
+        });
+
+        input.addEventListener('focus', () => {
+            fetchSuggestions(input.value.trim());
+        });
+
+        // IME 조합 중 Enter 조기 제출 방지 (ime-safe-enter-submit 가이드 준수)
+        input.addEventListener('keydown', (e) => {
+            const dropdown = el('jgSuggestDropdown');
+            const isOpen = dropdown.style.display === 'block' && state.suggestions.length > 0;
+
+            if (e.key === 'ArrowDown' && isOpen) {
+                e.preventDefault();
+                state.suggestIndex = (state.suggestIndex + 1) % state.suggestions.length;
+                highlightSuggest();
+                return;
+            }
+            if (e.key === 'ArrowUp' && isOpen) {
+                e.preventDefault();
+                state.suggestIndex = (state.suggestIndex - 1 + state.suggestions.length) % state.suggestions.length;
+                highlightSuggest();
+                return;
+            }
+            if (e.key === 'Escape') {
+                hideSuggest();
+                return;
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.isComposing || e.keyCode === 229) return;
+                if (isOpen && state.suggestIndex >= 0) {
+                    const chosen = state.suggestions[state.suggestIndex];
+                    hideSuggest();
+                    if (chosen.type === 'shortcut' && chosen.url) {
+                        window.location.href = safeHref(chosen.url);
+                        return;
+                    }
+                    runSearch(chosen.text, 'all');
+                    return;
+                }
+                form.requestSubmit();
+            }
+        });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            runSearch(input.value, 'all');
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            clearBtn.style.display = 'none';
+            input.focus();
+            updateUrl('', 'all');
+            showHomeMode();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!form.contains(e.target)) hideSuggest();
+        });
+
+        document.querySelectorAll('#jgSearchTabs .jg-tab-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                state.tab = btn.dataset.tab || 'all';
+                updateTabUI();
+                updateUrl(state.query, state.tab, true);
+                renderResults();
+            });
+        });
+
+        document.querySelectorAll('.jg-hint-chip').forEach((chip) => {
+            chip.addEventListener('click', () => runSearch(chip.dataset.query || '', 'all'));
+        });
+
+        el('jgToggleAutoSaveBtn').addEventListener('click', async () => {
+            const next = !state.autoSave;
+            const res = await fetch('/api/search/settings', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ autoSave: next })
+            });
+            const data = await res.json();
+            if (data.success) {
+                state.autoSave = Boolean(data.autoSave);
+                updateAutoSaveBtn();
+                loadHomeData();
+            }
+        });
+
+        el('jgClearHistoryBtn').addEventListener('click', async () => {
+            await fetch('/api/search/history', { method: 'DELETE', credentials: 'include' });
+            loadHomeData();
+        });
+
+        window.addEventListener('popstate', () => {
+            const { q, tab } = readUrlParams();
+            if (q) runSearch(q, tab, false);
+            else showHomeMode();
+        });
+    }
+
+    function highlightSuggest() {
+        document.querySelectorAll('#jgSuggestDropdown .jg-suggest-item').forEach((item, idx) => {
+            item.classList.toggle('active', idx === state.suggestIndex);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initEvents();
+        const { q, tab } = readUrlParams();
+        if (q) {
+            runSearch(q, tab, false);
+        } else {
+            showHomeMode();
+        }
+    });
+})();

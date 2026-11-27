@@ -37,67 +37,33 @@
             }
         });
 
-        // 글로벌 단축키 바인딩 (Ctrl+K, Cmd+K, /)
+        // 글로벌 단축키 바인딩 (Ctrl+K, Cmd+K, /) -> /search 전용 페이지 이동
         window.addEventListener('keydown', (e) => {
-            const modal = document.getElementById('qsModalBackdrop');
-            const isOpen = modal && modal.classList.contains('active');
-
             if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
                 e.preventDefault();
-                if (isOpen) {
-                    closeQuickSearchModal();
-                } else {
-                    openQuickSearchModal();
-                }
+                window.location.href = '/search';
                 return;
             }
 
-            if (e.key === '/' && !isOpen) {
+            if (e.key === '/') {
                 const tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
                 const isInput = tag === 'input' || tag === 'textarea' || (document.activeElement && document.activeElement.isContentEditable);
                 if (!isInput) {
                     e.preventDefault();
-                    openQuickSearchModal();
+                    const inlineInput = document.getElementById('jgPortalInlineSearchInput');
+                    if (inlineInput) {
+                        inlineInput.focus();
+                        inlineInput.select();
+                    } else {
+                        window.location.href = '/search';
+                    }
                     return;
                 }
-            }
-
-            if (e.key === 'Escape' && isOpen) {
-                e.preventDefault();
-                closeQuickSearchModal();
             }
         });
 
         function openQuickSearchModal() {
-            const modal = document.getElementById('qsModalBackdrop') || document.getElementById('quickSearchModal');
-            const input = document.getElementById('qsInput');
-            if (!modal) return;
-            modal.classList.add('active');
-            modal.classList.add('open');
-            modal.style.setProperty('display', 'flex', 'important');
-            if (typeof window.lockBodyScroll === 'function') window.lockBodyScroll();
-            else {
-                document.documentElement.classList.add('modal-open');
-                document.body.classList.add('modal-open');
-            }
-
-            // 🛡️ 권한에 맞춘 탭 및 플레이스홀더 정리
-            const isFamily = document.documentElement.classList.contains('role-family') || localStorage.getItem('jg_user_role') === 'family';
-            if (isFamily) {
-                if (input) input.placeholder = '메모, 뉴스 기사, 일정 검색...';
-                if (currentQsCategory === 'hospital' || currentQsCategory === 'asset') {
-                    selectQsCategory('all');
-                }
-            } else {
-                if (input) input.placeholder = '메모, 뉴스 기사, 병원 일정, 보유 자산 검색...';
-            }
-
-            setTimeout(() => {
-                if (input) {
-                    input.focus();
-                    input.select();
-                }
-            }, 50);
+            window.location.href = '/search';
         }
         window.openQuickSearchModal = openQuickSearchModal;
 
