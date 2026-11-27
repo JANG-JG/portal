@@ -89,6 +89,9 @@
             card.appendChild(makeEl('span', 'jg-smart-badge', `📐 ${widget.data.category}`));
             card.appendChild(makeEl('div', 'jg-muted-text', `${widget.data.from} =`));
             card.appendChild(makeEl('div', 'jg-calc-value', widget.data.to));
+        } else if (widget.type === 'map' && global.JGSearchMapWidget) {
+            global.JGSearchMapWidget.render(mount, widget.data);
+            return;
         }
 
         mount.appendChild(card);

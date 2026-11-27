@@ -245,7 +245,7 @@ router.get('/portal', authenticateToken, async (req, res) => {
         const nv = ext.naver || {};
         const webBlogCnt = (nv.web?.length || 0) + (nv.blog?.length || 0);
         const encycCnt = (ext.wikipedia ? 1 : 0) + (nv.encyc?.length || 0);
-        const localCnt = nv.local?.length || 0;
+        const localCnt = (nv.local?.length || 0) + (smartWidget?.type === 'map' ? 1 : 0);
         const googleCnt = ext.google?.items?.length || 0;
         const externalTotal = webBlogCnt + encycCnt + localCnt + (nv.news?.length || 0) + googleCnt;
 
@@ -285,6 +285,25 @@ router.get('/external', authenticateToken, async (req, res) => {
         res.json({ success: true, external });
     } catch (e) {
         res.status(500).json({ success: false, message: '외부 검색 조회 중 오류가 발생했습니다.' });
+    }
+});
+
+router.get('/map-nearby', authenticateToken, async (req, res) => {
+    const rawQuery = (req.query.q || '').trim().slice(0, 80);
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    if (!rawQuery || !Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+        return res.status(400).json({ success: false, message: '검색어 또는 위치 좌표가 올바르지 않습니다.' });
+    }
+    try {
+        const { searchNearbyByCoords } = require('../services/search/kakaoMapWidget.service');
+        const widget = await searchNearbyByCoords(rawQuery, lat, lng);
+        if (!widget) {
+            return res.json({ success: false, message: '주변 장소 검색 결과를 찾지 못했습니다.' });
+        }
+        res.json({ success: true, widget });
+    } catch (_) {
+        res.status(500).json({ success: false, message: '주변 위치 검색 중 오류가 발생했습니다.' });
     }
 });
 

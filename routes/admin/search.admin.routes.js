@@ -60,8 +60,10 @@ router.delete('/naver-subapi/:code', async (req, res) => {
 router.post('/clear-cache', (req, res) => {
     const clearedExt = clearExternalCache();
     const clearedSuggest = clearExternalSuggestCache();
-    const cleared = clearedExt + clearedSuggest;
-    res.json({ success: true, cleared, message: `외부 검색 및 추천 캐시 ${cleared}건을 비웠습니다.` });
+    const { clearMapWidgetCache } = require('../../services/search/kakaoMapWidget.service');
+    const clearedMap = clearMapWidgetCache();
+    const cleared = clearedExt + clearedSuggest + clearedMap;
+    res.json({ success: true, cleared, message: `외부 검색 및 추천·지도 캐시 ${cleared}건을 비웠습니다.` });
 });
 
 module.exports = router;

@@ -207,10 +207,11 @@
         const tab = state.tab;
         const R = window.JGSearchRenderers;
 
-        if (tab === 'all') R.renderSmartWidget(el('jgSmartWidgetMount'), p.smartWidget);
+        const showWidget = tab === 'all' || (tab === 'local' && p.smartWidget?.type === 'map');
+        if (showWidget) R.renderSmartWidget(el('jgSmartWidgetMount'), p.smartWidget);
         else el('jgSmartWidgetMount').replaceChildren();
 
-        let shownCount = tab === 'all' && p.smartWidget ? 1 : 0;
+        let shownCount = showWidget && p.smartWidget ? 1 : 0;
         shownCount += R.renderInternalSections(el('jgInternalResultsMount'), r, tab);
         shownCount += R.renderExternalSections(el('jgExternalResultsMount'), p.external, tab, p.query);
 

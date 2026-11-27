@@ -16,7 +16,7 @@ const NAVER_DAILY_LIMIT = 25000;
 
 const externalCache = new Map();
 let schemaInitialized = false;
-let engineToggles = { wikipedia: true, naver: true, google: true, externalSuggest: true };
+let engineToggles = { wikipedia: true, naver: true, google: true, externalSuggest: true, kakaoMap: true };
 const DEFAULT_NAVER_SUBAPIS = [
     { code: 'webkr', label: '웹문서', tab: 'webBlog', enabled: true },
     { code: 'blog', label: '블로그', tab: 'webBlog', enabled: false },
@@ -385,6 +385,15 @@ async function getSearchEngineStatus() {
                 todayCalls: usage.externalSuggest?.calls || 0,
                 todayErrors: usage.externalSuggest?.errors || 0,
                 dailyLimit: null
+            },
+            {
+                id: 'kakaoMap',
+                name: '카카오 로컬·지도 즉답 카드',
+                configured: Boolean((process.env.KAKAO_REST_API_KEY || '').trim()),
+                enabled: engineToggles.kakaoMap !== false,
+                todayCalls: usage.kakaoMap?.calls || 0,
+                todayErrors: usage.kakaoMap?.errors || 0,
+                dailyLimit: 100000
             }
         ]
     };
@@ -395,9 +404,14 @@ async function isExternalSuggestEnabled() {
     return engineToggles.externalSuggest !== false;
 }
 
+async function isEngineEnabled(engineId) {
+    await ensureExternalSchema();
+    return engineToggles[engineId] !== false;
+}
+
 async function setEngineToggle(engineId, enabled) {
     await ensureExternalSchema();
-    if (!['wikipedia', 'naver', 'google', 'externalSuggest'].includes(engineId)) {
+    if (!['wikipedia', 'naver', 'google', 'externalSuggest', 'kakaoMap'].includes(engineId)) {
         return { success: false, message: '지원하지 않는 검색 엔진입니다.' };
     }
     engineToggles[engineId] = Boolean(enabled);
@@ -460,5 +474,6 @@ module.exports = {
     removeNaverSubApi,
     clearExternalCache,
     isExternalSuggestEnabled,
+    isEngineEnabled,
     incrementUsage
 };

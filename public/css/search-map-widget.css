@@ -1,0 +1,375 @@
+/* 📍 JG 통합 검색 - 카카오맵 즉답 카드 스타일 (모바일 360px 무넘침 보장) */
+
+.jg-map-card,
+.jg-map-card * {
+    box-sizing: border-box;
+}
+
+.jg-map-top-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.jg-map-badge-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.jg-map-badge-group .jg-smart-badge {
+    margin-bottom: 0;
+}
+
+.jg-map-anchor-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.jg-map-gps-btn {
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.jg-map-gps-btn:hover:not(:disabled) {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.jg-map-main-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.jg-map-card.is-expanded .jg-map-main-grid {
+    grid-template-columns: 1fr;
+}
+
+.jg-map-primary-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.jg-map-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.jg-map-place-title {
+    margin: 0;
+    font-size: 1.12rem;
+    font-weight: 800;
+    color: #0f172a;
+    word-break: break-word;
+}
+
+.jg-map-cat-pill {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.jg-map-addr-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    color: #334155;
+}
+
+.jg-map-addr-text {
+    word-break: break-word;
+}
+
+.jg-map-copy-btn {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.jg-map-copy-btn:hover {
+    background: #f1f5f9;
+}
+
+.jg-map-jibun-text {
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.jg-map-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+}
+
+.jg-map-phone-link {
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.jg-map-dist-pill {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #047857;
+}
+
+.jg-map-canvas-wrap {
+    position: relative;
+    width: 100%;
+    height: 155px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+.jg-map-card.is-expanded .jg-map-canvas-wrap {
+    height: 300px;
+}
+
+.jg-map-canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.jg-map-fallback {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 4px;
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+}
+
+.jg-map-fallback-icon {
+    font-size: 1.6rem;
+}
+
+.jg-map-fallback-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.jg-map-action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.jg-map-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 0 14px;
+    border-radius: 10px;
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.jg-map-btn:hover {
+    filter: brightness(0.96);
+}
+
+.jg-map-btn-primary {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.jg-map-btn-kakao {
+    background: #fee500;
+    color: #191919;
+    border-color: #f5d800;
+}
+
+.jg-map-btn-naver {
+    background: #03c75a;
+    color: #ffffff;
+}
+
+.jg-map-btn-outline {
+    background: #ffffff;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+
+.jg-map-places-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #cbd5e1;
+}
+
+.jg-map-place-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.jg-map-place-item:hover,
+.jg-map-place-item.is-active {
+    border-color: #3b82f6;
+    background: #f8fbff;
+}
+
+.jg-map-num-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.jg-map-item-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.jg-map-item-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.jg-map-item-name {
+    font-size: 0.94rem;
+    color: #0f172a;
+}
+
+.jg-map-item-cat {
+    font-size: 0.76rem;
+    color: #64748b;
+}
+
+.jg-map-item-addr,
+.jg-map-item-phone {
+    font-size: 0.82rem;
+    color: #475569;
+    word-break: break-word;
+}
+
+.jg-map-item-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 3px;
+}
+
+.jg-map-mini-link {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.jg-map-mini-link:hover {
+    text-decoration: underline;
+}
+
+.jg-map-iw-box {
+    padding: 4px 8px;
+    font-size: 0.82rem;
+    color: #0f172a;
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .jg-map-main-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .jg-map-canvas-wrap {
+        height: 150px;
+    }
+
+    .jg-map-card.is-expanded .jg-map-canvas-wrap {
+        height: 240px;
+    }
+
+    .jg-map-action-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .jg-map-btn-primary {
+        grid-column: 1 / -1;
+    }
+
+    .jg-map-gps-btn {
+        width: 100%;
+        min-height: 36px;
+    }
+}

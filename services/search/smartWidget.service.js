@@ -418,6 +418,10 @@ async function resolveSmartWidget(rawQuery, user) {
     const finance = await resolveFinanceWidget(rawQuery).catch(() => null);
     if (finance) return finance;
 
+    const { resolveKakaoMapWidget } = require('./kakaoMapWidget.service');
+    const mapWidget = await resolveKakaoMapWidget(rawQuery, user).catch(() => null);
+    if (mapWidget) return mapWidget;
+
     return null;
 }
 
