@@ -367,8 +367,8 @@ function resolveCalcOrUnitWidget(rawQuery) {
         }
     }
 
-    // 2) 단위 변환
-    const unitMatch = q.match(/^(-?\d+(?:\.\d+)?)\s*(평|㎡|m2|제곱미터|섭씨|도|℃|c|화씨|℉|f|kg|킬로|lb|파운드|cm|인치|inch|km|마일|mile)\b/i);
+    // 2) 단위 변환 (한글 뒤에서는 JS \b가 동작하지 않으므로 공백/끝/한글 경계 사용)
+    const unitMatch = q.match(/^(-?\d+(?:\.\d+)?)\s*(평|㎡|m2|제곱미터|섭씨|도|℃|c|화씨|℉|f|kg|킬로|lb|파운드|cm|인치|inch|km|마일|mile)(?=\s|$|[가-힣?])/i);
     if (unitMatch) {
         const val = parseFloat(unitMatch[1]);
         const u = unitMatch[2].toLowerCase();
