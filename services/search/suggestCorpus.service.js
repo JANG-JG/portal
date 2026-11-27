@@ -171,12 +171,14 @@ async function resolveQuickPreview(rawQuery, user) {
 
         if (widget.type === 'weather') {
             const d = widget.data;
+            const tempStr = String(d.temp ?? '-').includes('°') ? String(d.temp) : `${d.temp ?? '-'}°C`;
+            const descStr = d.weatherDesc || d.desc || d.condition || '';
             return {
                 text: q,
                 type: 'instant',
                 icon: d.icon || '🌤️',
                 badge: '바로 답',
-                subtitle: `${d.city || ''} ${d.temp ?? '-'}°C · ${d.desc || ''}`.trim(),
+                subtitle: [d.city, tempStr, descStr].filter(Boolean).join(' · '),
                 isInstant: true
             };
         }
