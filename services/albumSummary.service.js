@@ -165,6 +165,9 @@ async function searchAlbumPhotos(query, limit = 3) {
             params.push(pattern, pattern, pattern, pattern);
         });
 
+        const safeLimit = Math.min(20, Math.max(1, parseInt(limit, 10) || 3));
+        params.push(safeLimit);
+
         const sql = `
             SELECT 
                 p.id, p.caption, p.location, p.tags, p.taken_at, p.created_at,
@@ -174,7 +177,7 @@ async function searchAlbumPhotos(query, limit = 3) {
             JOIN family_members m ON p.member_id = m.id
             WHERE ${clauses}
             ORDER BY COALESCE(p.taken_at, p.created_at) DESC
-            LIMIT ${limit}
+            LIMIT ?
         `;
 
         albumDb.all(sql, params, (err, rows) => {

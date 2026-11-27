@@ -98,10 +98,31 @@ router.get('/photos', (req, res) => {
  * 3. 관리자 권한 사진 삭제 API
  * DELETE /api/admin/album/photos/:id
  */
-router.delete('/photos/:id', (req, res) => {
-    const photoId = parseInt(req.params.id);
-    if (!photoId) {
+router.delete('/photos/:id', async (req, res) => {
+    const photoId = parseInt(req.params.id, 10);
+    if (!Number.isInteger(photoId) || photoId <= 0) {
         return res.status(400).json({ success: false, message: '유효하지 않은 사진 번호입니다.' });
+    }
+
+    const albumPort = parseInt(process.env.ALBUM_PORT, 10) || 3005;
+    try {
+        const upstream = await fetch(`http://127.0.0.1:${albumPort}/api/photos/${photoId}`, {
+            method: 'DELETE',
+            headers: req.headers.cookie ? { Cookie: req.headers.cookie } : {},
+            signal: AbortSignal.timeout(8000)
+        });
+        const upstreamData = await upstream.json().catch(() => ({}));
+        if (upstream.ok && upstreamData.success) {
+            return res.json({
+                success: true,
+                message: `사진 #${photoId}이(가) 외장 SSD 원본까지 안전하게 삭제되었습니다.`
+            });
+        }
+        if (upstream.status === 404) {
+            return res.status(404).json({ success: false, message: '삭제할 사진을 찾을 수 없습니다.' });
+        }
+    } catch (_) {
+        // family-album 서비스 오프라인 시 로컬 DB 및 파일 폴백 정리
     }
 
     albumDb.get('SELECT * FROM photos WHERE id = ?', [photoId], (findErr, photo) => {
@@ -109,35 +130,55 @@ router.delete('/photos/:id', (req, res) => {
             return res.status(404).json({ success: false, message: '삭제할 사진을 찾을 수 없습니다.' });
         }
 
-        albumDb.serialize(() => {
-            albumDb.run('DELETE FROM photo_comments WHERE photo_id = ?', [photoId]);
-            albumDb.run('DELETE FROM photo_reactions WHERE photo_id = ?', [photoId]);
-            albumDb.run('DELETE FROM photos WHERE id = ?', [photoId], (delErr) => {
-                if (delErr) {
-                    return res.status(500).json({ success: false, message: '사진 데이터 삭제 실패' });
-                }
+        albumDb.all('SELECT storage_filename, thumbnail_filename FROM photo_images WHERE photo_id = ?', [photoId], (imgErr, imgRows) => {
+            const filesToDelete = (imgRows && imgRows.length > 0)
+                ? imgRows
+                : [{ storage_filename: photo.storage_filename, thumbnail_filename: photo.thumbnail_filename }];
 
-                // 물리 파일 삭제 (안전하게 basename 검증 및 존재 여부 확인 후 삭제)
-                try {
-                    const uploadsDir = path.join(ALBUM_DIR, 'uploads');
-                    const safeOrig = photo.storage_filename ? path.basename(String(photo.storage_filename)) : '';
-                    const safeThumb = photo.thumbnail_filename ? path.basename(String(photo.thumbnail_filename)) : '';
-
-                    if (safeOrig && safeOrig === photo.storage_filename) {
-                        const origPath = path.join(uploadsDir, 'originals', safeOrig);
-                        if (fs.existsSync(origPath)) fs.unlinkSync(origPath);
+            albumDb.serialize(() => {
+                albumDb.run('DELETE FROM photo_images WHERE photo_id = ?', [photoId]);
+                albumDb.run('DELETE FROM photo_comments WHERE photo_id = ?', [photoId]);
+                albumDb.run('DELETE FROM photo_reactions WHERE photo_id = ?', [photoId]);
+                albumDb.run('DELETE FROM photos WHERE id = ?', [photoId], (delErr) => {
+                    if (delErr) {
+                        return res.status(500).json({ success: false, message: '사진 데이터 삭제 실패' });
                     }
-                    if (safeThumb && safeThumb === photo.thumbnail_filename) {
-                        const thumbPath = path.join(uploadsDir, 'thumbnails', safeThumb);
-                        if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
-                    }
-                } catch (fsErr) {
-                    console.warn('사진 물리 파일 삭제 중 경고:', fsErr.message);
-                }
 
-                res.json({
-                    success: true,
-                    message: `사진 #${photoId}이(가) 안전하게 삭제되었습니다.`
+                    try {
+                        const uploadsDir = path.join(ALBUM_DIR, 'uploads');
+                        for (const item of filesToDelete) {
+                            const safeOrig = item.storage_filename ? path.basename(String(item.storage_filename)) : '';
+                            const safeThumb = item.thumbnail_filename ? path.basename(String(item.thumbnail_filename)) : '';
+
+                            if (safeOrig && safeOrig === item.storage_filename) {
+                                const origPath = path.join(uploadsDir, 'originals', safeOrig);
+                                const cachePath = path.join(uploadsDir, 'originals_cache', safeOrig);
+                                if (fs.existsSync(origPath)) fs.unlinkSync(origPath);
+                                if (fs.existsSync(cachePath)) fs.unlinkSync(cachePath);
+                            }
+                            if (safeThumb && safeThumb === item.thumbnail_filename) {
+                                const thumbNames = [safeThumb];
+                                if (safeThumb.endsWith('_thumb.webp')) {
+                                    thumbNames.push(
+                                        safeThumb.replace(/_thumb\.webp$/, '_hd.webp'),
+                                        safeThumb.replace(/_thumb\.webp$/, '_md.webp'),
+                                        safeThumb.replace(/_thumb\.webp$/, '_sm.webp')
+                                    );
+                                }
+                                for (const tName of thumbNames) {
+                                    const thumbPath = path.join(uploadsDir, 'thumbnails', tName);
+                                    if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+                                }
+                            }
+                        }
+                    } catch (fsErr) {
+                        console.warn('사진 물리 파일 삭제 중 경고:', fsErr.message);
+                    }
+
+                    res.json({
+                        success: true,
+                        message: `사진 #${photoId}이(가) 안전하게 삭제되었습니다.`
+                    });
                 });
             });
         });
