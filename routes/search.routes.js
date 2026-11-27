@@ -178,6 +178,8 @@ router.get('/unified', authenticateToken, async (req, res) => {
 // ==============================================================================
 const { resolveSmartWidget, getHomeMiniWeather } = require('../services/search/smartWidget.service');
 const { searchAllInternal, getAllowedShortcuts } = require('../services/search/internalSearch.service');
+const { searchExternal } = require('../services/search/externalSearch.service');
+const { streamSearchAiSummary } = require('../services/search/searchAiBriefing.service');
 const {
     getHistory,
     addHistory,
@@ -212,6 +214,7 @@ router.get('/home', authenticateToken, async (req, res) => {
 
 router.get('/portal', authenticateToken, async (req, res) => {
     const rawQuery = (req.query.q || '').trim().slice(0, 120);
+    const mode = (req.query.tab || 'all').trim();
     const userId = req.user.username || 'admin';
 
     if (!rawQuery) {
@@ -220,29 +223,43 @@ router.get('/portal', authenticateToken, async (req, res) => {
             query: '',
             smartWidget: null,
             internal: { isChosung: false, total: 0, results: {} },
+            external: { wikipedia: null, naver: {}, google: { items: [] } },
             counts: {}
         });
     }
 
     try {
-        // 검색 실행 시 자동저장 설정에 따라 최근 검색어 비동기 기록
         if (req.query.save !== '0') {
             addHistory(userId, rawQuery).catch(() => {});
         }
 
-        const [smartWidget, internal] = await Promise.all([
+        const extMode = ['webBlog', 'encyc', 'local', 'google'].includes(mode) ? mode : 'all';
+        const [smartWidget, internal, external] = await Promise.all([
             resolveSmartWidget(rawQuery, req.user),
-            searchAllInternal(rawQuery, req.user)
+            searchAllInternal(rawQuery, req.user),
+            searchExternal(rawQuery, extMode)
         ]);
 
         const r = internal.results || {};
+        const ext = external || {};
+        const nv = ext.naver || {};
+        const webBlogCnt = (nv.web?.length || 0) + (nv.blog?.length || 0);
+        const encycCnt = (ext.wikipedia ? 1 : 0) + (nv.encyc?.length || 0);
+        const localCnt = nv.local?.length || 0;
+        const googleCnt = ext.google?.items?.length || 0;
+        const externalTotal = webBlogCnt + encycCnt + localCnt + (nv.news?.length || 0) + googleCnt;
+
         const counts = {
-            all: internal.total + (smartWidget ? 1 : 0),
+            all: internal.total + externalTotal + (smartWidget ? 1 : 0),
             internal: internal.total,
             memoCalendar: (r.memos?.length || 0) + (r.calendar?.length || 0),
-            wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0),
+            wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0) + (nv.news?.length || 0),
             album: r.album?.length || 0,
-            healthAsset: (r.hospitals?.length || 0) + (r.medications?.length || 0) + (r.assets?.length || 0) + (r.kindergarten?.length || 0)
+            healthAsset: (r.hospitals?.length || 0) + (r.medications?.length || 0) + (r.assets?.length || 0) + (r.kindergarten?.length || 0),
+            webBlog: webBlogCnt,
+            encyc: encycCnt,
+            local: localCnt,
+            google: googleCnt
         };
 
         res.json({
@@ -250,12 +267,30 @@ router.get('/portal', authenticateToken, async (req, res) => {
             query: rawQuery,
             smartWidget,
             internal,
+            external,
             counts
         });
     } catch (e) {
         console.error('[Portal search err]:', e);
         res.status(500).json({ success: false, message: '통합 검색 처리 중 오류가 발생했습니다.' });
     }
+});
+
+router.get('/external', authenticateToken, async (req, res) => {
+    const rawQuery = (req.query.q || '').trim().slice(0, 120);
+    const mode = (req.query.mode || 'all').trim();
+    if (!rawQuery) return res.json({ success: true, external: { wikipedia: null, naver: {}, google: { items: [] } } });
+    try {
+        const external = await searchExternal(rawQuery, mode);
+        res.json({ success: true, external });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '외부 검색 조회 중 오류가 발생했습니다.' });
+    }
+});
+
+router.post('/ai-summary', authenticateToken, (req, res) => {
+    const q = (req.body?.query || '').trim().slice(0, 120);
+    return streamSearchAiSummary(req, res, q);
 });
 
 router.get('/suggest', authenticateToken, async (req, res) => {

@@ -17,6 +17,7 @@ const pushAdminRoutes = require('./admin/push.admin.routes');
 const systemAdminRoutes = require('./admin/system.admin.routes');
 const serverAlertsAdminRoutes = require('./admin/serverAlerts.admin.routes');
 const studyAdminRoutes = require('./admin/study.admin.routes');
+const searchAdminRoutes = require('./admin/search.admin.routes');
 
 router.use('/blood', bloodAdminRoutes);
 router.use('/news', newsAdminRoutes);
@@ -29,6 +30,7 @@ router.use('/ai', aiAdminRoutes);
 router.use('/wiki', wikiAdminRoutes);
 router.use('/push', pushAdminRoutes);
 router.use('/study', studyAdminRoutes);
+router.use('/search', searchAdminRoutes);
 router.use('/', systemAdminRoutes);
 router.use('/', serverAlertsAdminRoutes);
 

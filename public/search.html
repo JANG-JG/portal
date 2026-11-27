@@ -73,6 +73,11 @@
             <!-- 카테고리 필터 탭 (검색어 입력 시 표시) -->
             <nav class="jg-search-tabs" id="jgSearchTabs" aria-label="검색 카테고리" style="display:none;">
                 <button type="button" class="jg-tab-btn active" data-tab="all">통합검색 <span class="jg-tab-count" id="tabCntAll">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="internal">우리 사이트 <span class="jg-tab-count" id="tabCntInternal">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="webBlog">웹·블로그 <span class="jg-tab-count" id="tabCntWebBlog">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="encyc">백과·지식 <span class="jg-tab-count" id="tabCntEncyc">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="local">맛집·지역 <span class="jg-tab-count" id="tabCntLocal">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="google">구글 웹 <span class="jg-tab-count" id="tabCntGoogle">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="memoCalendar">메모·일정 <span class="jg-tab-count" id="tabCntMemoCal">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="wikiNews">위키·뉴스 <span class="jg-tab-count" id="tabCntWikiNews">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="album">사진·앨범 <span class="jg-tab-count" id="tabCntAlbum">0</span></button>
@@ -119,13 +124,18 @@
 
         <!-- 2. 검색 결과 화면 -->
         <section id="jgSearchResultsSection" class="jg-search-results" style="display:none;">
-            <div id="jgSearchStatusLine" class="jg-search-status-line"></div>
+            <div class="jg-results-toolbar">
+                <div id="jgSearchStatusLine" class="jg-search-status-line"></div>
+                <button type="button" id="jgAiSummaryBtn" class="jg-ai-summary-btn">✨ AI 한눈에 요약</button>
+            </div>
+            <div id="jgAiSummaryMount" style="display:none;"></div>
             <div id="jgSearchLoading" class="jg-loading-box" style="display:none;">
                 <div class="jg-spinner"></div>
-                <span>스마트 즉답과 우리 사이트 자료를 찾고 있어요...</span>
+                <span>스마트 즉답, 우리 사이트, 외부 검색 결과를 찾고 있어요...</span>
             </div>
             <div id="jgSmartWidgetMount"></div>
             <div id="jgInternalResultsMount"></div>
+            <div id="jgExternalResultsMount"></div>
             <div id="jgEmptyResults" class="jg-empty-box" style="display:none;">
                 <div class="jg-empty-icon">🔎</div>
                 <p id="jgEmptyResultsText">검색 결과가 없습니다.</p>

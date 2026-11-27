@@ -151,12 +151,15 @@
         el('jgSearchTabs').style.display = 'flex';
         el('jgSearchLoading').style.display = 'block';
         el('jgEmptyResults').style.display = 'none';
+        el('jgAiSummaryMount').style.display = 'none';
+        el('jgAiSummaryMount').replaceChildren();
         el('jgSmartWidgetMount').replaceChildren();
         el('jgInternalResultsMount').replaceChildren();
+        el('jgExternalResultsMount').replaceChildren();
         updateTabUI();
 
         try {
-            const res = await fetch(`/api/search/portal?q=${encodeURIComponent(q)}`, { credentials: 'include' });
+            const res = await fetch(`/api/search/portal?q=${encodeURIComponent(q)}&tab=${encodeURIComponent(state.tab)}`, { credentials: 'include' });
             const payload = await res.json();
             el('jgSearchLoading').style.display = 'none';
             if (!payload.success) {
@@ -179,11 +182,17 @@
     }
 
     function updateTabCounts(counts) {
-        el('tabCntAll').textContent = counts.all || 0;
-        el('tabCntMemoCal').textContent = counts.memoCalendar || 0;
-        el('tabCntWikiNews').textContent = counts.wikiNews || 0;
-        el('tabCntAlbum').textContent = counts.album || 0;
-        el('tabCntHealthAsset').textContent = counts.healthAsset || 0;
+        const setCnt = (id, val) => { const n = el(id); if (n) n.textContent = val || 0; };
+        setCnt('tabCntAll', counts.all);
+        setCnt('tabCntInternal', counts.internal);
+        setCnt('tabCntWebBlog', counts.webBlog);
+        setCnt('tabCntEncyc', counts.encyc);
+        setCnt('tabCntLocal', counts.local);
+        setCnt('tabCntGoogle', counts.google);
+        setCnt('tabCntMemoCal', counts.memoCalendar);
+        setCnt('tabCntWikiNews', counts.wikiNews);
+        setCnt('tabCntAlbum', counts.album);
+        setCnt('tabCntHealthAsset', counts.healthAsset);
     }
 
     function showEmpty(q) {
@@ -203,6 +212,7 @@
 
         let shownCount = tab === 'all' && p.smartWidget ? 1 : 0;
         shownCount += R.renderInternalSections(el('jgInternalResultsMount'), r, tab);
+        shownCount += R.renderExternalSections(el('jgExternalResultsMount'), p.external, tab);
 
         el('jgSearchStatusLine').textContent = `'${p.query}' 검색 결과 (${p.internal?.isChosung ? '초성 검색 · ' : ''}총 ${p.counts?.all || 0}건)`;
         el('jgEmptyResults').style.display = shownCount === 0 ? 'block' : 'none';
@@ -322,13 +332,81 @@
         });
 
         document.querySelectorAll('#jgSearchTabs .jg-tab-btn').forEach((btn) => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 state.tab = btn.dataset.tab || 'all';
                 updateTabUI();
                 updateUrl(state.query, state.tab, true);
+
+                if (state.tab === 'google' && state.lastPayload?.external?.google?.skipped && state.query) {
+                    el('jgSearchLoading').style.display = 'block';
+                    try {
+                        const res = await fetch(`/api/search/external?q=${encodeURIComponent(state.query)}&mode=google`, { credentials: 'include' });
+                        const data = await res.json();
+                        if (data.success && data.external) {
+                            state.lastPayload.external.google = data.external.google;
+                            const ggCnt = data.external.google?.items?.length || 0;
+                            if (state.lastPayload.counts) state.lastPayload.counts.google = ggCnt;
+                            updateTabCounts(state.lastPayload.counts || {});
+                        }
+                    } catch (_) {}
+                    el('jgSearchLoading').style.display = 'none';
+                }
                 renderResults();
             });
         });
+
+        const aiBtn = el('jgAiSummaryBtn');
+        if (aiBtn) {
+            aiBtn.addEventListener('click', async () => {
+                if (!state.query || aiBtn.disabled) return;
+                const mount = el('jgAiSummaryMount');
+                mount.replaceChildren();
+                const card = makeEl('div', 'jg-ai-summary-card');
+                card.appendChild(makeEl('span', 'jg-smart-badge', '✨ AI 한눈에 요약'));
+                const body = makeEl('div', 'jg-ai-summary-body', '요약을 생성하고 있어요...');
+                card.appendChild(body);
+                mount.appendChild(card);
+                mount.style.display = 'block';
+                aiBtn.disabled = true;
+
+                let fullText = '';
+                try {
+                    const res = await fetch('/api/search/ai-summary', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ query: state.query })
+                    });
+                    if (!res.ok || !res.body) throw new Error('STREAM_ERR');
+                    const reader = res.body.getReader();
+                    const decoder = new TextDecoder('utf-8');
+                    let buf = '';
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) break;
+                        buf += decoder.decode(value, { stream: true });
+                        const lines = buf.split('\n');
+                        buf = lines.pop() || '';
+                        for (const line of lines) {
+                            if (!line.startsWith('data: ')) continue;
+                            try {
+                                const msg = JSON.parse(line.slice(6));
+                                if (msg.token) {
+                                    fullText += msg.token;
+                                    window.JGSearchRenderers.renderAiSummaryText(body, fullText);
+                                } else if (msg.error) {
+                                    body.textContent = msg.error;
+                                }
+                            } catch (_) {}
+                        }
+                    }
+                } catch (_) {
+                    body.textContent = 'AI 요약 생성 중 오류가 발생했습니다.';
+                } finally {
+                    aiBtn.disabled = false;
+                }
+            });
+        }
 
         document.querySelectorAll('.jg-hint-chip').forEach((chip) => {
             chip.addEventListener('click', () => runSearch(chip.dataset.query || '', 'all'));
