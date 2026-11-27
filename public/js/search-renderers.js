@@ -221,13 +221,14 @@
         return shownCount;
     }
 
-    function renderExternalSections(mount, external, tab) {
+    function renderExternalSections(mount, external, tab, query = '') {
         if (!mount) return 0;
         mount.replaceChildren();
         if (!external || ['internal', 'memoCalendar', 'album', 'healthAsset'].includes(tab)) return 0;
 
         let shownCount = 0;
         const nv = external.naver || {};
+        const gg = external.google || {};
 
         // 1) 위키백과 지식 카드
         if ((tab === 'all' || tab === 'encyc') && external.wikipedia) {
@@ -255,6 +256,45 @@
             sec.appendChild(a);
             mount.appendChild(sec);
             shownCount += 1;
+        }
+
+        // 1.5) 나무위키 섹션 (네이버·구글 웹결과 내 namu.wiki 우선 노출 + 문서 바로가기)
+        if ((tab === 'all' || tab === 'encyc') && (query || (nv.web && nv.web.length) || (gg.items && gg.items.length))) {
+            const namuPool = [...(nv.web || []), ...(gg.items || [])].filter(
+                (it) => it && typeof it.link === 'string' && it.link.includes('namu.wiki')
+            );
+            const seenNamu = new Set();
+            const namuItems = [];
+            for (const it of namuPool) {
+                if (!seenNamu.has(it.link)) {
+                    seenNamu.add(it.link);
+                    namuItems.push(it);
+                    if (namuItems.length >= 3) break;
+                }
+            }
+            if (namuItems.length > 0 || query) {
+                const sec = makeEl('section', 'jg-section-card jg-namu-card');
+                sec.appendChild(makeEl('h3', 'jg-section-title', '🌳 나무위키 (Namuwiki)'));
+                if (namuItems.length > 0) {
+                    renderListItems(sec, namuItems, (it) => ({
+                        title: it.title,
+                        desc: it.description,
+                        meta: 'namu.wiki',
+                        url: it.link,
+                        external: true
+                    }));
+                }
+                if (query) {
+                    const direct = makeEl('a', 'jg-namu-direct-link');
+                    direct.href = safeHref(`https://namu.wiki/w/${encodeURIComponent(query)}`);
+                    direct.target = '_blank';
+                    direct.rel = 'noopener noreferrer';
+                    direct.textContent = `🌳 나무위키에서 '${query}' 문서 바로 열기 ↗`;
+                    sec.appendChild(direct);
+                }
+                mount.appendChild(sec);
+                shownCount += 1;
+            }
         }
 
         // 2) 네이버 백과사전
@@ -319,7 +359,6 @@
         }
 
         // 6) 구글 웹 검색
-        const gg = external.google || {};
         if ((tab === 'all' || tab === 'google') && Array.isArray(gg.items) && gg.items.length > 0) {
             shownCount += appendSection(mount, '🔎', '구글 웹 검색', gg.items, (sec, items) => {
                 renderListItems(sec, items, (it) => ({

@@ -67,6 +67,30 @@
         const box = document.getElementById('jgPortalInlineSuggest');
         if (!form || !input || !box) return;
 
+        if (window.JGSearchSuggest) {
+            window.JGSearchSuggest.attach({
+                input,
+                dropdown: box,
+                showOnEmptyFocus: true,
+                maxItems: 8,
+                onSelect: (chosen) => {
+                    if (chosen.type === 'shortcut' && chosen.url) {
+                        window.location.href = safeHref(chosen.url);
+                        return;
+                    }
+                    navigateToSearch(chosen.text);
+                }
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) e.preventDefault();
+            });
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                navigateToSearch(input.value);
+            });
+            return;
+        }
+
         const suggestCache = new Map();
         let suggestAbortCtrl = null;
 

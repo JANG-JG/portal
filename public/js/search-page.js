@@ -212,71 +212,16 @@
 
         let shownCount = tab === 'all' && p.smartWidget ? 1 : 0;
         shownCount += R.renderInternalSections(el('jgInternalResultsMount'), r, tab);
-        shownCount += R.renderExternalSections(el('jgExternalResultsMount'), p.external, tab);
+        shownCount += R.renderExternalSections(el('jgExternalResultsMount'), p.external, tab, p.query);
 
         el('jgSearchStatusLine').textContent = `'${p.query}' 검색 결과 (${p.internal?.isChosung ? '초성 검색 · ' : ''}총 ${p.counts?.all || 0}건)`;
         el('jgEmptyResults').style.display = shownCount === 0 ? 'block' : 'none';
         if (shownCount === 0) showEmpty(p.query);
     }
 
-    // 자동완성 제어
+    let suggestHandle = null;
     function hideSuggest() {
-        el('jgSuggestDropdown').style.display = 'none';
-        state.suggestIndex = -1;
-    }
-
-    function renderSuggestions(list) {
-        const box = el('jgSuggestDropdown');
-        box.replaceChildren();
-        state.suggestions = list || [];
-        state.suggestIndex = -1;
-        if (!state.suggestions.length) {
-            box.style.display = 'none';
-            return;
-        }
-        state.suggestions.forEach((s, idx) => {
-            const btn = makeEl('button', 'jg-suggest-item');
-            btn.type = 'button';
-            btn.dataset.idx = String(idx);
-            btn.append(makeEl('span', 'jg-suggest-text', s.text), makeEl('span', 'jg-suggest-badge', s.badge || ''));
-            btn.addEventListener('click', () => {
-                hideSuggest();
-                if (s.type === 'shortcut' && s.url) {
-                    window.location.href = safeHref(s.url);
-                } else {
-                    runSearch(s.text, 'all');
-                }
-            });
-            box.appendChild(btn);
-        });
-        box.style.display = 'block';
-    }
-
-    const suggestCache = new Map();
-    let suggestAbortCtrl = null;
-
-    async function fetchSuggestions(prefix) {
-        const key = (prefix || '').toLowerCase();
-        const cached = suggestCache.get(key);
-        if (cached && cached.expiresAt > Date.now()) {
-            renderSuggestions(cached.items);
-            return;
-        }
-        if (suggestAbortCtrl) suggestAbortCtrl.abort();
-        suggestAbortCtrl = new AbortController();
-        try {
-            const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(prefix)}`, {
-                credentials: 'include',
-                signal: suggestAbortCtrl.signal
-            });
-            const data = await res.json();
-            if (data.success) {
-                suggestCache.set(key, { items: data.suggestions, expiresAt: Date.now() + 30000 });
-                renderSuggestions(data.suggestions);
-            }
-        } catch (err) {
-            if (err && err.name === 'AbortError') return;
-        }
+        if (suggestHandle) suggestHandle.close();
     }
 
     function initEvents() {
@@ -285,56 +230,34 @@
         const clearBtn = el('jgSearchClearBtn');
 
         input.addEventListener('input', () => {
-            const val = input.value;
-            clearBtn.style.display = val ? 'inline-flex' : 'none';
-            clearTimeout(state.suggestTimer);
-            state.suggestTimer = setTimeout(() => fetchSuggestions(val.trim()), 90);
+            clearBtn.style.display = input.value ? 'inline-flex' : 'none';
         });
 
-        input.addEventListener('focus', () => {
-            fetchSuggestions(input.value.trim());
-        });
-
-        // IME 조합 중 Enter 조기 제출 방지 (ime-safe-enter-submit 가이드 준수)
-        input.addEventListener('keydown', (e) => {
-            const dropdown = el('jgSuggestDropdown');
-            const isOpen = dropdown.style.display === 'block' && state.suggestions.length > 0;
-
-            if (e.key === 'ArrowDown' && isOpen) {
-                e.preventDefault();
-                state.suggestIndex = (state.suggestIndex + 1) % state.suggestions.length;
-                highlightSuggest();
-                return;
-            }
-            if (e.key === 'ArrowUp' && isOpen) {
-                e.preventDefault();
-                state.suggestIndex = (state.suggestIndex - 1 + state.suggestions.length) % state.suggestions.length;
-                highlightSuggest();
-                return;
-            }
-            if (e.key === 'Escape') {
-                hideSuggest();
-                return;
-            }
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                if (e.isComposing || e.keyCode === 229) return;
-                if (isOpen && state.suggestIndex >= 0) {
-                    const chosen = state.suggestions[state.suggestIndex];
-                    hideSuggest();
+        if (window.JGSearchSuggest) {
+            suggestHandle = window.JGSearchSuggest.attach({
+                input,
+                dropdown: el('jgSuggestDropdown'),
+                showOnEmptyFocus: true,
+                onSelect: (chosen) => {
                     if (chosen.type === 'shortcut' && chosen.url) {
                         window.location.href = safeHref(chosen.url);
                         return;
                     }
                     runSearch(chosen.text, 'all');
-                    return;
                 }
-                form.requestSubmit();
+            });
+        }
+
+        // IME 조합 중 Enter 조기 제출 방지 (ime-safe-enter-submit 가이드 준수)
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) {
+                e.preventDefault();
             }
         });
 
         form.addEventListener('submit', (e) => {
             e.preventDefault();
+            hideSuggest();
             runSearch(input.value, 'all');
         });
 
@@ -344,10 +267,6 @@
             input.focus();
             updateUrl('', 'all');
             showHomeMode();
-        });
-
-        document.addEventListener('click', (e) => {
-            if (!form.contains(e.target)) hideSuggest();
         });
 
         document.querySelectorAll('#jgSearchTabs .jg-tab-btn').forEach((btn) => {
@@ -456,12 +375,6 @@
             const { q, tab } = readUrlParams();
             if (q) runSearch(q, tab, false);
             else showHomeMode();
-        });
-    }
-
-    function highlightSuggest() {
-        document.querySelectorAll('#jgSuggestDropdown .jg-suggest-item').forEach((item, idx) => {
-            item.classList.toggle('active', idx === state.suggestIndex);
         });
     }
 

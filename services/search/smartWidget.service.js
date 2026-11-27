@@ -432,5 +432,6 @@ async function getHomeMiniWeather(user) {
 
 module.exports = {
     resolveSmartWidget,
+    resolveCalcOrUnitWidget,
     getHomeMiniWeather
 };

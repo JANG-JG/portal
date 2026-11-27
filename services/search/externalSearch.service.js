@@ -16,7 +16,7 @@ const NAVER_DAILY_LIMIT = 25000;
 
 const externalCache = new Map();
 let schemaInitialized = false;
-let engineToggles = { wikipedia: true, naver: true, google: true };
+let engineToggles = { wikipedia: true, naver: true, google: true, externalSuggest: true };
 const DEFAULT_NAVER_SUBAPIS = [
     { code: 'webkr', label: '웹문서', tab: 'webBlog', enabled: true },
     { code: 'blog', label: '블로그', tab: 'webBlog', enabled: false },
@@ -376,14 +376,28 @@ async function getSearchEngineStatus() {
                 todayCalls: usage.google?.calls || 0,
                 todayErrors: usage.google?.errors || 0,
                 dailyLimit: GOOGLE_DAILY_SAFE_LIMIT
+            },
+            {
+                id: 'externalSuggest',
+                name: '실시간 검색어 추천 (구글·위키백과)',
+                configured: true,
+                enabled: engineToggles.externalSuggest !== false,
+                todayCalls: usage.externalSuggest?.calls || 0,
+                todayErrors: usage.externalSuggest?.errors || 0,
+                dailyLimit: null
             }
         ]
     };
 }
 
+async function isExternalSuggestEnabled() {
+    await ensureExternalSchema();
+    return engineToggles.externalSuggest !== false;
+}
+
 async function setEngineToggle(engineId, enabled) {
     await ensureExternalSchema();
-    if (!['wikipedia', 'naver', 'google'].includes(engineId)) {
+    if (!['wikipedia', 'naver', 'google', 'externalSuggest'].includes(engineId)) {
         return { success: false, message: '지원하지 않는 검색 엔진입니다.' };
     }
     engineToggles[engineId] = Boolean(enabled);
@@ -444,5 +458,7 @@ module.exports = {
     setEngineToggle,
     setNaverSubApi,
     removeNaverSubApi,
-    clearExternalCache
+    clearExternalCache,
+    isExternalSuggestEnabled,
+    incrementUsage
 };

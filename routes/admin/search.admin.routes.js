@@ -7,6 +7,7 @@ const {
     removeNaverSubApi,
     clearExternalCache
 } = require('../../services/search/externalSearch.service');
+const { clearExternalSuggestCache } = require('../../services/search/suggestExternal.service');
 
 router.get('/status', async (req, res) => {
     try {
@@ -57,8 +58,10 @@ router.delete('/naver-subapi/:code', async (req, res) => {
 });
 
 router.post('/clear-cache', (req, res) => {
-    const cleared = clearExternalCache();
-    res.json({ success: true, cleared, message: `외부 검색 캐시 ${cleared}건을 비웠습니다.` });
+    const clearedExt = clearExternalCache();
+    const clearedSuggest = clearExternalSuggestCache();
+    const cleared = clearedExt + clearedSuggest;
+    res.json({ success: true, cleared, message: `외부 검색 및 추천 캐시 ${cleared}건을 비웠습니다.` });
 });
 
 module.exports = router;

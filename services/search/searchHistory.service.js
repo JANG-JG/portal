@@ -12,6 +12,13 @@ const { isServiceAllowed } = require('../moduleRegistry.service');
 const { encryptMemoText, decryptMemoText } = require('../crypto.service');
 const { isChosungOnly, matchesQuery } = require('./chosung.util');
 const { getAllowedShortcuts } = require('./internalSearch.service');
+const { fetchExternalSuggestions } = require('./suggestExternal.service');
+const {
+    STATIC_DICTIONARY_HINTS,
+    fetchUserExtendedPool,
+    resolveQuickPreview,
+    scoreCandidate
+} = require('./suggestCorpus.service');
 
 let schemaReady = false;
 function ensureSearchTables() {
@@ -159,27 +166,17 @@ async function clearHistory(userId) {
     });
 }
 
-const SMART_SUGGEST_HINTS = [
-    { text: '오늘 날씨', badge: '날씨' },
-    { text: '서울 날씨', badge: '날씨' },
-    { text: '계룡 날씨', badge: '날씨' },
-    { text: '도쿄 날씨', badge: '해외날씨' },
-    { text: '원달러 환율', badge: '환율' },
-    { text: '코스피 증시', badge: '증시' },
-    { text: '34평 몇제곱미터', badge: '단위변환' }
-];
-
-async function getCachedUserSources(userId) {
+async function getCachedUserSources(userId, isAdmin = false, hasBlood = false) {
     const now = Date.now();
     const cached = userSuggestCache.get(userId);
     if (cached && cached.expiresAt > now) {
         return cached;
     }
-    const [history, memos] = await Promise.all([
+    const [history, memos, extPool] = await Promise.all([
         getHistory(userId, 15),
         new Promise((resolve) => {
             if (!portalDb) return resolve([]);
-            portalDb.all('SELECT id, title FROM user_memos WHERE user_id = ? ORDER BY updated_at DESC LIMIT 30', [userId], (err, rows) => {
+            portalDb.all('SELECT id, title FROM user_memos WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40', [userId], (err, rows) => {
                 if (err || !rows) return resolve([]);
                 const list = [];
                 for (const r of rows) {
@@ -190,9 +187,17 @@ async function getCachedUserSources(userId) {
                 }
                 resolve(list);
             });
-        })
+        }),
+        fetchUserExtendedPool(userId, isAdmin, hasBlood)
     ]);
-    const entry = { expiresAt: now + SUGGEST_CACHE_TTL_MS, history, memos };
+    const entry = {
+        expiresAt: now + SUGGEST_CACHE_TTL_MS,
+        history,
+        memos,
+        calendar: extPool.calendar,
+        hospitals: extPool.hospitals,
+        medications: extPool.medications
+    };
     userSuggestCache.set(userId, entry);
     return entry;
 }
@@ -205,14 +210,14 @@ async function getCachedSharedSources() {
     const [wiki, news] = await Promise.all([
         new Promise((resolve) => {
             if (!wikiDb) return resolve([]);
-            wikiDb.all('SELECT title, slug FROM wiki_pages ORDER BY updated_at DESC LIMIT 40', [], (err, rows) => {
+            wikiDb.all('SELECT title, slug FROM wiki_pages ORDER BY updated_at DESC LIMIT 50', [], (err, rows) => {
                 if (err || !rows) return resolve([]);
                 resolve(rows.map(r => ({ text: r.title, url: `https://wiki.j-jg.cc/page/${encodeURIComponent(r.slug || '')}` })));
             });
         }),
         new Promise((resolve) => {
             if (!newsDb) return resolve([]);
-            newsDb.all('SELECT title FROM news_articles ORDER BY id DESC LIMIT 30', [], (err, rows) => {
+            newsDb.all('SELECT title FROM news_articles ORDER BY id DESC LIMIT 40', [], (err, rows) => {
                 if (err || !rows) return resolve([]);
                 resolve(rows.map(r => ({ text: r.title })));
             });
@@ -227,83 +232,150 @@ async function getSuggestions(user, rawPrefix) {
     const isAdmin = Boolean(user?.role === 'admin' || ADMIN_USERS.has(userId));
     const hasWiki = isAdmin || isServiceAllowed(user, 'wiki');
     const hasNews = isAdmin || isServiceAllowed(user, 'news');
+    const hasBlood = isAdmin || isServiceAllowed(user, 'blood');
 
     const q = (rawPrefix || '').trim();
     const isChosung = isChosungOnly(q);
     const cleanChosung = q.replace(/\s+/g, '').toLowerCase();
 
-    const suggestions = [];
-    const seen = new Set();
-    const pushItem = (text, type, badge, url = null) => {
-        const key = text.toLowerCase();
-        if (!text || seen.has(key)) return;
-        seen.add(key);
-        suggestions.push({ text, type, badge, url });
+    const userSources = await getCachedUserSources(userId, isAdmin, hasBlood);
+
+    // 빈 입력(포커스 시): 최근 검색어(삭제 가능) + 추천 키워드 반환
+    if (!q) {
+        getCachedSharedSources().catch(() => {});
+        const out = [];
+        const seen = new Set();
+        for (const h of userSources.history.slice(0, 6)) {
+            const k = h.query.toLowerCase();
+            if (!seen.has(k)) {
+                seen.add(k);
+                out.push({
+                    text: h.query,
+                    type: 'history',
+                    icon: '🕒',
+                    badge: '최근 검색',
+                    historyId: h.id
+                });
+            }
+        }
+        for (const hint of STATIC_DICTIONARY_HINTS.slice(0, 5)) {
+            const k = hint.text.toLowerCase();
+            if (!seen.has(k)) {
+                seen.add(k);
+                out.push({
+                    text: hint.text,
+                    type: hint.type,
+                    icon: hint.icon,
+                    badge: hint.badge,
+                    subtitle: hint.subtitle
+                });
+            }
+            if (out.length >= 10) break;
+        }
+        return out;
+    }
+
+    const [sharedSources, extSuggestions, quickPreview] = await Promise.all([
+        (hasWiki || hasNews) ? getCachedSharedSources() : Promise.resolve({ wiki: [], news: [] }),
+        fetchExternalSuggestions(q),
+        resolveQuickPreview(q, user)
+    ]);
+
+    const candidates = [];
+    const addCandidate = (item, score) => {
+        if (score >= 0 && item && item.text) {
+            candidates.push({ ...item, _score: score });
+        }
     };
 
-    const userSources = await getCachedUserSources(userId);
+    if (quickPreview) {
+        addCandidate(quickPreview, 10000);
+    }
 
-    // 1) 최근 검색어
-    for (const h of userSources.history) {
-        if (!q || matchesQuery(h.query, q, isChosung, cleanChosung)) {
-            pushItem(h.query, 'history', '최근 검색');
-            if (suggestions.length >= 4) break;
+    userSources.history.forEach((h, idx) => {
+        const s = scoreCandidate(h.query, q, isChosung, cleanChosung, 90 - idx);
+        if (s >= 0) {
+            addCandidate({
+                text: h.query,
+                type: 'history',
+                icon: '🕒',
+                badge: '최근 검색',
+                historyId: h.id
+            }, s);
+        }
+    });
+
+    for (const sc of getAllowedShortcuts(user)) {
+        const sTitle = scoreCandidate(sc.title, q, isChosung, cleanChosung, 78);
+        const sKw = matchesQuery(sc.keywords, q, isChosung, cleanChosung) ? 72 : -1;
+        const best = Math.max(sTitle, sKw);
+        if (best >= 0) {
+            addCandidate({
+                text: sc.title,
+                type: 'shortcut',
+                icon: sc.icon || '⚡',
+                badge: '바로가기',
+                subtitle: sc.desc,
+                url: sc.url
+            }, best);
         }
     }
 
-    if (!q) {
-        // 빈 입력(포커스) 시 공용 캐시도 백그라운드 예열
-        getCachedSharedSources().catch(() => {});
-        for (const hint of SMART_SUGGEST_HINTS.slice(0, 4)) {
-            pushItem(hint.text, 'smart', hint.badge);
-        }
-        return suggestions.slice(0, 8);
-    }
-
-    // 2) 스마트 추천어
-    for (const hint of SMART_SUGGEST_HINTS) {
-        if (matchesQuery(hint.text, q, isChosung, cleanChosung)) {
-            pushItem(hint.text, 'smart', hint.badge);
-        }
-    }
-
-    // 3) 사이트 바로가기
-    for (const s of getAllowedShortcuts(user)) {
-        if (matchesQuery(s.title, q, isChosung, cleanChosung) || matchesQuery(s.keywords, q, isChosung, cleanChosung)) {
-            pushItem(s.title, 'shortcut', '바로가기', s.url);
-        }
-    }
-
-    // 4) 내 메모 제목 & 가족 위키 제목 & 뉴스 제목 (초성 포함, 메모리 캐시)
-    const sharedSources = (hasWiki || hasNews) ? await getCachedSharedSources() : { wiki: [], news: [] };
-
-    let memoCount = 0;
     for (const m of userSources.memos) {
-        if (matchesQuery(m.text, q, isChosung, cleanChosung)) {
-            pushItem(m.text, 'memo', '내 메모', m.url);
-            if (++memoCount >= 3) break;
-        }
+        const s = scoreCandidate(m.text, q, isChosung, cleanChosung, 70);
+        if (s >= 0) addCandidate({ text: m.text, type: 'memo', icon: '📝', badge: '내 메모', url: m.url }, s);
     }
+    for (const c of userSources.calendar || []) {
+        const s = scoreCandidate(c.text, q, isChosung, cleanChosung, 68);
+        if (s >= 0) addCandidate(c, s);
+    }
+    for (const h of userSources.hospitals || []) {
+        const s = scoreCandidate(h.text, q, isChosung, cleanChosung, 66);
+        if (s >= 0) addCandidate(h, s);
+    }
+    for (const med of userSources.medications || []) {
+        const s = scoreCandidate(med.text, q, isChosung, cleanChosung, 65);
+        if (s >= 0) addCandidate(med, s);
+    }
+
     if (hasWiki) {
-        let wikiCount = 0;
         for (const w of sharedSources.wiki) {
-            if (matchesQuery(w.text, q, isChosung, cleanChosung)) {
-                pushItem(w.text, 'wiki', '가족 위키', w.url);
-                if (++wikiCount >= 3) break;
-            }
+            const s = scoreCandidate(w.text, q, isChosung, cleanChosung, 62);
+            if (s >= 0) addCandidate({ text: w.text, type: 'wiki', icon: '📖', badge: '가족 위키', url: w.url }, s);
         }
     }
     if (hasNews) {
-        let newsCount = 0;
         for (const n of sharedSources.news) {
-            if (matchesQuery(n.text, q, isChosung, cleanChosung)) {
-                pushItem(n.text, 'news', '뉴스');
-                if (++newsCount >= 2) break;
-            }
+            const s = scoreCandidate(n.text, q, isChosung, cleanChosung, 56);
+            if (s >= 0) addCandidate({ text: n.text, type: 'news', icon: '📰', badge: '뉴스' }, s);
         }
     }
 
-    return suggestions.slice(0, 10);
+    for (const hint of STATIC_DICTIONARY_HINTS) {
+        const s = scoreCandidate(hint.text, q, isChosung, cleanChosung, 54);
+        if (s >= 0) addCandidate(hint, s);
+    }
+
+    extSuggestions.forEach((ext, idx) => {
+        const base = ext.type === 'wikipedia' ? 50 : 40;
+        const rawScore = scoreCandidate(ext.text, q, isChosung, cleanChosung, base);
+        const finalScore = rawScore >= 0 ? rawScore - idx : (base - idx);
+        addCandidate(ext, finalScore);
+    });
+
+    candidates.sort((a, b) => b._score - a._score);
+
+    const results = [];
+    const seen = new Set();
+    for (const item of candidates) {
+        const key = item.isInstant ? `__instant__:${item.text.toLowerCase()}` : item.text.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const { _score, ...clean } = item;
+        results.push(clean);
+        if (results.length >= 10) break;
+    }
+    return results;
 }
 
 module.exports = {
