@@ -67,17 +67,36 @@
         const box = document.getElementById('jgPortalInlineSuggest');
         if (!form || !input || !box) return;
 
+        const suggestCache = new Map();
+        let suggestAbortCtrl = null;
+
         async function loadSuggest(prefix) {
+            const key = (prefix || '').toLowerCase();
+            const cached = suggestCache.get(key);
+            if (cached && cached.expiresAt > Date.now()) {
+                renderSuggestBox(box, cached.items);
+                return;
+            }
+            if (suggestAbortCtrl) suggestAbortCtrl.abort();
+            suggestAbortCtrl = new AbortController();
             try {
-                const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(prefix)}`, { credentials: 'include' });
+                const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(prefix)}`, {
+                    credentials: 'include',
+                    signal: suggestAbortCtrl.signal
+                });
                 const data = await res.json();
-                if (data.success) renderSuggestBox(box, data.suggestions);
-            } catch (_) {}
+                if (data.success) {
+                    suggestCache.set(key, { items: data.suggestions, expiresAt: Date.now() + 30000 });
+                    renderSuggestBox(box, data.suggestions);
+                }
+            } catch (err) {
+                if (err && err.name === 'AbortError') return;
+            }
         }
 
         input.addEventListener('input', () => {
             clearTimeout(suggestTimer);
-            suggestTimer = setTimeout(() => loadSuggest(input.value.trim()), 160);
+            suggestTimer = setTimeout(() => loadSuggest(input.value.trim()), 90);
         });
 
         input.addEventListener('focus', () => {

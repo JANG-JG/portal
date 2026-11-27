@@ -300,6 +300,24 @@
             });
         }
 
+        // 5.5) 추가 활성화된 네이버 세부 API (지식iN, 책, 쇼핑, 카페 등)
+        if (Array.isArray(nv.extras)) {
+            nv.extras.forEach((ex) => {
+                if (!ex || !Array.isArray(ex.items) || ex.items.length === 0) return;
+                if (tab === 'all' || tab === ex.tab || tab === 'webBlog') {
+                    shownCount += appendSection(mount, '🔎', `${ex.label || ex.code} (네이버)`, ex.items, (sec, items) => {
+                        renderListItems(sec, items, (it) => ({
+                            title: it.title,
+                            desc: it.description,
+                            meta: [it.source, it.date].filter(Boolean).join(' · '),
+                            url: it.link,
+                            external: true
+                        }));
+                    });
+                }
+            });
+        }
+
         // 6) 구글 웹 검색
         const gg = external.google || {};
         if ((tab === 'all' || tab === 'google') && Array.isArray(gg.items) && gg.items.length > 0) {

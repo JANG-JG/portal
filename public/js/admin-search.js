@@ -60,8 +60,94 @@
                 tr.append(tdName, tdKey, tdUsage, tdToggle);
                 tbody.appendChild(tr);
             });
+
+            renderNaverSubApis(data.naverSubApis || []);
         } catch (_) {}
     }
+
+    function renderNaverSubApis(subApis) {
+        const wrap = document.getElementById('adminNaverSubApisWrap');
+        if (!wrap) return;
+        wrap.replaceChildren();
+
+        subApis.forEach((sub) => {
+            const chip = document.createElement('div');
+            chip.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:4px 8px;border-radius:8px;border:1px solid #cbd5e1;font-size:0.82rem;background:' + (sub.enabled ? '#eff6ff' : '#f8fafc') + ';border-color:' + (sub.enabled ? '#3b82f6' : '#cbd5e1') + ';';
+
+            const toggleBtn = document.createElement('button');
+            toggleBtn.type = 'button';
+            toggleBtn.style.cssText = 'border:none;background:transparent;cursor:pointer;font-weight:700;padding:0;color:' + (sub.enabled ? '#1d4ed8' : '#64748b') + ';';
+            toggleBtn.textContent = `${sub.enabled ? '✅' : '⬜'} ${sub.label} (${sub.code})`;
+            toggleBtn.addEventListener('click', async () => {
+                await fetch('/api/admin/search/naver-subapi', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ code: sub.code, enabled: !sub.enabled })
+                });
+                loadAdminSearchStatus();
+            });
+            chip.appendChild(toggleBtn);
+
+            if (sub.custom) {
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.title = '삭제';
+                delBtn.style.cssText = 'border:none;background:transparent;cursor:pointer;color:#ef4444;font-weight:700;padding:0 2px;';
+                delBtn.textContent = '×';
+                delBtn.addEventListener('click', async () => {
+                    await fetch(`/api/admin/search/naver-subapi/${encodeURIComponent(sub.code)}`, {
+                        method: 'DELETE',
+                        credentials: 'include'
+                    });
+                    loadAdminSearchStatus();
+                });
+                chip.appendChild(delBtn);
+            }
+
+            wrap.appendChild(chip);
+        });
+    }
+
+    window.addAdminNaverSubApi = async function () {
+        const preset = document.getElementById('adminNaverSubApiPreset');
+        const codeEl = document.getElementById('adminNaverSubApiCode');
+        const labelEl = document.getElementById('adminNaverSubApiLabel');
+        if (!preset) return;
+
+        let code = '';
+        let label = '';
+        if (preset.value === 'custom:직접입력') {
+            code = (codeEl?.value || '').trim().toLowerCase();
+            label = (labelEl?.value || '').trim();
+        } else {
+            const parts = preset.value.split(':');
+            code = parts[0];
+            label = parts[1] || code;
+        }
+
+        if (!code) {
+            alert('추가할 네이버 검색 API 코드를 입력해 주세요. (예: book, shop, kin)');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/admin/search/naver-subapi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ code, label: label || code, enabled: true })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                alert(data.message || '세부 API 추가에 실패했습니다.');
+                return;
+            }
+            if (codeEl) codeEl.value = '';
+            if (labelEl) labelEl.value = '';
+            loadAdminSearchStatus();
+        } catch (_) {}
+    };
 
     window.loadAdminSearchStatus = loadAdminSearchStatus;
 
@@ -77,6 +163,16 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
+        const preset = document.getElementById('adminNaverSubApiPreset');
+        const codeEl = document.getElementById('adminNaverSubApiCode');
+        const labelEl = document.getElementById('adminNaverSubApiLabel');
+        if (preset && codeEl && labelEl) {
+            preset.addEventListener('change', () => {
+                const isCustom = preset.value === 'custom:직접입력';
+                codeEl.style.display = isCustom ? '' : 'none';
+                labelEl.style.display = isCustom ? '' : 'none';
+            });
+        }
         loadAdminSearchStatus();
     });
 })();

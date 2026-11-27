@@ -95,6 +95,14 @@ async function getHistory(userId, limit = 15) {
     });
 }
 
+const SUGGEST_CACHE_TTL_MS = 60 * 1000;
+const userSuggestCache = new Map();
+let sharedSuggestCache = { expiresAt: 0, wiki: [], news: [] };
+
+function invalidateUserSuggestCache(userId) {
+    if (userId) userSuggestCache.delete(userId);
+}
+
 async function addHistory(userId, rawQuery) {
     const q = (rawQuery || '').trim();
     if (!q || q.length > 100 || !portalDb || !userId) return false;
@@ -113,6 +121,7 @@ async function addHistory(userId, rawQuery) {
             [userId, enc, qHash],
             (err) => {
                 if (err) return resolve(false);
+                invalidateUserSuggestCache(userId);
                 // 사용자당 최대 30건만 유지
                 portalDb.run(
                     `DELETE FROM search_history WHERE user_id = ? AND id NOT IN (
@@ -133,6 +142,7 @@ async function deleteHistoryItem(userId, itemId) {
     if (!Number.isInteger(idNum) || idNum <= 0) return false;
     return new Promise((resolve) => {
         portalDb.run('DELETE FROM search_history WHERE id = ? AND user_id = ?', [idNum, userId], function (err) {
+            if (!err && this.changes > 0) invalidateUserSuggestCache(userId);
             resolve(!err && this.changes > 0);
         });
     });
@@ -143,6 +153,7 @@ async function clearHistory(userId) {
     if (!portalDb || !userId) return false;
     return new Promise((resolve) => {
         portalDb.run('DELETE FROM search_history WHERE user_id = ?', [userId], (err) => {
+            if (!err) invalidateUserSuggestCache(userId);
             resolve(!err);
         });
     });
@@ -157,6 +168,59 @@ const SMART_SUGGEST_HINTS = [
     { text: '코스피 증시', badge: '증시' },
     { text: '34평 몇제곱미터', badge: '단위변환' }
 ];
+
+async function getCachedUserSources(userId) {
+    const now = Date.now();
+    const cached = userSuggestCache.get(userId);
+    if (cached && cached.expiresAt > now) {
+        return cached;
+    }
+    const [history, memos] = await Promise.all([
+        getHistory(userId, 15),
+        new Promise((resolve) => {
+            if (!portalDb) return resolve([]);
+            portalDb.all('SELECT id, title FROM user_memos WHERE user_id = ? ORDER BY updated_at DESC LIMIT 30', [userId], (err, rows) => {
+                if (err || !rows) return resolve([]);
+                const list = [];
+                for (const r of rows) {
+                    try {
+                        const dec = decryptMemoText(r.title, userId);
+                        if (dec) list.push({ text: dec, url: `/memo?id=${r.id}` });
+                    } catch (_) {}
+                }
+                resolve(list);
+            });
+        })
+    ]);
+    const entry = { expiresAt: now + SUGGEST_CACHE_TTL_MS, history, memos };
+    userSuggestCache.set(userId, entry);
+    return entry;
+}
+
+async function getCachedSharedSources() {
+    const now = Date.now();
+    if (sharedSuggestCache.expiresAt > now) {
+        return sharedSuggestCache;
+    }
+    const [wiki, news] = await Promise.all([
+        new Promise((resolve) => {
+            if (!wikiDb) return resolve([]);
+            wikiDb.all('SELECT title, slug FROM wiki_pages ORDER BY updated_at DESC LIMIT 40', [], (err, rows) => {
+                if (err || !rows) return resolve([]);
+                resolve(rows.map(r => ({ text: r.title, url: `https://wiki.j-jg.cc/page/${encodeURIComponent(r.slug || '')}` })));
+            });
+        }),
+        new Promise((resolve) => {
+            if (!newsDb) return resolve([]);
+            newsDb.all('SELECT title FROM news_articles ORDER BY id DESC LIMIT 30', [], (err, rows) => {
+                if (err || !rows) return resolve([]);
+                resolve(rows.map(r => ({ text: r.title })));
+            });
+        })
+    ]);
+    sharedSuggestCache = { expiresAt: now + SUGGEST_CACHE_TTL_MS, wiki, news };
+    return sharedSuggestCache;
+}
 
 async function getSuggestions(user, rawPrefix) {
     const userId = user?.username || 'admin';
@@ -177,9 +241,10 @@ async function getSuggestions(user, rawPrefix) {
         suggestions.push({ text, type, badge, url });
     };
 
+    const userSources = await getCachedUserSources(userId);
+
     // 1) 최근 검색어
-    const history = await getHistory(userId, 15);
-    for (const h of history) {
+    for (const h of userSources.history) {
         if (!q || matchesQuery(h.query, q, isChosung, cleanChosung)) {
             pushItem(h.query, 'history', '최근 검색');
             if (suggestions.length >= 4) break;
@@ -187,6 +252,8 @@ async function getSuggestions(user, rawPrefix) {
     }
 
     if (!q) {
+        // 빈 입력(포커스) 시 공용 캐시도 백그라운드 예열
+        getCachedSharedSources().catch(() => {});
         for (const hint of SMART_SUGGEST_HINTS.slice(0, 4)) {
             pushItem(hint.text, 'smart', hint.badge);
         }
@@ -207,51 +274,34 @@ async function getSuggestions(user, rawPrefix) {
         }
     }
 
-    // 4) 내 메모 제목 & 가족 위키 제목 (초성 포함)
-    const [memoTitles, wikiTitles, newsTitles] = await Promise.all([
-        new Promise((resolve) => {
-            if (!portalDb) return resolve([]);
-            portalDb.all('SELECT id, title FROM user_memos WHERE user_id = ? ORDER BY updated_at DESC LIMIT 30', [userId], (err, rows) => {
-                if (err || !rows) return resolve([]);
-                const matched = [];
-                for (const r of rows) {
-                    try {
-                        const dec = decryptMemoText(r.title, userId);
-                        if (dec && matchesQuery(dec, q, isChosung, cleanChosung)) {
-                            matched.push({ text: dec, url: `/memo?id=${r.id}` });
-                        }
-                    } catch (_) {}
-                }
-                resolve(matched.slice(0, 3));
-            });
-        }),
-        new Promise((resolve) => {
-            if (!hasWiki || !wikiDb) return resolve([]);
-            wikiDb.all('SELECT title, slug FROM wiki_pages ORDER BY updated_at DESC LIMIT 40', [], (err, rows) => {
-                if (err || !rows) return resolve([]);
-                const matched = rows
-                    .filter(r => matchesQuery(r.title, q, isChosung, cleanChosung))
-                    .slice(0, 3)
-                    .map(r => ({ text: r.title, url: `https://wiki.j-jg.cc/page/${encodeURIComponent(r.slug || '')}` }));
-                resolve(matched);
-            });
-        }),
-        new Promise((resolve) => {
-            if (!hasNews || !newsDb) return resolve([]);
-            newsDb.all('SELECT title FROM news_articles ORDER BY id DESC LIMIT 30', [], (err, rows) => {
-                if (err || !rows) return resolve([]);
-                const matched = rows
-                    .filter(r => matchesQuery(r.title, q, isChosung, cleanChosung))
-                    .slice(0, 2)
-                    .map(r => ({ text: r.title }));
-                resolve(matched);
-            });
-        })
-    ]);
+    // 4) 내 메모 제목 & 가족 위키 제목 & 뉴스 제목 (초성 포함, 메모리 캐시)
+    const sharedSources = (hasWiki || hasNews) ? await getCachedSharedSources() : { wiki: [], news: [] };
 
-    memoTitles.forEach(m => pushItem(m.text, 'memo', '내 메모', m.url));
-    wikiTitles.forEach(w => pushItem(w.text, 'wiki', '가족 위키', w.url));
-    newsTitles.forEach(n => pushItem(n.text, 'news', '뉴스'));
+    let memoCount = 0;
+    for (const m of userSources.memos) {
+        if (matchesQuery(m.text, q, isChosung, cleanChosung)) {
+            pushItem(m.text, 'memo', '내 메모', m.url);
+            if (++memoCount >= 3) break;
+        }
+    }
+    if (hasWiki) {
+        let wikiCount = 0;
+        for (const w of sharedSources.wiki) {
+            if (matchesQuery(w.text, q, isChosung, cleanChosung)) {
+                pushItem(w.text, 'wiki', '가족 위키', w.url);
+                if (++wikiCount >= 3) break;
+            }
+        }
+    }
+    if (hasNews) {
+        let newsCount = 0;
+        for (const n of sharedSources.news) {
+            if (matchesQuery(n.text, q, isChosung, cleanChosung)) {
+                pushItem(n.text, 'news', '뉴스');
+                if (++newsCount >= 2) break;
+            }
+        }
+    }
 
     return suggestions.slice(0, 10);
 }

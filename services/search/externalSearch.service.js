@@ -17,6 +17,15 @@ const NAVER_DAILY_LIMIT = 25000;
 const externalCache = new Map();
 let schemaInitialized = false;
 let engineToggles = { wikipedia: true, naver: true, google: true };
+const DEFAULT_NAVER_SUBAPIS = [
+    { code: 'webkr', label: '웹문서', tab: 'webBlog', enabled: true },
+    { code: 'blog', label: '블로그', tab: 'webBlog', enabled: false },
+    { code: 'encyc', label: '지식백과', tab: 'encyc', enabled: false },
+    { code: 'news', label: '뉴스', tab: 'news', enabled: false },
+    { code: 'local', label: '지역·맛집', tab: 'local', enabled: false },
+    { code: 'kin', label: '지식iN', tab: 'webBlog', enabled: false }
+];
+let naverSubApis = DEFAULT_NAVER_SUBAPIS.map((it) => ({ ...it }));
 
 function getTodayKst() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Seoul' });
@@ -49,8 +58,17 @@ function ensureExternalSchema() {
             portalDb.get("SELECT value FROM system_configs WHERE key = 'search_engine_toggles'", (err, row) => {
                 if (!err && row && row.value) {
                     try {
+                        engineToggles = { ...engineToggles, ...JSON.parse(row.value) };
+                    } catch (_) {}
+                }
+            });
+            portalDb.get("SELECT value FROM system_configs WHERE key = 'search_naver_subapis'", (err, row) => {
+                if (!err && row && row.value) {
+                    try {
                         const parsed = JSON.parse(row.value);
-                        engineToggles = { ...engineToggles, ...parsed };
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            naverSubApis = parsed.filter((x) => x && typeof x.code === 'string');
+                        }
                     } catch (_) {}
                 }
                 schemaInitialized = true;
@@ -238,6 +256,23 @@ async function fetchGoogleSearch(rawQuery, num = 6) {
     }
 }
 
+function isSubApiEnabled(code) {
+    const found = naverSubApis.find((s) => s.code === code);
+    return Boolean(found && found.enabled);
+}
+
+async function persistNaverSubApis() {
+    if (!portalDb) return;
+    await new Promise((resolve) => {
+        portalDb.run(
+            `INSERT INTO system_configs (key, value) VALUES ('search_naver_subapis', ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+            [JSON.stringify(naverSubApis)],
+            () => resolve()
+        );
+    });
+}
+
 async function searchExternal(rawQuery, mode = 'all') {
     await ensureExternalSchema();
     const q = (rawQuery || '').trim();
@@ -247,24 +282,36 @@ async function searchExternal(rawQuery, mode = 'all') {
     const isEnglishOnly = /^[a-zA-Z0-9\s.,?!'"-]+$/.test(q) && /[a-zA-Z]{2,}/.test(q);
     const shouldCallGoogle = mode === 'google' || (mode === 'all' && isEnglishOnly);
 
+    const coreCodes = new Set(['webkr', 'blog', 'encyc', 'news', 'local']);
+    const extraSubApis = naverActive
+        ? naverSubApis.filter((s) => s.enabled && !coreCodes.has(s.code) && (mode === 'all' || mode === s.tab || mode === 'webBlog'))
+        : [];
+
     const tasks = {
         wikipedia: (mode === 'all' || mode === 'encyc') ? fetchWikipediaSummary(q) : Promise.resolve(null),
-        naverWeb: naverActive && (mode === 'all' || mode === 'webBlog') ? fetchNaverEndpoint('webkr', q, mode === 'webBlog' ? 8 : 4) : Promise.resolve([]),
-        naverBlog: naverActive && (mode === 'all' || mode === 'webBlog') ? fetchNaverEndpoint('blog', q, mode === 'webBlog' ? 8 : 4) : Promise.resolve([]),
-        naverEncyc: naverActive && (mode === 'all' || mode === 'encyc') ? fetchNaverEndpoint('encyc', q, mode === 'encyc' ? 8 : 3) : Promise.resolve([]),
-        naverNews: naverActive && (mode === 'all' || mode === 'news') ? fetchNaverEndpoint('news', q, 5) : Promise.resolve([]),
-        naverLocal: naverActive && (mode === 'all' || mode === 'local') ? fetchNaverEndpoint('local', q, mode === 'local' ? 8 : 4) : Promise.resolve([]),
-        google: shouldCallGoogle ? fetchGoogleSearch(q, mode === 'google' ? 8 : 5) : Promise.resolve({ items: [], skipped: true })
+        naverWeb: naverActive && isSubApiEnabled('webkr') && (mode === 'all' || mode === 'webBlog') ? fetchNaverEndpoint('webkr', q, mode === 'webBlog' ? 8 : 4) : Promise.resolve([]),
+        naverBlog: naverActive && isSubApiEnabled('blog') && (mode === 'all' || mode === 'webBlog') ? fetchNaverEndpoint('blog', q, mode === 'webBlog' ? 8 : 4) : Promise.resolve([]),
+        naverEncyc: naverActive && isSubApiEnabled('encyc') && (mode === 'all' || mode === 'encyc') ? fetchNaverEndpoint('encyc', q, mode === 'encyc' ? 8 : 3) : Promise.resolve([]),
+        naverNews: naverActive && isSubApiEnabled('news') && (mode === 'all' || mode === 'news') ? fetchNaverEndpoint('news', q, 5) : Promise.resolve([]),
+        naverLocal: naverActive && isSubApiEnabled('local') && (mode === 'all' || mode === 'local') ? fetchNaverEndpoint('local', q, mode === 'local' ? 8 : 4) : Promise.resolve([]),
+        google: shouldCallGoogle ? fetchGoogleSearch(q, mode === 'google' ? 8 : 5) : Promise.resolve({ items: [], skipped: true }),
+        extras: Promise.all(extraSubApis.map(async (sub) => ({
+            code: sub.code,
+            label: sub.label,
+            tab: sub.tab || 'webBlog',
+            items: await fetchNaverEndpoint(sub.code, q, 5)
+        })))
     };
 
-    const [wikipedia, naverWeb, naverBlog, naverEncyc, naverNews, naverLocal, google] = await Promise.all([
+    const [wikipedia, naverWeb, naverBlog, naverEncyc, naverNews, naverLocal, google, naverExtras] = await Promise.all([
         tasks.wikipedia,
         tasks.naverWeb,
         tasks.naverBlog,
         tasks.naverEncyc,
         tasks.naverNews,
         tasks.naverLocal,
-        tasks.google
+        tasks.google,
+        tasks.extras
     ]);
 
     return {
@@ -280,7 +327,8 @@ async function searchExternal(rawQuery, mode = 'all') {
             blog: naverBlog,
             encyc: naverEncyc,
             news: naverNews,
-            local: naverLocal
+            local: naverLocal,
+            extras: naverExtras
         },
         google
     };
@@ -289,9 +337,11 @@ async function searchExternal(rawQuery, mode = 'all') {
 async function getSearchEngineStatus() {
     await ensureExternalSchema();
     const usage = await getTodayUsageMap();
+    const enabledLabels = naverSubApis.filter((s) => s.enabled).map((s) => s.label).join('·') || '없음';
     return {
         date: getTodayKst(),
         cacheSize: externalCache.size,
+        naverSubApis: naverSubApis.map((s) => ({ ...s })),
         engines: [
             {
                 id: 'wikipedia',
@@ -304,7 +354,7 @@ async function getSearchEngineStatus() {
             },
             {
                 id: 'naver',
-                name: '네이버 오픈 API (웹·블로그·백과·뉴스·지역)',
+                name: `네이버 오픈 API (${enabledLabels})`,
                 configured: isNaverConfigured(),
                 enabled: Boolean(engineToggles.naver),
                 todayCalls: usage.naver?.calls || 0,
@@ -343,6 +393,38 @@ async function setEngineToggle(engineId, enabled) {
     return { success: true, toggles: { ...engineToggles } };
 }
 
+async function setNaverSubApi({ code, label, tab = 'webBlog', enabled = true }) {
+    await ensureExternalSchema();
+    const cleanCode = String(code || '').trim().toLowerCase();
+    if (!/^[a-z]{2,16}$/.test(cleanCode)) {
+        return { success: false, message: 'API 코드는 영문 소문자 2~16자여야 합니다. (예: webkr, blog, kin, book)' };
+    }
+    const existing = naverSubApis.find((s) => s.code === cleanCode);
+    if (existing) {
+        existing.enabled = Boolean(enabled);
+        if (label && String(label).trim()) existing.label = String(label).trim().slice(0, 24);
+    } else {
+        const cleanLabel = String(label || cleanCode).trim().slice(0, 24);
+        const safeTab = ['webBlog', 'encyc', 'news', 'local'].includes(tab) ? tab : 'webBlog';
+        naverSubApis.push({ code: cleanCode, label: cleanLabel, tab: safeTab, enabled: Boolean(enabled), custom: true });
+    }
+    await persistNaverSubApis();
+    externalCache.clear();
+    return { success: true, naverSubApis: naverSubApis.map((s) => ({ ...s })) };
+}
+
+async function removeNaverSubApi(code) {
+    await ensureExternalSchema();
+    const cleanCode = String(code || '').trim().toLowerCase();
+    const target = naverSubApis.find((s) => s.code === cleanCode);
+    if (!target) return { success: false, message: '등록된 API가 아닙니다.' };
+    if (!target.custom) return { success: false, message: '기본 제공 API는 삭제할 수 없으며 비활성화만 가능합니다.' };
+    naverSubApis = naverSubApis.filter((s) => s.code !== cleanCode);
+    await persistNaverSubApis();
+    externalCache.clear();
+    return { success: true, naverSubApis: naverSubApis.map((s) => ({ ...s })) };
+}
+
 function clearExternalCache() {
     const prevSize = externalCache.size;
     externalCache.clear();
@@ -353,5 +435,7 @@ module.exports = {
     searchExternal,
     getSearchEngineStatus,
     setEngineToggle,
+    setNaverSubApi,
+    removeNaverSubApi,
     clearExternalCache
 };

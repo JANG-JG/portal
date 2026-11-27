@@ -252,12 +252,31 @@
         box.style.display = 'block';
     }
 
+    const suggestCache = new Map();
+    let suggestAbortCtrl = null;
+
     async function fetchSuggestions(prefix) {
+        const key = (prefix || '').toLowerCase();
+        const cached = suggestCache.get(key);
+        if (cached && cached.expiresAt > Date.now()) {
+            renderSuggestions(cached.items);
+            return;
+        }
+        if (suggestAbortCtrl) suggestAbortCtrl.abort();
+        suggestAbortCtrl = new AbortController();
         try {
-            const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(prefix)}`, { credentials: 'include' });
+            const res = await fetch(`/api/search/suggest?q=${encodeURIComponent(prefix)}`, {
+                credentials: 'include',
+                signal: suggestAbortCtrl.signal
+            });
             const data = await res.json();
-            if (data.success) renderSuggestions(data.suggestions);
-        } catch (_) {}
+            if (data.success) {
+                suggestCache.set(key, { items: data.suggestions, expiresAt: Date.now() + 30000 });
+                renderSuggestions(data.suggestions);
+            }
+        } catch (err) {
+            if (err && err.name === 'AbortError') return;
+        }
     }
 
     function initEvents() {
@@ -269,7 +288,7 @@
             const val = input.value;
             clearBtn.style.display = val ? 'inline-flex' : 'none';
             clearTimeout(state.suggestTimer);
-            state.suggestTimer = setTimeout(() => fetchSuggestions(val.trim()), 150);
+            state.suggestTimer = setTimeout(() => fetchSuggestions(val.trim()), 90);
         });
 
         input.addEventListener('focus', () => {
