@@ -189,16 +189,23 @@ async function fetchNaverEndpoint(type, rawQuery, display = 5) {
     const cached = getCache(cacheKey);
     if (cached !== null) return cached;
 
+    const clientId = (process.env.NAVER_CLIENT_ID || '').trim();
+    const clientSecret = (process.env.NAVER_CLIENT_SECRET || '').trim();
+    const isLegacyDev = clientId.length === 20 && clientSecret.length === 10 && process.env.NAVER_API_MODE !== 'ncp';
+
+    const url = isLegacyDev
+        ? `https://openapi.naver.com/v1/search/${type}.json`
+        : `https://naverapihub.apigw.ntruss.com/search/v1/${type}`;
+    const headers = isLegacyDev
+        ? { 'X-Naver-Client-Id': clientId, 'X-Naver-Client-Secret': clientSecret }
+        : { 'X-NCP-APIGW-API-KEY-ID': clientId, 'X-NCP-APIGW-API-KEY': clientSecret };
+    const params = isLegacyDev
+        ? { query: rawQuery, display, sort: type === 'local' ? 'comment' : 'sim' }
+        : { query: rawQuery, display, start: 1, format: 'json', sort: type === 'local' ? 'comment' : 'sim' };
+
     try {
         await incrementUsage('naver', false);
-        const res = await axios.get(`https://openapi.naver.com/v1/search/${type}.json`, {
-            params: { query: rawQuery, display, sort: type === 'local' ? 'comment' : 'sim' },
-            headers: {
-                'X-Naver-Client-Id': process.env.NAVER_CLIENT_ID,
-                'X-Naver-Client-Secret': process.env.NAVER_CLIENT_SECRET
-            },
-            timeout: 3500
-        });
+        const res = await axios.get(url, { params, headers, timeout: 3500 });
         const items = (res.data?.items || []).map((item) => ({
             title: stripHtmlTags(item.title),
             description: stripHtmlTags(item.description || item.roadAddress || item.address || ''),
