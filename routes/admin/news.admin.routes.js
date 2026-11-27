@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { NEWS_DIR, NEWS_DB_PATH } = require('../../config/constants');
 const { db, newsDb } = require('../../services/db');
 const { getLiveWeatherData } = require('../../services/weather.service');
@@ -205,9 +205,9 @@ router.get('/file-logs', (req, res) => {
         return res.json({ success: true, logs: `[알림] ${logFile} 파일이 아직 생성되지 않았거나 비어 있습니다.\n(확인 경로: ${path.join(NEWS_DIR, 'logs', logFile)})` });
     }
 
-    exec(`tail -n ${linesCount} "${filePath}"`, (err, stdout, stderr) => {
+    execFile('tail', ['-n', String(linesCount), filePath], (err, stdout) => {
         if (err) {
-            return res.json({ success: true, logs: `로그 파일 읽기 오류: ${err.message}` });
+            return res.json({ success: true, logs: '로그 파일 읽기 중 오류가 발생했습니다.' });
         }
         res.json({ success: true, logs: stdout || '(기록된 로그 내용이 없습니다.)' });
     });
@@ -229,8 +229,8 @@ router.post('/trigger', (req, res) => {
     const pyPath = pyCandidates.find(p => fs.existsSync(p)) || 'python3';
     const scriptPath = path.join(NEWS_DIR, 'scheduler.py');
 
-    exec(`"${pyPath}" "${scriptPath}" ${flag}`, { cwd: NEWS_DIR }, (err, stdout, stderr) => {
-        if (err) console.error('[NEWS_TRIGGER_ERR]', err, stderr);
+    execFile(pyPath, [scriptPath, flag], { cwd: NEWS_DIR }, (err, stdout, stderr) => {
+        if (err) console.error('[NEWS_TRIGGER_ERR]', err.message, stderr);
     });
 
     res.json({
@@ -309,7 +309,7 @@ router.get('/ai-governance', async (req, res) => {
             const qPath = path.join(NEWS_DIR, 'logs', '.gemini_quota.json');
             if (fs.existsSync(qPath)) {
                 const parsed = JSON.parse(fs.readFileSync(qPath, 'utf8'));
-                geminiQuota = { date: parsed.date || '-', count: Number(parsed.count) || 0, limit: 2000 };
+                geminiQuota = { date: parsed.date || '-', count: Number(parsed.calls ?? parsed.count) || 0, limit: 2000 };
             }
         } catch (e) {}
 
@@ -430,9 +430,10 @@ router.post('/test-telegram', (req, res) => {
         'print(json.dumps({"ok": ok}))'
     ].join('; ');
 
-    exec(`"${pyPath}" -c '${pyCode}'`, { cwd: NEWS_DIR, timeout: 15000 }, (err, stdout, stderr) => {
+    execFile(pyPath, ['-c', pyCode], { cwd: NEWS_DIR, timeout: 15000 }, (err, stdout, stderr) => {
         if (err) {
-            return res.status(500).json({ success: false, message: '뉴스 텔레그램 테스트 실행 오류: ' + (stderr || err.message) });
+            console.error('[NEWS_TELEGRAM_TEST_ERR]', err.message, stderr);
+            return res.status(500).json({ success: false, message: '뉴스 텔레그램 테스트 실행 중 오류가 발생했습니다.' });
         }
         try {
             const lines = String(stdout || '').trim().split('\n');
@@ -442,7 +443,7 @@ router.post('/test-telegram', (req, res) => {
             }
             return res.status(500).json({ success: false, message: '텔레그램 발송 실패 (봇 토큰 또는 채팅방 ID 설정을 확인해 주세요).' });
         } catch (parseErr) {
-            return res.status(500).json({ success: false, message: '테스트 결과 확인 실패: ' + parseErr.message });
+            return res.status(500).json({ success: false, message: '테스트 결과 파싱에 실패했습니다.' });
         }
     });
 });
