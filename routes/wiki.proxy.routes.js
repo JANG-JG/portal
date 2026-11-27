@@ -49,15 +49,15 @@ function requireWikiAccess(req, res, next) {
 
     if (req.user && req.user.username) {
         return db.get(
-            'SELECT username, role, allowed_services, is_active FROM users WHERE username = ?',
+            'SELECT username, role, allowed_services FROM users WHERE username = ?',
             [req.user.username],
             (err, dbUser) => {
                 if (err) {
                     return proceed(req.user);
                 }
-                if (!dbUser || dbUser.is_active === 0) {
+                if (!dbUser) {
                     if (req.path && req.path.startsWith('/api/')) {
-                        return res.status(403).json({ success: false, message: '비활성화된 계정입니다.' });
+                        return res.status(403).json({ success: false, message: '유효하지 않은 계정입니다.' });
                     }
                     return res.redirect('/error?code=403&path=' + encodeURIComponent(req.originalUrl || req.path));
                 }
