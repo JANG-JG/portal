@@ -61,9 +61,11 @@ router.post('/clear-cache', (req, res) => {
     const clearedExt = clearExternalCache();
     const clearedSuggest = clearExternalSuggestCache();
     const { clearMapWidgetCache } = require('../../services/search/kakaoMapWidget.service');
+    const { clearAiSummaryCache } = require('../../services/search/searchAiBriefing.service');
     const clearedMap = clearMapWidgetCache();
-    const cleared = clearedExt + clearedSuggest + clearedMap;
-    res.json({ success: true, cleared, message: `외부 검색 및 추천·지도 캐시 ${cleared}건을 비웠습니다.` });
+    const clearedAi = clearAiSummaryCache();
+    const cleared = clearedExt + clearedSuggest + clearedMap + clearedAi;
+    res.json({ success: true, cleared, message: `외부 검색 및 추천·지도·AI 요약 캐시 ${cleared}건을 비웠습니다.` });
 });
 
 module.exports = router;

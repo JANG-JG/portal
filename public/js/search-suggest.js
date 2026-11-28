@@ -47,13 +47,28 @@
         let currentItems = [];
         let timer = null;
         let abortCtrl = null;
+        let suppressUntil = 0;
         const cache = new Map();
 
-        function close() {
+        function close(closeOpts = {}) {
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
+            if (abortCtrl) {
+                try { abortCtrl.abort(); } catch (_) {}
+                abortCtrl = null;
+            }
+            if (closeOpts.suppressMs > 0) {
+                suppressUntil = Date.now() + closeOpts.suppressMs;
+            }
             dropdown.style.display = 'none';
             dropdown.replaceChildren();
             activeIdx = -1;
             currentItems = [];
+            if (closeOpts.blur && typeof input.blur === 'function') {
+                input.blur();
+            }
         }
 
         function updateActiveClass() {
@@ -179,6 +194,7 @@
         }
 
         input.addEventListener('input', () => {
+            if (Date.now() < suppressUntil) return;
             const q = input.value.trim();
             clearTimeout(timer);
             if (!q) {
@@ -190,11 +206,10 @@
         });
 
         input.addEventListener('focus', () => {
+            if (Date.now() < suppressUntil) return;
             const q = input.value.trim();
             if (!q && showOnEmptyFocus) {
                 loadAndRender('');
-            } else if (q && currentItems.length > 0) {
-                dropdown.style.display = 'block';
             }
         });
 
@@ -213,7 +228,7 @@
             } else if (e.key === 'Enter' && activeIdx >= 0 && currentItems[activeIdx]) {
                 e.preventDefault();
                 const chosen = currentItems[activeIdx];
-                close();
+                close({ blur: true, suppressMs: 450 });
                 onSelect(chosen);
             }
         });
@@ -223,6 +238,8 @@
                 close();
             }
         });
+
+        global.addEventListener('pageshow', () => close());
 
         return { close, clearCache: () => cache.clear() };
     }

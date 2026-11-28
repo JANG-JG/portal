@@ -68,7 +68,7 @@
         if (!form || !input || !box) return;
 
         if (window.JGSearchSuggest) {
-            window.JGSearchSuggest.attach({
+            const suggestHandle = window.JGSearchSuggest.attach({
                 input,
                 dropdown: box,
                 showOnEmptyFocus: true,
@@ -86,6 +86,7 @@
             });
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
+                if (suggestHandle) suggestHandle.close({ blur: true, suppressMs: 450 });
                 navigateToSearch(input.value);
             });
             return;

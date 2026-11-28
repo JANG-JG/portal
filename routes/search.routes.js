@@ -179,7 +179,7 @@ router.get('/unified', authenticateToken, async (req, res) => {
 const { resolveSmartWidget, getHomeMiniWeather } = require('../services/search/smartWidget.service');
 const { searchAllInternal, getAllowedShortcuts } = require('../services/search/internalSearch.service');
 const { searchExternal } = require('../services/search/externalSearch.service');
-const { streamSearchAiSummary } = require('../services/search/searchAiBriefing.service');
+const { streamSearchAiSummary, cacheSearchContext } = require('../services/search/searchAiBriefing.service');
 const {
     getHistory,
     addHistory,
@@ -262,6 +262,8 @@ router.get('/portal', authenticateToken, async (req, res) => {
             google: googleCnt
         };
 
+        cacheSearchContext(userId, rawQuery, { smartWidget, internal, external });
+
         res.json({
             success: true,
             query: rawQuery,
@@ -309,7 +311,8 @@ router.get('/map-nearby', authenticateToken, async (req, res) => {
 
 router.post('/ai-summary', authenticateToken, (req, res) => {
     const q = (req.body?.query || '').trim().slice(0, 120);
-    return streamSearchAiSummary(req, res, q);
+    const tab = (req.body?.tab || 'all').trim().slice(0, 30);
+    return streamSearchAiSummary(req, res, q, tab);
 });
 
 router.get('/suggest', authenticateToken, async (req, res) => {

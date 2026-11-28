@@ -16,7 +16,7 @@ const NAVER_DAILY_LIMIT = 25000;
 
 const externalCache = new Map();
 let schemaInitialized = false;
-let engineToggles = { wikipedia: true, naver: true, google: true, externalSuggest: true, kakaoMap: true };
+let engineToggles = { wikipedia: true, naver: true, google: true, externalSuggest: true, kakaoMap: true, geminiSummary: true };
 const DEFAULT_NAVER_SUBAPIS = [
     { code: 'webkr', label: '웹문서', tab: 'webBlog', enabled: true },
     { code: 'blog', label: '블로그', tab: 'webBlog', enabled: false },
@@ -394,6 +394,15 @@ async function getSearchEngineStatus() {
                 todayCalls: usage.kakaoMap?.calls || 0,
                 todayErrors: usage.kakaoMap?.errors || 0,
                 dailyLimit: 100000
+            },
+            {
+                id: 'geminiSummary',
+                name: 'AI 한눈에 요약 (Google Gemini · 공개 자료 전용)',
+                configured: Boolean(require('./searchAiBriefing.service').hasGeminiKey()),
+                enabled: engineToggles.geminiSummary !== false,
+                todayCalls: usage.geminiSummary?.calls || 0,
+                todayErrors: usage.geminiSummary?.errors || 0,
+                dailyLimit: null
             }
         ]
     };
@@ -411,7 +420,7 @@ async function isEngineEnabled(engineId) {
 
 async function setEngineToggle(engineId, enabled) {
     await ensureExternalSchema();
-    if (!['wikipedia', 'naver', 'google', 'externalSuggest', 'kakaoMap'].includes(engineId)) {
+    if (!['wikipedia', 'naver', 'google', 'externalSuggest', 'kakaoMap', 'geminiSummary'].includes(engineId)) {
         return { success: false, message: '지원하지 않는 검색 엔진입니다.' };
     }
     engineToggles[engineId] = Boolean(enabled);

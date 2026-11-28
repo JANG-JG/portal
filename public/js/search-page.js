@@ -141,7 +141,7 @@
         state.tab = tab || 'all';
         el('jgSearchInput').value = q;
         el('jgSearchClearBtn').style.display = 'inline-flex';
-        hideSuggest();
+        hideSuggest({ blur: true, suppressMs: 450 });
 
         if (pushUrl) updateUrl(q, state.tab);
         document.title = `${q} - JG 통합 검색`;
@@ -221,8 +221,8 @@
     }
 
     let suggestHandle = null;
-    function hideSuggest() {
-        if (suggestHandle) suggestHandle.close();
+    function hideSuggest(options) {
+        if (suggestHandle) suggestHandle.close(options);
     }
 
     function initEvents() {
@@ -258,16 +258,16 @@
 
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            hideSuggest();
+            hideSuggest({ blur: true, suppressMs: 450 });
             runSearch(input.value, 'all');
         });
 
         clearBtn.addEventListener('click', () => {
             input.value = '';
             clearBtn.style.display = 'none';
-            input.focus();
             updateUrl('', 'all');
             showHomeMode();
+            input.focus();
         });
 
         document.querySelectorAll('#jgSearchTabs .jg-tab-btn').forEach((btn) => {
@@ -301,9 +301,11 @@
                 const mount = el('jgAiSummaryMount');
                 mount.replaceChildren();
                 const card = makeEl('div', 'jg-ai-summary-card');
-                card.appendChild(makeEl('span', 'jg-smart-badge', '✨ AI 한눈에 요약'));
+                const badge = makeEl('span', 'jg-smart-badge', '✨ AI 한눈에 요약');
                 const body = makeEl('div', 'jg-ai-summary-body', '요약을 생성하고 있어요...');
-                card.appendChild(body);
+                const note = makeEl('div', 'jg-muted-text');
+                note.style.cssText = 'display:none;margin-top:8px;font-size:0.78rem;';
+                card.append(badge, body, note);
                 mount.appendChild(card);
                 mount.style.display = 'block';
                 aiBtn.disabled = true;
@@ -314,7 +316,7 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
-                        body: JSON.stringify({ query: state.query })
+                        body: JSON.stringify({ query: state.query, tab: state.tab })
                     });
                     if (!res.ok || !res.body) throw new Error('STREAM_ERR');
                     const reader = res.body.getReader();
@@ -330,7 +332,17 @@
                             if (!line.startsWith('data: ')) continue;
                             try {
                                 const msg = JSON.parse(line.slice(6));
-                                if (msg.token) {
+                                if (msg.meta) {
+                                    if (msg.meta.mode === 'cloud') {
+                                        badge.textContent = '⚡ AI 한눈에 요약 · 초고속 웹 요약';
+                                        if (msg.meta.internalSkippedCount > 0) {
+                                            note.textContent = `🔒 내 사이트 결과 ${msg.meta.internalSkippedCount}건은 개인정보 보호를 위해 외부 AI에 전송하지 않았습니다.`;
+                                            note.style.display = 'block';
+                                        }
+                                    } else if (msg.meta.mode === 'local') {
+                                        badge.textContent = '🔒 AI 한눈에 요약 · 로컬 보안 요약';
+                                    }
+                                } else if (msg.token) {
                                     fullText += msg.token;
                                     window.JGSearchRenderers.renderAiSummaryText(body, fullText);
                                 } else if (msg.error) {
