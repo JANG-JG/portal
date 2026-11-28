@@ -11,6 +11,7 @@ const https = require('https');
 const { resolveSmartWidget } = require('./smartWidget.service');
 const { searchAllInternal } = require('./internalSearch.service');
 const { searchExternal, isEngineEnabled, incrementUsage } = require('./externalSearch.service');
+const { OLLAMA_HOST, getChatModel } = require('../aiModelRouter.service');
 
 const ipv4HttpsAgent = new https.Agent({ family: 4 });
 
@@ -321,6 +322,69 @@ async function tryGeminiStream(query, publicContext, internalSkippedCount, signa
     return { ok: false, reason: 'all_models_failed' };
 }
 
+async function streamLocalOllamaSummary(query, contextText, signal, onToken) {
+    if (!contextText || signal?.aborted) return { ok: false, aborted: Boolean(signal?.aborted) };
+    const modelName = getChatModel() || 'gemma3:1b';
+    const { systemPrompt, userPrompt } = buildPrompts(query, contextText, true);
+
+    const localCtrl = new AbortController();
+    const onParentAbort = () => localCtrl.abort();
+    if (signal) signal.addEventListener('abort', onParentAbort, { once: true });
+    const timeoutId = setTimeout(() => localCtrl.abort(), 20000);
+
+    let fullText = '';
+    try {
+        const res = await fetch(new URL('/api/chat', OLLAMA_HOST), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: localCtrl.signal,
+            body: JSON.stringify({
+                model: modelName,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                stream: true,
+                think: false,
+                keep_alive: '15m',
+                options: { temperature: 0.3, num_ctx: 2048, num_predict: 320 }
+            })
+        });
+        if (!res.ok || !res.body) return { ok: false, model: modelName };
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buf = '';
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split('\n');
+            buf = lines.pop() || '';
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    const tok = parsed?.message?.content;
+                    if (tok) {
+                        fullText += tok;
+                        onToken(tok);
+                    }
+                } catch (_) {}
+            }
+        }
+        return { ok: Boolean(fullText.trim()), partial: Boolean(fullText), model: modelName };
+    } catch (err) {
+        if (signal?.aborted) return { ok: false, aborted: true, model: modelName };
+        console.warn(`[Search AI Ollama] ${modelName} 실패 (즉시 요약 폴백):`, err.message);
+        return { ok: false, partial: Boolean(fullText), model: modelName };
+    } finally {
+        clearTimeout(timeoutId);
+        if (signal) signal.removeEventListener('abort', onParentAbort);
+    }
+}
+
 function buildInstantInternalSummary(query, ctx) {
     const lines = [];
     const w = ctx?.smartWidget;
@@ -437,7 +501,27 @@ async function streamSearchAiSummary(req, res, rawQuery, activeTab = 'all') {
             fallbackFromCloud = true;
         }
 
-        // 로컬 Ollama GPU 점유/타임아웃 방지를 위해 내부·폴백 요약은 즉시 구조화 정리로 제공
+        const localContext = [internalContext, publicContext].filter(Boolean).join('\n\n').slice(0, 1200);
+        if (localContext) {
+            let sentMeta = false;
+            const localRes = await streamLocalOllamaSummary(q, localContext, controller.signal, (tok) => {
+                if (!sentMeta) {
+                    sentMeta = true;
+                    sendEvent({ meta: { mode: 'local', model: getChatModel() || 'gemma3:1b', internalTotal, fallbackFromCloud } });
+                }
+                sendEvent({ token: tok });
+            });
+            if (localRes.aborted) {
+                if (!res.writableEnded) res.end();
+                return;
+            }
+            if (localRes.ok || localRes.partial) {
+                sendEvent({ done: true });
+                return res.end();
+            }
+        }
+
+        // 로컬 Ollama 오프라인/타임아웃 시 즉시 구조화 요약으로 안전 폴백
         const instantText = buildInstantInternalSummary(q, ctx);
         sendEvent({ meta: { mode: 'instant', internalTotal, fallbackFromCloud } });
         sendEvent({
