@@ -1,0 +1,411 @@
+/* ==========================================================================
+   📰 JG 통합 검색 - 뉴스룸 코발트 에디토리얼 결과 리스트 & 페이지네이션 (search-results.css)
+   - 코발트 블루(#1D4ED8) 포인트, 상단 출처/도메인 바, 키워드 하이라이트, 번호형 페이지네이션
+   - 모바일 360px 뷰포트 무넘침 보장 (규칙 6 준수)
+   ========================================================================== */
+
+.jg-section-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.9rem;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    min-width: 0;
+    max-width: 100%;
+}
+
+.jg-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-bottom: 0.65rem;
+    margin-bottom: 0.2rem;
+    border-bottom: 1.5px solid #f1f5f9;
+    flex-wrap: wrap;
+}
+
+.jg-section-heading-group {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.jg-section-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #1D4ED8;
+    flex-shrink: 0;
+}
+
+.jg-section-title {
+    margin: 0;
+    font-size: 0.98rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.01em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.jg-section-count-pill {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #1D4ED8;
+    background: #EFF6FF;
+    border: 1px solid #DBEAFE;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    white-space: nowrap;
+}
+
+.jg-section-more-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    border: 1px solid #DBEAFE;
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border-radius: 8px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.jg-section-more-chip:hover {
+    background: #DBEAFE;
+    border-color: #93C5FD;
+}
+
+/* 에디토리얼 구분선 결과 피드 */
+.jg-result-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.jg-result-item {
+    container-type: inline-size;
+    display: block;
+    padding: 0.85rem 0.35rem;
+    border-bottom: 1px solid #f1f5f9;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    text-decoration: none;
+    min-width: 0;
+    transition: background-color 0.14s ease;
+}
+
+.jg-result-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0.35rem;
+}
+
+.jg-result-item:has(a.jg-card-link) {
+    position: relative;
+}
+
+.jg-result-item a.jg-card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.jg-result-item a.jg-card-link:focus-visible {
+    outline: none;
+}
+
+.jg-result-item:has(a.jg-card-link:focus-visible) {
+    outline: 2px solid #1D4ED8;
+    outline-offset: 2px;
+    border-radius: 10px;
+}
+
+.jg-result-item:has(a.jg-card-link:hover) {
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+.jg-result-item:has(a.jg-card-link) a:not(.jg-card-link),
+.jg-result-item:has(a.jg-card-link) button {
+    position: relative;
+    z-index: 1;
+}
+
+/* 썸네일 포함 카드 (위키백과 등: 미디어 보유 시에만 우측/좌측 그리드 컬럼 배치) */
+.jg-result-item > img.jg-card-media {
+    width: 76px;
+    height: 76px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 10px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+@container (min-width: 340px) {
+    .jg-result-item:has(> img.jg-card-media) {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 84px;
+        column-gap: 0.85rem;
+        align-items: start;
+    }
+
+    .jg-result-item:has(> img.jg-card-media) > img.jg-card-media {
+        grid-column: 2;
+        grid-row: 1 / span 3;
+        width: 84px;
+        height: 84px;
+        margin-bottom: 0;
+    }
+
+    .jg-result-item:has(> img.jg-card-media) > :not(img.jg-card-media) {
+        grid-column: 1;
+    }
+}
+
+/* 1. 상단 출처·도메인·날짜 메타 바 */
+.jg-result-source {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    margin-bottom: 0.3rem;
+    font-size: 0.76rem;
+    color: #64748b;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.jg-source-favicon {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    object-fit: contain;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    flex-shrink: 0;
+}
+
+.jg-source-badge-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    border-radius: 4px;
+    background: #EFF6FF;
+    color: #1D4ED8;
+    font-size: 0.66rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.jg-source-name {
+    font-weight: 700;
+    color: #334155;
+    max-width: 170px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jg-source-crumb {
+    color: #64748b;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jg-source-dot {
+    color: #cbd5e1;
+    flex-shrink: 0;
+}
+
+.jg-source-date {
+    color: #64748b;
+    font-size: 0.73rem;
+    white-space: nowrap;
+}
+
+.jg-source-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.08rem 0.42rem;
+    border-radius: 5px;
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 0.69rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* 2. 제목 & 방문 색상 & 키워드 하이라이트 */
+.jg-result-title {
+    margin: 0 0 0.28rem;
+    font-size: 0.98rem;
+    font-weight: 700;
+    line-height: 1.42;
+    letter-spacing: -0.01em;
+    color: #0f172a;
+    word-break: break-word;
+}
+
+.jg-result-title a.jg-card-link {
+    color: #0f172a;
+    text-decoration: none;
+    transition: color 0.14s ease;
+}
+
+.jg-result-title a.jg-card-link:visited {
+    color: #6d28d9;
+}
+
+.jg-result-item:has(a.jg-card-link:hover) .jg-result-title a.jg-card-link {
+    color: #1D4ED8;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+mark.jg-hl {
+    background: #DBEAFE;
+    color: #1E3A8A;
+    font-weight: 800;
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+/* 3. 본문 요약 (2줄 클램프 + 키워드 강조) */
+.jg-result-desc {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #475569;
+    line-height: 1.56;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+}
+
+.jg-result-item.jg-wiki-card .jg-result-desc {
+    -webkit-line-clamp: 3;
+}
+
+mark.jg-hl-sub {
+    background: #EFF6FF;
+    color: #1D4ED8;
+    font-weight: 700;
+    padding: 0 2px;
+    border-radius: 3px;
+}
+
+.jg-result-meta {
+    margin-top: 0.25rem;
+    font-size: 0.74rem;
+    color: #64748b;
+}
+
+/* 4. 섹션 하단 전폭 '더보기 ›' 이동 버튼 (규칙 6-2: 40px+ 터치 높이) */
+.jg-section-more-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    width: 100%;
+    min-height: 42px;
+    margin-top: 0.65rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 11px;
+    border: 1px solid #DBEAFE;
+    background: #F8FAFC;
+    color: #1D4ED8;
+    font-size: 0.86rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.jg-section-more-btn:hover {
+    background: #EFF6FF;
+    border-color: #93C5FD;
+}
+
+/* 5. 번호형 페이지네이션 바 (‹ 1 2 3 4 5 ›, 모바일 360px 무넘침) */
+.jg-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.28rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid #f1f5f9;
+    max-width: 100%;
+}
+
+.jg-page-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    padding: 0 0.5rem;
+    border-radius: 9px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    color: #334155;
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.14s ease;
+}
+
+.jg-page-btn:hover:not(:disabled):not(.active) {
+    border-color: #93C5FD;
+    background: #EFF6FF;
+    color: #1D4ED8;
+}
+
+.jg-page-btn.active {
+    background: #1D4ED8;
+    border-color: #1D4ED8;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(29, 78, 216, 0.22);
+}
+
+.jg-page-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+@media (max-width: 420px) {
+    .jg-section-card {
+        padding: 0.9rem 0.85rem;
+    }
+
+    .jg-source-crumb {
+        max-width: 120px;
+    }
+
+    .jg-page-btn {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 0.4rem;
+        font-size: 0.8rem;
+    }
+}

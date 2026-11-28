@@ -8,11 +8,26 @@
     const state = {
         query: '',
         tab: 'all',
+        page: 1,
         autoSave: true,
-        lastPayload: null,
-        suggestTimer: null,
-        suggestIndex: -1,
-        suggestions: []
+        basePayload: null,
+        baseCounts: null,
+        baseTotals: null,
+        lastPayload: null
+    };
+
+    const TAB_LABELS = {
+        all: '통합검색',
+        web: '웹문서',
+        blog: '블로그',
+        encyc: '백과·지식',
+        wikiNews: '위키·뉴스',
+        local: '맛집·지역',
+        internal: '우리 사이트',
+        google: '구글 웹',
+        memoCalendar: '메모·일정',
+        album: '사진·앨범',
+        healthAsset: '건강·자산'
     };
 
     const el = (id) => document.getElementById(id);
@@ -32,22 +47,30 @@
         return '#';
     }
 
+    function normalizeTab(rawTab) {
+        const t = (rawTab || 'all').trim();
+        return t === 'webBlog' ? 'web' : t;
+    }
+
     function readUrlParams() {
         const sp = new URLSearchParams(window.location.search);
+        const rawPage = parseInt(sp.get('page') || '1', 10);
         return {
             q: (sp.get('q') || '').trim(),
-            tab: (sp.get('tab') || 'all').trim()
+            tab: normalizeTab(sp.get('tab') || 'all'),
+            page: Number.isFinite(rawPage) && rawPage > 1 ? Math.min(67, rawPage) : 1
         };
     }
 
-    function updateUrl(q, tab, replace = false) {
+    function updateUrl(q, tab, page = 1, replace = false) {
         const sp = new URLSearchParams();
         if (q) sp.set('q', q);
         if (tab && tab !== 'all') sp.set('tab', tab);
+        if (page && page > 1) sp.set('page', String(page));
         const qs = sp.toString();
         const nextUrl = qs ? `/search?${qs}` : '/search';
-        if (replace) window.history.replaceState({ q, tab }, '', nextUrl);
-        else window.history.pushState({ q, tab }, '', nextUrl);
+        if (replace) window.history.replaceState({ q, tab, page }, '', nextUrl);
+        else window.history.pushState({ q, tab, page }, '', nextUrl);
     }
 
     async function loadHomeData() {
@@ -121,6 +144,10 @@
 
     function showHomeMode() {
         state.query = '';
+        state.page = 1;
+        state.basePayload = null;
+        state.baseCounts = null;
+        state.baseTotals = null;
         state.lastPayload = null;
         el('jgSearchTabs').style.display = 'none';
         el('jgSearchResultsSection').style.display = 'none';
@@ -129,21 +156,35 @@
         loadHomeData();
     }
 
-    async function runSearch(rawQuery, tab = 'all', pushUrl = true) {
+    function formatBadgeNum(val) {
+        const n = Number(val) || 0;
+        return n > 99 ? '99+' : String(n);
+    }
+
+    async function runSearch(rawQuery, rawTab = 'all', pushUrl = true, rawPage = 1, opts = {}) {
         const q = (rawQuery || '').trim();
         if (!q) {
-            if (pushUrl) updateUrl('', 'all');
+            if (pushUrl) updateUrl('', 'all', 1);
             showHomeMode();
             return;
         }
 
+        const nextTab = normalizeTab(rawTab);
+        const nextPage = Math.max(1, Math.min(67, parseInt(rawPage, 10) || 1));
+        if (state.query !== q) {
+            state.basePayload = null;
+            state.baseCounts = null;
+            state.baseTotals = null;
+        }
+
         state.query = q;
-        state.tab = tab || 'all';
+        state.tab = nextTab;
+        state.page = nextPage;
         el('jgSearchInput').value = q;
         el('jgSearchClearBtn').style.display = 'inline-flex';
         hideSuggest({ blur: true, suppressMs: 450 });
 
-        if (pushUrl) updateUrl(q, state.tab);
+        if (pushUrl) updateUrl(q, state.tab, state.page);
         document.title = `${q} - JG 통합 검색`;
 
         el('jgSearchHomeSection').style.display = 'none';
@@ -151,15 +192,23 @@
         el('jgSearchTabs').style.display = 'flex';
         el('jgSearchLoading').style.display = 'block';
         el('jgEmptyResults').style.display = 'none';
-        el('jgAiSummaryMount').style.display = 'none';
-        el('jgAiSummaryMount').replaceChildren();
+        if (!opts.keepAiSummary) {
+            el('jgAiSummaryMount').style.display = 'none';
+            el('jgAiSummaryMount').replaceChildren();
+        }
         el('jgSmartWidgetMount').replaceChildren();
         el('jgInternalResultsMount').replaceChildren();
         el('jgExternalResultsMount').replaceChildren();
         updateTabUI();
 
+        if (opts.scrollTop) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
         try {
-            const res = await fetch(`/api/search/portal?q=${encodeURIComponent(q)}&tab=${encodeURIComponent(state.tab)}`, { credentials: 'include' });
+            const saveParam = opts.saveHistory === false || state.page > 1 ? '&save=0' : '';
+            const url = `/api/search/portal?q=${encodeURIComponent(q)}&tab=${encodeURIComponent(state.tab)}&page=${state.page}${saveParam}`;
+            const res = await fetch(url, { credentials: 'include' });
             const payload = await res.json();
             el('jgSearchLoading').style.display = 'none';
             if (!payload.success) {
@@ -167,7 +216,12 @@
                 return;
             }
             state.lastPayload = payload;
-            updateTabCounts(payload.counts || {});
+            if (state.tab === 'all' && state.page === 1) {
+                state.basePayload = payload;
+                state.baseCounts = { ...(payload.counts || {}) };
+                state.baseTotals = { ...(payload.totals || {}) };
+            }
+            updateTabCounts(payload.counts || {}, payload.totals || {});
             renderResults();
         } catch (_) {
             el('jgSearchLoading').style.display = 'none';
@@ -175,24 +229,69 @@
         }
     }
 
-    function updateTabUI() {
-        document.querySelectorAll('#jgSearchTabs .jg-tab-btn').forEach((btn) => {
-            btn.classList.toggle('active', btn.dataset.tab === state.tab);
+    function switchTab(nextRawTab, nextPage = 1, pushUrl = true) {
+        const nextTab = normalizeTab(nextRawTab);
+        if (!state.query) return;
+
+        const internalOnlyTabs = ['internal', 'memoCalendar', 'album', 'healthAsset'];
+        if (nextPage === 1 && state.basePayload && state.basePayload.query === state.query) {
+            if (nextTab === 'all' || internalOnlyTabs.includes(nextTab)) {
+                state.tab = nextTab;
+                state.page = 1;
+                state.lastPayload = state.basePayload;
+                updateTabUI();
+                if (pushUrl) updateUrl(state.query, state.tab, 1);
+                renderResults();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+                return;
+            }
+        }
+
+        runSearch(state.query, nextTab, pushUrl, nextPage, {
+            saveHistory: false,
+            scrollTop: true,
+            keepAiSummary: false
         });
     }
 
-    function updateTabCounts(counts) {
-        const setCnt = (id, val) => { const n = el(id); if (n) n.textContent = val || 0; };
-        setCnt('tabCntAll', counts.all);
-        setCnt('tabCntInternal', counts.internal);
-        setCnt('tabCntWebBlog', counts.webBlog);
-        setCnt('tabCntEncyc', counts.encyc);
-        setCnt('tabCntLocal', counts.local);
-        setCnt('tabCntGoogle', counts.google);
-        setCnt('tabCntMemoCal', counts.memoCalendar);
-        setCnt('tabCntWikiNews', counts.wikiNews);
-        setCnt('tabCntAlbum', counts.album);
-        setCnt('tabCntHealthAsset', counts.healthAsset);
+    function updateTabUI() {
+        document.querySelectorAll('#jgSearchTabs .jg-tab-btn').forEach((btn) => {
+            const active = btn.dataset.tab === state.tab;
+            btn.classList.toggle('active', active);
+            if (active) {
+                btn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+            }
+        });
+    }
+
+    function updateTabCounts(counts, totals = {}) {
+        const mergedCnt = { ...(state.baseCounts || {}), ...(counts || {}) };
+        const mergedTot = { ...(state.baseTotals || {}), ...(totals || {}) };
+        if (state.tab !== 'all' && state.baseCounts) {
+            Object.keys(state.baseCounts).forEach((k) => {
+                if (k !== state.tab && state.baseCounts[k] > (mergedCnt[k] || 0)) {
+                    mergedCnt[k] = state.baseCounts[k];
+                }
+            });
+            Object.keys(state.baseTotals || {}).forEach((k) => {
+                if (k !== state.tab && state.baseTotals[k] > (mergedTot[k] || 0)) {
+                    mergedTot[k] = state.baseTotals[k];
+                }
+            });
+        }
+
+        const setCnt = (id, val) => { const n = el(id); if (n) n.textContent = formatBadgeNum(val); };
+        setCnt('tabCntAll', mergedCnt.all);
+        setCnt('tabCntWeb', mergedTot.web || mergedCnt.web);
+        setCnt('tabCntBlog', mergedTot.blog || mergedCnt.blog);
+        setCnt('tabCntEncyc', mergedTot.encyc || mergedCnt.encyc);
+        setCnt('tabCntWikiNews', mergedTot.wikiNews || mergedCnt.wikiNews);
+        setCnt('tabCntLocal', mergedTot.local || mergedCnt.local);
+        setCnt('tabCntInternal', mergedCnt.internal);
+        setCnt('tabCntGoogle', mergedTot.google || mergedCnt.google);
+        setCnt('tabCntMemoCal', mergedCnt.memoCalendar);
+        setCnt('tabCntAlbum', mergedCnt.album);
+        setCnt('tabCntHealthAsset', mergedCnt.healthAsset);
     }
 
     function showEmpty(q) {
@@ -206,16 +305,36 @@
         const r = p.internal?.results || {};
         const tab = state.tab;
         const R = window.JGSearchRenderers;
+        const H = window.JGSearchCardHelpers;
 
-        const showWidget = tab === 'all' || (tab === 'local' && p.smartWidget?.type === 'map');
+        const navHandlers = {
+            onSwitchTab: (targetTab, targetPage = 1) => switchTab(targetTab, targetPage, true),
+            onPageChange: (targetPage) => switchTab(state.tab, targetPage, true)
+        };
+
+        const showWidget = (tab === 'all' && state.page === 1) || (tab === 'local' && state.page === 1 && p.smartWidget?.type === 'map');
         if (showWidget) R.renderSmartWidget(el('jgSmartWidgetMount'), p.smartWidget);
         else el('jgSmartWidgetMount').replaceChildren();
 
         let shownCount = showWidget && p.smartWidget ? 1 : 0;
-        shownCount += R.renderInternalSections(el('jgInternalResultsMount'), r, tab);
-        shownCount += R.renderExternalSections(el('jgExternalResultsMount'), p.external, tab, p.query);
+        if (state.page === 1 || ['internal', 'memoCalendar', 'album', 'healthAsset'].includes(tab)) {
+            shownCount += R.renderInternalSections(el('jgInternalResultsMount'), r, tab, p.query, navHandlers);
+        } else {
+            el('jgInternalResultsMount').replaceChildren();
+        }
+        shownCount += R.renderExternalSections(el('jgExternalResultsMount'), p.external, tab, p.query, navHandlers);
 
-        el('jgSearchStatusLine').textContent = `'${p.query}' 검색 결과 (${p.internal?.isChosung ? '초성 검색 · ' : ''}총 ${p.counts?.all || 0}건)`;
+        const webTotal = p.totals?.web || p.external?.naver?.meta?.web?.total || 0;
+        if (tab === 'all') {
+            const totalHint = webTotal > 0 && H ? ` · 웹문서 ${H.formatTotalCount(webTotal, 0)}` : '';
+            el('jgSearchStatusLine').textContent = `'${p.query}' 통합검색 (${p.internal?.isChosung ? '초성 검색 · ' : ''}주요 섹션 요약${totalHint})`;
+        } else {
+            const label = TAB_LABELS[tab] || '검색';
+            const tabTotal = p.totals?.[tab] || p.counts?.[tab] || 0;
+            const totalText = tabTotal > 0 && H ? ` · ${H.formatTotalCount(tabTotal, 0)}` : '';
+            el('jgSearchStatusLine').textContent = `'${p.query}' · ${label} 결과 (${state.page}페이지${totalText})`;
+        }
+
         el('jgEmptyResults').style.display = shownCount === 0 ? 'block' : 'none';
         if (shownCount === 0) showEmpty(p.query);
     }
@@ -244,7 +363,7 @@
                         window.location.href = safeHref(chosen.url);
                         return;
                     }
-                    runSearch(chosen.text, 'all');
+                    runSearch(chosen.text, 'all', true, 1);
                 }
             });
         }
@@ -259,115 +378,39 @@
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             hideSuggest({ blur: true, suppressMs: 450 });
-            runSearch(input.value, 'all');
+            runSearch(input.value, 'all', true, 1);
         });
 
         clearBtn.addEventListener('click', () => {
             input.value = '';
             clearBtn.style.display = 'none';
-            updateUrl('', 'all');
+            updateUrl('', 'all', 1);
             showHomeMode();
             input.focus();
         });
 
         document.querySelectorAll('#jgSearchTabs .jg-tab-btn').forEach((btn) => {
-            btn.addEventListener('click', async () => {
-                state.tab = btn.dataset.tab || 'all';
-                updateTabUI();
-                updateUrl(state.query, state.tab, true);
-
-                if (state.tab === 'google' && state.lastPayload?.external?.google?.skipped && state.query) {
-                    el('jgSearchLoading').style.display = 'block';
-                    try {
-                        const res = await fetch(`/api/search/external?q=${encodeURIComponent(state.query)}&mode=google`, { credentials: 'include' });
-                        const data = await res.json();
-                        if (data.success && data.external) {
-                            state.lastPayload.external.google = data.external.google;
-                            const ggCnt = data.external.google?.items?.length || 0;
-                            if (state.lastPayload.counts) state.lastPayload.counts.google = ggCnt;
-                            updateTabCounts(state.lastPayload.counts || {});
-                        }
-                    } catch (_) {}
-                    el('jgSearchLoading').style.display = 'none';
-                }
-                renderResults();
+            btn.addEventListener('click', () => {
+                switchTab(btn.dataset.tab || 'all', 1, true);
             });
         });
 
         const aiBtn = el('jgAiSummaryBtn');
         if (aiBtn) {
-            aiBtn.addEventListener('click', async () => {
-                if (!state.query || aiBtn.disabled) return;
-                const mount = el('jgAiSummaryMount');
-                mount.replaceChildren();
-                const card = makeEl('div', 'jg-ai-summary-card');
-                const badge = makeEl('span', 'jg-smart-badge', '✨ AI 한눈에 요약');
-                const body = makeEl('div', 'jg-ai-summary-body', '요약을 생성하고 있어요...');
-                const note = makeEl('div', 'jg-muted-text');
-                note.style.cssText = 'display:none;margin-top:8px;font-size:0.78rem;';
-                card.append(badge, body, note);
-                mount.appendChild(card);
-                mount.style.display = 'block';
-                aiBtn.disabled = true;
-
-                let fullText = '';
-                try {
-                    const res = await fetch('/api/search/ai-summary', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ query: state.query, tab: state.tab })
+            aiBtn.addEventListener('click', () => {
+                if (window.JGSearchCardHelpers && window.JGSearchCardHelpers.streamAiSummary) {
+                    window.JGSearchCardHelpers.streamAiSummary({
+                        mount: el('jgAiSummaryMount'),
+                        aiBtn,
+                        query: state.query,
+                        tab: state.tab
                     });
-                    if (!res.ok || !res.body) throw new Error('STREAM_ERR');
-                    const reader = res.body.getReader();
-                    const decoder = new TextDecoder('utf-8');
-                    let buf = '';
-                    while (true) {
-                        const { value, done } = await reader.read();
-                        if (done) break;
-                        buf += decoder.decode(value, { stream: true });
-                        const lines = buf.split('\n');
-                        buf = lines.pop() || '';
-                        for (const line of lines) {
-                            if (!line.startsWith('data: ')) continue;
-                            try {
-                                const msg = JSON.parse(line.slice(6));
-                                if (msg.meta) {
-                                    if (msg.meta.mode === 'cloud') {
-                                        badge.textContent = '⚡ AI 한눈에 요약 · 초고속 웹 요약';
-                                        if (msg.meta.internalSkippedCount > 0) {
-                                            note.textContent = `🔒 내 사이트 결과 ${msg.meta.internalSkippedCount}건은 개인정보 보호를 위해 외부 AI에 전송하지 않았습니다.`;
-                                            note.style.display = 'block';
-                                        }
-                                    } else if (msg.meta.mode === 'instant') {
-                                        badge.textContent = msg.meta.fallbackFromCloud
-                                            ? '⚡ AI 한눈에 요약 · 핵심 즉시 정리'
-                                            : '🔒 AI 한눈에 요약 · 내부 자료 즉시 정리';
-                                    } else if (msg.meta.mode === 'local') {
-                                        badge.textContent = '🔒 AI 한눈에 요약 · 로컬 보안 요약';
-                                    }
-                                } else if (msg.token) {
-                                    fullText += msg.token;
-                                    window.JGSearchRenderers.renderAiSummaryText(body, fullText);
-                                } else if (msg.error) {
-                                    body.textContent = msg.error;
-                                }
-                            } catch (_) {}
-                        }
-                    }
-                    if (!fullText.trim() && body.textContent === '요약을 생성하고 있어요...') {
-                        body.textContent = '요약할 검색 자료가 충분하지 않습니다.';
-                    }
-                } catch (_) {
-                    body.textContent = 'AI 요약 생성 중 오류가 발생했습니다.';
-                } finally {
-                    aiBtn.disabled = false;
                 }
             });
         }
 
         document.querySelectorAll('.jg-hint-chip').forEach((chip) => {
-            chip.addEventListener('click', () => runSearch(chip.dataset.query || '', 'all'));
+            chip.addEventListener('click', () => runSearch(chip.dataset.query || '', 'all', true, 1));
         });
 
         el('jgToggleAutoSaveBtn').addEventListener('click', async () => {
@@ -392,17 +435,17 @@
         });
 
         window.addEventListener('popstate', () => {
-            const { q, tab } = readUrlParams();
-            if (q) runSearch(q, tab, false);
+            const { q, tab, page } = readUrlParams();
+            if (q) runSearch(q, tab, false, page);
             else showHomeMode();
         });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         initEvents();
-        const { q, tab } = readUrlParams();
+        const { q, tab, page } = readUrlParams();
         if (q) {
-            runSearch(q, tab, false);
+            runSearch(q, tab, false, page);
         } else {
             showHomeMode();
         }

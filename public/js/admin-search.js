@@ -71,13 +71,20 @@
         wrap.replaceChildren();
 
         subApis.forEach((sub) => {
+            const isBlocked = Boolean(sub.enabled && sub.authBlocked);
             const chip = document.createElement('div');
-            chip.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;padding:4px 8px;border-radius:8px;border:1px solid #cbd5e1;font-size:0.82rem;background:' + (sub.enabled ? '#eff6ff' : '#f8fafc') + ';border-color:' + (sub.enabled ? '#3b82f6' : '#cbd5e1') + ';';
+            const bg = !sub.enabled ? '#f8fafc' : (isBlocked ? '#fffbeb' : '#eff6ff');
+            const border = !sub.enabled ? '#cbd5e1' : (isBlocked ? '#f59e0b' : '#3b82f6');
+            const color = !sub.enabled ? '#64748b' : (isBlocked ? '#b45309' : '#1d4ed8');
+            chip.style.cssText = `display:inline-flex;align-items:center;gap:0.35rem;padding:4px 8px;border-radius:8px;border:1px solid ${border};font-size:0.82rem;background:${bg};`;
 
             const toggleBtn = document.createElement('button');
             toggleBtn.type = 'button';
-            toggleBtn.style.cssText = 'border:none;background:transparent;cursor:pointer;font-weight:700;padding:0;color:' + (sub.enabled ? '#1d4ed8' : '#64748b') + ';';
-            toggleBtn.textContent = `${sub.enabled ? '✅' : '⬜'} ${sub.label} (${sub.code})`;
+            toggleBtn.style.cssText = `border:none;background:transparent;cursor:pointer;font-weight:700;padding:0;color:${color};`;
+            const statusIcon = !sub.enabled ? '⬜' : (isBlocked ? '⚠️' : '✅');
+            const blockSuffix = isBlocked ? ' · NCP 신청필요' : '';
+            toggleBtn.textContent = `${statusIcon} ${sub.label} (${sub.code}${blockSuffix})`;
+            toggleBtn.title = isBlocked ? '네이버 클라우드(NCP) 콘솔에서 해당 검색 API 이용신청이 필요합니다.' : '클릭하여 ON/OFF 전환';
             toggleBtn.addEventListener('click', async () => {
                 await fetch('/api/admin/search/naver-subapi', {
                     method: 'POST',

@@ -97,293 +97,209 @@
         mount.appendChild(card);
     }
 
-    function appendSection(mount, icon, title, items, renderer) {
+    function getHelpers() {
+        return global.JGSearchCardHelpers;
+    }
+
+    function appendSection(mount, opts, items, renderer) {
         if (!Array.isArray(items) || items.length === 0) return 0;
-        const sec = makeEl('section', 'jg-section-card');
-        sec.appendChild(makeEl('h3', 'jg-section-title', `${icon} ${title} (${items.length})`));
+        const H = getHelpers();
+        const sec = H.createSectionShell({
+            icon: opts.icon,
+            title: opts.title,
+            countLabel: opts.countLabel || `${items.length}건`,
+            moreTab: opts.moreTab,
+            moreChipText: opts.moreChipText,
+            onSwitchTab: opts.onSwitchTab
+        });
         renderer(sec, items);
+        if (opts.footerMoreLabel && opts.moreTab) {
+            H.appendMoreFooterButton(sec, opts.footerMoreLabel, opts.moreTab, opts.onSwitchTab);
+        }
+        if (opts.paginationMeta && opts.onPageChange) {
+            H.appendPagination(sec, opts.paginationMeta, opts.onPageChange);
+        }
         mount.appendChild(sec);
         return items.length;
     }
 
-    function renderListItems(sec, items, mapFn) {
+    function renderListItems(sec, items, query, mapFn) {
+        const H = getHelpers();
         const list = makeEl('div', 'jg-result-list');
         items.forEach((item) => {
             const info = mapFn(item);
-            const a = makeEl('a', 'jg-result-item');
-            a.href = safeHref(info.url);
-            if (info.external) {
-                a.target = '_blank';
-                a.rel = 'noopener noreferrer';
-            }
-            a.appendChild(makeEl('div', 'jg-result-title', info.title));
-            if (info.desc) a.appendChild(makeEl('div', 'jg-result-desc', info.desc));
-            if (info.meta) a.appendChild(makeEl('div', 'jg-result-meta', info.meta));
-            list.appendChild(a);
+            list.appendChild(H.createEditorialItem(info, query));
         });
         sec.appendChild(list);
     }
 
-    function renderInternalSections(mount, r, tab) {
+    function renderInternalSections(mount, r, tab, query = '', nav = {}) {
         if (!mount) return 0;
         mount.replaceChildren();
         let shownCount = 0;
+        const onSwitchTab = nav.onSwitchTab;
 
         if (tab === 'all') {
-            shownCount += appendSection(mount, '⚡', '서비스 바로가기', r.shortcuts, (sec, items) => {
-                renderListItems(sec, items, (s) => ({ title: `${s.icon} ${s.title}`, desc: s.desc, url: s.url }));
+            shownCount += appendSection(mount, { icon: '⚡', title: '서비스 바로가기' }, r.shortcuts, (sec, items) => {
+                renderListItems(sec, items, query, (s) => ({
+                    title: s.title,
+                    desc: s.desc,
+                    url: s.url,
+                    source: '포털 바로가기',
+                    badgeIcon: s.icon || '⚡'
+                }));
             });
         }
         if (tab === 'all' || tab === 'internal' || tab === 'memoCalendar') {
-            shownCount += appendSection(mount, '📝', '내 메모', r.memos, (sec, items) => {
-                renderListItems(sec, items, (m) => ({
-                    title: m.title,
-                    desc: (m.content || '').slice(0, 140),
-                    meta: `${m.category} · ${(m.updated_at || '').slice(0, 10)}`,
-                    url: m.url
-                }));
-            });
-            shownCount += appendSection(mount, '📅', '스마트 캘린더 일정', r.calendar, (sec, items) => {
-                renderListItems(sec, items, (c) => ({
-                    title: c.title,
-                    desc: c.memo,
-                    meta: `${c.is_family ? '가족' : '개인'} · ${c.event_date} ${c.event_time}`,
-                    url: c.url
-                }));
-            });
+            shownCount += appendSection(
+                mount,
+                { icon: '📝', title: '내 메모', moreTab: tab === 'all' ? 'memoCalendar' : null, moreChipText: '메모·일정 ›', onSwitchTab },
+                r.memos,
+                (sec, items) => {
+                    renderListItems(sec, items, query, (m) => ({
+                        title: m.title,
+                        desc: (m.content || '').slice(0, 160),
+                        source: '포털 메모',
+                        badgeIcon: '📝',
+                        date: (m.updated_at || '').slice(0, 10),
+                        tag: m.category || '메모',
+                        url: m.url
+                    }));
+                }
+            );
+            shownCount += appendSection(
+                mount,
+                { icon: '📅', title: '스마트 캘린더 일정', moreTab: tab === 'all' ? 'memoCalendar' : null, moreChipText: '메모·일정 ›', onSwitchTab },
+                r.calendar,
+                (sec, items) => {
+                    renderListItems(sec, items, query, (c) => ({
+                        title: c.title,
+                        desc: c.memo,
+                        source: '스마트 캘린더',
+                        badgeIcon: '📅',
+                        date: `${c.event_date || ''} ${c.event_time || ''}`.trim(),
+                        tag: c.is_family ? '가족 일정' : '개인 일정',
+                        url: c.url
+                    }));
+                }
+            );
         }
         if (tab === 'all' || tab === 'internal' || tab === 'wikiNews') {
-            shownCount += appendSection(mount, '📖', '가족 위키', r.wiki, (sec, items) => {
-                renderListItems(sec, items, (w) => ({ title: w.title, desc: w.excerpt, meta: w.category, url: w.url }));
-            });
-            shownCount += appendSection(mount, '📰', '뉴스룸 브리핑', r.news, (sec, items) => {
-                renderListItems(sec, items, (n) => ({
-                    title: n.title,
-                    desc: (n.summary || '').slice(0, 140),
-                    meta: `${n.media_name || '뉴스'} · ${n.date || ''}`,
-                    url: n.link || '/go/news',
-                    external: Boolean(n.link)
-                }));
-            });
+            shownCount += appendSection(
+                mount,
+                { icon: '📖', title: '가족 위키', moreTab: tab === 'all' ? 'wikiNews' : null, moreChipText: '위키·뉴스 ›', onSwitchTab },
+                r.wiki,
+                (sec, items) => {
+                    renderListItems(sec, items, query, (w) => ({
+                        title: w.title,
+                        desc: w.excerpt,
+                        source: '가족 위키',
+                        badgeIcon: '📖',
+                        tag: w.category || '',
+                        url: w.url
+                    }));
+                }
+            );
+            shownCount += appendSection(
+                mount,
+                { icon: '📰', title: '뉴스룸 브리핑', moreTab: tab === 'all' ? 'wikiNews' : null, moreChipText: '위키·뉴스 ›', onSwitchTab },
+                r.news,
+                (sec, items) => {
+                    renderListItems(sec, items, query, (n) => ({
+                        title: n.title,
+                        desc: (n.summary || '').slice(0, 160),
+                        source: n.media_name || 'JG 뉴스룸',
+                        badgeIcon: '📰',
+                        date: n.date || '',
+                        tag: n.category_name || '',
+                        url: n.link || '/go/news',
+                        external: Boolean(n.link)
+                    }));
+                }
+            );
         }
         if (tab === 'all' || tab === 'internal' || tab === 'album') {
-            shownCount += appendSection(mount, '📸', '가족 앨범', r.album, (sec, items) => {
-                const grid = makeEl('div', 'jg-album-grid');
-                items.forEach((ph) => {
-                    const card = makeEl('a', 'jg-album-card');
-                    card.href = safeHref(ph.url);
-                    const wrap = makeEl('div', 'jg-album-thumb-wrap');
-                    if (ph.thumbUrl) {
-                        const img = makeEl('img', 'jg-album-thumb');
-                        img.src = ph.thumbUrl;
-                        img.alt = ph.caption || '가족 사진';
-                        img.loading = 'lazy';
-                        wrap.appendChild(img);
-                    }
-                    const info = makeEl('div', 'jg-album-info');
-                    info.append(
-                        makeEl('div', 'jg-album-caption', ph.caption),
-                        makeEl('div', 'jg-album-date', `${ph.taken_at || ''} ${ph.location ? '· ' + ph.location : ''}`)
-                    );
-                    card.append(wrap, info);
-                    grid.appendChild(card);
-                });
-                sec.appendChild(grid);
-            });
+            shownCount += appendSection(
+                mount,
+                { icon: '📸', title: '가족 앨범', moreTab: tab === 'all' ? 'album' : null, moreChipText: '앨범 더보기 ›', onSwitchTab },
+                r.album,
+                (sec, items) => {
+                    const grid = makeEl('div', 'jg-album-grid');
+                    items.forEach((ph) => {
+                        const card = makeEl('a', 'jg-album-card');
+                        card.href = safeHref(ph.url);
+                        const wrap = makeEl('div', 'jg-album-thumb-wrap');
+                        if (ph.thumbUrl) {
+                            const img = makeEl('img', 'jg-album-thumb');
+                            img.src = ph.thumbUrl;
+                            img.alt = ph.caption || '가족 사진';
+                            img.loading = 'lazy';
+                            wrap.appendChild(img);
+                        }
+                        const info = makeEl('div', 'jg-album-info');
+                        info.append(
+                            makeEl('div', 'jg-album-caption', ph.caption),
+                            makeEl('div', 'jg-album-date', `${ph.taken_at || ''} ${ph.location ? '· ' + ph.location : ''}`)
+                        );
+                        card.append(wrap, info);
+                        grid.appendChild(card);
+                    });
+                    sec.appendChild(grid);
+                }
+            );
         }
         if (tab === 'all' || tab === 'internal' || tab === 'healthAsset') {
-            shownCount += appendSection(mount, '🏥', '병원 진료 일정', r.hospitals, (sec, items) => {
-                renderListItems(sec, items, (h) => ({
+            shownCount += appendSection(mount, { icon: '🏥', title: '병원 진료 일정' }, r.hospitals, (sec, items) => {
+                renderListItems(sec, items, query, (h) => ({
                     title: `${h.hospital_name} (${h.department || '진료'})`,
                     desc: h.memo,
-                    meta: `방문 ${h.visit_date || '-'}${h.next_visit_date ? ' · 다음 예약 ' + h.next_visit_date : ''}`,
+                    source: '혈압·건강 관리',
+                    badgeIcon: '🏥',
+                    date: `방문 ${h.visit_date || '-'}`,
+                    tag: h.next_visit_date ? `예약 ${h.next_visit_date}` : '',
                     url: 'https://blood.j-jg.cc/dashboard.html#hospital'
                 }));
             });
-            shownCount += appendSection(mount, '💊', '처방약 · 복약 관리', r.medications, (sec, items) => {
-                renderListItems(sec, items, (m) => ({
+            shownCount += appendSection(mount, { icon: '💊', title: '처방약 · 복약 관리' }, r.medications, (sec, items) => {
+                renderListItems(sec, items, query, (m) => ({
                     title: `${m.med_name} (${m.target_label})`,
                     desc: m.dosage_note,
-                    meta: m.remain_count !== null ? `남은 수량: ${m.remain_count}` : '',
+                    source: '약 챙겨먹기',
+                    badgeIcon: '💊',
+                    tag: m.remain_count !== null ? `남은 수량 ${m.remain_count}` : '',
                     url: m.url
                 }));
             });
-            shownCount += appendSection(mount, '💰', '보유 자산', r.assets, (sec, items) => {
-                renderListItems(sec, items, (a) => ({
+            shownCount += appendSection(mount, { icon: '💰', title: '보유 자산' }, r.assets, (sec, items) => {
+                renderListItems(sec, items, query, (a) => ({
                     title: `${a.full_name || a.symbol} (${a.symbol})`,
                     desc: `${a.asset_type || ''} · 수량 ${a.quantity}`,
-                    meta: `평균단가 ${Number(a.avg_price || 0).toLocaleString()} ${a.currency || ''}`,
+                    source: '자산 관리',
+                    badgeIcon: '💰',
+                    tag: `평균 ${Number(a.avg_price || 0).toLocaleString()} ${a.currency || ''}`,
                     url: 'https://asset.j-jg.cc'
                 }));
             });
-            shownCount += appendSection(mount, '🎒', '어린이집 사진 수집', r.kindergarten, (sec, items) => {
-                renderListItems(sec, items, (k) => ({ title: k.title, desc: k.status, meta: k.lastRun, url: k.url }));
+            shownCount += appendSection(mount, { icon: '🎒', title: '어린이집 사진 수집' }, r.kindergarten, (sec, items) => {
+                renderListItems(sec, items, query, (k) => ({
+                    title: k.title,
+                    desc: k.status,
+                    source: '어린이집 알림',
+                    badgeIcon: '🎒',
+                    date: k.lastRun || '',
+                    url: k.url
+                }));
             });
         }
 
         return shownCount;
     }
 
-    function renderExternalSections(mount, external, tab, query = '') {
-        if (!mount) return 0;
-        mount.replaceChildren();
-        if (!external || ['internal', 'memoCalendar', 'album', 'healthAsset'].includes(tab)) return 0;
-
-        let shownCount = 0;
-        const nv = external.naver || {};
-        const gg = external.google || {};
-
-        // 1) 위키백과 지식 카드
-        if ((tab === 'all' || tab === 'encyc') && external.wikipedia) {
-            const wk = external.wikipedia;
-            const sec = makeEl('section', 'jg-section-card');
-            sec.appendChild(makeEl('h3', 'jg-section-title', `📚 위키백과 지식 백과 (${wk.lang === 'en' ? 'EN' : 'KO'})`));
-            const a = makeEl('a', 'jg-result-item jg-wiki-card');
-            a.href = safeHref(wk.url);
-            a.target = '_blank';
-            a.rel = 'noopener noreferrer';
-            if (wk.thumbnail) {
-                const wrap = makeEl('div', 'jg-wiki-thumb-wrap');
-                const img = makeEl('img', 'jg-wiki-thumb');
-                img.src = safeHref(wk.thumbnail);
-                img.alt = wk.title;
-                img.loading = 'lazy';
-                wrap.appendChild(img);
-                a.appendChild(wrap);
-            }
-            const body = makeEl('div');
-            body.appendChild(makeEl('div', 'jg-result-title', wk.title));
-            if (wk.description) body.appendChild(makeEl('div', 'jg-result-meta', wk.description));
-            body.appendChild(makeEl('div', 'jg-result-desc', wk.extract));
-            a.appendChild(body);
-            sec.appendChild(a);
-            mount.appendChild(sec);
-            shownCount += 1;
+    function renderExternalSections(mount, external, rawTab, query = '', nav = {}) {
+        if (global.JGSearchExternalRenderers && typeof global.JGSearchExternalRenderers.renderExternalSections === 'function') {
+            return global.JGSearchExternalRenderers.renderExternalSections(mount, external, rawTab, query, nav);
         }
-
-        // 1.5) 나무위키 섹션 (네이버·구글 웹결과 내 namu.wiki 우선 노출 + 문서 바로가기)
-        if ((tab === 'all' || tab === 'encyc') && (query || (nv.web && nv.web.length) || (gg.items && gg.items.length))) {
-            const namuPool = [...(nv.web || []), ...(gg.items || [])].filter(
-                (it) => it && typeof it.link === 'string' && it.link.includes('namu.wiki')
-            );
-            const seenNamu = new Set();
-            const namuItems = [];
-            for (const it of namuPool) {
-                if (!seenNamu.has(it.link)) {
-                    seenNamu.add(it.link);
-                    namuItems.push(it);
-                    if (namuItems.length >= 3) break;
-                }
-            }
-            if (namuItems.length > 0 || query) {
-                const sec = makeEl('section', 'jg-section-card jg-namu-card');
-                sec.appendChild(makeEl('h3', 'jg-section-title', '🌳 나무위키 (Namuwiki)'));
-                if (namuItems.length > 0) {
-                    renderListItems(sec, namuItems, (it) => ({
-                        title: it.title,
-                        desc: it.description,
-                        meta: 'namu.wiki',
-                        url: it.link,
-                        external: true
-                    }));
-                }
-                if (query) {
-                    const direct = makeEl('a', 'jg-namu-direct-link');
-                    direct.href = safeHref(`https://namu.wiki/w/${encodeURIComponent(query)}`);
-                    direct.target = '_blank';
-                    direct.rel = 'noopener noreferrer';
-                    direct.textContent = `🌳 나무위키에서 '${query}' 문서 바로 열기 ↗`;
-                    sec.appendChild(direct);
-                }
-                mount.appendChild(sec);
-                shownCount += 1;
-            }
-        }
-
-        // 2) 네이버 백과사전
-        if (tab === 'all' || tab === 'encyc') {
-            shownCount += appendSection(mount, '📘', '네이버 지식백과', nv.encyc, (sec, items) => {
-                renderListItems(sec, items, (it) => ({ title: it.title, desc: it.description, url: it.link, external: true }));
-            });
-        }
-
-        // 3) 네이버 웹·블로그
-        if (tab === 'all' || tab === 'webBlog') {
-            shownCount += appendSection(mount, '🌐', '웹 검색 결과 (네이버)', nv.web, (sec, items) => {
-                renderListItems(sec, items, (it) => ({ title: it.title, desc: it.description, url: it.link, external: true }));
-            });
-            shownCount += appendSection(mount, '✍️', '블로그 · 후기 (네이버)', nv.blog, (sec, items) => {
-                renderListItems(sec, items, (it) => ({
-                    title: it.title,
-                    desc: it.description,
-                    meta: `${it.source || '블로그'}${it.date ? ' · ' + it.date : ''}`,
-                    url: it.link,
-                    external: true
-                }));
-            });
-        }
-
-        // 4) 네이버 뉴스
-        if (tab === 'all' || tab === 'wikiNews') {
-            shownCount += appendSection(mount, '🗞️', '외부 실시간 뉴스 (네이버)', nv.news, (sec, items) => {
-                renderListItems(sec, items, (it) => ({ title: it.title, desc: it.description, url: it.link, external: true }));
-            });
-        }
-
-        // 5) 네이버 지역/맛집
-        if (tab === 'all' || tab === 'local') {
-            shownCount += appendSection(mount, '📍', '지역 · 맛집 정보', nv.local, (sec, items) => {
-                renderListItems(sec, items, (it) => ({
-                    title: it.title,
-                    desc: it.address || it.description,
-                    meta: [it.source, it.telephone].filter(Boolean).join(' · '),
-                    url: it.link || `https://map.naver.com/p/search/${encodeURIComponent(it.title)}`,
-                    external: true
-                }));
-            });
-        }
-
-        // 5.5) 추가 활성화된 네이버 세부 API (지식iN, 책, 쇼핑, 카페 등)
-        if (Array.isArray(nv.extras)) {
-            nv.extras.forEach((ex) => {
-                if (!ex || !Array.isArray(ex.items) || ex.items.length === 0) return;
-                if (tab === 'all' || tab === ex.tab || tab === 'webBlog') {
-                    shownCount += appendSection(mount, '🔎', `${ex.label || ex.code} (네이버)`, ex.items, (sec, items) => {
-                        renderListItems(sec, items, (it) => ({
-                            title: it.title,
-                            desc: it.description,
-                            meta: [it.source, it.date].filter(Boolean).join(' · '),
-                            url: it.link,
-                            external: true
-                        }));
-                    });
-                }
-            });
-        }
-
-        // 6) 구글 웹 검색
-        if ((tab === 'all' || tab === 'google') && Array.isArray(gg.items) && gg.items.length > 0) {
-            shownCount += appendSection(mount, '🔎', '구글 웹 검색', gg.items, (sec, items) => {
-                renderListItems(sec, items, (it) => ({
-                    title: it.title,
-                    desc: it.description,
-                    meta: it.displayLink || '',
-                    url: it.link,
-                    external: true
-                }));
-            });
-        } else if (tab === 'google' && gg.blockedReason) {
-            const sec = makeEl('section', 'jg-section-card');
-            sec.appendChild(makeEl('h3', 'jg-section-title', '🔎 구글 웹 검색'));
-            const msg = gg.blockedReason === 'daily_quota_guard'
-                ? '오늘의 구글 무료 검색 안전 한도(90건)에 도달해 자동 보호 중입니다. 네이버 웹 검색이나 내일 다시 이용해 주세요.'
-                : '구글 검색 API 키가 아직 설정되지 않았거나 관리자 설정에서 꺼져 있습니다.';
-            sec.appendChild(makeEl('p', 'jg-muted-text', msg));
-            mount.appendChild(sec);
-            shownCount += 1;
-        }
-
-        return shownCount;
+        return 0;
     }
 
     /**
@@ -410,6 +326,8 @@
 
     global.JGSearchRenderers = {
         safeHref,
+        appendSection,
+        renderListItems,
         renderSmartWidget,
         renderInternalSections,
         renderExternalSections,

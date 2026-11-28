@@ -214,40 +214,49 @@ router.get('/home', authenticateToken, async (req, res) => {
 
 router.get('/portal', authenticateToken, async (req, res) => {
     const rawQuery = (req.query.q || '').trim().slice(0, 120);
-    const mode = (req.query.tab || 'all').trim();
+    const rawMode = (req.query.tab || 'all').trim();
+    const mode = rawMode === 'webBlog' ? 'web' : rawMode;
+    const page = Math.max(1, Math.min(67, parseInt(req.query.page, 10) || 1));
     const userId = req.user.username || 'admin';
 
     if (!rawQuery) {
         return res.json({
             success: true,
             query: '',
+            page: 1,
             smartWidget: null,
             internal: { isChosung: false, total: 0, results: {} },
             external: { wikipedia: null, naver: {}, google: { items: [] } },
-            counts: {}
+            counts: {},
+            totals: {}
         });
     }
 
     try {
-        if (req.query.save !== '0') {
+        if (req.query.save !== '0' && page === 1) {
             addHistory(userId, rawQuery).catch(() => {});
         }
 
-        const extMode = ['webBlog', 'encyc', 'local', 'google'].includes(mode) ? mode : 'all';
+        const extMode = ['web', 'blog', 'encyc', 'wikiNews', 'local', 'google'].includes(mode) ? mode : 'all';
+        const needSmartWidget = page === 1 && (mode === 'all' || mode === 'local');
+        const needInternal = page === 1 || ['all', 'internal', 'memoCalendar', 'wikiNews', 'album', 'healthAsset'].includes(mode);
+
         const [smartWidget, internal, external] = await Promise.all([
-            resolveSmartWidget(rawQuery, req.user),
-            searchAllInternal(rawQuery, req.user),
-            searchExternal(rawQuery, extMode)
+            needSmartWidget ? resolveSmartWidget(rawQuery, req.user) : Promise.resolve(null),
+            needInternal ? searchAllInternal(rawQuery, req.user) : Promise.resolve({ isChosung: false, total: 0, results: {} }),
+            searchExternal(rawQuery, extMode, page)
         ]);
 
         const r = internal.results || {};
         const ext = external || {};
         const nv = ext.naver || {};
-        const webBlogCnt = (nv.web?.length || 0) + (nv.blog?.length || 0);
+        const nvMeta = nv.meta || {};
+        const webCnt = nv.web?.length || 0;
+        const blogCnt = nv.blog?.length || 0;
         const encycCnt = (ext.wikipedia ? 1 : 0) + (nv.encyc?.length || 0);
         const localCnt = (nv.local?.length || 0) + (smartWidget?.type === 'map' ? 1 : 0);
         const googleCnt = ext.google?.items?.length || 0;
-        const externalTotal = webBlogCnt + encycCnt + localCnt + (nv.news?.length || 0) + googleCnt;
+        const externalTotal = webCnt + blogCnt + encycCnt + localCnt + (nv.news?.length || 0) + googleCnt;
 
         const counts = {
             all: internal.total + externalTotal + (smartWidget ? 1 : 0),
@@ -256,21 +265,36 @@ router.get('/portal', authenticateToken, async (req, res) => {
             wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0) + (nv.news?.length || 0),
             album: r.album?.length || 0,
             healthAsset: (r.hospitals?.length || 0) + (r.medications?.length || 0) + (r.assets?.length || 0) + (r.kindergarten?.length || 0),
-            webBlog: webBlogCnt,
+            web: webCnt,
+            blog: blogCnt,
+            webBlog: webCnt + blogCnt,
             encyc: encycCnt,
             local: localCnt,
             google: googleCnt
         };
 
-        cacheSearchContext(userId, rawQuery, { smartWidget, internal, external });
+        const totals = {
+            web: nvMeta.web?.total || webCnt,
+            blog: nvMeta.blog?.total || blogCnt,
+            encyc: (nvMeta.encyc?.total || 0) + (ext.wikipedia ? 1 : 0),
+            wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0) + (nvMeta.news?.total || 0),
+            local: (nvMeta.local?.total || 0) + (smartWidget?.type === 'map' ? 1 : 0),
+            google: ext.google?.meta?.total || googleCnt
+        };
+
+        if (page === 1 && mode === 'all') {
+            cacheSearchContext(userId, rawQuery, { smartWidget, internal, external });
+        }
 
         res.json({
             success: true,
             query: rawQuery,
+            page,
             smartWidget,
             internal,
             external,
-            counts
+            counts,
+            totals
         });
     } catch (e) {
         console.error('[Portal search err]:', e);
@@ -281,9 +305,10 @@ router.get('/portal', authenticateToken, async (req, res) => {
 router.get('/external', authenticateToken, async (req, res) => {
     const rawQuery = (req.query.q || '').trim().slice(0, 120);
     const mode = (req.query.mode || 'all').trim();
+    const page = Math.max(1, Math.min(67, parseInt(req.query.page, 10) || 1));
     if (!rawQuery) return res.json({ success: true, external: { wikipedia: null, naver: {}, google: { items: [] } } });
     try {
-        const external = await searchExternal(rawQuery, mode);
+        const external = await searchExternal(rawQuery, mode, page);
         res.json({ success: true, external });
     } catch (e) {
         res.status(500).json({ success: false, message: '외부 검색 조회 중 오류가 발생했습니다.' });
