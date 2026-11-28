@@ -131,6 +131,75 @@
         }
     }
 
+    const sessionClipMap = new Map();
+
+    function getEffectiveClipped(url, fallback) {
+        if (!url) return false;
+        if (sessionClipMap.has(url)) return sessionClipMap.get(url);
+        return Boolean(fallback);
+    }
+
+    function applyClipBtnUI(btn, clipped, busy) {
+        btn.setAttribute('aria-pressed', clipped ? 'true' : 'false');
+        btn.classList.toggle('is-clipped', Boolean(clipped));
+        btn.disabled = Boolean(busy);
+        btn.textContent = busy ? '⏳ 저장 중' : (clipped ? '✅ 보관됨' : '📌 보관');
+        btn.title = clipped ? '클릭하여 내 서버 보관함에서 삭제' : '내 서버 보관함(검색 아카이브)에 본문·이미지 저장';
+    }
+
+    async function toggleClipItem(clipMeta, btn) {
+        if (!clipMeta || !clipMeta.url || !btn || btn.disabled) return;
+        const url = String(clipMeta.url).trim();
+        const wasClipped = btn.getAttribute('aria-pressed') === 'true';
+        applyClipBtnUI(btn, wasClipped, true);
+        try {
+            if (wasClipped) {
+                const res = await fetch(`/api/search/clips?url=${encodeURIComponent(url)}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+                if (!res.ok && res.status !== 404) throw new Error('DEL_FAIL');
+                sessionClipMap.set(url, false);
+                applyClipBtnUI(btn, false, false);
+                if (typeof clipMeta.onToggle === 'function') clipMeta.onToggle(false);
+            } else {
+                const res = await fetch('/api/search/clips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        url,
+                        title: clipMeta.title || '',
+                        snippet: clipMeta.snippet || '',
+                        thumbnail: clipMeta.thumbnail || null,
+                        siteName: clipMeta.siteName || '',
+                        category: clipMeta.category || 'web'
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) throw new Error(data.message || 'SAVE_FAIL');
+                sessionClipMap.set(url, true);
+                applyClipBtnUI(btn, true, false);
+                if (typeof clipMeta.onToggle === 'function') clipMeta.onToggle(true);
+            }
+        } catch (_) {
+            applyClipBtnUI(btn, wasClipped, false);
+        }
+    }
+
+    function createClipButton(clipMeta) {
+        const btn = makeEl('button', 'jg-clip-btn');
+        btn.type = 'button';
+        const initial = getEffectiveClipped(clipMeta.url, clipMeta.clipped);
+        applyClipBtnUI(btn, initial, false);
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleClipItem(clipMeta, btn);
+        });
+        return btn;
+    }
+
     function createEditorialItem(info, query) {
         const article = makeEl('article', info.extraClass ? `jg-result-item ${info.extraClass}` : 'jg-result-item');
 
@@ -146,6 +215,11 @@
 
         const header = makeEl('header', 'jg-result-source');
         const src = resolveSourceInfo(info.url, info.source, info.badgeIcon);
+
+        if (info.categoryBadge && info.categoryBadge.label) {
+            const tone = String(info.categoryBadge.tone || 'web').replace(/[^a-z0-9_-]/gi, '');
+            header.appendChild(makeEl('span', `jg-cat-pill is-${tone}`, info.categoryBadge.label));
+        }
 
         if (src.isInternal || !src.faviconUrl) {
             header.appendChild(makeEl('span', 'jg-source-badge-icon', src.badgeIcon || '🌐'));
@@ -194,6 +268,33 @@
             const p = makeEl('p', 'jg-result-desc');
             appendHighlightedText(p, info.desc, query, 'jg-hl-sub');
             article.appendChild(p);
+        }
+
+        const canClip = Boolean(info.clippable && info.url && /^https?:\/\//i.test(info.url));
+        if (canClip || (info.extraAction && info.extraAction.url)) {
+            const footer = makeEl('footer', 'jg-result-footer');
+            if (canClip) {
+                footer.appendChild(
+                    createClipButton({
+                        url: info.url,
+                        title: info.title || '',
+                        snippet: info.desc || '',
+                        thumbnail: info.thumbnail || null,
+                        siteName: src.siteName || '',
+                        category: info.clipCategory || 'web',
+                        clipped: info.clipped,
+                        onToggle: info.onClipToggle
+                    })
+                );
+            }
+            if (info.extraAction && info.extraAction.url) {
+                const subLink = makeEl('a', 'jg-extra-action-link', info.extraAction.label || '바로 열기 ↗');
+                subLink.href = safeHref(info.extraAction.url);
+                subLink.target = '_blank';
+                subLink.rel = 'noopener noreferrer';
+                footer.appendChild(subLink);
+            }
+            article.appendChild(footer);
         }
 
         return article;
@@ -346,6 +447,9 @@
         safeHref,
         appendHighlightedText,
         createEditorialItem,
+        createClipButton,
+        toggleClipItem,
+        getEffectiveClipped,
         createSectionShell,
         appendMoreFooterButton,
         appendPagination,

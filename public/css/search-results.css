@@ -165,7 +165,7 @@
 
     .jg-result-item:has(> img.jg-card-media) > img.jg-card-media {
         grid-column: 2;
-        grid-row: 1 / span 3;
+        grid-row: 1 / span 4;
         width: 84px;
         height: 84px;
         margin-bottom: 0;

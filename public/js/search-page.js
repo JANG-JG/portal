@@ -20,7 +20,8 @@
     const TAB_LABELS = {
         all: '통합검색',
         web: '웹문서',
-        blog: '블로그',
+        blog: '블로그·카페',
+        image: '이미지',
         encyc: '백과·지식',
         wikiNews: '위키·뉴스',
         local: '맛집·지역',
@@ -290,6 +291,7 @@
         setCnt('tabCntAll', mergedCnt.all);
         setCnt('tabCntWeb', mergedTot.web || mergedCnt.web);
         setCnt('tabCntBlog', mergedTot.blog || mergedCnt.blog);
+        setCnt('tabCntImage', mergedTot.image || mergedCnt.image);
         setCnt('tabCntEncyc', mergedTot.encyc || mergedCnt.encyc);
         setCnt('tabCntWikiNews', mergedTot.wikiNews || mergedCnt.wikiNews);
         setCnt('tabCntLocal', mergedTot.local || mergedCnt.local);
@@ -312,6 +314,7 @@
         const tab = state.tab;
         const R = window.JGSearchRenderers;
         const H = window.JGSearchCardHelpers;
+        const B = window.JGSearchBlendedView;
 
         const navHandlers = {
             activeLocalCat: state.localCat,
@@ -328,17 +331,21 @@
         else el('jgSmartWidgetMount').replaceChildren();
 
         let shownCount = showWidget && p.smartWidget ? 1 : 0;
-        if (state.page === 1 || ['internal', 'memoCalendar', 'album', 'healthAsset'].includes(tab)) {
-            shownCount += R.renderInternalSections(el('jgInternalResultsMount'), r, tab, p.query, navHandlers);
+        if (tab === 'all' && state.page === 1 && B && typeof B.renderUnifiedAll === 'function') {
+            shownCount += B.renderUnifiedAll(el('jgInternalResultsMount'), el('jgExternalResultsMount'), p, navHandlers);
         } else {
-            el('jgInternalResultsMount').replaceChildren();
+            if (state.page === 1 || ['internal', 'memoCalendar', 'album', 'healthAsset'].includes(tab)) {
+                shownCount += R.renderInternalSections(el('jgInternalResultsMount'), r, tab, p.query, navHandlers);
+            } else {
+                el('jgInternalResultsMount').replaceChildren();
+            }
+            shownCount += R.renderExternalSections(el('jgExternalResultsMount'), p.external, tab, p.query, navHandlers);
         }
-        shownCount += R.renderExternalSections(el('jgExternalResultsMount'), p.external, tab, p.query, navHandlers);
 
         const webTotal = p.totals?.web || p.external?.naver?.meta?.web?.total || 0;
         if (tab === 'all') {
             const totalHint = webTotal > 0 && H ? ` · 웹문서 ${H.formatTotalCount(webTotal, 0)}` : '';
-            el('jgSearchStatusLine').textContent = `'${p.query}' 통합검색 (${p.internal?.isChosung ? '초성 검색 · ' : ''}주요 섹션 요약${totalHint})`;
+            el('jgSearchStatusLine').textContent = `'${p.query}' 통합검색 (${p.internal?.isChosung ? '초성 검색 · ' : ''}분야 통합 스트림${totalHint})`;
         } else {
             const label = TAB_LABELS[tab] || '검색';
             const tabTotal = p.totals?.[tab] || p.counts?.[tab] || 0;

@@ -252,7 +252,10 @@
                         tag: '보관됨',
                         thumbnail: c.thumbnail_url || null,
                         url: c.url,
-                        external: true
+                        external: true,
+                        clippable: true,
+                        clipped: true,
+                        clipCategory: 'clip'
                     }));
                 }
             );

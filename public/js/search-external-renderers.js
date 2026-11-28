@@ -30,6 +30,13 @@
         const nvMeta = nv.meta || {};
         const gg = external.google || {};
 
+        if (tab === 'image') {
+            if (global.JGSearchMediaModal && typeof global.JGSearchMediaModal.renderImageTabGallery === 'function') {
+                return global.JGSearchMediaModal.renderImageTabGallery(mount, external.images, query, nav);
+            }
+            return 0;
+        }
+
         // 1) 위키백과 지식 카드 (1페이지에서 우선 노출)
         if ((tab === 'all' || tab === 'encyc') && page === 1 && external.wikipedia) {
             const wk = external.wikipedia;
@@ -51,6 +58,9 @@
                         tag: wk.description || '',
                         thumbnail: wk.thumbnail || null,
                         external: true,
+                        clippable: true,
+                        clipped: Boolean(wk.clipped),
+                        clipCategory: 'encyc',
                         extraClass: 'jg-wiki-card'
                     },
                     query
@@ -83,7 +93,10 @@
                         desc: it.description,
                         source: '나무위키',
                         url: it.link,
-                        external: true
+                        external: true,
+                        clippable: true,
+                        clipped: Boolean(it.clipped),
+                        clipCategory: 'encyc'
                     }));
                 }
                 if (query) {
@@ -125,8 +138,12 @@
                         title: it.title,
                         desc: it.description,
                         source: '네이버 지식백과',
+                        thumbnail: it.thumbnail || null,
                         url: it.link,
-                        external: true
+                        external: true,
+                        clippable: true,
+                        clipped: Boolean(it.clipped),
+                        clipCategory: 'encyc'
                     }));
                 }
             );
@@ -164,7 +181,10 @@
                         date: it.date || '',
                         thumbnail: it.thumbnail || null,
                         url: it.link,
-                        external: true
+                        external: true,
+                        clippable: true,
+                        clipped: Boolean(it.clipped),
+                        clipCategory: 'web'
                     }));
                 }
             );
@@ -201,7 +221,10 @@
                             date: it.date || it.postdate || '',
                             thumbnail: it.thumbnail || null,
                             url: it.link,
-                            external: true
+                            external: true,
+                            clippable: true,
+                            clipped: Boolean(it.clipped),
+                            clipCategory: 'blog'
                         }));
                     }
                 );
@@ -239,17 +262,20 @@
                         desc: it.description,
                         date: it.date || '',
                         url: it.link,
-                        external: true
+                        external: true,
+                        clippable: true,
+                        clipped: Boolean(it.clipped),
+                        clipCategory: 'news'
                     }));
                 }
             );
         }
 
         // 6) 맛집·지역 전용 탭 (카카오 로컬 업종 필터 + 15곳 지도·페이지네이션) & 네이버 지역 요약
-        if (tab === 'local' && ext.kakaoLocal && global.JGSearchRegionCard) {
-            shownCount += global.JGSearchRegionCard.renderLocalTabSection(mount, ext.kakaoLocal, query, nav);
+        if (tab === 'local' && external.kakaoLocal && global.JGSearchRegionCard) {
+            shownCount += global.JGSearchRegionCard.renderLocalTabSection(mount, external.kakaoLocal, query, nav);
         }
-        if (tab === 'all' || (tab === 'local' && (!ext.kakaoLocal || !(ext.kakaoLocal.places || []).length))) {
+        if (tab === 'all' || (tab === 'local' && (!external.kakaoLocal || !(external.kakaoLocal.places || []).length))) {
             const meta = nvMeta.local || {};
             const localItems = tab === 'all' ? (nv.local || []).slice(0, 4) : (nv.local || []);
             const canMoreLocal = tab === 'all' && (meta.hasMore || (meta.total || 0) > localItems.length);
@@ -301,7 +327,10 @@
                                 source: it.source || ex.label,
                                 date: it.date || '',
                                 url: it.link,
-                                external: true
+                                external: true,
+                                clippable: true,
+                                clipped: Boolean(it.clipped),
+                                clipCategory: 'web'
                             }));
                         }
                     );
@@ -329,7 +358,10 @@
                         title: it.title,
                         desc: it.description,
                         url: it.link,
-                        external: true
+                        external: true,
+                        clippable: true,
+                        clipped: Boolean(it.clipped),
+                        clipCategory: 'web'
                     }));
                 }
             );

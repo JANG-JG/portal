@@ -1,0 +1,481 @@
+/* ==========================================================================
+   ✨ JG 통합 검색 - 유니버설 블렌디드 스트림 · 보관함 버튼 · 이미지 갤러리 · 라이트박스 (search-blended.css)
+   - 모바일 360px 뷰포트 무넘침 보장 및 네이티브 <dialog> 표준 오버스크롤 제어
+   ========================================================================== */
+
+/* 1. 유니버설 스트림 필터 바 */
+.jg-blended-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    overflow-x: auto;
+    padding: 0.45rem 0 0.6rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid #f1f5f9;
+    scrollbar-width: none;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.jg-blended-filter-bar::-webkit-scrollbar {
+    display: none;
+}
+
+.jg-blended-filter-chip {
+    flex-shrink: 0;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #475569;
+    border-radius: 999px;
+    padding: 0.28rem 0.7rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+.jg-blended-filter-chip:hover {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+    color: #1d4ed8;
+}
+
+.jg-blended-filter-chip.active {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #ffffff;
+}
+
+/* 2. 결과 카드 상단 분야 배지 (시각적 출처 즉시 식별) */
+.jg-cat-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 6px;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.69rem;
+    font-weight: 800;
+    line-height: 1.3;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+}
+
+.jg-cat-pill.is-clip {
+    background: #fef3c7;
+    color: #b45309;
+    border-color: #fde68a;
+}
+
+.jg-cat-pill.is-internal {
+    background: #ecfdf5;
+    color: #047857;
+    border-color: #a7f3d0;
+}
+
+.jg-cat-pill.is-encyc {
+    background: #eef2ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+}
+
+.jg-cat-pill.is-web {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #dbeafe;
+}
+
+.jg-cat-pill.is-blog {
+    background: #fdf2f8;
+    color: #be185d;
+    border-color: #fbcfe8;
+}
+
+.jg-cat-pill.is-news {
+    background: #f1f5f9;
+    color: #334155;
+    border-color: #cbd5e1;
+}
+
+.jg-cat-pill.is-image {
+    background: #f0fdfa;
+    color: #0f766e;
+    border-color: #99f6e4;
+}
+
+/* 3. 카드 하단 액션 푸터 & 내 서버 보관(📌) 토글 버튼 */
+.jg-result-footer {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.42rem;
+    min-width: 0;
+}
+
+.jg-clip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+    min-height: 28px;
+    padding: 0.18rem 0.58rem;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.jg-clip-btn:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.jg-clip-btn.is-clipped,
+.jg-clip-btn[aria-pressed="true"] {
+    background: #fef3c7;
+    border-color: #f59e0b;
+    color: #92400e;
+}
+
+.jg-extra-action-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid #bbf7d0;
+    background: #f0fdf4;
+    color: #15803d;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.jg-extra-action-link:hover {
+    background: #dcfce7;
+}
+
+/* 4. 통합검색 인라인 관련 이미지 스트립 (4번째 결과 직후 자연 삽입) */
+.jg-inline-img-block {
+    margin: 0.55rem 0;
+    padding: 0.85rem 0.75rem;
+    border-radius: 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.jg-inline-img-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.jg-inline-img-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    min-width: 0;
+}
+
+.jg-inline-img-sub {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #334155;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.jg-inline-img-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+}
+
+@media (min-width: 560px) {
+    .jg-inline-img-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* 5. 이미지 전용 탭 갤러리 그리드 (2~4열 반응형) */
+.jg-image-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    padding-top: 0.45rem;
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+@media (min-width: 600px) {
+    .jg-image-gallery-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 860px) {
+    .jg-image-gallery-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.jg-gallery-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #f1f5f9;
+    cursor: pointer;
+    text-align: left;
+    min-width: 0;
+    transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.jg-gallery-tile:hover {
+    transform: translateY(-2px);
+    border-color: #93c5fd;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.jg-gallery-tile-img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    display: block;
+    background: #e2e8f0;
+    flex-shrink: 0;
+}
+
+.jg-gallery-tile-caption {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.36rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #334155;
+    background: #ffffff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* 6. 통합 스트림 하단 분야별 탭 빠른 점프 바 */
+.jg-blended-jump-bar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1.5px solid #f1f5f9;
+}
+
+@media (min-width: 600px) {
+    .jg-blended-jump-bar {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.jg-blended-jump-btn {
+    min-height: 38px;
+    padding: 0.42rem 0.6rem;
+    border-radius: 10px;
+    border: 1px solid #dbeafe;
+    background: #f8fafc;
+    color: #1e3a8a;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.jg-blended-jump-btn:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+}
+
+/* 7. 네이티브 <dialog> 이미지 라이트박스 모달 (dialog 표준 규칙 준수) */
+dialog.jg-media-dialog {
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 18px;
+    background: #0f172a;
+    color: #f8fafc;
+    width: min(94vw, 860px);
+    max-width: 94vw;
+    max-height: 90dvh;
+    box-sizing: border-box;
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5);
+}
+
+dialog.jg-media-dialog[open] {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+dialog.jg-media-dialog:modal {
+    overscroll-behavior: contain;
+}
+
+dialog.jg-media-dialog::backdrop {
+    background: rgba(15, 23, 42, 0.76);
+    backdrop-filter: blur(4px);
+    overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+.jg-media-dialog-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.75rem 0.95rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    min-width: 0;
+}
+
+.jg-media-dialog-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: #f8fafc;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.jg-media-close-form {
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.jg-media-close-btn {
+    min-height: 34px;
+    padding: 0.3rem 0.72rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.jg-media-close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.jg-media-stage {
+    position: relative;
+    flex: 1;
+    min-height: 220px;
+    max-height: 66dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #020617;
+    overflow: hidden;
+}
+
+.jg-media-full-img {
+    max-width: 100%;
+    max-height: 66dvh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.jg-media-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(15, 23, 42, 0.72);
+    color: #ffffff;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.jg-media-nav-btn.is-prev { left: 0.55rem; }
+.jg-media-nav-btn.is-next { right: 0.55rem; }
+.jg-media-nav-btn:disabled { display: none; }
+
+.jg-media-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    padding: 0.7rem 0.95rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: #0f172a;
+}
+
+.jg-media-meta-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.76rem;
+    color: #cbd5e1;
+    min-width: 0;
+    flex-wrap: wrap;
+}
+
+.jg-media-counter {
+    font-weight: 800;
+    color: #93c5fd;
+}
+
+.jg-media-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.jg-media-doc-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 0.22rem 0.7rem;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.jg-media-doc-link:hover {
+    background: #1d4ed8;
+}

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/css/search-results.css">
     <link rel="stylesheet" href="/css/search-map-widget.css">
     <link rel="stylesheet" href="/css/search-region.css">
+    <link rel="stylesheet" href="/css/search-blended.css">
     <script>
         (function() {
             try {
@@ -77,10 +78,11 @@
             <nav class="jg-search-tabs" id="jgSearchTabs" aria-label="검색 카테고리" style="display:none;">
                 <button type="button" class="jg-tab-btn active" data-tab="all">통합검색 <span class="jg-tab-count" id="tabCntAll">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="web">웹문서 <span class="jg-tab-count" id="tabCntWeb">0</span></button>
-                <button type="button" class="jg-tab-btn" data-tab="blog">블로그 <span class="jg-tab-count" id="tabCntBlog">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="blog">블로그·카페 <span class="jg-tab-count" id="tabCntBlog">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="image">이미지 <span class="jg-tab-count" id="tabCntImage">0</span></button>
+                <button type="button" class="jg-tab-btn" data-tab="local">맛집·지역 <span class="jg-tab-count" id="tabCntLocal">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="encyc">백과·지식 <span class="jg-tab-count" id="tabCntEncyc">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="wikiNews">위키·뉴스 <span class="jg-tab-count" id="tabCntWikiNews">0</span></button>
-                <button type="button" class="jg-tab-btn" data-tab="local">맛집·지역 <span class="jg-tab-count" id="tabCntLocal">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="internal">우리 사이트 <span class="jg-tab-count" id="tabCntInternal">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="google">구글 웹 <span class="jg-tab-count" id="tabCntGoogle">0</span></button>
                 <button type="button" class="jg-tab-btn" data-tab="memoCalendar">메모·일정 <span class="jg-tab-count" id="tabCntMemoCal">0</span></button>
@@ -153,8 +155,10 @@
     <script src="/js/search-map-widget.js"></script>
     <script src="/js/search-region-card.js"></script>
     <script src="/js/search-card-helpers.js"></script>
+    <script src="/js/search-media-modal.js"></script>
     <script src="/js/search-renderers.js"></script>
     <script src="/js/search-external-renderers.js"></script>
+    <script src="/js/search-blended-view.js"></script>
     <script src="/js/search-suggest.js"></script>
     <script src="/js/search-page.js"></script>
     <script src="/api/jg-ui" defer></script>

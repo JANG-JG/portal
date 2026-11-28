@@ -293,8 +293,8 @@ async function searchExternal(rawQuery, rawMode = 'all', rawPage = 1) {
             ? fetchDaumEndpoint('cafe', q, mode === 'blog' ? 8 : 3, mode === 'blog' ? daumPage : 1)
             : Promise.resolve(emptyDaumBucket(mode === 'blog' ? 8 : 3, mode === 'blog' ? daumPage : 1)),
         daumImage: daumActive && (mode === 'all' || mode === 'image') && page <= 50
-            ? fetchDaumEndpoint('image', q, mode === 'image' ? 20 : 6, mode === 'image' ? daumPage : 1)
-            : Promise.resolve(emptyDaumBucket(mode === 'image' ? 20 : 6, mode === 'image' ? daumPage : 1)),
+            ? fetchDaumEndpoint('image', q, mode === 'image' ? 24 : 8, mode === 'image' ? daumPage : 1)
+            : Promise.resolve(emptyDaumBucket(mode === 'image' ? 24 : 8, mode === 'image' ? daumPage : 1)),
         naverEncyc: naverActive && isSubApiEnabled('encyc') && (mode === 'all' || mode === 'encyc')
             ? fetchNaverEndpoint('encyc', q, mode === 'encyc' ? TAB_PAGE_SIZE : 3, mode === 'encyc' ? page : 1)
             : Promise.resolve(emptyNaverBucket(mode === 'encyc' ? TAB_PAGE_SIZE : 3, mode === 'encyc' ? page : 1)),

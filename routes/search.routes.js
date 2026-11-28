@@ -261,20 +261,33 @@ router.get('/portal', authenticateToken, async (req, res) => {
         const nvMeta = nv.meta || {};
 
         const extDocBuckets = [nv.web || [], nv.blog || [], nv.encyc || [], nv.news || [], ext.google?.items || []];
+        const imageItems = ext.images?.items || [];
         const candidateUrls = [];
+        if (ext.wikipedia?.url) candidateUrls.push(ext.wikipedia.url);
         for (const arr of extDocBuckets) {
             for (const it of arr) {
                 if (it && it.link) candidateUrls.push(it.link);
             }
         }
+        for (const img of imageItems) {
+            if (img && img.docUrl) candidateUrls.push(img.docUrl);
+        }
         if (candidateUrls.length > 0) {
             const clippedHashes = await getUserClippedUrlSet(userId, candidateUrls);
             if (clippedHashes.size > 0) {
+                if (ext.wikipedia?.url && clippedHashes.has(hashUrl(ext.wikipedia.url))) {
+                    ext.wikipedia.clipped = true;
+                }
                 for (const arr of extDocBuckets) {
                     for (const it of arr) {
                         if (it && it.link && clippedHashes.has(hashUrl(it.link))) {
                             it.clipped = true;
                         }
+                    }
+                }
+                for (const img of imageItems) {
+                    if (img && img.docUrl && clippedHashes.has(hashUrl(img.docUrl))) {
+                        img.clipped = true;
                     }
                 }
             }
