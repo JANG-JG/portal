@@ -160,7 +160,9 @@
                     R.renderListItems(sec, rows, query, (it) => ({
                         title: it.title,
                         desc: it.description,
+                        source: it.siteName || '',
                         date: it.date || '',
+                        thumbnail: it.thumbnail || null,
                         url: it.link,
                         external: true
                     }));
@@ -180,11 +182,11 @@
                     mount,
                     {
                         icon: '✍️',
-                        title: '블로그 · 후기',
+                        title: '블로그 · 카페 후기',
                         countLabel: tab === 'blog' ? `${totalTxt} · ${meta.page || 1}페이지` : `상위 ${blogItems.length}건`,
                         moreTab: canMoreBlog ? 'blog' : null,
                         moreChipText: '블로그 탭 ›',
-                        footerMoreLabel: canMoreBlog ? '✍️ 블로그 검색 결과 더보기 ›' : null,
+                        footerMoreLabel: canMoreBlog ? '✍️ 블로그 · 카페 검색 결과 더보기 ›' : null,
                         paginationMeta: tab === 'blog' ? meta : null,
                         onSwitchTab,
                         onPageChange
@@ -194,8 +196,10 @@
                         R.renderListItems(sec, rows, query, (it) => ({
                             title: it.title,
                             desc: it.description,
-                            source: it.source || '블로그',
-                            date: it.date || '',
+                            source: it.bloggername || it.cafename || it.source || '블로그',
+                            tag: it.provider === 'daum_cafe' ? '카페' : '',
+                            date: it.date || it.postdate || '',
+                            thumbnail: it.thumbnail || null,
                             url: it.link,
                             external: true
                         }));

@@ -139,6 +139,7 @@
             img.src = safeHref(info.thumbnail);
             img.alt = info.title || '';
             img.loading = 'lazy';
+            img.referrerPolicy = 'no-referrer';
             img.addEventListener('error', () => img.remove());
             article.appendChild(img);
         }

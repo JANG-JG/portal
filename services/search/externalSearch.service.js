@@ -29,6 +29,13 @@ const {
     removeNaverSubApi,
     clearExternalCache
 } = require('./externalSearchState.service');
+const {
+    isDaumConfigured,
+    fetchDaumEndpoint,
+    mergeDedupedDocuments,
+    emptyDaumBucket
+} = require('./daumSearch.service');
+const { enrichSearchItemsWithMeta } = require('./webBotScheduler.service');
 
 const TAB_PAGE_SIZE = 15;
 const MAX_NAVER_PAGE = 67;
@@ -251,13 +258,15 @@ async function fetchGoogleSearch(rawQuery, num = 6, page = 1) {
 async function searchExternal(rawQuery, rawMode = 'all', rawPage = 1) {
     await ensureExternalSchema();
     const q = (rawQuery || '').trim();
-    if (!q) return { wikipedia: null, naver: {}, google: { items: [] } };
+    if (!q) return { wikipedia: null, naver: {}, images: { items: [] }, google: { items: [] } };
 
     const mode = rawMode === 'webBlog' ? 'web' : (rawMode === 'news' ? 'wikiNews' : rawMode);
     const page = Math.max(1, Math.min(MAX_NAVER_PAGE, parseInt(rawPage, 10) || 1));
+    const daumPage = Math.min(50, page);
     const engineToggles = getEngineToggles();
     const naverSubApis = getNaverSubApis();
     const naverActive = engineToggles.naver && isNaverConfigured();
+    const daumActive = engineToggles.daumSearch !== false && isDaumConfigured();
     const isEnglishOnly = /^[a-zA-Z0-9\s.,?!'"-]+$/.test(q) && /[a-zA-Z]{2,}/.test(q);
     const shouldCallGoogle = mode === 'google' || (mode === 'all' && isEnglishOnly);
 
@@ -271,9 +280,21 @@ async function searchExternal(rawQuery, rawMode = 'all', rawPage = 1) {
         naverWeb: naverActive && isSubApiEnabled('webkr') && (mode === 'all' || mode === 'web')
             ? fetchNaverEndpoint('webkr', q, mode === 'web' ? TAB_PAGE_SIZE : 5, mode === 'web' ? page : 1)
             : Promise.resolve(emptyNaverBucket(mode === 'web' ? TAB_PAGE_SIZE : 5, mode === 'web' ? page : 1)),
+        daumWeb: daumActive && (mode === 'all' || mode === 'web') && page <= 50
+            ? fetchDaumEndpoint('web', q, mode === 'web' ? 10 : 5, mode === 'web' ? daumPage : 1)
+            : Promise.resolve(emptyDaumBucket(mode === 'web' ? 10 : 5, mode === 'web' ? daumPage : 1)),
         naverBlog: naverActive && isSubApiEnabled('blog') && (mode === 'all' || mode === 'blog')
             ? fetchNaverEndpoint('blog', q, mode === 'blog' ? TAB_PAGE_SIZE : 5, mode === 'blog' ? page : 1)
             : Promise.resolve(emptyNaverBucket(mode === 'blog' ? TAB_PAGE_SIZE : 5, mode === 'blog' ? page : 1)),
+        daumBlog: daumActive && (mode === 'all' || mode === 'blog') && page <= 50
+            ? fetchDaumEndpoint('blog', q, mode === 'blog' ? 10 : 4, mode === 'blog' ? daumPage : 1)
+            : Promise.resolve(emptyDaumBucket(mode === 'blog' ? 10 : 4, mode === 'blog' ? daumPage : 1)),
+        daumCafe: daumActive && (mode === 'all' || mode === 'blog') && page <= 50
+            ? fetchDaumEndpoint('cafe', q, mode === 'blog' ? 8 : 3, mode === 'blog' ? daumPage : 1)
+            : Promise.resolve(emptyDaumBucket(mode === 'blog' ? 8 : 3, mode === 'blog' ? daumPage : 1)),
+        daumImage: daumActive && (mode === 'all' || mode === 'image') && page <= 50
+            ? fetchDaumEndpoint('image', q, mode === 'image' ? 20 : 6, mode === 'image' ? daumPage : 1)
+            : Promise.resolve(emptyDaumBucket(mode === 'image' ? 20 : 6, mode === 'image' ? daumPage : 1)),
         naverEncyc: naverActive && isSubApiEnabled('encyc') && (mode === 'all' || mode === 'encyc')
             ? fetchNaverEndpoint('encyc', q, mode === 'encyc' ? TAB_PAGE_SIZE : 3, mode === 'encyc' ? page : 1)
             : Promise.resolve(emptyNaverBucket(mode === 'encyc' ? TAB_PAGE_SIZE : 3, mode === 'encyc' ? page : 1)),
@@ -298,10 +319,27 @@ async function searchExternal(rawQuery, rawMode = 'all', rawPage = 1) {
         }))
     };
 
-    const [wikipedia, naverWeb, naverBlog, naverEncyc, naverNews, naverLocal, google, naverExtras] = await Promise.all([
+    const [
+        wikipedia,
+        naverWeb,
+        daumWeb,
+        naverBlog,
+        daumBlog,
+        daumCafe,
+        daumImage,
+        naverEncyc,
+        naverNews,
+        naverLocal,
+        google,
+        naverExtras
+    ] = await Promise.all([
         tasks.wikipedia,
         tasks.naverWeb,
+        tasks.daumWeb,
         tasks.naverBlog,
+        tasks.daumBlog,
+        tasks.daumCafe,
+        tasks.daumImage,
         tasks.naverEncyc,
         tasks.naverNews,
         tasks.naverLocal,
@@ -309,25 +347,51 @@ async function searchExternal(rawQuery, rawMode = 'all', rawPage = 1) {
         tasks.extras
     ]);
 
+    const mergedWeb = mergeDedupedDocuments(naverWeb.items, daumWeb.items, mode === 'web' ? TAB_PAGE_SIZE : 5);
+    const daumBlogCafe = mergeDedupedDocuments(daumBlog.items, daumCafe.items, mode === 'blog' ? TAB_PAGE_SIZE : 6);
+    const mergedBlog = mergeDedupedDocuments(naverBlog.items, daumBlogCafe, mode === 'blog' ? TAB_PAGE_SIZE : 6);
+
+    await Promise.all([
+        enrichSearchItemsWithMeta(mergedWeb, { quickFetchMax: 4, quickBudgetMs: 800 }),
+        enrichSearchItemsWithMeta(mergedBlog, { quickFetchMax: 2, quickBudgetMs: 600 })
+    ]);
+
+    const webMeta = {
+        total: Math.max(naverWeb.meta.total || 0, daumWeb.meta.total || 0, mergedWeb.length),
+        page,
+        display: mode === 'web' ? TAB_PAGE_SIZE : 5,
+        totalPages: Math.max(naverWeb.meta.totalPages || 0, daumWeb.meta.totalPages || 0),
+        hasMore: Boolean(naverWeb.meta.hasMore || daumWeb.meta.hasMore)
+    };
+    const blogMeta = {
+        total: (naverBlog.meta.total || 0) + (daumBlog.meta.total || 0) + (daumCafe.meta.total || 0),
+        page,
+        display: mode === 'blog' ? TAB_PAGE_SIZE : 6,
+        totalPages: Math.max(naverBlog.meta.totalPages || 0, daumBlog.meta.totalPages || 0, daumCafe.meta.totalPages || 0),
+        hasMore: Boolean(naverBlog.meta.hasMore || daumBlog.meta.hasMore || daumCafe.meta.hasMore)
+    };
+
     return {
         configured: {
             wikipedia: true,
             naver: isNaverConfigured(),
+            daum: isDaumConfigured(),
             google: isGoogleConfigured()
         },
         toggles: { ...engineToggles },
         page,
         wikipedia,
+        images: daumImage,
         naver: {
-            web: naverWeb.items,
-            blog: naverBlog.items,
+            web: mergedWeb,
+            blog: mergedBlog,
             encyc: naverEncyc.items,
             news: naverNews.items,
             local: naverLocal.items,
             extras: naverExtras,
             meta: {
-                web: naverWeb.meta,
-                blog: naverBlog.meta,
+                web: webMeta,
+                blog: blogMeta,
                 encyc: naverEncyc.meta,
                 news: naverNews.meta,
                 local: naverLocal.meta

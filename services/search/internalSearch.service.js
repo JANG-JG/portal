@@ -11,6 +11,7 @@ const { decryptMemoText, decryptCalendarText } = require('../crypto.service');
 const { searchWikiContent } = require('../wikiSummary.service');
 const kindergartenService = require('../kindergarten.service');
 const { isChosungOnly, matchesQuery } = require('./chosung.util');
+const { searchClipsAndBotDocs } = require('./webBotStore.service');
 
 const SITE_SHORTCUTS = [
     { id: 'home', title: 'JG 포털 홈', desc: '통합 대시보드 및 데일리 브리핑', url: '/', icon: '🏠', keywords: '포털 홈 메인 대시보드 브리핑' },
@@ -367,7 +368,7 @@ async function searchAllInternal(rawQuery, user) {
     const isChosung = isChosungOnly(rawQuery);
     const cleanChosung = rawQuery.replace(/\s+/g, '').toLowerCase();
 
-    const [memos, calendar, news, wiki, album, hospitals, medications, assets] = await Promise.all([
+    const [memos, calendar, news, wiki, album, hospitals, medications, assets, clipAndBot] = await Promise.all([
         searchMemos(perm.userId, rawQuery, isChosung, cleanChosung),
         searchCalendar(perm.userId, rawQuery, isChosung, cleanChosung),
         searchNews(perm.hasNews, rawQuery, isChosung, cleanChosung),
@@ -375,15 +376,18 @@ async function searchAllInternal(rawQuery, user) {
         searchAlbum(perm.hasAlbum, rawQuery, isChosung, cleanChosung),
         searchHospitals(perm.hasBlood, perm.userId, perm.isAdmin, rawQuery, isChosung, cleanChosung),
         searchMedications(perm.hasBlood, perm.userId, perm.isAdmin, rawQuery, isChosung, cleanChosung),
-        searchAssets(perm.isAdmin, rawQuery, isChosung, cleanChosung)
+        searchAssets(perm.isAdmin, rawQuery, isChosung, cleanChosung),
+        searchClipsAndBotDocs(rawQuery, perm.userId, isChosung, cleanChosung, 8)
     ]);
 
+    const savedClips = clipAndBot?.savedClips || [];
+    const botDocs = clipAndBot?.botDocs || [];
     const shortcuts = searchShortcuts(perm, rawQuery, isChosung, cleanChosung);
     const kindergarten = searchKindergarten(perm.isAdmin, rawQuery, isChosung, cleanChosung);
 
     const total = memos.length + calendar.length + news.length + wiki.length +
         album.length + hospitals.length + medications.length + assets.length +
-        shortcuts.length + kindergarten.length;
+        shortcuts.length + kindergarten.length + savedClips.length + botDocs.length;
 
     return {
         isChosung,
@@ -397,6 +401,8 @@ async function searchAllInternal(rawQuery, user) {
         },
         results: {
             shortcuts,
+            savedClips,
+            botDocs,
             memos,
             calendar,
             wiki,

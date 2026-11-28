@@ -11,6 +11,6 @@
   "balancedNumCtx": 4096,
   "reasoningNumCtx": 4096,
   "chatModelLabel": "⚡ 빠른 대화 (1B)",
-  "balancedModelLabel": "⚖️ 균형 대화 (4B)",
+  "balancedModelLabel": "⚖️ 균형 대화 (3B)",
   "reasoningModelLabel": "🧠 깊은 생각 (EXAONE)"
 }

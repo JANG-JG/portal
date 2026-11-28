@@ -180,6 +180,8 @@ const { resolveSmartWidget, getHomeMiniWeather } = require('../services/search/s
 const { searchAllInternal, getAllowedShortcuts } = require('../services/search/internalSearch.service');
 const { searchExternal } = require('../services/search/externalSearch.service');
 const { streamSearchAiSummary, cacheSearchContext } = require('../services/search/searchAiBriefing.service');
+const { getUserClippedUrlSet, hashUrl } = require('../services/search/webBotStore.service');
+const { initWebBotScheduler } = require('../services/search/webBotScheduler.service');
 const {
     getHistory,
     addHistory,
@@ -189,6 +191,8 @@ const {
     setAutoSaveSetting,
     getSuggestions
 } = require('../services/search/searchHistory.service');
+
+initWebBotScheduler();
 
 router.get('/home', authenticateToken, async (req, res) => {
     const userId = req.user.username || 'admin';
@@ -226,7 +230,7 @@ router.get('/portal', authenticateToken, async (req, res) => {
             page: 1,
             smartWidget: null,
             internal: { isChosung: false, total: 0, results: {} },
-            external: { wikipedia: null, naver: {}, google: { items: [] } },
+            external: { wikipedia: null, naver: {}, images: { items: [] }, google: { items: [] } },
             counts: {},
             totals: {}
         });
@@ -237,7 +241,7 @@ router.get('/portal', authenticateToken, async (req, res) => {
             addHistory(userId, rawQuery).catch(() => {});
         }
 
-        const extMode = ['web', 'blog', 'encyc', 'wikiNews', 'local', 'google'].includes(mode) ? mode : 'all';
+        const extMode = ['web', 'blog', 'image', 'encyc', 'wikiNews', 'local', 'google'].includes(mode) ? mode : 'all';
         const needSmartWidget = page === 1 && (mode === 'all' || mode === 'local');
         const needInternal = page === 1 || ['all', 'internal', 'memoCalendar', 'wikiNews', 'album', 'healthAsset'].includes(mode);
 
@@ -251,22 +255,45 @@ router.get('/portal', authenticateToken, async (req, res) => {
         const ext = external || {};
         const nv = ext.naver || {};
         const nvMeta = nv.meta || {};
+
+        const extDocBuckets = [nv.web || [], nv.blog || [], nv.encyc || [], nv.news || [], ext.google?.items || []];
+        const candidateUrls = [];
+        for (const arr of extDocBuckets) {
+            for (const it of arr) {
+                if (it && it.link) candidateUrls.push(it.link);
+            }
+        }
+        if (candidateUrls.length > 0) {
+            const clippedHashes = await getUserClippedUrlSet(userId, candidateUrls);
+            if (clippedHashes.size > 0) {
+                for (const arr of extDocBuckets) {
+                    for (const it of arr) {
+                        if (it && it.link && clippedHashes.has(hashUrl(it.link))) {
+                            it.clipped = true;
+                        }
+                    }
+                }
+            }
+        }
+
         const webCnt = nv.web?.length || 0;
         const blogCnt = nv.blog?.length || 0;
+        const imageCnt = ext.images?.items?.length || 0;
         const encycCnt = (ext.wikipedia ? 1 : 0) + (nv.encyc?.length || 0);
         const localCnt = (nv.local?.length || 0) + (smartWidget?.type === 'map' ? 1 : 0);
         const googleCnt = ext.google?.items?.length || 0;
-        const externalTotal = webCnt + blogCnt + encycCnt + localCnt + (nv.news?.length || 0) + googleCnt;
+        const externalTotal = webCnt + blogCnt + imageCnt + encycCnt + localCnt + (nv.news?.length || 0) + googleCnt;
 
         const counts = {
             all: internal.total + externalTotal + (smartWidget ? 1 : 0),
             internal: internal.total,
             memoCalendar: (r.memos?.length || 0) + (r.calendar?.length || 0),
-            wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0) + (nv.news?.length || 0),
+            wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0) + (nv.news?.length || 0) + (r.botDocs?.length || 0),
             album: r.album?.length || 0,
             healthAsset: (r.hospitals?.length || 0) + (r.medications?.length || 0) + (r.assets?.length || 0) + (r.kindergarten?.length || 0),
             web: webCnt,
             blog: blogCnt,
+            image: imageCnt,
             webBlog: webCnt + blogCnt,
             encyc: encycCnt,
             local: localCnt,
@@ -276,8 +303,9 @@ router.get('/portal', authenticateToken, async (req, res) => {
         const totals = {
             web: nvMeta.web?.total || webCnt,
             blog: nvMeta.blog?.total || blogCnt,
+            image: ext.images?.meta?.total || imageCnt,
             encyc: (nvMeta.encyc?.total || 0) + (ext.wikipedia ? 1 : 0),
-            wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0) + (nvMeta.news?.total || 0),
+            wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0) + (nvMeta.news?.total || 0) + (r.botDocs?.length || 0),
             local: (nvMeta.local?.total || 0) + (smartWidget?.type === 'map' ? 1 : 0),
             google: ext.google?.meta?.total || googleCnt
         };
@@ -379,5 +407,7 @@ router.patch('/settings', authenticateToken, async (req, res) => {
     const autoSave = await setAutoSaveSetting(userId, req.body.autoSave);
     res.json({ success: true, autoSave });
 });
+
+router.use('/clips', require('./searchClips.routes'));
 
 module.exports = router;

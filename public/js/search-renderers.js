@@ -217,6 +217,42 @@
                     }));
                 }
             );
+            shownCount += appendSection(
+                mount,
+                { icon: '🤖', title: '웹봇 수집 아카이브', moreTab: tab === 'all' ? 'wikiNews' : null, moreChipText: '위키·뉴스 ›', onSwitchTab },
+                r.botDocs,
+                (sec, items) => {
+                    renderListItems(sec, items, query, (d) => ({
+                        title: d.title,
+                        desc: (d.snippet || '').slice(0, 180),
+                        source: d.site_name || '웹봇 수집',
+                        badgeIcon: '🤖',
+                        date: (d.published_at || '').slice(0, 16),
+                        thumbnail: d.og_image || null,
+                        url: d.url,
+                        external: true
+                    }));
+                }
+            );
+        }
+        if (tab === 'all' || tab === 'internal') {
+            shownCount += appendSection(
+                mount,
+                { icon: '📌', title: '내 서버 보관함 (영구 스크랩)', moreTab: tab === 'all' ? 'internal' : null, moreChipText: '우리 사이트 ›', onSwitchTab },
+                r.savedClips,
+                (sec, items) => {
+                    renderListItems(sec, items, query, (c) => ({
+                        title: c.title,
+                        desc: (c.snippet || '').slice(0, 180),
+                        source: c.site_name || '내 보관함',
+                        badgeIcon: '📌',
+                        tag: '보관됨',
+                        thumbnail: c.thumbnail_url || null,
+                        url: c.url,
+                        external: true
+                    }));
+                }
+            );
         }
         if (tab === 'all' || tab === 'internal' || tab === 'album') {
             shownCount += appendSection(

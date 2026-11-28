@@ -19,6 +19,8 @@ let schemaInitialized = false;
 let engineToggles = {
     wikipedia: true,
     naver: true,
+    daumSearch: true,
+    webBot: true,
     google: true,
     externalSuggest: true,
     kakaoMap: true,
@@ -266,6 +268,24 @@ async function getSearchEngineStatus() {
                 dailyLimit: 100000
             },
             {
+                id: 'daumSearch',
+                name: '카카오·다음 검색 API (웹·블로그·카페·이미지)',
+                configured: Boolean((process.env.KAKAO_REST_API_KEY || '').trim()),
+                enabled: engineToggles.daumSearch !== false,
+                todayCalls: usage.daumSearch?.calls || 0,
+                todayErrors: usage.daumSearch?.errors || 0,
+                dailyLimit: 90000
+            },
+            {
+                id: 'webBot',
+                name: '한국형 표적 웹봇 (og:image · FTS5 · 정기 시드 수집)',
+                configured: true,
+                enabled: engineToggles.webBot !== false,
+                todayCalls: usage.webBot?.calls || 0,
+                todayErrors: usage.webBot?.errors || 0,
+                dailyLimit: null
+            },
+            {
                 id: 'geminiSummary',
                 name: 'AI 한눈에 요약 (Google Gemini · 공개 자료 전용)',
                 configured: Boolean(require('./searchAiBriefing.service').hasGeminiKey()),
@@ -290,7 +310,7 @@ async function isEngineEnabled(engineId) {
 
 async function setEngineToggle(engineId, enabled) {
     await ensureExternalSchema();
-    if (!['wikipedia', 'naver', 'google', 'externalSuggest', 'kakaoMap', 'geminiSummary'].includes(engineId)) {
+    if (!['wikipedia', 'naver', 'daumSearch', 'webBot', 'google', 'externalSuggest', 'kakaoMap', 'geminiSummary'].includes(engineId)) {
         return { success: false, message: '지원하지 않는 검색 엔진입니다.' };
     }
     engineToggles[engineId] = Boolean(enabled);
