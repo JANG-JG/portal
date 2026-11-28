@@ -9,6 +9,7 @@
         query: '',
         tab: 'all',
         page: 1,
+        localCat: 'ALL',
         autoSave: true,
         basePayload: null,
         baseCounts: null,
@@ -58,7 +59,8 @@
         return {
             q: (sp.get('q') || '').trim(),
             tab: normalizeTab(sp.get('tab') || 'all'),
-            page: Number.isFinite(rawPage) && rawPage > 1 ? Math.min(67, rawPage) : 1
+            page: Number.isFinite(rawPage) && rawPage > 1 ? Math.min(67, rawPage) : 1,
+            cat: (sp.get('cat') || 'ALL').trim().toUpperCase()
         };
     }
 
@@ -66,11 +68,12 @@
         const sp = new URLSearchParams();
         if (q) sp.set('q', q);
         if (tab && tab !== 'all') sp.set('tab', tab);
+        if (tab === 'local' && state.localCat && state.localCat !== 'ALL') sp.set('cat', state.localCat);
         if (page && page > 1) sp.set('page', String(page));
         const qs = sp.toString();
         const nextUrl = qs ? `/search?${qs}` : '/search';
-        if (replace) window.history.replaceState({ q, tab, page }, '', nextUrl);
-        else window.history.pushState({ q, tab, page }, '', nextUrl);
+        if (replace) window.history.replaceState({ q, tab, page, cat: state.localCat }, '', nextUrl);
+        else window.history.pushState({ q, tab, page, cat: state.localCat }, '', nextUrl);
     }
 
     async function loadHomeData() {
@@ -175,7 +178,9 @@
             state.basePayload = null;
             state.baseCounts = null;
             state.baseTotals = null;
+            if (!opts.localCat) state.localCat = 'ALL';
         }
+        if (opts.localCat) state.localCat = opts.localCat;
 
         state.query = q;
         state.tab = nextTab;
@@ -207,7 +212,8 @@
 
         try {
             const saveParam = opts.saveHistory === false || state.page > 1 ? '&save=0' : '';
-            const url = `/api/search/portal?q=${encodeURIComponent(q)}&tab=${encodeURIComponent(state.tab)}&page=${state.page}${saveParam}`;
+            const catParam = state.tab === 'local' && state.localCat !== 'ALL' ? `&cat=${encodeURIComponent(state.localCat)}` : '';
+            const url = `/api/search/portal?q=${encodeURIComponent(q)}&tab=${encodeURIComponent(state.tab)}&page=${state.page}${catParam}${saveParam}`;
             const res = await fetch(url, { credentials: 'include' });
             const payload = await res.json();
             el('jgSearchLoading').style.display = 'none';
@@ -259,7 +265,7 @@
             const active = btn.dataset.tab === state.tab;
             btn.classList.toggle('active', active);
             if (active) {
-                btn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                btn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest', container: 'nearest' });
             }
         });
     }
@@ -308,12 +314,17 @@
         const H = window.JGSearchCardHelpers;
 
         const navHandlers = {
+            activeLocalCat: state.localCat,
             onSwitchTab: (targetTab, targetPage = 1) => switchTab(targetTab, targetPage, true),
-            onPageChange: (targetPage) => switchTab(state.tab, targetPage, true)
+            onPageChange: (targetPage) => switchTab(state.tab, targetPage, true),
+            onSwitchLocalCat: (catCode) => {
+                state.localCat = catCode || 'ALL';
+                runSearch(state.query, 'local', true, 1, { saveHistory: false, scrollTop: true, localCat: state.localCat });
+            }
         };
 
-        const showWidget = (tab === 'all' && state.page === 1) || (tab === 'local' && state.page === 1 && p.smartWidget?.type === 'map');
-        if (showWidget) R.renderSmartWidget(el('jgSmartWidgetMount'), p.smartWidget);
+        const showWidget = tab === 'all' && state.page === 1;
+        if (showWidget) R.renderSmartWidget(el('jgSmartWidgetMount'), p.smartWidget, navHandlers);
         else el('jgSmartWidgetMount').replaceChildren();
 
         let shownCount = showWidget && p.smartWidget ? 1 : 0;
@@ -435,17 +446,17 @@
         });
 
         window.addEventListener('popstate', () => {
-            const { q, tab, page } = readUrlParams();
-            if (q) runSearch(q, tab, false, page);
+            const { q, tab, page, cat } = readUrlParams();
+            if (q) runSearch(q, tab, false, page, { localCat: cat });
             else showHomeMode();
         });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
         initEvents();
-        const { q, tab, page } = readUrlParams();
+        const { q, tab, page, cat } = readUrlParams();
         if (q) {
-            runSearch(q, tab, false, page);
+            runSearch(q, tab, false, page, { localCat: cat });
         } else {
             showHomeMode();
         }

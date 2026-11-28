@@ -221,6 +221,7 @@ router.get('/portal', authenticateToken, async (req, res) => {
     const rawMode = (req.query.tab || 'all').trim();
     const mode = rawMode === 'webBlog' ? 'web' : rawMode;
     const page = Math.max(1, Math.min(67, parseInt(req.query.page, 10) || 1));
+    const localCat = String(req.query.cat || 'ALL').trim().toUpperCase().slice(0, 10);
     const userId = req.user.username || 'admin';
 
     if (!rawQuery) {
@@ -242,17 +243,20 @@ router.get('/portal', authenticateToken, async (req, res) => {
         }
 
         const extMode = ['web', 'blog', 'image', 'encyc', 'wikiNews', 'local', 'google'].includes(mode) ? mode : 'all';
-        const needSmartWidget = page === 1 && (mode === 'all' || mode === 'local');
+        const needSmartWidget = page === 1 && mode === 'all';
         const needInternal = page === 1 || ['all', 'internal', 'memoCalendar', 'wikiNews', 'album', 'healthAsset'].includes(mode);
+        const { searchLocalTabPlaces } = require('../services/search/kakaoMapWidget.service');
 
-        const [smartWidget, internal, external] = await Promise.all([
+        const [smartWidget, internal, external, kakaoLocal] = await Promise.all([
             needSmartWidget ? resolveSmartWidget(rawQuery, req.user) : Promise.resolve(null),
             needInternal ? searchAllInternal(rawQuery, req.user) : Promise.resolve({ isChosung: false, total: 0, results: {} }),
-            searchExternal(rawQuery, extMode, page)
+            searchExternal(rawQuery, extMode, page),
+            mode === 'local' ? searchLocalTabPlaces(rawQuery, req.user, { page, categoryGroup: localCat }) : Promise.resolve(null)
         ]);
 
         const r = internal.results || {};
         const ext = external || {};
+        if (kakaoLocal) ext.kakaoLocal = kakaoLocal;
         const nv = ext.naver || {};
         const nvMeta = nv.meta || {};
 
@@ -280,7 +284,11 @@ router.get('/portal', authenticateToken, async (req, res) => {
         const blogCnt = nv.blog?.length || 0;
         const imageCnt = ext.images?.items?.length || 0;
         const encycCnt = (ext.wikipedia ? 1 : 0) + (nv.encyc?.length || 0);
-        const localCnt = (nv.local?.length || 0) + (smartWidget?.type === 'map' ? 1 : 0);
+        const widgetPlacesCnt = smartWidget?.type === 'map'
+            ? (smartWidget.data?.places?.length || 1)
+            : (smartWidget?.type === 'regionComposite' ? (smartWidget.data?.highlights?.length || 0) : 0);
+        const kakaoLocalCnt = kakaoLocal?.places?.length || 0;
+        const localCnt = kakaoLocalCnt > 0 ? kakaoLocalCnt + (nv.local?.length || 0) : (nv.local?.length || 0) + widgetPlacesCnt;
         const googleCnt = ext.google?.items?.length || 0;
         const externalTotal = webCnt + blogCnt + imageCnt + encycCnt + localCnt + (nv.news?.length || 0) + googleCnt;
 
@@ -306,7 +314,7 @@ router.get('/portal', authenticateToken, async (req, res) => {
             image: ext.images?.meta?.total || imageCnt,
             encyc: (nvMeta.encyc?.total || 0) + (ext.wikipedia ? 1 : 0),
             wikiNews: (r.wiki?.length || 0) + (r.news?.length || 0) + (nvMeta.news?.total || 0) + (r.botDocs?.length || 0),
-            local: (nvMeta.local?.total || 0) + (smartWidget?.type === 'map' ? 1 : 0),
+            local: Math.max(kakaoLocal?.meta?.total || 0, (nvMeta.local?.total || 0) + widgetPlacesCnt),
             google: ext.google?.meta?.total || googleCnt
         };
 

@@ -70,23 +70,94 @@
         }).catch(() => {});
     }
 
-    function render(mount, data) {
+    function createPlaceItemCard(pl, idx, opts = {}) {
+        const item = makeEl('div', 'jg-map-place-item');
+        if (opts.active) item.classList.add('is-active');
+
+        const numBadge = makeEl('span', 'jg-map-num-badge', String(idx + 1));
+        const body = makeEl('div', 'jg-map-item-body');
+
+        const head = makeEl('div', 'jg-map-item-head');
+        head.appendChild(makeEl('strong', 'jg-map-item-name', pl.name));
+        if (pl.category) head.appendChild(makeEl('span', 'jg-map-item-cat', pl.category));
+        const dStr = formatDistance(pl.distance);
+        if (dStr) head.appendChild(makeEl('span', 'jg-map-dist-pill', dStr));
+        body.appendChild(head);
+
+        const addr = pl.roadAddress || pl.address;
+        if (addr) {
+            const addrRow = makeEl('div', 'jg-map-addr-row');
+            addrRow.appendChild(makeEl('span', 'jg-map-item-addr', addr));
+            const cBtn = makeEl('button', 'jg-map-copy-btn', '복사');
+            cBtn.type = 'button';
+            cBtn.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                copyText(addr, cBtn);
+            });
+            addrRow.appendChild(cBtn);
+            body.appendChild(addrRow);
+        }
+        if (pl.phone) {
+            const tel = makeEl('a', 'jg-map-phone-link', `📞 ${pl.phone}`);
+            tel.href = safeHref(`tel:${pl.phone}`);
+            tel.addEventListener('click', (ev) => ev.stopPropagation());
+            body.appendChild(tel);
+        }
+
+        const extLinks = makeEl('div', 'jg-map-item-links');
+        [
+            { label: '카카오맵', url: pl.kakaoUrl },
+            { label: '네이버지도', url: pl.naverUrl },
+            { label: '🧭 길찾기', url: pl.directionsUrl }
+        ].forEach((lk) => {
+            if (!lk.url) return;
+            const a = makeEl('a', 'jg-map-mini-link', lk.label);
+            a.href = safeHref(lk.url);
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.addEventListener('click', (ev) => ev.stopPropagation());
+            extLinks.appendChild(a);
+        });
+        body.appendChild(extLinks);
+
+        item.append(numBadge, body);
+
+        if (pl.thumbnail && /^https?:\/\//i.test(pl.thumbnail)) {
+            const img = document.createElement('img');
+            img.className = 'jg-place-thumb';
+            img.src = safeHref(pl.thumbnail);
+            img.alt = `${pl.name} 사진`;
+            img.loading = 'lazy';
+            img.referrerPolicy = 'no-referrer';
+            img.decoding = 'async';
+            img.addEventListener('error', () => img.remove());
+            item.appendChild(img);
+        }
+
+        if (typeof opts.onFocus === 'function') {
+            item.addEventListener('click', () => opts.onFocus());
+        }
+        return item;
+    }
+
+    function render(mount, data, nav = {}) {
         if (!mount || !data || !Array.isArray(data.places) || data.places.length === 0) return;
         mount.replaceChildren();
 
         const places = data.places;
         const primary = places[0];
-        let isExpanded = false;
+        let isExpanded = Boolean(data.defaultExpanded && places.length > 1);
         let mapInstance = null;
         let markers = [];
         let activeInfoWindow = null;
 
-        const card = makeEl('div', 'jg-smart-card jg-map-card');
+        const card = makeEl('div', `jg-smart-card jg-map-card${isExpanded ? ' is-expanded' : ''}`);
 
         // 1. 상단 헤더 (배지 + 기준 위치 + 내 위치 재검색)
         const topRow = makeEl('div', 'jg-map-top-row');
         const badgeGroup = makeEl('div', 'jg-map-badge-group');
-        badgeGroup.appendChild(makeEl('span', 'jg-smart-badge', '📍 지역 · 지도 즉답'));
+        const badgeLabel = isExpanded ? `🍽️ 추천 장소 · 맛집 TOP ${places.length}` : '📍 지역 · 지도 즉답';
+        badgeGroup.appendChild(makeEl('span', 'jg-smart-badge', badgeLabel));
         if (data.anchorLabel) {
             badgeGroup.appendChild(makeEl('span', 'jg-map-anchor-pill', data.anchorLabel));
         }
@@ -113,7 +184,7 @@
                         );
                         const json = await res.json();
                         if (json && json.success && json.widget && json.widget.data) {
-                            render(mount, json.widget.data);
+                            render(mount, json.widget.data, nav);
                             return;
                         }
                         gpsBtn.textContent = '주변 결과 없음';
@@ -184,12 +255,14 @@
 
         card.appendChild(mainGrid);
 
-        // 3. 액션 버튼 바 (지도 펼치기 + 카카오맵 + 네이버지도 + 길찾기)
+        // 3. 액션 버튼 바 (지도 펼치기/접기 + 카카오맵 + 네이버지도 + 길찾기)
         const actionBar = makeEl('div', 'jg-map-action-bar');
         const expandBtn = makeEl(
             'button',
             'jg-map-btn jg-map-btn-primary',
-            places.length > 1 ? `🗺️ 지도 펼치기 (${places.length}곳)` : '🗺️ 지도 크게 보기'
+            isExpanded
+                ? '🗺️ 지도 접기 ▲'
+                : (places.length > 1 ? `🗺️ 지도 펼치기 (${places.length}곳)` : '🗺️ 지도 크게 보기')
         );
         expandBtn.type = 'button';
 
@@ -211,53 +284,31 @@
         actionBar.append(expandBtn, kakaoLink, naverLink, dirLink);
         card.appendChild(actionBar);
 
-        // 4. 확장 시 노출되는 다중 장소 목록 (①~⑤)
+        // 4. 다중 장소 목록 (①~⑤, 맛집·장소 검색은 즉시 펼침)
         const listWrap = makeEl('div', 'jg-map-places-list');
-        listWrap.style.display = 'none';
+        listWrap.style.display = isExpanded ? 'flex' : 'none';
 
         places.forEach((pl, idx) => {
-            const item = makeEl('div', 'jg-map-place-item');
-            if (idx === 0) item.classList.add('is-active');
-
-            const numBadge = makeEl('span', 'jg-map-num-badge', String(idx + 1));
-            const body = makeEl('div', 'jg-map-item-body');
-
-            const head = makeEl('div', 'jg-map-item-head');
-            head.appendChild(makeEl('strong', 'jg-map-item-name', pl.name));
-            if (pl.category) head.appendChild(makeEl('span', 'jg-map-item-cat', pl.category));
-            const dStr = formatDistance(pl.distance);
-            if (dStr) head.appendChild(makeEl('span', 'jg-map-dist-pill', dStr));
-            body.appendChild(head);
-
-            const addr = pl.roadAddress || pl.address;
-            if (addr) body.appendChild(makeEl('div', 'jg-map-item-addr', addr));
-            if (pl.phone) body.appendChild(makeEl('div', 'jg-map-item-phone', `📞 ${pl.phone}`));
-
-            const extLinks = makeEl('div', 'jg-map-item-links');
-            const kA = makeEl('a', 'jg-map-mini-link', '카카오맵');
-            kA.href = safeHref(pl.kakaoUrl);
-            kA.target = '_blank';
-            kA.rel = 'noopener noreferrer';
-            kA.addEventListener('click', (ev) => ev.stopPropagation());
-
-            const nA = makeEl('a', 'jg-map-mini-link', '네이버지도');
-            nA.href = safeHref(pl.naverUrl);
-            nA.target = '_blank';
-            nA.rel = 'noopener noreferrer';
-            nA.addEventListener('click', (ev) => ev.stopPropagation());
-
-            extLinks.append(kA, nA);
-            body.appendChild(extLinks);
-
-            item.append(numBadge, body);
-            item.addEventListener('click', () => {
-                listWrap.querySelectorAll('.jg-map-place-item').forEach((el) => el.classList.remove('is-active'));
-                item.classList.add('is-active');
-                focusPlaceOnMap(idx);
+            const item = createPlaceItemCard(pl, idx, {
+                active: idx === 0,
+                onFocus: () => {
+                    listWrap.querySelectorAll('.jg-map-place-item').forEach((el) => el.classList.remove('is-active'));
+                    item.classList.add('is-active');
+                    focusPlaceOnMap(idx);
+                }
             });
             listWrap.appendChild(item);
         });
         card.appendChild(listWrap);
+
+        if (places.length > 1 && global.JGSearchCardHelpers && typeof nav.onSwitchTab === 'function') {
+            global.JGSearchCardHelpers.appendMoreFooterButton(
+                card,
+                '📍 맛집·지역 탭에서 업종별 15곳씩 더보기 ›',
+                'local',
+                nav.onSwitchTab
+            );
+        }
 
         mount.appendChild(card);
 
@@ -307,7 +358,7 @@
             applyMapMode(!isExpanded);
         });
 
-        // 카카오맵 SDK 지연 로드 및 초기 잠금 미리보기 렌더링
+        // 카카오맵 SDK 지연 로드 및 초기 모드(단일 잠금 vs 다중 펼침) 반영
         if (data.kakaoJsKey) {
             loadKakaoMapsSdk(data.kakaoJsKey)
                 .then((kMaps) => {
@@ -316,17 +367,20 @@
                     mapInstance = new kMaps.Map(mapCanvas, {
                         center: centerPos,
                         level: 4,
-                        draggable: false,
-                        scrollwheel: false
+                        draggable: isExpanded,
+                        scrollwheel: isExpanded
                     });
                     const zoomCtrl = new kMaps.ZoomControl();
                     mapInstance.addControl(zoomCtrl, kMaps.ControlPosition.RIGHT);
 
                     activeInfoWindow = new kMaps.InfoWindow({ removable: true });
+                    const bounds = new kMaps.LatLngBounds();
                     markers = places.map((pl, idx) => {
+                        const pos = new kMaps.LatLng(pl.lat, pl.lng);
+                        bounds.extend(pos);
                         const marker = new kMaps.Marker({
                             map: mapInstance,
-                            position: new kMaps.LatLng(pl.lat, pl.lng),
+                            position: pos,
                             title: pl.name
                         });
                         kMaps.event.addListener(marker, 'click', () => {
@@ -338,6 +392,9 @@
                         });
                         return marker;
                     });
+                    if (isExpanded && places.length > 1) {
+                        mapInstance.setBounds(bounds);
+                    }
                 })
                 .catch(() => {
                     mapCanvas.style.display = 'none';
@@ -349,5 +406,9 @@
         }
     }
 
-    global.JGSearchMapWidget = { render };
+    global.JGSearchMapWidget = {
+        render,
+        loadSdk: loadKakaoMapsSdk,
+        createPlaceItemCard
+    };
 })(window);

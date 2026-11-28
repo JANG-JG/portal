@@ -1,0 +1,363 @@
+/* ==========================================================================
+   🗺️ JG 통합 검색 - 지역 종합 브리핑·7일 주간예보·장소 썸네일 스타일 (search-region.css)
+   - 모바일 360px 가로 무넘침 보장, container query 및 스크롤 스냅 적용
+   ========================================================================== */
+
+.jg-region-card,
+.jg-region-card *,
+.jg-local-tab-sec,
+.jg-local-tab-sec * {
+    box-sizing: border-box;
+}
+
+.jg-region-card {
+    container-type: inline-size;
+    background: linear-gradient(155deg, #f0f7ff 0%, #ffffff 48%, #f8fafc 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 18px;
+    padding: 1.05rem 1.1rem;
+    margin-bottom: 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.jg-region-top-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.45rem;
+}
+
+.jg-region-hero-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.9rem;
+    align-items: stretch;
+}
+
+@container (min-width: 640px) {
+    .jg-region-hero-grid.has-media.has-map {
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.25fr) minmax(0, 0.95fr);
+    }
+    .jg-region-hero-grid.has-media:not(.has-map) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.45fr);
+    }
+    .jg-region-hero-grid:not(.has-media).has-map {
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    }
+}
+
+.jg-region-hero-img {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 1px solid #dbeafe;
+    background: #e2e8f0;
+    display: block;
+}
+
+.jg-region-overview {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.42rem;
+}
+
+.jg-region-title {
+    margin: 0;
+    font-size: 1.32rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.25;
+    word-break: keep-all;
+}
+
+.jg-region-subtitle {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #2563eb;
+}
+
+.jg-region-summary {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: #334155;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.jg-region-wiki-link {
+    align-self: flex-start;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #1d4ed8;
+    text-decoration: none;
+}
+
+.jg-region-wiki-link:hover {
+    text-decoration: underline;
+}
+
+.jg-region-minimap-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 165px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
+}
+
+.jg-region-minimap {
+    width: 100%;
+    height: 100%;
+    min-height: 165px;
+}
+
+/* 날씨 + 7일 주간예보 스트립 */
+.jg-region-weather-box {
+    background: #ffffff;
+    border: 1px solid #dbeafe;
+    border-radius: 14px;
+    padding: 0.8rem 0.9rem;
+}
+
+.jg-region-wx-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    margin-bottom: 0.7rem;
+}
+
+.jg-region-wx-now {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.jg-region-wx-icon {
+    font-size: 1.95rem;
+    line-height: 1;
+}
+
+.jg-region-wx-temp {
+    font-size: 1.38rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.jg-region-wx-cond {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.jg-region-wx-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.jg-wx-meta-pill {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.18rem 0.55rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.jg-forecast7-strip {
+    display: flex;
+    gap: 0.42rem;
+    overflow-x: auto;
+    scroll-snap-type: inline proximity;
+    padding-bottom: 0.2rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+@container (min-width: 680px) {
+    .jg-forecast7-strip {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        overflow-x: visible;
+    }
+}
+
+.jg-forecast7-day {
+    flex: 0 0 82px;
+    scroll-snap-align: start;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.45rem 0.35rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.16rem;
+}
+
+.jg-forecast7-day.is-today {
+    background: #eff6ff;
+    border-color: #93c5fd;
+}
+
+.jg-f7-label {
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.jg-f7-date {
+    font-size: 0.68rem;
+    color: #64748b;
+}
+
+.jg-f7-icon {
+    font-size: 1.3rem;
+    line-height: 1.15;
+    margin: 0.08rem 0;
+}
+
+.jg-f7-temps {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #1e293b;
+    white-space: nowrap;
+}
+
+.jg-f7-min {
+    color: #2563eb;
+}
+
+.jg-f7-max {
+    color: #dc2626;
+}
+
+.jg-f7-rain {
+    font-size: 0.69rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.jg-f7-rain.is-wet {
+    color: #1d4ed8;
+    font-weight: 700;
+}
+
+/* 지역 명소·맛집 하이라이트 & 장소 썸네일 */
+.jg-region-spots-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.55rem;
+}
+
+.jg-region-spots-title {
+    margin: 0;
+    font-size: 0.96rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.jg-region-spots-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+}
+
+@container (min-width: 620px) {
+    .jg-region-spots-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.jg-place-thumb {
+    width: 68px;
+    height: 68px;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f1f5f9;
+    flex-shrink: 0;
+}
+
+/* 맛집·지역 탭 업종 필터 칩 바 (단일 행 가로 스크롤, 레이아웃 점프 방지) */
+.jg-local-cat-bar {
+    display: flex;
+    gap: 0.42rem;
+    overflow-x: auto;
+    scroll-snap-type: inline proximity;
+    padding: 0.15rem 0 0.55rem;
+    margin-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.jg-local-cat-chip {
+    position: relative;
+    flex: none;
+    scroll-snap-align: start;
+    min-height: 40px;
+    padding: 0 0.85rem;
+    border-radius: 999px;
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    font-size: 0.84rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+}
+
+.jg-local-cat-chip[aria-pressed="true"] {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.jg-local-cat-chip[aria-pressed="true"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 12px 4px;
+    border-block-end: 2px solid #2563eb;
+}
+
+.jg-local-tab-map-wrap {
+    width: 100%;
+    height: 270px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    margin-bottom: 0.8rem;
+}
+
+@media (max-width: 480px) {
+    .jg-region-card {
+        padding: 0.9rem 0.85rem;
+    }
+    .jg-place-thumb {
+        width: 58px;
+        height: 58px;
+    }
+    .jg-local-tab-map-wrap {
+        height: 220px;
+    }
+}

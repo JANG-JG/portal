@@ -245,8 +245,11 @@
             );
         }
 
-        // 6) 네이버 지역/맛집
-        if (tab === 'all' || tab === 'local') {
+        // 6) 맛집·지역 전용 탭 (카카오 로컬 업종 필터 + 15곳 지도·페이지네이션) & 네이버 지역 요약
+        if (tab === 'local' && ext.kakaoLocal && global.JGSearchRegionCard) {
+            shownCount += global.JGSearchRegionCard.renderLocalTabSection(mount, ext.kakaoLocal, query, nav);
+        }
+        if (tab === 'all' || (tab === 'local' && (!ext.kakaoLocal || !(ext.kakaoLocal.places || []).length))) {
             const meta = nvMeta.local || {};
             const localItems = tab === 'all' ? (nv.local || []).slice(0, 4) : (nv.local || []);
             const canMoreLocal = tab === 'all' && (meta.hasMore || (meta.total || 0) > localItems.length);

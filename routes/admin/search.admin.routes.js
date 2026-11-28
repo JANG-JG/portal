@@ -125,12 +125,13 @@ router.post('/clear-cache', async (req, res) => {
     const clearedExt = clearExternalCache();
     const clearedSuggest = clearExternalSuggestCache();
     const { clearMapWidgetCache } = require('../../services/search/kakaoMapWidget.service');
+    const { clearRegionCompositeCache } = require('../../services/search/regionComposite.service');
     const { clearAiSummaryCache } = require('../../services/search/searchAiBriefing.service');
-    const clearedMap = clearMapWidgetCache();
+    const clearedMap = clearMapWidgetCache() + clearRegionCompositeCache();
     const clearedAi = clearAiSummaryCache();
     const clearedBot = await clearAllWebBotCaches().catch(() => 0);
     const cleared = clearedExt + clearedSuggest + clearedMap + clearedAi + clearedBot;
-    res.json({ success: true, cleared, message: `검색·추천·지도·AI·웹봇 캐시 ${cleared}건을 비웠습니다.` });
+    res.json({ success: true, cleared, message: `검색·추천·지역·지도·AI·웹봇 캐시 ${cleared}건을 비웠습니다.` });
 });
 
 module.exports = router;

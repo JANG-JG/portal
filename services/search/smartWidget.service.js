@@ -115,52 +115,26 @@ async function fetchGlobalCityWeather(cityQuery) {
         const place = geoRes.data?.results?.[0];
         if (!place) return null;
 
-        const wxRes = await axios.get('https://api.open-meteo.com/v1/forecast', {
-            params: {
-                latitude: place.latitude,
-                longitude: place.longitude,
-                current: 'temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m',
-                daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
-                timezone: 'auto',
-                forecast_days: 5
-            },
-            timeout: 4000
-        });
-
-        const cur = wxRes.data?.current;
-        const daily = wxRes.data?.daily;
-        if (!cur) return null;
-
-        const labels = ['오늘', '내일', '모레'];
-        const forecast = (daily?.time || []).slice(0, 5).map((date, idx) => ({
-            date,
-            label: labels[idx] || date.slice(5),
-            condition: WMO_KO[daily.weather_code?.[idx]] || '-',
-            icon: wmoToIcon(daily.weather_code?.[idx], 1),
-            min: typeof daily.temperature_2m_min?.[idx] === 'number' ? `${Math.round(daily.temperature_2m_min[idx])}°C` : '-',
-            max: typeof daily.temperature_2m_max?.[idx] === 'number' ? `${Math.round(daily.temperature_2m_max[idx])}°C` : '-',
-            rain: typeof daily.precipitation_probability_max?.[idx] === 'number' ? `${daily.precipitation_probability_max[idx]}%` : '-'
-        }));
-
-        const data = {
-            city: place.country ? `${place.name} (${place.country})` : place.name,
-            isGlobal: true,
-            temp: `${cur.temperature_2m.toFixed(1)}°C`,
-            feels_like: `${cur.apparent_temperature.toFixed(1)}°C`,
-            condition: WMO_KO[cur.weather_code] || '맑음',
-            icon: wmoToIcon(cur.weather_code, cur.is_day),
-            humidity: `${cur.relative_humidity_2m}%`,
-            wind_speed: `${cur.wind_speed_10m}km/h`,
-            pm10_grade: null,
-            pm25_grade: null,
-            forecast
-        };
+        const { fetchCoord7DayWeather } = require('./regionComposite.service');
+        const label = place.country ? `${place.name} (${place.country})` : place.name;
+        const data = await fetchCoord7DayWeather(place.latitude, place.longitude, { isGlobal: true }, label);
+        if (!data) return null;
 
         globalWeatherCache.set(cacheKey, { ts: Date.now(), data });
         return data;
     } catch (_) {
         return null;
     }
+}
+
+async function enrichDomesticWeather7d(cityCode) {
+    const { fetchCoord7DayWeather } = require('./regionComposite.service');
+    const wx = await getLiveWeatherData(cityCode);
+    const coord = CITY_COORDS[cityCode];
+    if (coord && wx) {
+        return fetchCoord7DayWeather(coord.lat, coord.lon, wx, wx.city);
+    }
+    return wx;
 }
 
 async function resolveWeatherWidget(rawQuery, user) {
@@ -176,13 +150,13 @@ async function resolveWeatherWidget(rawQuery, user) {
 
     if (!cleanedPlace) {
         const myCity = await getUserWeatherCity(user);
-        const wx = await getLiveWeatherData(myCity);
+        const wx = await enrichDomesticWeather7d(myCity);
         return { type: 'weather', data: wx };
     }
 
     const domesticCode = findDomesticCityCode(cleanedPlace);
     if (domesticCode) {
-        const wx = await getLiveWeatherData(domesticCode);
+        const wx = await enrichDomesticWeather7d(domesticCode);
         return { type: 'weather', data: wx };
     }
 
@@ -192,7 +166,7 @@ async function resolveWeatherWidget(rawQuery, user) {
     }
 
     const fallbackCity = await getUserWeatherCity(user);
-    const wx = await getLiveWeatherData(fallbackCity);
+    const wx = await enrichDomesticWeather7d(fallbackCity);
     return { type: 'weather', data: wx };
 }
 
@@ -417,6 +391,10 @@ async function resolveSmartWidget(rawQuery, user) {
 
     const finance = await resolveFinanceWidget(rawQuery).catch(() => null);
     if (finance) return finance;
+
+    const { resolveRegionCompositeWidget } = require('./regionComposite.service');
+    const regionComposite = await resolveRegionCompositeWidget(rawQuery).catch(() => null);
+    if (regionComposite) return regionComposite;
 
     const { resolveKakaoMapWidget } = require('./kakaoMapWidget.service');
     const mapWidget = await resolveKakaoMapWidget(rawQuery, user).catch(() => null);

@@ -21,15 +21,25 @@
         return '#';
     }
 
-    function renderSmartWidget(mount, widget) {
+    function renderSmartWidget(mount, widget, nav = {}) {
         if (!mount) return;
         mount.replaceChildren();
         if (!widget || !widget.data) return;
 
+        if (widget.type === 'regionComposite' && global.JGSearchRegionCard) {
+            global.JGSearchRegionCard.renderComposite(mount, widget.data, nav);
+            return;
+        }
+        if (widget.type === 'map' && global.JGSearchMapWidget) {
+            global.JGSearchMapWidget.render(mount, widget.data, nav);
+            return;
+        }
+
         const card = makeEl('div', 'jg-smart-card');
         if (widget.type === 'weather') {
             const w = widget.data;
-            card.appendChild(makeEl('span', 'jg-smart-badge', w.isGlobal ? '🌍 해외 날씨 즉답' : '🌤️ 실시간 날씨 즉답'));
+            card.style.containerType = 'inline-size';
+            card.appendChild(makeEl('span', 'jg-smart-badge', w.isGlobal ? '🌍 해외 날씨 · 주간예보' : '🌤️ 실시간 날씨 · 7일 주간예보'));
 
             const main = makeEl('div', 'jg-weather-main');
             const left = makeEl('div', 'jg-weather-left');
@@ -48,17 +58,13 @@
             card.appendChild(main);
 
             if (Array.isArray(w.forecast) && w.forecast.length > 0) {
-                const row = makeEl('div', 'jg-forecast-row');
-                w.forecast.forEach((f) => {
-                    const item = makeEl('div', 'jg-forecast-item');
-                    item.append(
-                        makeEl('div', '', `${f.label} ${f.icon || ''}`),
-                        makeEl('div', '', `${f.min} / ${f.max}`),
-                        makeEl('div', 'jg-muted-text', `${f.condition} · 강수 ${f.rain}`)
-                    );
-                    row.appendChild(item);
-                });
-                card.appendChild(row);
+                const strip = global.JGSearchRegionCard
+                    ? global.JGSearchRegionCard.renderForecastStrip(w.forecast)
+                    : null;
+                if (strip) {
+                    strip.style.marginTop = '0.85rem';
+                    card.appendChild(strip);
+                }
             }
         } else if (widget.type === 'exchange') {
             const ex = widget.data;
@@ -89,9 +95,6 @@
             card.appendChild(makeEl('span', 'jg-smart-badge', `📐 ${widget.data.category}`));
             card.appendChild(makeEl('div', 'jg-muted-text', `${widget.data.from} =`));
             card.appendChild(makeEl('div', 'jg-calc-value', widget.data.to));
-        } else if (widget.type === 'map' && global.JGSearchMapWidget) {
-            global.JGSearchMapWidget.render(mount, widget.data);
-            return;
         }
 
         mount.appendChild(card);

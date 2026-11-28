@@ -9,17 +9,21 @@ const axios = require('axios');
 const { db } = require('../db');
 const { CITY_KO_MAP, CITY_COORDS, getDefaultWeatherCity } = require('../weather.service');
 const { incrementUsage, isEngineEnabled } = require('./externalSearch.service');
+const { enrichPlacesWithThumbnails } = require('./regionComposite.service');
 
 const KAKAO_KEYWORD_URL = 'https://dapi.kakao.com/v2/local/search/keyword.json';
+const KAKAO_CATEGORY_URL = 'https://dapi.kakao.com/v2/local/search/category.json';
 const KAKAO_ADDRESS_URL = 'https://dapi.kakao.com/v2/local/search/address.json';
 
 const MAP_CACHE_TTL_MS = 10 * 60 * 1000;
 const MAX_MAP_CACHE = 200;
 const mapCache = new Map();
 
-const EXPLICIT_MAP_RE = /(지도|위치|주소|길찾기|가는길|오시는길|어디야|어디에|맛집|식당|카페|커피|빵집|베이커리|병원|의원|치과|한의원|약국|주차장|주유소|충전소|편의점|마트|백화점|은행|숙소|호텔|펜션|모텔|관광|명소|공원|해수욕장|산|역|터미널|공항|학교|구청|시청|군청|도청|주민센터|행정복지센터|보건소|우체국|경찰서|도서관|영화관)/;
+const EXPLICIT_MAP_RE = /(지도|위치|주소|길찾기|가는길|오시는길|어디야|어디에|맛집|식당|음식점|횟집|고깃집|삼겹살|갈비|국밥|짬뽕|짜장면|파스타|초밥|스시|돈까스|냉면|칼국수|치킨|피자|술집|브런치|카페|커피|디저트|빵집|베이커리|병원|의원|치과|한의원|소아과|내과|이비인후과|정형외과|피부과|안과|약국|주차장|주유소|충전소|편의점|마트|백화점|은행|숙소|호텔|펜션|모텔|리조트|캠핑장|관광|명소|공원|해수욕장|산|역|터미널|공항|학교|구청|시청|군청|도청|주민센터|행정복지센터|보건소|우체국|경찰서|도서관|영화관|미용실|헬스장)/;
 const NEARBY_RE = /(근처|주변|가까운|내주변|내\s*주변)/;
 const WEATHER_EXCLUDE_RE = /(날씨|기온|온도|미세먼지|초미세먼지|강수|비와|비오|눈와|예보|일기예보)/;
+const ALLOWED_LOCAL_CATS = new Set(['ALL', 'FD6', 'CE7', 'AT4', 'AD5', 'HP8']);
+const CAT_KEYWORDS = { FD6: '맛집', CE7: '카페', AT4: '가볼만한곳', AD5: '숙소', HP8: '병원' };
 
 // 단독 검색 시 신뢰할 수 있는 카카오 카테고리 그룹 코드
 const TRUSTED_CATEGORY_GROUPS = new Set([
@@ -305,6 +309,10 @@ async function resolveKakaoMapWidget(rawQuery, user) {
             return null;
         }
 
+        const regionHint = cleaned.split(/\s+/)[0] || '';
+        await enrichPlacesWithThumbnails(places, regionHint, 5);
+        const defaultExpanded = Boolean((isExplicit || isNearby) && places.length > 1);
+
         const widget = {
             type: 'map',
             data: {
@@ -312,6 +320,7 @@ async function resolveKakaoMapWidget(rawQuery, user) {
                 rawQuery: q,
                 kakaoJsKey: getKakaoJsKey(),
                 isNearbyQuery: Boolean(anchor),
+                defaultExpanded,
                 anchorLabel: anchor ? `${anchor.label} (설정 지역) 기준` : '',
                 center: { lat: places[0].lat, lng: places[0].lng },
                 places
@@ -343,6 +352,7 @@ async function searchNearbyByCoords(rawQuery, lat, lng) {
         });
         const places = kwDocs.map(mapKakaoDocumentToPlace).filter((p) => p.lat && p.lng);
         if (!places.length) return null;
+        await enrichPlacesWithThumbnails(places, '', 5);
         return {
             type: 'map',
             data: {
@@ -350,6 +360,7 @@ async function searchNearbyByCoords(rawQuery, lat, lng) {
                 rawQuery: String(rawQuery || '').trim(),
                 kakaoJsKey: getKakaoJsKey(),
                 isNearbyQuery: true,
+                defaultExpanded: places.length > 1,
                 anchorLabel: '내 현재 위치 기준 (반경 5km)',
                 center: { lat: places[0].lat, lng: places[0].lng },
                 places
@@ -361,8 +372,86 @@ async function searchNearbyByCoords(rawQuery, lat, lng) {
     }
 }
 
+async function searchLocalTabPlaces(rawQuery, user, opts = {}) {
+    const key = getKakaoRestKey();
+    const q = String(rawQuery || '').trim();
+    const safePage = Math.max(1, Math.min(45, parseInt(opts.page, 10) || 1));
+    const cat = ALLOWED_LOCAL_CATS.has(opts.categoryGroup) ? opts.categoryGroup : 'ALL';
+    const empty = { categoryGroup: cat, kakaoJsKey: getKakaoJsKey(), places: [], meta: { total: 0, page: safePage, display: 15, totalPages: 0, hasMore: false } };
+    if (!key || !q) return empty;
+
+    const enabled = await isEngineEnabled('kakaoMap');
+    if (!enabled) return empty;
+
+    const isNearby = NEARBY_RE.test(q);
+    const cleaned = cleanMapQuery(q) || q;
+    const baseRegion = cleaned
+        .replace(/\s*(맛집|식당|음식점|카페|커피|디저트|빵집|여행코스|여행지|여행|가볼만한곳|가볼만한\s*곳|관광지|관광|명소|숙소|호텔|펜션|병원|약국)$/g, '')
+        .trim();
+    const cityMatch = findDomesticCityMatch(baseRegion || cleaned);
+    const anchor = (isNearby && !hasRegionWordInQuery(cleaned)) ? await getUserAnchorCity(user) : null;
+
+    let effQuery = cleaned;
+    if (cat !== 'ALL') {
+        const suffix = CAT_KEYWORDS[cat] || '';
+        effQuery = baseRegion ? `${baseRegion} ${suffix}`.trim() : `${cleaned} ${suffix}`.trim();
+    } else if (cityMatch && baseRegion === cleaned) {
+        effQuery = `${cityMatch.label} 가볼만한곳 맛집`;
+    }
+
+    const cacheKey = `localtab:${effQuery.toLowerCase()}:${cat}:p${safePage}:${anchor ? anchor.code : 'none'}`;
+    const cached = getMapCache(cacheKey);
+    if (cached !== null) return cached;
+
+    try {
+        const params = { query: effQuery, size: 15, page: safePage };
+        if (cat !== 'ALL') params.category_group_code = cat;
+        if (anchor) {
+            params.y = anchor.coord.lat;
+            params.x = anchor.coord.lon;
+            params.radius = 8000;
+        }
+        await incrementUsage('kakaoMap', false);
+        const res = await axios.get(KAKAO_KEYWORD_URL, {
+            params,
+            headers: { Authorization: `KakaoAK ${key}` },
+            timeout: 3200
+        });
+        const docs = Array.isArray(res.data?.documents) ? res.data.documents : [];
+        const places = docs.map(mapKakaoDocumentToPlace).filter((p) => p.lat && p.lng);
+        if (safePage === 1 && places.length > 0) {
+            await enrichPlacesWithThumbnails(places, baseRegion || '', 6);
+        }
+        const pageable = Math.max(places.length, Number(res.data?.meta?.pageable_count) || 0);
+        const total = Math.max(pageable, Number(res.data?.meta?.total_count) || 0);
+        const totalPages = Math.min(45, Math.ceil(pageable / 15));
+        const payload = {
+            query: effQuery,
+            rawQuery: q,
+            categoryGroup: cat,
+            kakaoJsKey: getKakaoJsKey(),
+            anchorLabel: anchor ? `${anchor.label} 주변` : '',
+            center: places[0] ? { lat: places[0].lat, lng: places[0].lng } : null,
+            places,
+            meta: {
+                total,
+                page: safePage,
+                display: 15,
+                totalPages,
+                hasMore: safePage < totalPages && !res.data?.meta?.is_end && places.length > 0
+            }
+        };
+        setMapCache(cacheKey, payload);
+        return payload;
+    } catch (_) {
+        await incrementUsage('kakaoMap', true);
+        return empty;
+    }
+}
+
 module.exports = {
     resolveKakaoMapWidget,
     searchNearbyByCoords,
+    searchLocalTabPlaces,
     clearMapWidgetCache
 };
