@@ -49,7 +49,7 @@
                 if (balancedModelEl && env.balancedModel) balancedModelEl.placeholder = `기본값: ${env.balancedModel}`;
                 if (reasonModelEl && env.reasoningModel) reasonModelEl.placeholder = `기본값: ${env.reasoningModel}`;
                 const hintEl = document.getElementById('aiEnvModelHint');
-                if (hintEl && env.chatModel) hintEl.textContent = `${env.chatModel} / ${env.balancedModel || 'gemma3:4b'} / ${env.reasoningModel || env.chatModel}`;
+                if (hintEl && env.chatModel) hintEl.textContent = `${env.chatModel} / ${env.balancedModel || 'qwen2.5:3b'} / ${env.reasoningModel || env.chatModel}`;
 
                 updateAiWelcomePreview();
                 updateAiHeroPreview();

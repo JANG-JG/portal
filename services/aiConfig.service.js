@@ -27,7 +27,7 @@ const DEFAULT_AI_CONFIG = {
     reasoningNumCtx: 4096,
     // 화면 표시용 친화적 모델 라벨 (비어있으면 기본 한글 라벨 사용)
     chatModelLabel: '⚡ 빠른 대화 (1B)',
-    balancedModelLabel: '⚖️ 균형 대화 (4B)',
+    balancedModelLabel: '⚖️ 균형 대화 (3B)',
     reasoningModelLabel: '🧠 깊은 생각 (EXAONE)'
 };
 

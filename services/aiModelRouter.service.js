@@ -15,7 +15,7 @@ const OLLAMA_HOST = (process.env.OLLAMA_HOST || '').trim() || 'http://localhost:
 
 const LEGACY_MODEL = (process.env.OLLAMA_MODEL || '').trim();
 const CHAT_MODEL = (process.env.OLLAMA_CHAT_MODEL || '').trim() || 'gemma3:1b';
-const BALANCED_MODEL = (process.env.OLLAMA_BALANCED_MODEL || '').trim() || 'gemma3:4b';
+const BALANCED_MODEL = (process.env.OLLAMA_BALANCED_MODEL || '').trim() || 'qwen2.5:3b';
 const REASONING_MODEL = (process.env.OLLAMA_REASONING_MODEL || '').trim() || LEGACY_MODEL || 'exaone4:opt';
 
 // 상주 시간: 24시간 VRAM 상주

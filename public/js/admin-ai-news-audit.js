@@ -200,7 +200,7 @@
 
             const modeBadgeMap = {
                 chat: '<span style="background:#dcfce7; color:#166534; padding:2px 7px; border-radius:999px; font-size:0.72rem; font-weight:700;">⚡ 빠른 1B</span>',
-                balanced: '<span style="background:#dbeafe; color:#1e40af; padding:2px 7px; border-radius:999px; font-size:0.72rem; font-weight:700;">⚖️ 균형 4B</span>',
+                balanced: '<span style="background:#dbeafe; color:#1e40af; padding:2px 7px; border-radius:999px; font-size:0.72rem; font-weight:700;">⚖️ 균형 3B</span>',
                 reasoning: '<span style="background:#ede9fe; color:#5b21b6; padding:2px 7px; border-radius:999px; font-size:0.72rem; font-weight:700;">🧠 깊은 생각</span>',
                 policy: '<span style="background:#fee2e2; color:#991b1b; padding:2px 7px; border-radius:999px; font-size:0.72rem; font-weight:700;">🛡️ 권한 보호</span>'
             };
