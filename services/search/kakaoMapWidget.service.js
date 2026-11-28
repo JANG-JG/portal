@@ -290,7 +290,9 @@ async function resolveKakaoMapWidget(rawQuery, user) {
                 const normQ = normalizeText(cleaned);
                 const top = kwDocs[0];
                 const normTop = normalizeText(top.place_name);
-                const exactOrStrong = normTop === normQ || normTop.startsWith(`${normQ}(`) || normTop.endsWith(normQ);
+                const rawTopLower = String(top.place_name || '').trim().toLowerCase();
+                const rawQLower = cleaned.toLowerCase();
+                const exactOrStrong = normTop === normQ || normTop.startsWith(`${normQ}(`) || normTop.endsWith(normQ) || rawTopLower.startsWith(`${rawQLower} `);
                 const trustedCat = TRUSTED_CATEGORY_GROUPS.has(top.category_group_code);
                 if (exactOrStrong && trustedCat) {
                     places = kwDocs.map(mapKakaoDocumentToPlace).filter((p) => p.lat && p.lng);
