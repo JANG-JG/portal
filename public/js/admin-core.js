@@ -64,6 +64,7 @@ const SUBTABS_CONFIG = {
     ],
     'tab-modules': [
         { id: 'subpane-modules-list', label: '서비스 모듈 목록', icon: '📋' },
+        { id: 'subpane-modules-search', label: '통합 검색 · 웹봇 관제', icon: '🔍' },
         { id: 'subpane-modules-widgets', label: '대시보드 위젯 배치', icon: '🍱' },
         { id: 'subpane-modules-guide', label: '모듈 개발 가이드', icon: '📖' }
     ],
@@ -269,6 +270,7 @@ function switchAdminSubTab(subId, btn, shouldScroll = false, slideDirection = nu
 
     // 서브패널 진입 시 실시간 데이터 로더 자동 호출
     const subLoaderMap = {
+        'subpane-modules-search': 'loadAdminSearchStatus',
         'subpane-modules-widgets': 'loadDashboardWidgetsList',
         'subpane-security-push': 'loadAdminPushSubscriptions',
         'subpane-blood-events': 'loadBloodEvents',

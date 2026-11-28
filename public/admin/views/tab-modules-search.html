@@ -1,0 +1,201 @@
+    <!-- 서브 1-2: 🔍 통합 검색 엔진 · 한국형 표적 웹봇 통합 관제 -->
+    <div id="subpane-modules-search" class="admin-sub-pane hidden-pane">
+        <!-- 카드 1: 외부 검색 엔진 & 일일 호출량 관제 -->
+        <div class="admin-card">
+            <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                    <h3>🔍 통합 검색 엔진 · 외부 API 관제</h3>
+                    <p id="adminSearchCacheMeta" style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
+                        네이버 · 다음(카카오) · 구글 · 위키백과 · 한국형 웹봇 상태와 일일 호출량을 관리합니다.
+                    </p>
+                </div>
+                <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                    <a href="/search" target="_blank" class="btn-admin btn-admin-outline btn-admin-sm" style="color:#2563eb; border-color:#93c5fd; background:#eff6ff; font-weight:700; text-decoration:none;">
+                        🔎 통합 검색 열기 ↗
+                    </a>
+                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="clearAdminSearchCache()">
+                        🧹 전체 캐시 비우기
+                    </button>
+                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminSearchStatus()">
+                        🔄 새로고침
+                    </button>
+                </div>
+            </div>
+            <div class="admin-table-container admin-table-scroll" style="margin-top:0.5rem;">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>검색 엔진</th>
+                            <th>API 키 상태</th>
+                            <th>오늘 호출 / 안전 한도</th>
+                            <th style="text-align:center;">동작 제어</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminSearchEnginesBody">
+                        <tr><td colspan="4" style="text-align:center; padding:1.2rem; color:#64748b;">상태를 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="margin-top:0.85rem; padding-top:0.85rem; border-top:1px solid var(--border-color, #e2e8f0);">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
+                    <strong style="font-size:0.88rem;">네이버 세부 검색 API 연결 설정</strong>
+                    <span style="font-size:0.78rem; color:#64748b;">네이버 개발자센터에서 추가한 API만 ON으로 켜세요.</span>
+                </div>
+                <div id="adminNaverSubApisWrap" style="display:flex; flex-wrap:wrap; gap:0.45rem; margin-bottom:0.65rem;"></div>
+                <div style="display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">
+                    <select id="adminNaverSubApiPreset" class="form-control" aria-label="네이버 세부 API 선택" style="max-width:170px; min-height:38px; font-size:0.85rem;">
+                        <option value="book:책">책 (book)</option>
+                        <option value="shop:쇼핑">쇼핑 (shop)</option>
+                        <option value="cafearticle:카페글">카페글 (cafearticle)</option>
+                        <option value="doc:전문자료">전문자료 (doc)</option>
+                        <option value="custom:직접입력">직접 입력...</option>
+                    </select>
+                    <input type="text" id="adminNaverSubApiCode" placeholder="API 코드 (예: kin)" autocorrect="off" autocapitalize="none" spellcheck="false" style="display:none; width:135px; min-height:38px; font-size:0.85rem; padding:0 0.5rem; border:1px solid #cbd5e1; border-radius:6px;">
+                    <input type="text" id="adminNaverSubApiLabel" placeholder="표시 이름 (예: 지식iN)" style="display:none; width:135px; min-height:38px; font-size:0.85rem; padding:0 0.5rem; border:1px solid #cbd5e1; border-radius:6px;">
+                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="addAdminNaverSubApi()">
+                        ➕ 세부 API 추가
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 카드 2: 🤖 한국형 표적 웹봇(WebBot) 스토리지 · 즉시 수집 관제 -->
+        <div class="admin-card" style="margin-top:1rem;">
+            <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                    <h3>🤖 한국형 표적 웹봇(WebBot) 수집 · 저장소 관제</h3>
+                    <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
+                        검색 결과 썸네일(og:image) 보강, 관심 RSS 정기 색인(FTS5), 가족 개인 보관함 저장량을 실시간 점검합니다.
+                    </p>
+                </div>
+                <span id="adminWebBotStateBadge" class="badge" style="background:#dcfce7; color:#15803d; padding:5px 10px; border-radius:999px; font-weight:700;">
+                    웹봇 상태 확인 중...
+                </span>
+            </div>
+
+            <div class="jg-webbot-kpi-grid" id="adminWebBotKpiGrid">
+                <div class="jg-webbot-kpi-card">
+                    <span class="jg-webbot-kpi-label">📚 FTS5 전문 색인 문서</span>
+                    <strong class="jg-webbot-kpi-val" id="wbKpiDocs">0 / 3,000건</strong>
+                    <span class="jg-webbot-kpi-sub" id="wbKpiFtsMode">SQLite FTS5 준비 중</span>
+                </div>
+                <div class="jg-webbot-kpi-card">
+                    <span class="jg-webbot-kpi-label">📌 가족 개인 보관함(클립)</span>
+                    <strong class="jg-webbot-kpi-val" id="wbKpiClips">0건</strong>
+                    <span class="jg-webbot-kpi-sub">사용자별 영구 격리 보관</span>
+                </div>
+                <div class="jg-webbot-kpi-card">
+                    <span class="jg-webbot-kpi-label">🖼️ 썸네일(og:image) 캐시</span>
+                    <strong class="jg-webbot-kpi-val" id="wbKpiMeta">0 / 5,000건</strong>
+                    <span class="jg-webbot-kpi-sub" id="wbKpiSize">예상 용량 계산 중</span>
+                </div>
+                <div class="jg-webbot-kpi-card">
+                    <span class="jg-webbot-kpi-label">⏱️ 활성 시드 · 수집 큐</span>
+                    <strong class="jg-webbot-kpi-val" id="wbKpiQueue">시드 0개 · 대기 0건</strong>
+                    <span class="jg-webbot-kpi-sub" id="wbKpiWorkers">동시 작업 0 / 2 · robots 준수</span>
+                </div>
+            </div>
+
+            <div class="jg-webbot-toolbar">
+                <button type="button" id="btnWebBotRunNow" class="btn-admin btn-admin-primary btn-admin-sm">
+                    ⚡ 지금 즉시 수집 실행
+                </button>
+                <button type="button" id="btnWebBotToggleEngine" class="btn-admin btn-admin-outline btn-admin-sm">
+                    🔄 웹봇 ON/OFF 전환
+                </button>
+                <button type="button" id="btnWebBotPurgeExpired" class="btn-admin btn-admin-outline btn-admin-sm">
+                    🧹 30일 경과 문서 정리
+                </button>
+                <button type="button" id="btnWebBotPurgeAll" class="btn-admin btn-admin-outline btn-admin-sm" style="color:#b91c1c; border-color:#fecaca;">
+                    🗑️ 수집 문서 비우기 (보관함 유지)
+                </button>
+            </div>
+            <div id="adminWebBotStatusLive" class="jg-webbot-status-msg" role="status" aria-live="polite"></div>
+        </div>
+
+        <!-- 카드 3: 📡 관심 시드(RSS · 웹페이지) 등록 관리 & 최근 수집 이력 -->
+        <div class="admin-card" style="margin-top:1rem;">
+            <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
+                <div>
+                    <h3 id="adminSeedFormTitle">📡 관심 시드(RSS · 웹페이지) 관리 및 최근 수집 이력</h3>
+                    <p style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
+                        공개 http/https RSS 피드나 웹 목록 주소를 등록하면 30분 스케줄러가 주기적으로 본문을 수집·색인합니다. (사설 IP·내부망 자동 차단)
+                    </p>
+                </div>
+            </div>
+
+            <form id="adminWebBotSeedForm" class="jg-seed-form" action="/api/admin/search/webbot/seeds" method="POST" aria-labelledby="adminSeedFormTitle" novalidate>
+                <input type="hidden" id="adminSeedEditId" name="id" value="">
+                <div class="jg-seed-presets" id="adminSeedPresetBar" aria-label="추천 한국어 RSS 빠른 선택"></div>
+                <div class="jg-seed-grid">
+                    <div class="jg-seed-field">
+                        <label for="adminSeedLabel">시드 이름 <span aria-hidden="true">*</span></label>
+                        <input type="text" id="adminSeedLabel" name="label" required maxlength="60" placeholder="예: 대한민국 정책브리핑">
+                    </div>
+                    <div class="jg-seed-field">
+                        <label for="adminSeedUrl">공개 피드·웹 주소 (URL) <span aria-hidden="true">*</span></label>
+                        <input type="url" id="adminSeedUrl" name="url" required autocorrect="off" autocapitalize="none" spellcheck="false" aria-describedby="adminSeedUrlHint adminSeedFormError" placeholder="https://www.korea.kr/rss/policy.xml">
+                        <span id="adminSeedUrlHint" class="jg-seed-hint">외부 공개 http:// 또는 https:// 주소만 허용됩니다.</span>
+                    </div>
+                    <div class="jg-seed-field">
+                        <label for="adminSeedCategory">분야 분류</label>
+                        <input type="text" id="adminSeedCategory" name="category" maxlength="24" value="생활·정보" placeholder="예: IT·과학, 종합뉴스">
+                    </div>
+                    <div class="jg-seed-field">
+                        <label for="adminSeedType">수집 방식 · 주기</label>
+                        <select id="adminSeedType" name="seedPlan">
+                            <option value="rss:180">RSS/Atom 피드 · 3시간마다</option>
+                            <option value="rss:240" selected>RSS/Atom 피드 · 4시간마다</option>
+                            <option value="rss:720">RSS/Atom 피드 · 12시간마다</option>
+                            <option value="html:360">일반 웹 목록(HTML) · 6시간마다</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="jg-seed-submit-row">
+                    <div id="adminSeedFormError" class="jg-seed-error" role="alert" aria-live="polite"></div>
+                    <button type="submit" id="adminSeedSubmitBtn" class="btn-admin btn-admin-primary jg-seed-submit-btn">
+                        ➕ 관심 시드 등록하기
+                    </button>
+                </div>
+            </form>
+
+            <h4 id="adminSeedsTableHeading" style="font-size:0.9rem; margin:1.1rem 0 0.25rem;">📋 등록된 관심 시드 목록</h4>
+            <div tabindex="0" role="region" aria-labelledby="adminSeedsTableHeading" class="jg-admin-table-region">
+                <table class="jg-responsive-stack" style="--col-2:'유형 · 주기'; --col-3:'최근 수집 상태';">
+                    <thead>
+                        <tr>
+                            <th scope="col">시드 이름 · 주소</th>
+                            <th scope="col">유형 · 주기</th>
+                            <th scope="col">최근 수집 상태</th>
+                            <th scope="col" style="text-align:right;">개별 제어</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminWebBotSeedsBody">
+                        <tr><td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">시드 목록을 불러오는 중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h4 id="adminDocsTableHeading" style="font-size:0.9rem; margin:1.1rem 0 0.25rem;">📰 최근 웹봇 색인 문서 (최신 15건)</h4>
+            <div tabindex="0" role="region" aria-labelledby="adminDocsTableHeading" class="jg-admin-table-region">
+                <table class="jg-responsive-stack" style="--col-2:'출처 · 썸네일'; --col-3:'수집 시각';">
+                    <thead>
+                        <tr>
+                            <th scope="col">수집 문서 제목</th>
+                            <th scope="col">출처 · 썸네일</th>
+                            <th scope="col">수집 시각</th>
+                            <th scope="col" style="text-align:right;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody id="adminWebBotDocsBody">
+                        <tr><td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">아직 수집된 문서가 없습니다. 위 [⚡ 지금 즉시 수집 실행] 버튼을 눌러보세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h4 style="font-size:0.88rem; margin:1rem 0 0.2rem;">📜 최근 웹봇 실행 · 수집 이벤트 로그</h4>
+            <ul id="adminWebBotLogsList" class="jg-webbot-log-list">
+                <li>실행 이력을 불러오는 중입니다...</li>
+            </ul>
+        </div>
+    </div>

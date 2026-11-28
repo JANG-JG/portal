@@ -1,0 +1,323 @@
+/* ==========================================================================
+   🔍 JG 관리자 센터 - 통합 검색 · 한국형 표적 웹봇 관제 전용 스타일 (admin-search.css)
+   - [규칙 6] 모바일 퍼스트 360px 무넘침 · 터치 타겟 44px+ · 전폭 저장 버튼
+   - modern-web-guidance: forms (:user-invalid), responsive-table (@container), form-factor-adaptation
+   ========================================================================== */
+
+#subpane-modules-search h3,
+#subpane-modules-search h4 {
+    text-wrap: balance;
+}
+
+#subpane-modules-search :where(p, li) {
+    text-wrap: pretty;
+    overflow-wrap: break-word;
+}
+
+#subpane-modules-search :where(a, code, .jg-url-code) {
+    overflow-wrap: anywhere;
+}
+
+/* 📊 웹봇 실시간 스토리지 · 색인 KPI 그리드 */
+.jg-webbot-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr));
+    gap: 0.65rem;
+    margin-top: 0.75rem;
+}
+
+.jg-webbot-kpi-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    min-inline-size: 0;
+}
+
+.jg-webbot-kpi-label {
+    font-size: 0.78rem;
+    color: #64748b;
+    font-weight: 600;
+    display: block;
+}
+
+.jg-webbot-kpi-val {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-top: 0.2rem;
+    display: block;
+}
+
+.jg-webbot-kpi-sub {
+    font-size: 0.74rem;
+    color: #475569;
+    margin-top: 0.15rem;
+    display: block;
+}
+
+/* ⚡ 웹봇 액션 툴바 */
+.jg-webbot-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.jg-webbot-toolbar > :not(button, input, select, a, label) {
+    min-inline-size: 0;
+}
+
+.jg-webbot-status-msg {
+    margin-top: 0.6rem;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #1e40af;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+}
+
+.jg-webbot-status-msg:empty {
+    display: none;
+}
+
+/* 📝 관심 시드 등록 폼 (단일/반응형 스캔 + 16px iOS 줌 방지 + 전폭 제출 버튼) */
+.jg-seed-form {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.9rem;
+    margin-top: 0.75rem;
+}
+
+.jg-seed-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+}
+
+.jg-seed-preset-btn {
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    min-block-size: 34px;
+    cursor: pointer;
+}
+
+.jg-seed-preset-btn:hover {
+    border-color: #3b82f6;
+    color: #1d4ed8;
+    background: #eff6ff;
+}
+
+.jg-seed-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+    gap: 0.85rem;
+    margin-block-end: 0.85rem;
+}
+
+.jg-seed-field {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    min-inline-size: 0;
+}
+
+.jg-seed-field label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.jg-seed-field input,
+.jg-seed-field select {
+    font: inherit;
+    font-size: max(1rem, 1em);
+    padding: 0.55rem 0.7rem;
+    min-block-size: 44px;
+    border: 1px solid #94a3b8;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #0f172a;
+    box-sizing: border-box;
+    max-inline-size: 100%;
+}
+
+.jg-seed-field input:focus-visible,
+.jg-seed-field select:focus-visible,
+.jg-seed-submit-btn:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.jg-seed-field input:user-invalid,
+.jg-seed-field input[aria-invalid="true"] {
+    border-color: #dc2626;
+    background: #fef2f2;
+}
+
+.jg-seed-hint {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.jg-seed-error {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #dc2626;
+}
+
+.jg-seed-error:empty {
+    display: none;
+}
+
+.jg-seed-submit-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.jg-seed-submit-btn {
+    inline-size: 100%;
+    min-block-size: 46px;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+@media (pointer: coarse) {
+    .jg-seed-field input,
+    .jg-seed-field select,
+    .jg-seed-submit-btn {
+        min-block-size: 50px;
+    }
+}
+
+/* 📋 컨테이너 쿼리 기반 반응형 시드 · 수집 문서 테이블 */
+.jg-admin-table-region {
+    overflow: auto;
+    max-inline-size: 100%;
+    max-block-size: min(460px, 75vh);
+    container: search-table / inline-size;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    margin-top: 0.65rem;
+}
+
+.jg-admin-table-region table {
+    inline-size: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.jg-admin-table-region thead {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    background: #f8fafc;
+}
+
+.jg-admin-table-region tbody th {
+    text-align: left;
+    font-weight: 700;
+    color: #0f172a;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    background: #ffffff;
+}
+
+.jg-admin-table-region tbody td {
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    font-size: 0.83rem;
+}
+
+.jg-row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    justify-content: flex-end;
+}
+
+@container search-table (inline-size < 38rem) {
+    .jg-responsive-stack,
+    .jg-responsive-stack thead,
+    .jg-responsive-stack tbody,
+    .jg-responsive-stack tr,
+    .jg-responsive-stack th,
+    .jg-responsive-stack td {
+        display: block;
+    }
+
+    .jg-responsive-stack thead {
+        display: none;
+    }
+
+    .jg-responsive-stack tbody tr {
+        margin: 0.55rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #ffffff;
+    }
+
+    .jg-responsive-stack tbody th {
+        background: #f1f5f9;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .jg-responsive-stack tbody td {
+        padding: 0.45rem 0.75rem;
+    }
+
+    .jg-responsive-stack tbody td:nth-child(2)::before {
+        content: var(--col-2, "") ": ";
+        font-weight: 700;
+        color: #475569;
+    }
+
+    .jg-responsive-stack tbody td:nth-child(3)::before {
+        content: var(--col-3, "") ": ";
+        font-weight: 700;
+        color: #475569;
+    }
+
+    .jg-responsive-stack .jg-row-actions {
+        justify-content: flex-start;
+    }
+}
+
+/* 📜 최근 실행 이벤트 로그 리스트 */
+.jg-webbot-log-list {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0.65rem 0.8rem;
+    background: #0f172a;
+    color: #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.79rem;
+    max-block-size: 190px;
+    overflow-y: auto;
+}
+
+.jg-webbot-log-list li {
+    padding: 0.28rem 0;
+    border-bottom: 1px dashed rgba(148, 163, 184, 0.2);
+}
+
+.jg-webbot-log-list li:last-child {
+    border-bottom: none;
+}

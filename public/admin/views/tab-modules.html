@@ -60,63 +60,9 @@
                 </table>
             </div>
         </div>
-
-        <!-- 🔍 통합 검색 외부 API 관제 카드 -->
-        <div class="admin-card" style="margin-top:1rem;">
-            <div class="admin-card-header" style="flex-wrap:wrap; gap:0.5rem;">
-                <div>
-                    <h3>🔍 통합 검색 외부 API 관제</h3>
-                    <p id="adminSearchCacheMeta" style="font-size:0.8rem; color:#64748b; margin:0.25rem 0 0;">
-                        외부 검색 엔진 상태와 일일 API 호출 한도를 확인합니다.
-                    </p>
-                </div>
-                <div style="display:flex; gap:0.5rem; align-items:center;">
-                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="clearAdminSearchCache()">
-                        🧹 캐시 비우기
-                    </button>
-                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="loadAdminSearchStatus()">
-                        🔄 새로고침
-                    </button>
-                </div>
-            </div>
-            <div class="admin-table-container admin-table-scroll" style="margin-top:0.5rem;">
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>검색 엔진</th>
-                            <th>API 키 상태</th>
-                            <th>오늘 호출 / 안전 한도</th>
-                            <th style="text-align:center;">동작 제어</th>
-                        </tr>
-                    </thead>
-                    <tbody id="adminSearchEnginesBody">
-                        <tr><td colspan="4" style="text-align:center; padding:1.2rem; color:#64748b;">상태를 불러오는 중...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div style="margin-top:0.85rem; padding-top:0.85rem; border-top:1px solid var(--border-color, #e2e8f0);">
-                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.5rem;">
-                    <strong style="font-size:0.88rem;">네이버 세부 검색 API 연결 설정</strong>
-                    <span style="font-size:0.78rem; color:#64748b;">네이버 개발자센터에서 추가한 API만 ON으로 켜세요.</span>
-                </div>
-                <div id="adminNaverSubApisWrap" style="display:flex; flex-wrap:wrap; gap:0.45rem; margin-bottom:0.65rem;"></div>
-                <div style="display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center;">
-                    <select id="adminNaverSubApiPreset" class="form-control" style="max-width:170px; height:34px; font-size:0.82rem;">
-                        <option value="book:책">책 (book)</option>
-                        <option value="shop:쇼핑">쇼핑 (shop)</option>
-                        <option value="cafearticle:카페글">카페글 (cafearticle)</option>
-                        <option value="doc:전문자료">전문자료 (doc)</option>
-                        <option value="custom:직접입력">직접 입력...</option>
-                    </select>
-                    <input type="text" id="adminNaverSubApiCode" placeholder="API 코드 (예: kin)" style="display:none; width:130px; height:34px; font-size:0.82rem; padding:0 0.5rem; border:1px solid #cbd5e1; border-radius:6px;">
-                    <input type="text" id="adminNaverSubApiLabel" placeholder="표시 이름 (예: 지식iN)" style="display:none; width:130px; height:34px; font-size:0.82rem; padding:0 0.5rem; border:1px solid #cbd5e1; border-radius:6px;">
-                    <button type="button" class="btn-admin btn-admin-outline btn-admin-sm" onclick="addAdminNaverSubApi()">
-                        ➕ 세부 API 추가
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
+
+    <!-- @@ADMIN_SEARCH_SUBPANE@@ -->
 
     <!-- 서브 2: 🍱 대시보드 위젯 배치 및 레이아웃 제어 -->
     <div id="subpane-modules-widgets" class="admin-sub-pane hidden-pane">

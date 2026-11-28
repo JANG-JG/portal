@@ -142,6 +142,15 @@ function ensureWebBotSchema() {
                  ON CONFLICT(key) DO UPDATE SET value = '1'`
             ).catch(() => {});
         }
+        const v2SeedRow = await dbGet("SELECT value FROM system_configs WHERE key = 'webbot_default_seeds_v2'");
+        if (!v2SeedRow) {
+            await dbRun(
+                `INSERT OR IGNORE INTO webbot_seeds (label, url, seed_type, category, enabled, interval_min, created_at)
+                 VALUES (?, ?, 'rss', '종합뉴스', 1, 180, ?)`,
+                ['SBS 뉴스 주요속보 (RSS)', 'https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=01&plink=RSSREADER', Date.now()]
+            ).catch(() => {});
+            await dbRun(`INSERT INTO system_configs (key, value) VALUES ('webbot_default_seeds_v2', '1') ON CONFLICT(key) DO UPDATE SET value = '1'`).catch(() => {});
+        }
     })();
 
     return storeReadyPromise;
@@ -418,11 +427,12 @@ async function searchClipsAndBotDocs(rawQuery, userId, isChosung = false, cleanC
 async function getWebBotStorageStats() {
     await ensureWebBotSchema();
     const [metaRow, docRow, clipRow, seedRow] = await Promise.all([
-        dbGet(`SELECT COUNT(*) AS cnt FROM webbot_page_meta`),
-        dbGet(`SELECT COUNT(*) AS cnt FROM webbot_documents`),
-        dbGet(`SELECT COUNT(*) AS cnt FROM user_saved_clips`),
+        dbGet(`SELECT COUNT(*) AS cnt, COALESCE(SUM(LENGTH(title)+LENGTH(description)),0) AS bytes FROM webbot_page_meta`),
+        dbGet(`SELECT COUNT(*) AS cnt, COALESCE(SUM(LENGTH(title)+LENGTH(snippet)+LENGTH(body_text)),0) AS bytes FROM webbot_documents`),
+        dbGet(`SELECT COUNT(*) AS cnt, COALESCE(SUM(LENGTH(title)+LENGTH(snippet)+LENGTH(body_text)),0) AS bytes FROM user_saved_clips`),
         dbGet(`SELECT COUNT(*) AS total, SUM(CASE WHEN enabled = 1 THEN 1 ELSE 0 END) AS active FROM webbot_seeds`)
     ]);
+    const rawBytes = (metaRow?.bytes || 0) + (docRow?.bytes || 0) + (clipRow?.bytes || 0);
     return {
         ftsEnabled: ftsAvailable,
         metaCachedCount: metaRow?.cnt || 0,
@@ -431,7 +441,8 @@ async function getWebBotStorageStats() {
         maxDocsLimit: MAX_BOT_DOCS,
         savedClipsCount: clipRow?.cnt || 0,
         totalSeeds: seedRow?.total || 0,
-        activeSeeds: seedRow?.active || 0
+        activeSeeds: seedRow?.active || 0,
+        estimatedSizeKb: Math.max(1, Math.round((rawBytes * 1.8) / 1024))
     };
 }
 
@@ -441,20 +452,35 @@ async function clearMetaCacheTable() {
     return r.changes || 0;
 }
 
+async function purgeBotDocuments(mode = 'expired') {
+    await ensureWebBotSchema();
+    if (mode === 'all') {
+        const r = await dbRun(`DELETE FROM webbot_documents`);
+        if (ftsAvailable) await dbRun(`DELETE FROM webbot_fts WHERE owner_scope = 'public'`).catch(() => {});
+        return r.changes || 0;
+    }
+    const cutoff = Date.now() - META_TTL_MS;
+    const oldRows = await dbAll(`SELECT url_hash FROM webbot_documents WHERE crawled_at < ?`, [cutoff]);
+    for (const row of oldRows) {
+        await dbRun(`DELETE FROM webbot_documents WHERE url_hash = ?`, [row.url_hash]).catch(() => {});
+        await deleteFtsEntry(`bot:${row.url_hash}`);
+    }
+    return oldRows.length;
+}
+
+async function deleteBotDocumentById(docId) {
+    await ensureWebBotSchema();
+    const row = await dbGet(`SELECT id, url_hash FROM webbot_documents WHERE id = ?`, [Number(docId)]);
+    if (!row) return false;
+    await dbRun(`DELETE FROM webbot_documents WHERE id = ?`, [row.id]);
+    await deleteFtsEntry(`bot:${row.url_hash}`);
+    return true;
+}
+
 module.exports = {
-    hashUrl,
-    dbRun,
-    dbGet,
-    dbAll,
-    ensureWebBotSchema,
-    savePageMeta,
-    getCachedMetaMap,
-    saveBotDocument,
-    saveUserClip,
-    removeUserClip,
-    getUserClippedUrlSet,
-    listUserClips,
-    searchClipsAndBotDocs,
-    getWebBotStorageStats,
-    clearMetaCacheTable
+    hashUrl, dbRun, dbGet, dbAll, ensureWebBotSchema,
+    savePageMeta, getCachedMetaMap, saveBotDocument,
+    saveUserClip, removeUserClip, getUserClippedUrlSet, listUserClips,
+    searchClipsAndBotDocs, getWebBotStorageStats, clearMetaCacheTable,
+    purgeBotDocuments, deleteBotDocumentById
 };

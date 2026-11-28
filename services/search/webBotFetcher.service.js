@@ -409,7 +409,7 @@ async function fetchSeedFeedItems(seedUrl, maxItems = 8) {
         const lMatch = block.match(/<link[^>]+href=["']([^"']+)["']/i) || block.match(/<link[^>]*>([\s\S]*?)<\/link>/i);
         const dMatch = block.match(/<(description|summary|content:encoded|content)[^>]*>([\s\S]*?)<\/\1>/i);
         const pMatch = block.match(/<(pubDate|published|updated|dc:date)[^>]*>([\s\S]*?)<\/\1>/i);
-        const rawLink = lMatch ? decodeHtmlEntities(lMatch[1]).trim() : '';
+        const rawLink = lMatch ? decodeHtmlEntities(lMatch[1]).replace(/<[^>]+>/g, '').trim() : '';
         if (!rawLink) continue;
 
         let fullLink = '';
@@ -418,9 +418,11 @@ async function fetchSeedFeedItems(seedUrl, maxItems = 8) {
         } catch (_) {
             continue;
         }
-        const title = tMatch ? decodeHtmlEntities(tMatch[1].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim() : '';
+        const title = tMatch ? decodeHtmlEntities(tMatch[1]).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : '';
         const descHtml = dMatch ? decodeHtmlEntities(dMatch[2]) : '';
+        const mediaImg = block.match(/<(?:media:thumbnail|media:content|enclosure)[^>]+url=["']([^"']+)["']/i);
         const imgInDesc = descHtml.match(/<img[^>]+src=["']([^"']+)["']/i);
+        const rawThumb = (mediaImg && mediaImg[1]) || (imgInDesc && imgInDesc[1]) || '';
         const snippet = descHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 320);
 
         if (title && fullLink) {
@@ -428,8 +430,8 @@ async function fetchSeedFeedItems(seedUrl, maxItems = 8) {
                 title: title.slice(0, 200),
                 url: fullLink,
                 snippet,
-                ogImage: imgInDesc ? resolveSafeImageUrl(imgInDesc[1], fullLink) : null,
-                publishedAt: pMatch ? decodeHtmlEntities(pMatch[2]).trim().slice(0, 25) : ''
+                ogImage: rawThumb ? resolveSafeImageUrl(rawThumb, fullLink) : null,
+                publishedAt: pMatch ? decodeHtmlEntities(pMatch[2]).replace(/<[^>]+>/g, '').trim().slice(0, 25) : ''
             });
         }
     }

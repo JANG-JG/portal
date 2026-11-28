@@ -24,7 +24,9 @@ const {
     saveBotDocument,
     saveUserClip,
     getWebBotStorageStats,
-    clearMetaCacheTable
+    clearMetaCacheTable,
+    purgeBotDocuments,
+    deleteBotDocumentById
 } = require('./webBotStore.service');
 
 const MAX_QUEUE_SIZE = 120;
@@ -32,9 +34,21 @@ const MAX_CONCURRENCY = 2;
 
 const metaQueue = [];
 const inFlightUrls = new Set();
+const recentCrawlLogs = [];
 let activeWorkers = 0;
 let schedulerStarted = false;
 let isSeedCrawlRunning = false;
+
+function pushCrawlLog(seedLabel, status, message, savedCount = 0) {
+    recentCrawlLogs.unshift({
+        time: Date.now(),
+        seedLabel: String(seedLabel || '웹봇'),
+        status,
+        savedCount,
+        message: String(message || '')
+    });
+    if (recentCrawlLogs.length > 30) recentCrawlLogs.length = 30;
+}
 
 function enqueueMetaUrl(url) {
     if (!url || typeof url !== 'string') return;
@@ -232,14 +246,22 @@ async function deleteSeed(id) {
     return { success: r.changes > 0, seeds: await listSeeds() };
 }
 
+async function toggleSeedEnabled(id, enabled) {
+    await ensureWebBotSchema();
+    const r = await dbRun(`UPDATE webbot_seeds SET enabled = ? WHERE id = ?`, [enabled ? 1 : 0, Number(id)]);
+    return { success: r.changes > 0, seeds: await listSeeds() };
+}
+
 async function crawlSingleSeed(seed) {
     const feedRes = await fetchSeedFeedItems(seed.url, 6);
     await incrementUsage('webBot', !feedRes.ok);
     if (!feedRes.ok) {
+        const failMsg = `수집 실패 (${feedRes.reason})`;
         await dbRun(
             `UPDATE webbot_seeds SET last_crawled_at = ?, last_status = ? WHERE id = ?`,
-            [Date.now(), `수집 실패 (${feedRes.reason})`, seed.id]
+            [Date.now(), failMsg, seed.id]
         );
+        pushCrawlLog(seed.label, 'error', failMsg, 0);
         return 0;
     }
 
@@ -269,10 +291,12 @@ async function crawlSingleSeed(seed) {
         if (ok) savedCount += 1;
     }
 
+    const okMsg = `정상 (${savedCount}건 갱신 · 원본 ${feedRes.items.length}건 확인)`;
     await dbRun(
         `UPDATE webbot_seeds SET last_crawled_at = ?, last_status = ?, items_collected = items_collected + ? WHERE id = ?`,
         [Date.now(), `정상 (${savedCount}건 갱신)`, savedCount, seed.id]
     );
+    pushCrawlLog(seed.label, 'ok', okMsg, savedCount);
     return savedCount;
 }
 
@@ -309,19 +333,22 @@ async function runScheduledOrManualSeedCrawl(targetSeedId = null, force = false)
 
 async function getWebBotAdminSnapshot() {
     await ensureWebBotSchema();
-    const [stats, seeds, recentDocs] = await Promise.all([
+    const [enabled, stats, seeds, recentDocs] = await Promise.all([
+        isEngineEnabled('webBot'),
         getWebBotStorageStats(),
         listSeeds(),
-        dbAll(`SELECT id, url, title, site_name, og_image, published_at, crawled_at FROM webbot_documents ORDER BY crawled_at DESC LIMIT 12`)
+        dbAll(`SELECT id, url, title, snippet, site_name, og_image, published_at, crawled_at FROM webbot_documents ORDER BY crawled_at DESC LIMIT 15`)
     ]);
     return {
+        enabled,
         queueDepth: metaQueue.length,
         activeWorkers,
         isSeedCrawlRunning,
         robotsCachedHosts: getRobotsCacheSize(),
         stats,
         seeds,
-        recentDocs
+        recentDocs,
+        recentLogs: recentCrawlLogs
     };
 }
 
@@ -356,8 +383,12 @@ module.exports = {
     listSeeds,
     upsertSeed,
     deleteSeed,
+    toggleSeedEnabled,
     runScheduledOrManualSeedCrawl,
     getWebBotAdminSnapshot,
     clearAllWebBotCaches,
+    purgeBotDocuments,
+    deleteBotDocumentById,
+    pushCrawlLog,
     initWebBotScheduler
 };

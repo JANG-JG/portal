@@ -1,5 +1,6 @@
 /**
- * 🔍 JG 관리자 센터 - 통합 검색 외부 API 관제 스크립트 (admin-search.js)
+ * 🔍 JG 관리자 센터 - 통합 검색 외부 엔진 관제 스크립트 (admin-search.js)
+ * - 외부 검색 엔진 상태 · 일일 호출량 · 네이버 세부 API 제어 (웹봇 상세 관제는 admin-webbot.js 담당)
  */
 (function () {
     'use strict';
@@ -62,6 +63,9 @@
             });
 
             renderNaverSubApis(data.naverSubApis || []);
+            if (data.webBot && typeof window.renderAdminWebBotSnapshot === 'function') {
+                window.renderAdminWebBotSnapshot(data.webBot);
+            }
         } catch (_) {}
     }
 
@@ -99,7 +103,7 @@
             if (sub.custom) {
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
-                delBtn.title = '삭제';
+                delBtn.ariaLabel = `${sub.label} API 삭제`;
                 delBtn.style.cssText = 'border:none;background:transparent;cursor:pointer;color:#ef4444;font-weight:700;padding:0 2px;';
                 delBtn.textContent = '×';
                 delBtn.addEventListener('click', async () => {
@@ -111,7 +115,6 @@
                 });
                 chip.appendChild(delBtn);
             }
-
             wrap.appendChild(chip);
         });
     }
@@ -132,12 +135,10 @@
             code = parts[0];
             label = parts[1] || code;
         }
-
         if (!code) {
             alert('추가할 네이버 검색 API 코드를 입력해 주세요. (예: book, shop, kin)');
             return;
         }
-
         try {
             const res = await fetch('/api/admin/search/naver-subapi', {
                 method: 'POST',
@@ -164,7 +165,11 @@
             const data = await res.json();
             if (data.success) {
                 loadAdminSearchStatus();
-                alert(data.message || '캐시를 비웠습니다.');
+                if (typeof window.setAdminWebBotLiveStatus === 'function') {
+                    window.setAdminWebBotLiveStatus(data.message || '검색 캐시를 모두 비웠습니다.');
+                } else {
+                    alert(data.message || '캐시를 비웠습니다.');
+                }
             }
         } catch (_) {}
     };

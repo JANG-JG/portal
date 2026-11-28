@@ -159,6 +159,10 @@ function assembleAdminHtml() {
     }).join('\n');
 
     shell = shell.replace('<!-- @@ADMIN_TAB_PANES@@ -->', panes);
+    const searchSubPath = path.join(viewsDir, 'tab-modules-search.html');
+    if (fs.existsSync(searchSubPath)) {
+        shell = shell.replace('<!-- @@ADMIN_SEARCH_SUBPANE@@ -->', fs.readFileSync(searchSubPath, 'utf8'));
+    }
 
     const modalsPath = path.join(viewsDir, 'admin-modals.html');
     if (fs.existsSync(modalsPath)) {
@@ -254,6 +258,7 @@ app.get(['/', '/index.html'], authenticateToken, (req, res) => {
 });
 
 // 1-1. 통합 관리자 센터 화면 (관리자 전용 접근 제어, 폴더 기반 모듈화)
+app.use('/admin/views', authenticateToken, requireAdmin);
 app.get(['/admin', '/admin/', '/admin/index.html', '/admin.html'], authenticateToken, requireAdmin, (req, res) => {
     sendHtml(res, 'admin/index.html');
 });

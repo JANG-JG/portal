@@ -13,8 +13,12 @@ const {
     getWebBotAdminSnapshot,
     upsertSeed,
     deleteSeed,
+    toggleSeedEnabled,
     runScheduledOrManualSeedCrawl,
-    clearAllWebBotCaches
+    clearAllWebBotCaches,
+    purgeBotDocuments,
+    deleteBotDocumentById,
+    pushCrawlLog
 } = require('../../services/search/webBotScheduler.service');
 
 router.get('/status', async (req, res) => {
@@ -58,6 +62,17 @@ router.post('/webbot/seeds', async (req, res) => {
     }
 });
 
+router.patch('/webbot/seeds/:id/toggle', async (req, res) => {
+    const enabled = Boolean(req.body?.enabled);
+    try {
+        const result = await toggleSeedEnabled(req.params.id, enabled);
+        if (!result.success) return res.status(404).json({ success: false, message: '대상 시드를 찾지 못했습니다.' });
+        res.json(result);
+    } catch (_) {
+        res.status(500).json({ success: false, message: '시드 활성 상태 변경 중 오류가 발생했습니다.' });
+    }
+});
+
 router.delete('/webbot/seeds/:id', async (req, res) => {
     try {
         const result = await deleteSeed(req.params.id);
@@ -80,6 +95,34 @@ router.post('/webbot/crawl-now', async (req, res) => {
         });
     } catch (_) {
         res.status(500).json({ success: false, message: '웹봇 즉시 수집 실행 중 오류가 발생했습니다.' });
+    }
+});
+
+router.post('/webbot/purge', async (req, res) => {
+    const mode = req.body?.mode === 'all' ? 'all' : 'expired';
+    try {
+        const deleted = await purgeBotDocuments(mode);
+        const label = mode === 'all' ? '전체 수집 문서 비우기' : '30일 경과 문서 정리';
+        pushCrawlLog('스토리지 관리', 'ok', `${label} 완료 (${deleted}건 삭제 · 가족 보관함 보존)`, deleted);
+        res.json({
+            success: true,
+            deleted,
+            message: mode === 'all'
+                ? `자동 수집 문서 ${deleted}건을 비웠습니다. (가족 개인 보관함은 안전하게 유지됩니다)`
+                : `30일 이상 지난 수집 문서 ${deleted}건을 정리했습니다.`
+        });
+    } catch (_) {
+        res.status(500).json({ success: false, message: '웹봇 문서 정리 중 오류가 발생했습니다.' });
+    }
+});
+
+router.delete('/webbot/documents/:id', async (req, res) => {
+    try {
+        const ok = await deleteBotDocumentById(req.params.id);
+        if (!ok) return res.status(404).json({ success: false, message: '삭제할 문서를 찾지 못했습니다.' });
+        res.json({ success: true, message: '수집 문서를 삭제했습니다.' });
+    } catch (_) {
+        res.status(500).json({ success: false, message: '문서 삭제 중 오류가 발생했습니다.' });
     }
 });
 

@@ -28,3 +28,6 @@
 
 /* 8. SQLite SQL 쿼리 콘솔 & DB 모바일 360px 미디어 쿼리 */
 @import url('./admin-database-query.css');
+
+/* 9. 통합 검색 외부 엔진 · 한국형 표적 웹봇 관제 패널 */
+@import url('./admin-search.css');
