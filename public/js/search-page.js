@@ -339,6 +339,10 @@
                                             note.textContent = `🔒 내 사이트 결과 ${msg.meta.internalSkippedCount}건은 개인정보 보호를 위해 외부 AI에 전송하지 않았습니다.`;
                                             note.style.display = 'block';
                                         }
+                                    } else if (msg.meta.mode === 'instant') {
+                                        badge.textContent = msg.meta.fallbackFromCloud
+                                            ? '⚡ AI 한눈에 요약 · 핵심 즉시 정리'
+                                            : '🔒 AI 한눈에 요약 · 내부 자료 즉시 정리';
                                     } else if (msg.meta.mode === 'local') {
                                         badge.textContent = '🔒 AI 한눈에 요약 · 로컬 보안 요약';
                                     }
@@ -350,6 +354,9 @@
                                 }
                             } catch (_) {}
                         }
+                    }
+                    if (!fullText.trim() && body.textContent === '요약을 생성하고 있어요...') {
+                        body.textContent = '요약할 검색 자료가 충분하지 않습니다.';
                     }
                 } catch (_) {
                     body.textContent = 'AI 요약 생성 중 오류가 발생했습니다.';

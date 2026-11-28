@@ -52,6 +52,39 @@ function setExtCache(key, items) {
     extSuggestCache.set(key, { ts: Date.now(), items });
 }
 
+async function fetchNaverSuggest(query) {
+    try {
+        const res = await axios.get('https://ac.search.naver.com/nx/ac', {
+            params: {
+                q: query,
+                st: 100,
+                r_format: 'json',
+                r_enc: 'UTF-8',
+                r_unicode: 0,
+                t_koreng: 1
+            },
+            timeout: EXT_SUGGEST_TIMEOUT_MS,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; JGPortalSearch/1.0)',
+                Accept: 'application/json'
+            }
+        });
+        const rawList = Array.isArray(res.data?.items?.[0]) ? res.data.items[0] : [];
+        return rawList
+            .map((entry) => (Array.isArray(entry) ? entry[0] : entry))
+            .filter((t) => typeof t === 'string' && t.trim())
+            .slice(0, 6)
+            .map((text) => ({
+                text: text.trim(),
+                type: 'naver',
+                icon: '🔎',
+                badge: '네이버'
+            }));
+    } catch (_) {
+        return [];
+    }
+}
+
 async function fetchGoogleSuggest(query) {
     try {
         const res = await axios.get('https://suggestqueries.google.com/complete/search', {
@@ -66,9 +99,8 @@ async function fetchGoogleSuggest(query) {
             .map((text) => ({
                 text: text.trim(),
                 type: 'google',
-                icon: '🔍',
-                badge: '구글 추천',
-                subtitle: '실시간 인기 검색어'
+                icon: '🔎',
+                badge: '구글'
             }));
     } catch (_) {
         return [];
@@ -83,7 +115,7 @@ async function fetchWikipediaSuggest(query) {
             params: {
                 action: 'opensearch',
                 search: query,
-                limit: 4,
+                limit: 2,
                 namespace: 0,
                 format: 'json'
             },
@@ -99,7 +131,6 @@ async function fetchWikipediaSuggest(query) {
                 type: 'wikipedia',
                 icon: '📚',
                 badge: '위키백과',
-                subtitle: '백과사전 문서',
                 url: typeof urls[idx] === 'string' ? urls[idx] : null
             }));
     } catch (_) {
@@ -120,14 +151,16 @@ async function fetchExternalSuggestions(rawPrefix) {
 
     incrementUsage('externalSuggest', false).catch(() => {});
 
-    const [wikiRes, googleRes] = await Promise.allSettled([
-        fetchWikipediaSuggest(q),
-        fetchGoogleSuggest(q)
+    const [naverRes, googleRes, wikiRes] = await Promise.allSettled([
+        fetchNaverSuggest(q),
+        fetchGoogleSuggest(q),
+        fetchWikipediaSuggest(q)
     ]);
 
-    const wikiItems = wikiRes.status === 'fulfilled' ? wikiRes.value : [];
+    const naverItems = naverRes.status === 'fulfilled' ? naverRes.value : [];
     const googleItems = googleRes.status === 'fulfilled' ? googleRes.value : [];
-    const combined = [...googleItems, ...wikiItems];
+    const wikiItems = wikiRes.status === 'fulfilled' ? wikiRes.value : [];
+    const combined = [...naverItems, ...googleItems, ...wikiItems];
 
     setExtCache(cacheKey, combined);
     return combined;

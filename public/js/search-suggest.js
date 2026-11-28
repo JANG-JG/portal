@@ -129,7 +129,7 @@
                     textWrap.append(ansEl, qEl);
                 } else {
                     textWrap.appendChild(buildHighlightedNode(item.text, rawQuery));
-                    if (item.subtitle) {
+                    if (item.subtitle && item.type === 'shortcut') {
                         const subEl = document.createElement('div');
                         subEl.className = 'jg-suggest-sub';
                         subEl.textContent = item.subtitle;
@@ -208,8 +208,10 @@
         input.addEventListener('focus', () => {
             if (Date.now() < suppressUntil) return;
             const q = input.value.trim();
-            if (!q && showOnEmptyFocus) {
-                loadAndRender('');
+            if (!q) {
+                if (showOnEmptyFocus) loadAndRender('');
+            } else {
+                loadAndRender(q);
             }
         });
 

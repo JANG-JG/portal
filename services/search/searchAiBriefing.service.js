@@ -8,7 +8,6 @@
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
-const { OLLAMA_HOST, getChatModel } = require('../aiModelRouter.service');
 const { resolveSmartWidget } = require('./smartWidget.service');
 const { searchAllInternal } = require('./internalSearch.service');
 const { searchExternal, isEngineEnabled, incrementUsage } = require('./externalSearch.service');
@@ -322,61 +321,55 @@ async function tryGeminiStream(query, publicContext, internalSkippedCount, signa
     return { ok: false, reason: 'all_models_failed' };
 }
 
-async function streamLocalOllamaSummary(query, contextText, signal, sendEvent, fallbackFromCloud = false) {
-    const model = getChatModel();
-    const { systemPrompt, userPrompt } = buildPrompts(query, contextText.slice(0, 950), true);
-
-    sendEvent({ meta: { mode: 'local', model, fallbackFromCloud } });
-
-    const timeoutId = setTimeout(() => {
-        try { if (!signal.aborted && signal._abortCtrl) signal._abortCtrl.abort(); } catch (_) {}
-    }, 30000);
-
-    try {
-        const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal,
-            body: JSON.stringify({
-                model,
-                stream: true,
-                keep_alive: '24h',
-                options: { temperature: 0.3, num_ctx: 1536, num_predict: 260 },
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ]
-            })
-        });
-
-        if (!ollamaRes.ok || !ollamaRes.body) {
-            sendEvent({ error: '로컬 AI 서버가 현재 응답하지 않습니다. 잠시 후 다시 시도해 주세요.' });
-            return;
+function buildInstantInternalSummary(query, ctx) {
+    const lines = [];
+    const w = ctx?.smartWidget;
+    if (w && w.data) {
+        if (w.type === 'weather') {
+            lines.push(`- **날씨**: ${w.data.city} ${w.data.condition}, 기온 **${w.data.temp}** (습도 ${w.data.humidity || '-'})`);
+        } else if (w.type === 'exchange') {
+            lines.push(`- **환율**: ${w.data.amount} ${w.data.currency} = **${w.data.convertedKrw}원**`);
+        } else if (w.type === 'calculator') {
+            lines.push(`- **계산**: ${w.data.expression} = **${w.data.result}**`);
         }
-
-        const reader = ollamaRes.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-
-        while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const parts = buffer.split('\n');
-            buffer = parts.pop() || '';
-            for (const line of parts) {
-                const trimmed = line.trim();
-                if (!trimmed) continue;
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    const content = parsed.message?.content || '';
-                    if (content) sendEvent({ token: content });
-                } catch (_) {}
-            }
-        }
-    } finally {
-        clearTimeout(timeoutId);
     }
+
+    const r = ctx?.internal?.results || {};
+    const addSection = (label, arr, formatter) => {
+        if (!Array.isArray(arr) || arr.length === 0) return;
+        const preview = arr.slice(0, 2).map(formatter).filter(Boolean).join(' / ');
+        if (preview) lines.push(`- **${label} (${arr.length}건)**: ${preview}`);
+    };
+
+    addSection('내 메모', r.memos, (m) => `**${m.title}**${m.content ? ` (${String(m.content).slice(0, 45).trim()})` : ''}`);
+    addSection('일정', r.calendar, (c) => `${c.event_date || ''} **${c.title}**`.trim());
+    addSection('가족 위키', r.wiki, (wk) => `**${wk.title}**`);
+    addSection('뉴스', r.news, (n) => `**${n.title}**`);
+    addSection('병원', r.hospitals, (h) => `**${h.name || h.hospital_name || ''}**`);
+    addSection('약', r.medications, (m) => `**${m.name || m.med_name || ''}**`);
+    addSection('자산', r.assets, (a) => `**${a.symbol || ''} ${a.full_name || ''}**`.trim());
+    if (Array.isArray(r.album) && r.album.length > 0) {
+        lines.push(`- **사진첩**: 관련 사진 **${r.album.length}장**`);
+    }
+    if (Array.isArray(r.kindergarten) && r.kindergarten.length > 0) {
+        lines.push(`- **알림장**: 관련 기록 **${r.kindergarten.length}건**`);
+    }
+
+    if (lines.length === 0) {
+        const ext = ctx?.external || {};
+        if (ext.wikipedia?.extract) {
+            lines.push(`- **백과**: ${String(ext.wikipedia.extract).slice(0, 140).trim()}...`);
+        }
+        (ext.naver?.items || []).slice(0, 2).forEach((n) => {
+            lines.push(`- **${n.title}**: ${String(n.description || '').slice(0, 90).trim()}`);
+        });
+        (ext.google?.items || []).slice(0, 2).forEach((g) => {
+            lines.push(`- **${g.title}**: ${String(g.description || '').slice(0, 90).trim()}`);
+        });
+    }
+
+    if (lines.length === 0) return '';
+    return `'${query}' 검색 결과 핵심을 바로 정리해 드렸어요.\n\n${lines.join('\n')}`;
 }
 
 async function streamSearchAiSummary(req, res, rawQuery, activeTab = 'all') {
@@ -444,11 +437,12 @@ async function streamSearchAiSummary(req, res, rawQuery, activeTab = 'all') {
             fallbackFromCloud = true;
         }
 
-        const localContext = (isPrivateTab || isPrivateQuery)
-            ? (internalContext || publicContext)
-            : (internalContext ? `${internalContext}\n${publicContext}` : publicContext);
-
-        await streamLocalOllamaSummary(q, localContext, controller.signal, sendEvent, fallbackFromCloud);
+        // 로컬 Ollama GPU 점유/타임아웃 방지를 위해 내부·폴백 요약은 즉시 구조화 정리로 제공
+        const instantText = buildInstantInternalSummary(q, ctx);
+        sendEvent({ meta: { mode: 'instant', internalTotal, fallbackFromCloud } });
+        sendEvent({
+            token: instantText || `'${q}'에 대해 요약할 검색 결과가 충분하지 않습니다.`
+        });
         sendEvent({ done: true });
         res.end();
     } catch (err) {

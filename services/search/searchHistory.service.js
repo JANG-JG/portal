@@ -266,8 +266,7 @@ async function getSuggestions(user, rawPrefix) {
                     text: hint.text,
                     type: hint.type,
                     icon: hint.icon,
-                    badge: hint.badge,
-                    subtitle: hint.subtitle
+                    badge: hint.badge
                 });
             }
             if (out.length >= 10) break;
@@ -293,7 +292,7 @@ async function getSuggestions(user, rawPrefix) {
     }
 
     userSources.history.forEach((h, idx) => {
-        const s = scoreCandidate(h.query, q, isChosung, cleanChosung, 90 - idx);
+        const s = scoreCandidate(h.query, q, isChosung, cleanChosung, 120 - idx);
         if (s >= 0) {
             addCandidate({
                 text: h.query,
@@ -306,8 +305,8 @@ async function getSuggestions(user, rawPrefix) {
     });
 
     for (const sc of getAllowedShortcuts(user)) {
-        const sTitle = scoreCandidate(sc.title, q, isChosung, cleanChosung, 78);
-        const sKw = matchesQuery(sc.keywords, q, isChosung, cleanChosung) ? 72 : -1;
+        const sTitle = scoreCandidate(sc.title, q, isChosung, cleanChosung, 82);
+        const sKw = matchesQuery(sc.keywords, q, isChosung, cleanChosung) ? 78 : -1;
         const best = Math.max(sTitle, sKw);
         if (best >= 0) {
             addCandidate({
@@ -322,19 +321,19 @@ async function getSuggestions(user, rawPrefix) {
     }
 
     for (const m of userSources.memos) {
-        const s = scoreCandidate(m.text, q, isChosung, cleanChosung, 70);
+        const s = scoreCandidate(m.text, q, isChosung, cleanChosung, 74);
         if (s >= 0) addCandidate({ text: m.text, type: 'memo', icon: '📝', badge: '내 메모', url: m.url }, s);
     }
     for (const c of userSources.calendar || []) {
-        const s = scoreCandidate(c.text, q, isChosung, cleanChosung, 68);
+        const s = scoreCandidate(c.text, q, isChosung, cleanChosung, 72);
         if (s >= 0) addCandidate(c, s);
     }
     for (const h of userSources.hospitals || []) {
-        const s = scoreCandidate(h.text, q, isChosung, cleanChosung, 66);
+        const s = scoreCandidate(h.text, q, isChosung, cleanChosung, 70);
         if (s >= 0) addCandidate(h, s);
     }
     for (const med of userSources.medications || []) {
-        const s = scoreCandidate(med.text, q, isChosung, cleanChosung, 65);
+        const s = scoreCandidate(med.text, q, isChosung, cleanChosung, 69);
         if (s >= 0) addCandidate(med, s);
     }
 
@@ -346,18 +345,18 @@ async function getSuggestions(user, rawPrefix) {
     }
     if (hasNews) {
         for (const n of sharedSources.news) {
-            const s = scoreCandidate(n.text, q, isChosung, cleanChosung, 56);
+            const s = scoreCandidate(n.text, q, isChosung, cleanChosung, 52);
             if (s >= 0) addCandidate({ text: n.text, type: 'news', icon: '📰', badge: '뉴스' }, s);
         }
     }
 
     for (const hint of STATIC_DICTIONARY_HINTS) {
-        const s = scoreCandidate(hint.text, q, isChosung, cleanChosung, 54);
-        if (s >= 0) addCandidate(hint, s);
+        const s = scoreCandidate(hint.text, q, isChosung, cleanChosung, 45);
+        if (s >= 0) addCandidate({ text: hint.text, type: hint.type, icon: hint.icon, badge: hint.badge }, s);
     }
 
     extSuggestions.forEach((ext, idx) => {
-        const base = ext.type === 'google' ? 50 : 40;
+        const base = ext.type === 'naver' ? 95 : (ext.type === 'google' ? 88 : 40);
         const rawScore = scoreCandidate(ext.text, q, isChosung, cleanChosung, base);
         const finalScore = rawScore >= 0 ? rawScore - idx : (base - idx);
         addCandidate(ext, finalScore);
