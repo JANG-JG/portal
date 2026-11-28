@@ -375,33 +375,35 @@ async function searchClipsAndBotDocs(rawQuery, userId, isChosung = false, cleanC
                 [matchExpr, clipScope, limit * 3]
             );
 
-            const clipHashes = [];
-            const botHashes = [];
-            for (const r of ftsRows) {
-                if (r.doc_key.startsWith(`clip:${userId}:`)) {
-                    clipHashes.push(r.doc_key.slice(`clip:${userId}:`.length));
-                } else if (r.doc_key.startsWith('bot:')) {
-                    botHashes.push(r.doc_key.slice(4));
+            if (ftsRows.length > 0) {
+                const clipHashes = [];
+                const botHashes = [];
+                for (const r of ftsRows) {
+                    if (r.doc_key.startsWith(`clip:${userId}:`)) {
+                        clipHashes.push(r.doc_key.slice(`clip:${userId}:`.length));
+                    } else if (r.doc_key.startsWith('bot:')) {
+                        botHashes.push(r.doc_key.slice(4));
+                    }
                 }
+
+                const savedClips = clipHashes.length && userId
+                    ? await dbAll(
+                        `SELECT id, url, title, snippet, thumbnail_url, site_name, created_at FROM user_saved_clips
+                         WHERE user_id = ? AND url_hash IN (${clipHashes.map(() => '?').join(',')}) LIMIT ?`,
+                        [userId, ...clipHashes, limit]
+                    )
+                    : [];
+
+                const botDocs = botHashes.length
+                    ? await dbAll(
+                        `SELECT id, url, title, snippet, og_image, site_name, published_at, crawled_at FROM webbot_documents
+                         WHERE url_hash IN (${botHashes.map(() => '?').join(',')}) LIMIT ?`,
+                        [...botHashes, limit]
+                    )
+                    : [];
+
+                return { savedClips, botDocs };
             }
-
-            const savedClips = clipHashes.length && userId
-                ? await dbAll(
-                    `SELECT id, url, title, snippet, thumbnail_url, site_name, created_at FROM user_saved_clips
-                     WHERE user_id = ? AND url_hash IN (${clipHashes.map(() => '?').join(',')}) LIMIT ?`,
-                    [userId, ...clipHashes, limit]
-                )
-                : [];
-
-            const botDocs = botHashes.length
-                ? await dbAll(
-                    `SELECT id, url, title, snippet, og_image, site_name, published_at, crawled_at FROM webbot_documents
-                     WHERE url_hash IN (${botHashes.map(() => '?').join(',')}) LIMIT ?`,
-                    [...botHashes, limit]
-                )
-                : [];
-
-            return { savedClips, botDocs };
         } catch (_) {}
     }
 
